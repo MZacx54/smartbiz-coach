@@ -1,0 +1,8 @@
+{
+  "name": "SmartBiz Coach",
+  "description": "A digital assistant for Nigerian MSMEs to digitize their business, featuring AI brand building, content generation, and business tracking.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}
