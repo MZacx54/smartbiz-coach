@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Vendor, ProductListing, ServiceGig, RentalListing, User } from '../types';
-import { searchLocalVendors, LocalSearchResult } from '../services/geminiService';
+import { searchLocalVendors, LocalSearchResult, VendorSearchResponse } from '../services/geminiService';
 import VendorStore from './VendorStore';
 import PaymentModal from './PaymentModal';
 
@@ -418,7 +418,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, currentUser }) =
     if (!searchQuery) return;
     setIsSearching(true);
     try {
-      const result: LocalSearchResult = await searchLocalVendors(searchQuery);
+      const result: VendorSearchResponse = await searchLocalVendors(searchQuery);
       setSearchResultText(result.text || '');
       setNearbyPlaces(result.places);
     } catch (e) { console.error(e); }

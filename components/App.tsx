@@ -217,7 +217,7 @@ const App: React.FC = () => {
   // Credit System Logic
   const handleCreditTopUp = (credits: number, amountPaid: number, provider: 'PAYSTACK' | 'SQUAD') => {
     // 1. Update Balance
-    setUserStats(prev => ({
+    setUserStats((prev: UserStats) => ({
       ...prev,
       bizCredits: prev.bizCredits + credits
     }));

@@ -7,11 +7,6 @@ export const analyzeBusinessName = async (businessName: string) => {
     return response.data;
 };
 
-export const generateDailyMotivation = async () => {
-    const response = await api.post('content/generate-motivation/');
-    return response.data;
-};
-
 export const generateSeasonalTips = async () => {
     const response = await api.post('content/generate-seasonal-tips/');
     return response.data;
@@ -27,11 +22,6 @@ export const generateBrandLogo = async (prompt: string) => {
     return response.data.logoUrl;
 };
 
-export const chatWithSmartBiz = async (message: string) => {
-    const response = await api.post('content/chat/', { message });
-    return response.data;
-};
-
 export const transcribeAudio = async (audioBlob: Blob) => {
     const formData = new FormData();
     formData.append('audio', audioBlob);
@@ -39,20 +29,8 @@ export const transcribeAudio = async (audioBlob: Blob) => {
     return response.data.text;
 };
 
-export const findGrants = async (businessName: string) => {
-    const response = await api.post('business/find-grants/', { business_name: businessName });
-    return response.data;
-};
-
-export interface LocalSearchResult {
-    name: string;
-    category: string;
-    distance: string;
-    rating: number;
-}
-
-export const searchLocalVendors = async (query: string, location: string): Promise<LocalSearchResult[]> => {
-    const response = await api.post('business/search-vendors/', { query, location });
+export const generateTrendIdeas = async (niche: string) => {
+    const response = await api.post('content/generate-trend-ideas/', { niche });
     return response.data;
 };
 
@@ -66,8 +44,49 @@ export const analyzeNeighborhood = async (location: string) => {
     return response.data;
 };
 
-export const generateBusinessPlan = async (businessName: string, niche: string) => {
-    const response = await api.post('business/generate-plan/', { business_name: businessName, niche });
+export interface LocalSearchResult {
+    name: string;
+    category: string;
+    distance: string;
+    rating: number;
+}
+
+// Updated interfaces
+export interface GrantSearchParams {
+    businessName: string;
+    location?: string;
+    industry?: string;
+    yearsInBusiness?: string;
+    gender?: string;
+}
+
+export interface VendorSearchResponse {
+    text: string;
+    places: LocalSearchResult[];
+}
+
+export const generateDailyMotivation = async (persona?: string) => {
+    const response = await api.post('content/generate-motivation/', { persona });
+    return response.data;
+};
+
+export const chatWithSmartBiz = async (history: any[], message: string) => {
+    const response = await api.post('content/chat/', { history, message });
+    return response.data;
+};
+
+export const findGrants = async (params: GrantSearchParams) => {
+    const response = await api.post('business/find-grants/', params);
+    return response.data;
+};
+
+export const searchLocalVendors = async (query: string, location: string = 'Lagos'): Promise<any> => {
+    const response = await api.post('business/search-vendors/', { query, location });
+    return response.data; // Expecting { text: string, places: [] }
+};
+
+export const generateBusinessPlan = async (businessName: string, niche: string, context?: string) => {
+    const response = await api.post('business/generate-plan/', { business_name: businessName, niche, context });
     return response.data;
 };
 
@@ -77,18 +96,14 @@ export const generateSocialPost = async (topic: string, platform: string, brand:
     return response.data;
 };
 
-export const generateVideoScript = async (topic: string, duration: string, brand: any) => {
-    const response = await api.post('content/generate-video-script/', { topic, duration, brand });
+// Updated to match ContentGenerator.tsx usage: (topic, platform, tone, style)
+export const generateVideoScript = async (topic: string, platform: string, tone: string, style: string) => {
+    const response = await api.post('content/generate-video-script/', { topic, platform, tone, style });
     return response.data;
 };
 
-export const generateTrendIdeas = async (niche: string) => {
-    const response = await api.post('content/generate-trend-ideas/', { niche });
-    return response.data;
-};
-
-export const editImage = async (imageUrl: string, prompt: string) => {
-    const response = await api.post('content/edit-image/', { image_url: imageUrl, prompt });
+export const editImage = async (imageBase64: string, mimeType: string, prompt: string) => {
+    const response = await api.post('content/edit-image/', { image_base64: imageBase64, mime_type: mimeType, prompt });
     return response.data;
 };
 
