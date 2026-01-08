@@ -119,7 +119,7 @@ const App: React.FC = () => {
     if (savedBrand) {
       localStorage.setItem('sb_brand', JSON.stringify(savedBrand));
       // Update action state
-      setActions(prev => prev.map(a => a.id === '2' ? { ...a, isCompleted: true } : a));
+      setActions((prev: ActionCard[]) => prev.map(a => a.id === '2' ? { ...a, isCompleted: true } : a));
     } else {
       localStorage.removeItem('sb_brand');
     }
@@ -128,7 +128,7 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('sb_content_history', JSON.stringify(contentHistory));
     if (contentHistory.length > 0) {
-      setActions(prev => prev.map(a => a.id === '3' ? { ...a, isCompleted: true } : a));
+      setActions((prev: ActionCard[]) => prev.map(a => a.id === '3' ? { ...a, isCompleted: true } : a));
     }
   }, [contentHistory]);
 
@@ -139,6 +139,8 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('sb_transactions', JSON.stringify(transactions));
   }, [transactions]);
+
+  const setActionsWithType = (updater: (prev: ActionCard[]) => ActionCard[]) => setActions(updater);
 
 
   // --- Handlers ---
@@ -174,12 +176,12 @@ const App: React.FC = () => {
       id: Date.now().toString(),
       createdAt: Date.now()
     };
-    setContentHistory(prev => [newContent, ...prev]);
+    setContentHistory((prev: GeneratedContent[]) => [newContent, ...prev]);
   };
 
   // Cart Handlers
   const handleAddToCart = (product: ProductListing) => {
-    setCartItems(prev => {
+    setCartItems((prev: CartItem[]) => {
       const existing = prev.find(item => item.productId === product.id);
       if (existing) {
         return prev.map(item =>
@@ -202,7 +204,7 @@ const App: React.FC = () => {
   };
 
   const handleRemoveFromCart = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+    setCartItems((prev: CartItem[]) => prev.filter(item => item.id !== id));
   };
 
   const handleClearCart = () => setCartItems([]);
@@ -217,7 +219,7 @@ const App: React.FC = () => {
       provider: provider,
       type: 'PURCHASE'
     };
-    setTransactions(prev => [newTx, ...prev]);
+    setTransactions((prev: Transaction[]) => [newTx, ...prev]);
     setCartItems([]);
     alert(`Payment Successful via ${provider}! Your order has been placed.`);
     setCurrentView(AppView.MARKETPLACE);

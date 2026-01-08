@@ -418,9 +418,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, currentUser }) =
     if (!searchQuery) return;
     setIsSearching(true);
     try {
-      const result: VendorSearchResponse = await searchLocalVendors(searchQuery);
-      setSearchResultText(result.text || '');
-      setNearbyPlaces(result.places);
+      const response: VendorSearchResponse = await searchLocalVendors(searchQuery);
+      setSearchResultText(response.text || '');
+      setNearbyPlaces(response.places || []);
     } catch (e) { console.error(e); }
     finally { setIsSearching(false); }
   };

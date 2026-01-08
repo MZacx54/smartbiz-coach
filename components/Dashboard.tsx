@@ -103,10 +103,19 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
   useEffect(() => {
     const loadData = async () => {
       // AI Data
-      const m = await generateDailyMotivation("Entrepreneur");
-      setMotivation(m);
-      const s = await generateSeasonalTips();
-      setSeasonalAlert(s);
+      try {
+        const m = await generateDailyMotivation("Entrepreneur");
+        setMotivation(m);
+      } catch (e) {
+        console.error("Failed to load motivation", e);
+      }
+
+      try {
+        const s = await generateSeasonalTips();
+        setSeasonalAlert(s);
+      } catch (e) {
+        console.error("Failed to load seasonal tips", e);
+      }
 
       // Business Data (From LocalStorage for Dashboard View)
       try {
