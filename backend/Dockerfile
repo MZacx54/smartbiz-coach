@@ -19,4 +19,5 @@ COPY . .
 EXPOSE 8000
 
 # Run the application
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+# Using python3 explicitly. Prefer gunicorn for production.
+CMD ["gunicorn", "smartbiz_backend.wsgi", "--bind", "0.0.0.0:8000"]
