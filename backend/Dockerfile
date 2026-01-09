@@ -8,7 +8,7 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory in the container
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies (ensure requirements.txt is in the same directory as Dockerfile in the build context)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -19,5 +19,4 @@ COPY . .
 EXPOSE 8000
 
 # Run the application
-# Using python3 explicitly. Prefer gunicorn for production.
 CMD ["gunicorn", "smartbiz_backend.wsgi", "--bind", "0.0.0.0:8000"]
