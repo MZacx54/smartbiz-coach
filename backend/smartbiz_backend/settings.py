@@ -136,12 +136,23 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '...').split(',')
-CORS_ALLOW_ALL_ORIGINS = True
+# Hardcoded for stability - Env vars can be tricky with spaces
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://smartbiz-coach.vercel.app"
+]
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Settings for Production
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://smartbiz-coach.vercel.app"
+]
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
 
 AUTH_USER_MODEL = 'users.User'
 
