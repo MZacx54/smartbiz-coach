@@ -136,14 +136,10 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Hardcoded for stability - Env vars can be tricky with spaces
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "https://smartbiz-coach.vercel.app"
-]
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOW_CREDENTIALS = True
+# Strict CORS disabled. Using Wildcard for debugging.
+# CORS_ALLOWED_ORIGINS = [...]
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = False
 
 # CSRF Settings for Production
 CSRF_TRUSTED_ORIGINS = [
@@ -197,3 +193,17 @@ if not os.environ.get('SECRET_KEY') or 'django-insecure' in os.environ.get('SECR
     print("WARNING: Using insecure SECRET_KEY")
     if not DEBUG:
         sys.exit("ERROR: Secure SECRET_KEY required in production")
+INSTALLED_APPS = [
+    ...
+    "corsheaders",
+    ...
+]
+
+MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    ...
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "https://smartbiz-coach.vercel.app",
+]
