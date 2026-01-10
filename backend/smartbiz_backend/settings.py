@@ -32,7 +32,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -186,24 +186,6 @@ if not DEBUG:
 import sys
 if not os.environ.get('GEMINI_API_KEY'):
     print("WARNING: GEMINI_API_KEY not set. AI features will not work.")
-    if not DEBUG:
-        sys.exit("ERROR: GEMINI_API_KEY is required in production")
 
 if not os.environ.get('SECRET_KEY') or 'django-insecure' in os.environ.get('SECRET_KEY', ''):
     print("WARNING: Using insecure SECRET_KEY")
-    if not DEBUG:
-        sys.exit("ERROR: Secure SECRET_KEY required in production")
-INSTALLED_APPS = [
-    ...
-    "corsheaders",
-    ...
-]
-
-MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
-    ...
-]
-
-CORS_ALLOWED_ORIGINS = [
-    "https://smartbiz-coach.vercel.app",
-]

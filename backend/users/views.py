@@ -15,7 +15,7 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            user.set_password(request.data.get('password'))
+            user.set_password(serializer.validated_data['password'])
             user.save()
             token, _ = Token.objects.get_or_create(user=user)
             return Response({
