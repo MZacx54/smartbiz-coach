@@ -138,8 +138,36 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Strict CORS disabled. Using Wildcard for debugging.
 # CORS_ALLOWED_ORIGINS = [...]
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = False
+# CORS_ALLOW_ALL_ORIGINS = True # - Causing issues?
+# CORS_ALLOW_CREDENTIALS = False
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://smartbiz-coach.vercel.app",
+    "https://smartbiz-coach-production.up.railway.app"
+]
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # CSRF Settings for Production
 CSRF_TRUSTED_ORIGINS = [
