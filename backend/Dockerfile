@@ -15,8 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Ensure start.sh is executable
-RUN chmod +x start.sh
+# Ensure start.sh is executable and has correct line endings (for Windows uploads)
+RUN chmod +x start.sh && sed -i 's/\r$//' start.sh
 
 # Expose the port the app runs on
 EXPOSE 8000

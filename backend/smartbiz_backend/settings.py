@@ -182,11 +182,11 @@ AUTH_USER_MODEL = 'users.User'
 
 # Static files (WhiteNoise)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.WhiteNoiseStaticFilesStorage'
 
-STATICFILES_DIRS = [
-    BASE_DIR / '../dist',
-]
+STATICFILES_DIRS = []
+if (BASE_DIR / '../dist').exists():
+    STATICFILES_DIRS.append(BASE_DIR / '../dist')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
