@@ -15,8 +15,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
+# Ensure start.sh is executable
+RUN chmod +x start.sh
+
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Run the application
-CMD ["gunicorn", "smartbiz_backend.wsgi", "--bind", "0.0.0.0:8000"]
+# Run the application using the startup script
+CMD ["bash", "start.sh"]
