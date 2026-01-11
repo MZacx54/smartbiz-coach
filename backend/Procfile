@@ -1,1 +1,1 @@
-web: sh -c "python manage.py migrate && gunicorn smartbiz_backend.wsgi:application --log-file - --bind 0.0.0.0:$PORT"
+web: bash start.sh
