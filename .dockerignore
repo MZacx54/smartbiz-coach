@@ -5,4 +5,3 @@ dist
 .gitignore
 Dockerfile.frontend
 docker-compose.yml
-backend
