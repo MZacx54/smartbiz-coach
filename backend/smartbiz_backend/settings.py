@@ -169,6 +169,9 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# Maximum age for preflight requests
+CORS_PREFLIGHT_MAX_AGE = 86400
+
 # CSRF Settings for Production
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
