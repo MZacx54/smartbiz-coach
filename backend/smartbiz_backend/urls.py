@@ -16,6 +16,6 @@ urlpatterns = [
     path('business/', include('business.urls')),
     path('content/', include('content.urls')),
 
-    # Serve React App for any other route - DISABLED for API-only deployment
-    # re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),
+    # Serve React App for any other route
+    re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),
 ]

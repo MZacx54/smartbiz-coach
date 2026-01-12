@@ -136,60 +136,27 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Strict CORS disabled. Using Wildcard for debugging.
-# CORS_ALLOWED_ORIGINS = [...]
-# CORS_ALLOW_ALL_ORIGINS = True # - Causing issues?
-# CORS_ALLOW_CREDENTIALS = False
+# CORS/CSRF Settings
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://smartbiz-coach.vercel.app",
-    "https://smartbiz-coach-production.up.railway.app"
-]
-
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
-]
-
-# Maximum age for preflight requests
-CORS_PREFLIGHT_MAX_AGE = 86400
-
-# CSRF Settings for Production
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://smartbiz-coach.vercel.app"
-]
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'Lax' if DEBUG else 'None'
+CSRF_COOKIE_SECURE = not DEBUG
 
 AUTH_USER_MODEL = 'users.User'
 
 # Static files (WhiteNoise)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.WhiteNoiseStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# Look for frontend build in 'dist' directory
+FRONTEND_DIST_DIR = BASE_DIR / '../dist'
 STATICFILES_DIRS = []
-if (BASE_DIR / '../dist').exists():
-    STATICFILES_DIRS.append(BASE_DIR / '../dist')
+if FRONTEND_DIST_DIR.exists():
+    STATICFILES_DIRS.append(str(FRONTEND_DIST_DIR))
+    print(f"Found frontend assets at {FRONTEND_DIST_DIR}")
+else:
+    print(f"Warning: Frontend assets not found at {FRONTEND_DIST_DIR}")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
