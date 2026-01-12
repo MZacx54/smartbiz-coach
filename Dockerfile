@@ -24,11 +24,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
-# Copy frontend build from stage 1 to the location Django expects
-# settings.py looks for STATICFILES_DIRS = [BASE_DIR / '../dist']
-# So if we put backend in /app, BASE_DIR is /app.
-# We need dist to be at /dist (one level above /app)
+# Copy frontend build from stage 1 to /dist
 COPY --from=frontend-builder /app-frontend/dist /dist
+
+# Run collectstatic during build to avoid runtime delays
+# We use a dummy SECRET_KEY and DATABASE_URL for the build step
+RUN DJANGO_SECRET_KEY=build-time-only-key \
+    DJANGO_DEBUG=False \
+    python manage.py collectstatic --noinput
 
 # Ensure start.sh is executable
 RUN chmod +x start.sh && sed -i 's/\r$//' start.sh

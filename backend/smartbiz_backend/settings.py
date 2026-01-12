@@ -147,7 +147,8 @@ AUTH_USER_MODEL = 'users.User'
 
 # Static files (WhiteNoise)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Temporarily simplify storage to avoid manifest hashing issues during the 502 debug
+STATICFILES_STORAGE = 'whitenoise.storage.WhiteNoiseStaticFilesStorage'
 
 # Look for frontend build in 'dist' directory
 FRONTEND_DIST_DIR = BASE_DIR / '../dist'
