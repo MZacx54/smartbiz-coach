@@ -71,7 +71,7 @@ ROOT_URLCONF = 'smartbiz_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / '../dist'], # Point to frontend build
+        'DIRS': [BASE_DIR / 'dist'], # Path inside container/backend folder
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -151,13 +151,19 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.WhiteNoiseStaticFilesStorage'
 
 # Look for frontend build in 'dist' directory
-FRONTEND_DIST_DIR = BASE_DIR / '../dist'
+FRONTEND_DIST_DIR = BASE_DIR / 'dist'
 STATICFILES_DIRS = []
 if FRONTEND_DIST_DIR.exists():
     STATICFILES_DIRS.append(str(FRONTEND_DIST_DIR))
     print(f"Found frontend assets at {FRONTEND_DIST_DIR}")
 else:
-    print(f"Warning: Frontend assets not found at {FRONTEND_DIST_DIR}")
+    # During container build, it might be here
+    ALT_DIST = Path('/dist')
+    if ALT_DIST.exists():
+        STATICFILES_DIRS.append(str(ALT_DIST))
+        print(f"Found frontend assets at {ALT_DIST}")
+    else:
+        print(f"Warning: Frontend assets not found")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -170,7 +176,7 @@ REST_FRAMEWORK = {
 
 # Production Security Settings
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True

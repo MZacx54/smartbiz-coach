@@ -25,8 +25,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ .
 
-# Copy frontend build from stage 1 to /dist
-COPY --from=frontend-builder /app-frontend/dist /dist
+# Copy frontend build from stage 1 to the backend's dist folder
+COPY --from=frontend-builder /app-frontend/dist ./dist
 
 # Run collectstatic during build to avoid runtime delays
 # We use a dummy SECRET_KEY and DATABASE_URL for the build step
