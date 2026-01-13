@@ -1,3 +1,4 @@
+# SmartBiz Coach - Deployment (Build Trigger: 2026-01-13)
 # --- Stage 1: Frontend Build ---
 FROM node:20-slim AS frontend-builder
 WORKDIR /app-frontend
