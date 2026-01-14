@@ -195,9 +195,10 @@ const ContentGenerator: React.FC<ContentGeneratorProps> = ({ history, onAddToHis
             try {
                 const niche = brand?.niche || "General Business";
                 const data = await generateTrendIdeas(niche);
-                setTrends(data);
+                setTrends(Array.isArray(data) ? data : []);
             } catch (e) {
-                console.error(e);
+                console.error("Trend loading error:", e);
+                setTrends([]); // Ensure it's an array
             }
         };
         loadTrends();
@@ -243,7 +244,7 @@ const ContentGenerator: React.FC<ContentGeneratorProps> = ({ history, onAddToHis
 
         try {
             const ideas = await generateSuggestedPrompts(niche, activeTab, imageBase64, imageMimeType, trendNames);
-            setSuggestions(ideas);
+            setSuggestions(Array.isArray(ideas) ? ideas : []);
         } catch (e) {
             console.error(e);
         } finally {
@@ -520,7 +521,7 @@ const ContentGenerator: React.FC<ContentGeneratorProps> = ({ history, onAddToHis
 
             {suggestions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2 animate-in fade-in">
-                    {suggestions.map((idea, idx) => (
+                    {(suggestions || []).map((idea, idx) => (
                         <button
                             key={idx}
                             type="button"
@@ -1269,7 +1270,7 @@ const ContentGenerator: React.FC<ContentGeneratorProps> = ({ history, onAddToHis
                         <div className="text-sm text-orange-800 opacity-60 italic">Loading trends...</div>
                     ) : (
                         <div className="space-y-4">
-                            {trends.map((trend, idx) => (
+                            {(trends || []).map((trend, idx) => (
                                 <div key={idx} className="bg-white p-3 rounded-lg shadow-sm border border-orange-100">
                                     <p className="font-bold text-gray-900 text-sm mb-1">{trend.trendName}</p>
                                     <p className="text-xs text-gray-600 mb-2 leading-tight">{trend.description}</p>

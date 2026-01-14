@@ -36,8 +36,8 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None)
         return json.loads(response.text)
     except Exception as e:
         print(f"Gemini JSON generation error: {e}")
-        # Return empty dict on error to prevent 500s in critical flows
-        return {}
+        # Re-raise so the calling view can handle it (e.g. return fallback data)
+        raise e
 
 def generate_text_content(prompt, system_instruction=None):
     model = get_model()
