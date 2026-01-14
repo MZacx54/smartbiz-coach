@@ -138,7 +138,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS/CSRF Settings
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000,https://*.railway.app').split(',')
 
 CSRF_COOKIE_SAMESITE = 'Lax' if DEBUG else 'None'
 CSRF_COOKIE_SECURE = not DEBUG
@@ -147,7 +147,6 @@ AUTH_USER_MODEL = 'users.User'
 
 # Static files (WhiteNoise)
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-# Temporarily simplify storage to avoid manifest hashing issues during the 502 debug
 STATICFILES_STORAGE = 'whitenoise.storage.WhiteNoiseStaticFilesStorage'
 
 # Look for frontend build in 'dist' directory
@@ -174,9 +173,9 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Production Security Settings
+# Production Security Settings - RELAXED FOR DEBUGGING 502
 if not DEBUG:
-    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False') == 'True'
+    SECURE_SSL_REDIRECT = False  # DO NOT REDIRECT TO HTTPS INSIDE THE CONTAINER
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
