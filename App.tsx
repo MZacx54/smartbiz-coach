@@ -229,23 +229,44 @@ const App: React.FC = () => {
 
   const handleClearCart = () => setCartItems([]);
 
-  const handleCheckoutSuccess = (
+  const handleCheckout = async (
     provider: "PAYSTACK" | "SQUAD",
-    total: number
+    amount: number,
+    reference: string
   ) => {
-    const newTx: Transaction = {
-      id: `TX-${Date.now()}`,
-      date: Date.now(),
-      amount: total,
-      description: `Purchase of ${cartItems.length} items`,
-      status: "SUCCESS",
-      provider: provider,
-      type: "PURCHASE",
-    };
-    setTransactions((prev: Transaction[]) => [newTx, ...prev]);
-    setCartItems([]);
-    alert(`Payment Successful via ${provider}! Your order has been placed.`);
-    setCurrentView(AppView.MARKETPLACE);
+    try {
+      toast.loading(`Verifying ${provider} payment...`);
+      
+      const result = provider === 'PAYSTACK' 
+        ? await billingService.verifyPayment(reference, amount)
+        : await billingService.verifySquadPayment(reference, amount);
+
+      const newTx: Transaction = {
+        id: reference,
+        date: Date.now(),
+        amount: amount,
+        description: `Direct Credit Purchase (${provider})`,
+        status: "SUCCESS",
+        provider: provider,
+        type: "PURCHASE",
+      };
+
+      setTransactions((prev: Transaction[]) => [newTx, ...prev]);
+      setCartItems([]);
+
+      if (result.credits !== undefined) {
+        setUserStats((prev) => ({ ...prev, bizCredits: result.credits }));
+      }
+
+      toast.dismiss();
+      toast.success(`Payment Successful via ${provider}!`);
+      setCurrentView(AppView.DASHBOARD);
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error(
+        error.response?.data?.error || `${provider} payment verification failed.`
+      );
+    }
   };
 
   // If not authenticated, show Auth screen
@@ -302,7 +323,7 @@ const App: React.FC = () => {
             items={cartItems}
             onRemove={handleRemoveFromCart}
             onClear={handleClearCart}
-            onCheckout={handleCheckoutSuccess}
+            onCheckout={handleCheckout}
             onBack={() => handleNavigate(AppView.MARKETPLACE)}
           />
         );

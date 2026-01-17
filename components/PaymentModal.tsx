@@ -1,17 +1,29 @@
-
 import React, { useState } from 'react';
+import { usePaystackPayment } from 'react-paystack';
+
+const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
+const SQUAD_PUBLIC_KEY = import.meta.env.VITE_SQUAD_PUBLIC_KEY || "pk_d0ac2e2a4e21ce3601eab31df4f36cf5d8284b90";
 
 interface PaymentModalProps {
   amount: number;
   description: string;
-  email?: string; // Squad requires email
+  email?: string;
   onClose: () => void;
-  onSuccess: (provider: 'PAYSTACK' | 'SQUAD') => void;
+  onSuccess: (provider: 'PAYSTACK' | 'SQUAD', reference: string) => void;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ amount, description, email = 'guest@smartbiz.com', onClose, onSuccess }) => {
   const [processing, setProcessing] = useState(false);
-  const [provider, setProvider] = useState<'PAYSTACK' | 'SQUAD'>('SQUAD'); // Default to Squad
+  const [provider, setProvider] = useState<'PAYSTACK' | 'SQUAD'>('SQUAD');
+
+  const config = {
+    reference: (new Date()).getTime().toString(),
+    email: email,
+    amount: amount * 100, // Paystack expects kobo
+    publicKey: PAYSTACK_PUBLIC_KEY,
+  };
+
+  const initializePaystack = usePaystackPayment(config);
 
   const handlePay = () => {
     setProcessing(true);
@@ -25,14 +37,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, description, email 
              setProcessing(false);
           },
           onLoad: () => console.log('Widget loaded successfully'),
-          onSuccess: () => {
-             onSuccess('SQUAD');
+          onSuccess: (response: any) => {
+             onSuccess('SQUAD', response.transaction_reference);
              setProcessing(false);
           },
-          key: "pk_d0ac2e2a4e21ce3601eab31df4f36cf5d8284b90", // Provided Public Key
+          key: SQUAD_PUBLIC_KEY,
           email: email,
-          amount: amount * 100, // Squad expects amount in Kobo (Naira * 100)
-          currency_code: "NGN"
+          amount: amount * 100,
+          currency_code: "NGN",
+          transaction_ref: `SQD-${Date.now()}`
         });
         squadInstance.setup();
         squadInstance.open();
@@ -41,11 +54,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ amount, description, email 
         setProcessing(false);
       }
     } else {
-      // Simulate Paystack for now (or implement similarly if key provided)
-      setTimeout(() => {
-        setProcessing(false);
-        onSuccess(provider);
-      }, 2000);
+      initializePaystack(
+        (response: any) => {
+          onSuccess('PAYSTACK', response.reference);
+          setProcessing(false);
+        },
+        () => {
+          setProcessing(false);
+        }
+      );
     }
   };
 

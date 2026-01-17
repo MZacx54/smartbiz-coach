@@ -198,3 +198,10 @@ if not os.environ.get('GEMINI_API_KEY'):
 
 if not os.environ.get('SECRET_KEY') or 'django-insecure' in os.environ.get('SECRET_KEY', ''):
     print("WARNING: Using insecure SECRET_KEY")
+
+# Paystack Configuration
+PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY')
+PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
+
+# Squad Configuration
+SQUAD_SECRET_KEY = os.getenv('SQUAD_SECRET_KEY')
