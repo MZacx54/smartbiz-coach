@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 // Eagerly loaded components (small, frequently used)
 import Dashboard from "./components/Dashboard";
 import Auth from "./components/Auth";
@@ -248,7 +248,7 @@ const App: React.FC = () => {
         description: `Direct Credit Purchase (${provider})`,
         status: "SUCCESS",
         provider: provider,
-        type: "PURCHASE",
+        type: "CREDIT_TOPUP",
       };
 
       setTransactions((prev: Transaction[]) => [newTx, ...prev]);

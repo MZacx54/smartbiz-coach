@@ -1,4 +1,3 @@
-
 export interface BrandIdentity {
   businessName: string;
   niche: string;
@@ -21,7 +20,7 @@ export interface BrandIdentity {
   targetAudience: string;
   logoPrompt: string; // The prompt for the image generator
   logoUrl?: string; // The actual generated image URL
-  
+
   // Upgrade: Trust & Operations Kit
   policies: {
     payment: string;
@@ -29,7 +28,7 @@ export interface BrandIdentity {
     refund: string;
   };
   trustBadgeText: string;
-  
+
   // Upgrade: WhatsApp Kit
   whatsappContent: {
     stickerIdeas: string[];
@@ -62,29 +61,29 @@ export interface Grant {
   matchReason: string;
   requirements: string[];
   deadline?: string;
-  type: 'GRANT' | 'LOAN' | 'EQUITY';
+  type: "GRANT" | "LOAN" | "EQUITY";
 }
 
 export enum AppView {
-  DASHBOARD = 'DASHBOARD',
-  BRAND_BUILDER = 'BRAND_BUILDER',
-  CONTENT_GENERATOR = 'CONTENT_GENERATOR',
-  BUSINESS_PLAN = 'BUSINESS_PLAN',
-  GRANT_MATCHER = 'GRANT_MATCHER',
-  LEARNING_HUB = 'LEARNING_HUB',
-  INVENTORY = 'INVENTORY',
-  INVOICE_GENERATOR = 'INVOICE_GENERATOR',
-  DEBTOR_BOOK = 'DEBTOR_BOOK', // New
-  MARKETPLACE = 'MARKETPLACE',
-  SMARTHOME_FINDER = 'SMARTHOME_FINDER', // New
-  CART = 'CART',
-  COMPLIANCE = 'COMPLIANCE',
-  DIGITAL_ROADMAP = 'DIGITAL_ROADMAP',
-  WHATSAPP_SUPPORT = 'WHATSAPP_SUPPORT',
-  SETTINGS = 'SETTINGS'
+  DASHBOARD = "DASHBOARD",
+  BRAND_BUILDER = "BRAND_BUILDER",
+  CONTENT_GENERATOR = "CONTENT_GENERATOR",
+  BUSINESS_PLAN = "BUSINESS_PLAN",
+  GRANT_MATCHER = "GRANT_MATCHER",
+  LEARNING_HUB = "LEARNING_HUB",
+  INVENTORY = "INVENTORY",
+  INVOICE_GENERATOR = "INVOICE_GENERATOR",
+  DEBTOR_BOOK = "DEBTOR_BOOK", // New
+  MARKETPLACE = "MARKETPLACE",
+  SMARTHOME_FINDER = "SMARTHOME_FINDER", // New
+  CART = "CART",
+  COMPLIANCE = "COMPLIANCE",
+  DIGITAL_ROADMAP = "DIGITAL_ROADMAP",
+  WHATSAPP_SUPPORT = "WHATSAPP_SUPPORT",
+  SETTINGS = "SETTINGS",
 }
 
-export type ActionType = 'URGENT' | 'INFO' | 'GROWTH' | 'COMPLETED';
+export type ActionType = "URGENT" | "INFO" | "GROWTH" | "COMPLETED";
 
 export interface ActionCard {
   id: string;
@@ -123,14 +122,14 @@ export interface WeeklyPlan {
 export interface GeneratedContent {
   id?: string;
   createdAt?: number;
-  type?: 'POST' | 'SCRIPT' | 'PLAN'; // Differentiator
+  type?: "POST" | "SCRIPT" | "PLAN"; // Differentiator
   topic?: string; // optional, for history context
-  
+
   // Post Data
   caption?: string;
   hashtags?: string[];
   callToAction?: string;
-  
+
   // New "Super Post" Features
   slides?: { title: string; content: string }[]; // For Carousel
   imageText?: string; // Text to put on the image
@@ -155,7 +154,7 @@ export interface User {
   name: string;
   email: string;
   businessName: string;
-  plan: 'Free' | 'Pro';
+  plan: "Free" | "Pro";
   // New Onboarding Fields
   hasOnboarded?: boolean;
   logo?: string;
@@ -192,7 +191,7 @@ export interface Debtor {
   amount: number;
   dueDate: string;
   itemsBought: string;
-  status: 'UNPAID' | 'PARTIAL' | 'PAID';
+  status: "UNPAID" | "PARTIAL" | "PAID";
   lastReminderSent?: number;
 }
 
@@ -200,7 +199,7 @@ export interface RoadmapStep {
   id: string;
   title: string;
   description: string;
-  platform: 'Facebook' | 'WhatsApp' | 'Google' | 'General';
+  platform: "Facebook" | "WhatsApp" | "Google" | "General";
   isCompleted: boolean;
 }
 
@@ -230,7 +229,7 @@ export interface Vendor {
   name: string;
   category: string;
   location: string;
-  coordinates?: { lat: number; lng: number }; 
+  coordinates?: { lat: number; lng: number };
   rating: number;
   image: string;
   isVerified: boolean;
@@ -246,19 +245,19 @@ export interface ProductListing {
   images?: string[]; // Multiple images
   videoUrl?: string; // For trust
   description: string;
-  
+
   // Naija Retail Upgrades
-  condition: 'New' | 'Foreign Used' | 'Naija Used' | 'Refurbished';
+  condition: "New" | "Foreign Used" | "Naija Used" | "Refurbished";
   stockCount: number;
   minOrderQuantity: number; // For wholesale
   wholesalePrice?: {
-      minQty: number;
-      price: number;
+    minQty: number;
+    price: number;
   };
   deliveryOptions: {
-      pickup: boolean;
-      dispatch: boolean;
-      interstate: boolean;
+    pickup: boolean;
+    dispatch: boolean;
+    interstate: boolean;
   };
   location: string; // "Ikeja, Lagos"
 }
@@ -269,9 +268,9 @@ export interface ServiceGig {
   vendorId: string;
   vendorName: string;
   vendorAvatar: string;
-  vendorLevel: 'Newbie' | 'Pro' | 'Top Rated'; // Based on completed jobs
+  vendorLevel: "Newbie" | "Pro" | "Top Rated"; // Based on completed jobs
   title: string; // e.g., "I will design a professional logo for your brand"
-  category: 'Digital' | 'Artisan';
+  category: "Digital" | "Artisan";
   subCategory: string; // e.g., "Graphics" or "Plumbing"
   location?: string; // Required for Artisans
   rating: number;
@@ -293,7 +292,7 @@ export interface RentalListing {
   vendorId: string;
   title: string;
   description: string;
-  category: 'Event' | 'Logistics' | 'Property' | 'Equipment';
+  category: "Event" | "Logistics" | "Property" | "Equipment";
   pricePerDay: number;
   location: string;
   image: string;
@@ -305,8 +304,8 @@ export interface PropertyListing {
   id: string;
   agentId: string;
   title: string;
-  type: 'Apartment' | 'House' | 'Office' | 'Land';
-  rentFrequency: 'Yearly' | 'Monthly';
+  type: "Apartment" | "House" | "Office" | "Land";
+  rentFrequency: "Yearly" | "Monthly";
   price: number;
   location: {
     address: string;
@@ -321,16 +320,16 @@ export interface PropertyListing {
     parkingSpace: boolean;
   };
   naijaSpecs: {
-    powerRating: 'Excellent' | 'Average' | 'Poor'; // Light situation
-    waterSource: 'Borehole' | 'Treatment Plant' | 'Well';
+    powerRating: "Excellent" | "Average" | "Poor"; // Light situation
+    waterSource: "Borehole" | "Treatment Plant" | "Well";
     floodFree: boolean;
-    roadAccess: 'Tarred' | 'Untarred';
+    roadAccess: "Tarred" | "Untarred";
   };
   media: {
     images: string[];
     videoUrl?: string; // High value for trust
   };
-  status: 'AVAILABLE' | 'INSPECTION_PENDING' | 'TAKEN';
+  status: "AVAILABLE" | "INSPECTION_PENDING" | "TAKEN";
   fees: {
     agencyFee: number; // e.g., 10%
     legalFee: number; // e.g., 10%
@@ -355,16 +354,16 @@ export interface Transaction {
   date: number;
   amount: number;
   description: string;
-  status: 'SUCCESS' | 'FAILED';
-  provider: 'PAYSTACK' | 'SQUAD';
-  type: 'PURCHASE' | 'BOOKING';
+  status: "SUCCESS" | "FAILED";
+  provider: "PAYSTACK" | "SQUAD";
+  type: "PURCHASE" | "BOOKING" | "CREDIT_TOPUP";
 }
 
 // --- Personalization Types ---
 export interface DailyMotivation {
   quote: string;
   author: string; // usually "SmartBiz AI"
-  theme: 'HUSTLE' | 'RESILIENCE' | 'GROWTH';
+  theme: "HUSTLE" | "RESILIENCE" | "GROWTH";
 }
 
 export interface SeasonalAlert {
