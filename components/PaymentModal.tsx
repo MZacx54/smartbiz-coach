@@ -15,6 +15,22 @@ interface PaymentModalProps {
   onSuccess: (provider: "PAYSTACK" | "SQUAD", reference: string) => void;
 }
 
+// --- Updated PaymentModal with robust loading ---
+
+const loadSquadSDK = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).SquadPay) {
+      resolve();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.squadco.com/widget/squad.min.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load Squad SDK"));
+    document.head.appendChild(script);
+  });
+};
+
 const PaymentModal: React.FC<PaymentModalProps> = ({
   amount,
   description,
@@ -25,21 +41,30 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [processing, setProcessing] = useState(false);
   const [provider, setProvider] = useState<"PAYSTACK" | "SQUAD">("SQUAD");
 
+  const isKeyPlaceholder = (key: string) => !key || key.includes("placeholder") || key === "undefined";
+
   const config = {
     reference: new Date().getTime().toString(),
     email: email,
-    amount: amount * 100, // Paystack expects kobo
+    amount: amount * 100,
     publicKey: PAYSTACK_PUBLIC_KEY,
   };
 
   const initializePaystack = usePaystackPayment(config);
 
-  const handlePay = () => {
+  const handlePay = async () => {
     setProcessing(true);
 
     if (provider === "SQUAD") {
-      const win = window as any;
-      if (win.SquadPay) {
+      if (isKeyPlaceholder(SQUAD_PUBLIC_KEY)) {
+        alert("Squad Public Key is not configured correctly. Please check your environment variables.");
+        setProcessing(false);
+        return;
+      }
+
+      try {
+        await loadSquadSDK();
+        const win = window as any;
         const squadInstance = new win.SquadPay({
           onClose: () => {
             console.log("Widget closed");
@@ -58,11 +83,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         });
         squadInstance.setup();
         squadInstance.open();
-      } else {
-        alert("Squad SDK not loaded. Please check your internet connection.");
+      } catch (err) {
+        alert("Could not load Squad SDK. Please check your internet connection.");
         setProcessing(false);
       }
     } else {
+      if (isKeyPlaceholder(PAYSTACK_PUBLIC_KEY)) {
+        alert("Paystack Public Key is not configured correctly. Please check your environment variables (VITE_PAYSTACK_PUBLIC_KEY).");
+        setProcessing(false);
+        return;
+      }
+
       initializePaystack({
         onSuccess: (response: any) => {
           onSuccess("PAYSTACK", response.reference);
