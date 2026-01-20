@@ -5,6 +5,13 @@ WORKDIR /app-frontend
 COPY package*.json ./
 RUN npm install
 COPY . .
+
+# Pass Railway env variables to Vite build
+ARG VITE_PAYSTACK_PUBLIC_KEY
+ARG VITE_SQUAD_PUBLIC_KEY
+ENV VITE_PAYSTACK_PUBLIC_KEY=$VITE_PAYSTACK_PUBLIC_KEY
+ENV VITE_SQUAD_PUBLIC_KEY=$VITE_SQUAD_PUBLIC_KEY
+
 RUN npm run build
 
 # --- Stage 2: Backend & Final Image ---
