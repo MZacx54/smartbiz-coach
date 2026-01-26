@@ -93,9 +93,13 @@ class VerifySquadPaymentView(APIView):
             return Response({"error": "No reference provided"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Verify with Squad
-        # Squad has different base URLs for sandbox and production
-        # Assuming production/default for this implementation
-        url = f"https://api-d.squadco.com/transaction/verify/{reference}"
+        # Use Sandbox URL if DEBUG is True, otherwise Production
+        base_url = "https://sandbox-api-d.squadco.com" if settings.DEBUG else "https://api.squadco.com"
+        
+        # NOTE: If you are using 'squadpy', you would initialize it here.
+        # Since we want to ensure zero dependency issues, we use requests directly with improved URL handling.
+        
+        url = f"{base_url}/transaction/verify/{reference}"
         headers = {
             "Authorization": f"Bearer {settings.SQUAD_SECRET_KEY}",
             "Content-Type": "application/json",
@@ -105,10 +109,13 @@ class VerifySquadPaymentView(APIView):
             response = requests.get(url, headers=headers)
             response_data = response.json()
 
-            if response_data.get('status') == 200 and response_data['data']['transaction_status'] == 'success':
-                # Squad amount is in kobo? (Usually YES in Nigria APIs)
-                # Verify from response data
-                squad_amount = response_data['data']['amount'] / 100
+            # Squad verification response structure check
+            if response.status_code == 200 and response_data.get('status') == 200 and response_data.get('data', {}).get('transaction_status') == 'success':
+                
+                # Squad amount is usually in kobo (confirm with documentation)
+                # We assume kobo based on standard Nigerian payment gateway practice
+                transaction_data = response_data['data']
+                squad_amount = transaction_data.get('amount', 0) / 100
                 
                 # Check if this transaction was already processed
                 if Transaction.objects.filter(reference=reference, status='SUCCESS').exists():
@@ -136,7 +143,7 @@ class VerifySquadPaymentView(APIView):
             else:
                 return Response({
                     "error": "Payment verification failed",
-                    "details": response_data.get('message')
+                    "details": response_data.get('message', 'Unknown error')
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:

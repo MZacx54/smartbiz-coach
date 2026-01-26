@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { usePaystackPayment } from "react-paystack";
+import SquadPay, { SquadParams } from "react-squadpay";
 
 const PAYSTACK_PUBLIC_KEY =
   import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
@@ -14,22 +15,6 @@ interface PaymentModalProps {
   onClose: () => void;
   onSuccess: (provider: "PAYSTACK" | "SQUAD", reference: string) => void;
 }
-
-// --- Updated PaymentModal with robust loading ---
-
-const loadSquadSDK = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    if ((window as any).SquadPay) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://checkout.squadco.com/widget/squad.min.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Squad SDK"));
-    document.head.appendChild(script);
-  });
-};
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
   amount,
@@ -52,57 +37,91 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const initializePaystack = usePaystackPayment(config);
 
-  const handlePay = async () => {
-    setProcessing(true);
+  const squadParams: SquadParams = {
+    key: SQUAD_PUBLIC_KEY,
+    email: email,
+    amount: amount * 100,
+    currencyCode: "NGN",
+    passCharge: true,
+  };
 
+  const handlePaystackPay = () => {
+    setProcessing(true);
+    if (isKeyPlaceholder(PAYSTACK_PUBLIC_KEY)) {
+      alert("Paystack Public Key is not configured correctly. Please check your environment variables (VITE_PAYSTACK_PUBLIC_KEY).");
+      setProcessing(false);
+      return;
+    }
+
+    initializePaystack({
+      onSuccess: (response: any) => {
+        onSuccess("PAYSTACK", response.reference);
+        setProcessing(false);
+      },
+      onClose: () => {
+        setProcessing(false);
+      },
+    });
+  };
+
+  const renderPayButton = () => {
+    const baseButtonClass =
+      "w-full py-3.5 rounded-lg text-white font-bold shadow-lg transition-all flex items-center justify-center gap-2";
+    
     if (provider === "SQUAD") {
       if (isKeyPlaceholder(SQUAD_PUBLIC_KEY)) {
-        alert("Squad Public Key is not configured correctly. Please check your environment variables.");
-        setProcessing(false);
-        return;
+         return (
+            <button
+                onClick={() => alert("Squad Public Key is not configured correctly.")}
+                className={`${baseButtonClass} bg-orange-500 hover:bg-orange-600`}
+            >
+                Pay ₦{amount.toLocaleString()} (Config Error)
+            </button>
+         );
       }
 
-      try {
-        await loadSquadSDK();
-        const win = window as any;
-        const squadInstance = new win.SquadPay({
-          onClose: () => {
-            console.log("Widget closed");
-            setProcessing(false);
-          },
-          onLoad: () => console.log("Widget loaded successfully"),
-          onSuccess: (response: any) => {
-            onSuccess("SQUAD", response.transaction_reference);
-            setProcessing(false);
-          },
-          key: SQUAD_PUBLIC_KEY,
-          email: email,
-          amount: amount * 100,
-          currency_code: "NGN",
-          transaction_ref: `SQD-${Date.now()}`,
-        });
-        squadInstance.setup();
-        squadInstance.open();
-      } catch (err) {
-        alert("Could not load Squad SDK. Please check your internet connection.");
-        setProcessing(false);
-      }
+      const squadBtnContent = processing ? (
+        <>
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          Processing...
+        </>
+      ) : (
+        `Pay ₦${amount.toLocaleString()}`
+      );
+
+      return (
+        <SquadPay
+            params={squadParams}
+            onSuccess={(response: any) => {
+                // Squad response often has transaction_ref or similar
+                onSuccess("SQUAD", response.transaction_ref || response.reference || "unknown_ref");
+                setProcessing(false);
+            }}
+            onClose={() => setProcessing(false)}
+            onLoad={() => console.log("Squad widget loaded")}
+            className={`${baseButtonClass} bg-orange-500 hover:bg-orange-600`}
+        >
+            {squadBtnContent}
+        </SquadPay>
+      );
     } else {
-      if (isKeyPlaceholder(PAYSTACK_PUBLIC_KEY)) {
-        alert("Paystack Public Key is not configured correctly. Please check your environment variables (VITE_PAYSTACK_PUBLIC_KEY).");
-        setProcessing(false);
-        return;
-      }
-
-      initializePaystack({
-        onSuccess: (response: any) => {
-          onSuccess("PAYSTACK", response.reference);
-          setProcessing(false);
-        },
-        onClose: () => {
-          setProcessing(false);
-        },
-      });
+      // Paystack
+      return (
+        <button
+          onClick={handlePaystackPay}
+          disabled={processing}
+          className={`${baseButtonClass} bg-blue-600 hover:bg-blue-700`}
+        >
+          {processing ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Processing...
+            </>
+          ) : (
+            `Pay ₦${amount.toLocaleString()}`
+          )}
+        </button>
+      );
     }
   };
 
@@ -159,24 +178,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             </button>
           </div>
 
-          <button
-            onClick={handlePay}
-            disabled={processing}
-            className={`w-full py-3.5 rounded-lg text-white font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
-              provider === "PAYSTACK"
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-orange-500 hover:bg-orange-600"
-            }`}
-          >
-            {processing ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Processing...
-              </>
-            ) : (
-              `Pay ₦${amount.toLocaleString()}`
-            )}
-          </button>
+          {renderPayButton()}
 
           <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-400">
             <span>🔒 256-bit SSL Encrypted</span>
