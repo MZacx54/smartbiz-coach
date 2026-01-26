@@ -1,5 +1,8 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Toaster, toast } from "react-hot-toast";
+import { HelmetProvider } from 'react-helmet-async';
+import SEO from "./components/SEO";
+
 // Eagerly loaded components (small, frequently used)
 import Dashboard from "./components/Dashboard";
 import Auth from "./components/Auth";
@@ -65,6 +68,33 @@ const App: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
+  // Navigation State
+  const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Dynamic SEO Helpers
+  const getPageTitle = (view: AppView) => {
+    switch (view) {
+      case AppView.DASHBOARD: return 'Dashboard';
+      case AppView.BRAND_BUILDER: return 'AI Brand Builder';
+      case AppView.CONTENT_GENERATOR: return 'Content Generator';
+      case AppView.BUSINESS_PLAN: return 'Business Plan';
+      case AppView.GRANT_MATCHER: return 'Grant Matcher';
+      case AppView.MARKETPLACE: return 'Marketplace';
+      case AppView.SETTINGS: return 'Settings';
+      default: return 'SmartBiz Coach';
+    }
+  };
+
+  const getPageDescription = (view: AppView) => {
+    switch (view) {
+      case AppView.DASHBOARD: return 'Manage your business growth with AI-powered insights.';
+      case AppView.BRAND_BUILDER: return 'Create a stunning brand identity for your business in seconds.';
+      case AppView.CONTENT_GENERATOR: return 'Generate high-converting social media content effortlessly.';
+      default: return 'The all-in-one AI platform for Nigerian SMEs.';
+    }
+  };
+
   // Backend Data Fetching
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
@@ -103,10 +133,6 @@ const App: React.FC = () => {
     };
     checkAuthAndFetchData();
   }, []);
-
-  // Navigation State
-  const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Mock Data - Phase 2 this comes from Backend -> ENABLED
   const [userStats, setUserStats] = useState<UserStats>({
@@ -236,8 +262,8 @@ const App: React.FC = () => {
   ) => {
     try {
       toast.loading(`Verifying ${provider} payment...`);
-      
-      const result = provider === 'PAYSTACK' 
+
+      const result = provider === 'PAYSTACK'
         ? await billingService.verifyPayment(reference, amount)
         : await billingService.verifySquadPayment(reference, amount);
 
@@ -355,11 +381,10 @@ const App: React.FC = () => {
   }) => (
     <button
       onClick={() => handleNavigate(view)}
-      className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors ${
-        currentView === view
+      className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors ${currentView === view
           ? "bg-green-50 text-green-700 font-medium"
           : "text-gray-600 hover:bg-gray-50"
-      }`}
+        }`}
     >
       <span>{icon}</span>
       <span>{label}</span>
@@ -367,221 +392,227 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-      {/* Toast Notifications */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: "#1f2937",
-            color: "#fff",
-            borderRadius: "0.75rem",
-            padding: "16px",
-          },
-          success: {
-            iconTheme: {
-              primary: "#10b981",
-              secondary: "#fff",
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: "#ef4444",
-              secondary: "#fff",
-            },
-          },
-        }}
-      />
+    <HelmetProvider>
+      <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        {/* Dynamic SEO */}
+        <SEO
+          title={getPageTitle(currentView)}
+          description={getPageDescription(currentView)}
+        />
 
-      {/* Mobile Header */}
-      <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-20">
-        <div
-          className="flex items-center space-x-2"
-          onClick={() => handleNavigate(AppView.DASHBOARD)}
-        >
-          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
-            S
-          </div>
-          <span className="font-bold text-gray-900">SmartBiz</span>
-        </div>
-        <div className="flex items-center gap-4">
-          {cartItems.length > 0 && (
-            <button
-              onClick={() => handleNavigate(AppView.CART)}
-              className="relative text-xl"
-            >
-              🛒
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                {cartItems.length}
-              </span>
-            </button>
-          )}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="text-gray-600 focus:outline-none text-2xl"
+        {/* Toast Notifications */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: "#1f2937",
+              color: "#fff",
+              borderRadius: "0.75rem",
+              padding: "16px",
+            },
+            success: {
+              iconTheme: {
+                primary: "#10b981",
+                secondary: "#fff",
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: "#ef4444",
+                secondary: "#fff",
+              },
+            },
+          }}
+        />
+
+        {/* Mobile Header */}
+        <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-20">
+          <div
+            className="flex items-center space-x-2"
+            onClick={() => handleNavigate(AppView.DASHBOARD)}
           >
-            {isMenuOpen ? "✕" : "☰"}
-          </button>
+            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
+              S
+            </div>
+            <span className="font-bold text-gray-900">SmartBiz</span>
+          </div>
+          <div className="flex items-center gap-4">
+            {cartItems.length > 0 && (
+              <button
+                onClick={() => handleNavigate(AppView.CART)}
+                className="relative text-xl"
+              >
+                🛒
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {cartItems.length}
+                </span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-gray-600 focus:outline-none text-2xl"
+            >
+              {isMenuOpen ? "✕" : "☰"}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Sidebar Navigation */}
-      <div
-        className={`
-        fixed inset-y-0 left-0 transform ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }
-        md:relative md:translate-x-0 transition-transform duration-300 ease-in-out
-        w-64 bg-white border-r border-gray-200 z-30 flex flex-col h-screen
-      `}
-      >
+        {/* Sidebar Navigation */}
         <div
-          className="p-6 border-b border-gray-100 hidden md:flex items-center space-x-2 cursor-pointer"
-          onClick={() => handleNavigate(AppView.DASHBOARD)}
-        >
-          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
-            S
-          </div>
-          <span className="font-bold text-xl text-gray-900">SmartBiz</span>
-        </div>
-
-        {/* User Mini Profile */}
-        <div className="px-6 pt-6 pb-2">
-          <p className="text-xs font-semibold text-gray-400 uppercase">
-            Business
-          </p>
-          <p className="font-bold text-gray-800 truncate">
-            {user.businessName}
-          </p>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
-          <NavItem
-            view={AppView.BRAND_BUILDER}
-            label="Brand Builder"
-            icon="✨"
-          />
-          <NavItem
-            view={AppView.CONTENT_GENERATOR}
-            label="Content Gen"
-            icon="✍️"
-          />
-          <NavItem
-            view={AppView.INVOICE_GENERATOR}
-            label="Invoices"
-            icon="🧾"
-          />
-          <NavItem view={AppView.INVENTORY} label="Inventory" icon="📦" />
-          <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
-
-          <div className="pt-4 pb-2">
-            <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
-              Growth
-            </p>
-          </div>
-          <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🛒" />
-          <NavItem
-            view={AppView.SMARTHOME_FINDER}
-            label="SmartHome"
-            icon="🏠"
-          />
-
-          {cartItems.length > 0 && (
-            <button
-              onClick={() => handleNavigate(AppView.CART)}
-              className={`flex items-center justify-between w-full p-3 rounded-lg transition-colors ${
-                currentView === AppView.CART
-                  ? "bg-green-50 text-green-700 font-medium"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span>🛍️</span>
-                <span>Cart</span>
-              </div>
-              <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                {cartItems.length}
-              </span>
-            </button>
-          )}
-
-          <NavItem
-            view={AppView.BUSINESS_PLAN}
-            label="Business Plan"
-            icon="📈"
-          />
-          <NavItem
-            view={AppView.GRANT_MATCHER}
-            label="Find Funding"
-            icon="💰"
-          />
-          <NavItem
-            view={AppView.DIGITAL_ROADMAP}
-            label="Marketing Roadmap"
-            icon="🗺️"
-          />
-          <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
-
-          <div className="pt-4 pb-2">
-            <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
-              Help
-            </p>
-          </div>
-          <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
-          <NavItem
-            view={AppView.WHATSAPP_SUPPORT}
-            label="Live Support"
-            icon="🎧"
-          />
-          <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
-        </nav>
-
-        <div className="p-4 border-t border-gray-100">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-lg text-white text-center">
-            <p className="text-xs font-medium opacity-90 mb-2">
-              Upgrade to Smart Access
-            </p>
-            <p className="text-xs opacity-75 mb-3">
-              Get unlimited AI & Pro guides
-            </p>
-            <button
-              onClick={() => handleNavigate(AppView.SETTINGS)}
-              className="w-full bg-white/20 hover:bg-white/30 text-xs py-2 rounded transition-colors"
-            >
-              View Plans
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
-        <div className="max-w-3xl mx-auto pb-20 md:pb-0">
-          <Suspense
-            fallback={
-              <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-gray-500 animate-pulse font-medium">
-                  Crunching data...
-                </p>
-              </div>
+          className={`
+          fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
             }
+          md:relative md:translate-x-0 transition-transform duration-300 ease-in-out
+          w-64 bg-white border-r border-gray-200 z-30 flex flex-col h-screen
+        `}
+        >
+          <div
+            className="p-6 border-b border-gray-100 hidden md:flex items-center space-x-2 cursor-pointer"
+            onClick={() => handleNavigate(AppView.DASHBOARD)}
           >
-            {renderContent()}
-          </Suspense>
-        </div>
-      </main>
+            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
+              S
+            </div>
+            <span className="font-bold text-xl text-gray-900">SmartBiz</span>
+          </div>
 
-      {/* Overlay for mobile menu */}
-      {isMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
-          onClick={() => setIsMenuOpen(false)}
-        ></div>
-      )}
-    </div>
+          {/* User Mini Profile */}
+          <div className="px-6 pt-6 pb-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase">
+              Business
+            </p>
+            <p className="font-bold text-gray-800 truncate">
+              {user.businessName}
+            </p>
+          </div>
+
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
+            <NavItem
+              view={AppView.BRAND_BUILDER}
+              label="Brand Builder"
+              icon="✨"
+            />
+            <NavItem
+              view={AppView.CONTENT_GENERATOR}
+              label="Content Gen"
+              icon="✍️"
+            />
+            <NavItem
+              view={AppView.INVOICE_GENERATOR}
+              label="Invoices"
+              icon="🧾"
+            />
+            <NavItem view={AppView.INVENTORY} label="Inventory" icon="📦" />
+            <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
+
+            <div className="pt-4 pb-2">
+              <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
+                Growth
+              </p>
+            </div>
+            <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🛒" />
+            <NavItem
+              view={AppView.SMARTHOME_FINDER}
+              label="SmartHome"
+              icon="🏠"
+            />
+
+            {cartItems.length > 0 && (
+              <button
+                onClick={() => handleNavigate(AppView.CART)}
+                className={`flex items-center justify-between w-full p-3 rounded-lg transition-colors ${currentView === AppView.CART
+                    ? "bg-green-50 text-green-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span>🛍️</span>
+                  <span>Cart</span>
+                </div>
+                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  {cartItems.length}
+                </span>
+              </button>
+            )}
+
+            <NavItem
+              view={AppView.BUSINESS_PLAN}
+              label="Business Plan"
+              icon="📈"
+            />
+            <NavItem
+              view={AppView.GRANT_MATCHER}
+              label="Find Funding"
+              icon="💰"
+            />
+            <NavItem
+              view={AppView.DIGITAL_ROADMAP}
+              label="Marketing Roadmap"
+              icon="🗺️"
+            />
+            <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
+
+            <div className="pt-4 pb-2">
+              <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
+                Help
+              </p>
+            </div>
+            <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
+            <NavItem
+              view={AppView.WHATSAPP_SUPPORT}
+              label="Live Support"
+              icon="🎧"
+            />
+            <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
+          </nav>
+
+          <div className="p-4 border-t border-gray-100">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-lg text-white text-center">
+              <p className="text-xs font-medium opacity-90 mb-2">
+                Upgrade to Smart Access
+              </p>
+              <p className="text-xs opacity-75 mb-3">
+                Get unlimited AI & Pro guides
+              </p>
+              <button
+                onClick={() => handleNavigate(AppView.SETTINGS)}
+                className="w-full bg-white/20 hover:bg-white/30 text-xs py-2 rounded transition-colors"
+              >
+                View Plans
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
+          <div className="max-w-3xl mx-auto pb-20 md:pb-0">
+            <Suspense
+              fallback={
+                <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+                  <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-gray-500 animate-pulse font-medium">
+                    Crunching data...
+                  </p>
+                </div>
+              }
+            >
+              {renderContent()}
+            </Suspense>
+          </div>
+        </main>
+
+        {/* Overlay for mobile menu */}
+        {isMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
+            onClick={() => setIsMenuOpen(false)}
+          ></div>
+        )}
+      </div>
+    </HelmetProvider>
   );
 };
 
