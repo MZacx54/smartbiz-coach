@@ -24,6 +24,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const [processing, setProcessing] = useState(false);
   const [provider, setProvider] = useState<"PAYSTACK" | "SQUAD">("SQUAD");
+  const [currency, setCurrency] = useState<"NGN" | "USD">("NGN");
 
   const isKeyPlaceholder = (key: string) => !key || key.includes("placeholder") || key === "undefined";
 
@@ -32,6 +33,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     email: email,
     amount: amount * 100, // Paystack expects Kobo
     publicKey: PAYSTACK_PUBLIC_KEY,
+    currency: currency, // Paystack might support USD if enabled
   };
 
   const initializePaystack = usePaystackPayment(config);
@@ -40,7 +42,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     key: SQUAD_PUBLIC_KEY,
     email: email,
     amount: amount, // react-squadpay multiplies by 100 internally
-    currencyCode: "NGN",
+    currencyCode: currency,
     passCharge: true,
   };
 
@@ -74,7 +76,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             onClick={() => alert("Squad Public Key is not configured correctly.")}
             className={`${baseButtonClass} bg-orange-500 hover:bg-orange-600`}
           >
-            Pay ₦{amount.toLocaleString()} (Config Error)
+            Pay {currency === "NGN" ? "₦" : "$"}{amount.toLocaleString()} (Config Error)
           </button>
         );
       }
@@ -85,7 +87,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           Processing...
         </>
       ) : (
-        `Pay ₦${amount.toLocaleString()}`
+        `Pay ${currency === "NGN" ? "₦" : "$"}${amount.toLocaleString()}`
       );
 
       return (
@@ -117,7 +119,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               Processing...
             </>
           ) : (
-            `Pay ₦${amount.toLocaleString()}`
+            `Pay ${currency === "NGN" ? "₦" : "$"}${amount.toLocaleString()}`
           )}
         </button>
       );
@@ -144,11 +146,28 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               Total Amount
             </p>
             <h2 className="text-3xl font-bold text-gray-900 mt-1">
-              ₦{amount.toLocaleString()}
+              {currency === "NGN" ? "₦" : "$"}{amount.toLocaleString()}
             </h2>
             <p className="text-xs text-gray-400 mt-1 truncate px-4">
               {description}
             </p>
+          </div>
+
+          <div className="flex justify-center mb-4">
+            <div className="bg-gray-100 p-1 rounded-lg flex text-xs font-bold">
+              <button
+                onClick={() => setCurrency("NGN")}
+                className={`px-3 py-1 rounded-md transition-all ${currency === "NGN" ? "bg-white shadow text-gray-900" : "text-gray-400"}`}
+              >
+                NGN
+              </button>
+              <button
+                onClick={() => setCurrency("USD")}
+                className={`px-3 py-1 rounded-md transition-all ${currency === "USD" ? "bg-white shadow text-gray-900" : "text-gray-400"}`}
+              >
+                USD
+              </button>
+            </div>
           </div>
 
           <p className="text-xs font-bold text-gray-500 mb-3 uppercase">
@@ -158,8 +177,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <button
               onClick={() => setProvider("SQUAD")}
               className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${provider === "SQUAD"
-                  ? "border-orange-500 bg-orange-50 text-orange-700 font-bold"
-                  : "border-gray-200 hover:border-orange-200 grayscale opacity-70 hover:grayscale-0 hover:opacity-100"
+                ? "border-orange-500 bg-orange-50 text-orange-700 font-bold"
+                : "border-gray-200 hover:border-orange-200 grayscale opacity-70 hover:grayscale-0 hover:opacity-100"
                 }`}
             >
               Squad (GTCO)
@@ -167,8 +186,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <button
               onClick={() => setProvider("PAYSTACK")}
               className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${provider === "PAYSTACK"
-                  ? "border-blue-500 bg-blue-50 text-blue-700 font-bold"
-                  : "border-gray-200 hover:border-blue-200 grayscale opacity-70 hover:grayscale-0 hover:opacity-100"
+                ? "border-blue-500 bg-blue-50 text-blue-700 font-bold"
+                : "border-gray-200 hover:border-blue-200 grayscale opacity-70 hover:grayscale-0 hover:opacity-100"
                 }`}
             >
               Paystack
