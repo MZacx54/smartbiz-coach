@@ -5,8 +5,7 @@ import SquadPay, { SquadParams } from "react-squadpay";
 const PAYSTACK_PUBLIC_KEY =
   import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
 const SQUAD_PUBLIC_KEY =
-  import.meta.env.VITE_SQUAD_PUBLIC_KEY ||
-  "pk_d0ac2e2a4e21ce3601eab31df4f36cf5d8284b90";
+  import.meta.env.VITE_SQUAD_PUBLIC_KEY || "placeholder";
 
 interface PaymentModalProps {
   amount: number;
@@ -31,7 +30,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const config = {
     reference: new Date().getTime().toString(),
     email: email,
-    amount: amount * 100,
+    amount: amount * 100, // Paystack expects Kobo
     publicKey: PAYSTACK_PUBLIC_KEY,
   };
 
@@ -40,7 +39,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const squadParams: SquadParams = {
     key: SQUAD_PUBLIC_KEY,
     email: email,
-    amount: amount * 100,
+    amount: amount, // react-squadpay multiplies by 100 internally
     currencyCode: "NGN",
     passCharge: true,
   };
@@ -67,17 +66,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const renderPayButton = () => {
     const baseButtonClass =
       "w-full py-3.5 rounded-lg text-white font-bold shadow-lg transition-all flex items-center justify-center gap-2";
-    
+
     if (provider === "SQUAD") {
       if (isKeyPlaceholder(SQUAD_PUBLIC_KEY)) {
-         return (
-            <button
-                onClick={() => alert("Squad Public Key is not configured correctly.")}
-                className={`${baseButtonClass} bg-orange-500 hover:bg-orange-600`}
-            >
-                Pay ₦{amount.toLocaleString()} (Config Error)
-            </button>
-         );
+        return (
+          <button
+            onClick={() => alert("Squad Public Key is not configured correctly.")}
+            className={`${baseButtonClass} bg-orange-500 hover:bg-orange-600`}
+          >
+            Pay ₦{amount.toLocaleString()} (Config Error)
+          </button>
+        );
       }
 
       const squadBtnContent = processing ? (
@@ -91,17 +90,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       return (
         <SquadPay
-            params={squadParams}
-            onSuccess={(response: any) => {
-                // Squad response often has transaction_ref or similar
-                onSuccess("SQUAD", response.transaction_ref || response.reference || "unknown_ref");
-                setProcessing(false);
-            }}
-            onClose={() => setProcessing(false)}
-            onLoad={() => console.log("Squad widget loaded")}
-            className={`${baseButtonClass} bg-orange-500 hover:bg-orange-600`}
+          params={squadParams}
+          onSuccess={(response: any) => {
+            // Squad response often has transaction_ref or similar
+            onSuccess("SQUAD", response.transaction_ref || response.reference || "unknown_ref");
+            setProcessing(false);
+          }}
+          onClose={() => setProcessing(false)}
+          onLoad={() => console.log("Squad widget loaded")}
+          className={`${baseButtonClass} bg-orange-500 hover:bg-orange-600`}
         >
-            {squadBtnContent}
+          {squadBtnContent}
         </SquadPay>
       );
     } else {
@@ -158,21 +157,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button
               onClick={() => setProvider("SQUAD")}
-              className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${
-                provider === "SQUAD"
+              className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${provider === "SQUAD"
                   ? "border-orange-500 bg-orange-50 text-orange-700 font-bold"
                   : "border-gray-200 hover:border-orange-200 grayscale opacity-70 hover:grayscale-0 hover:opacity-100"
-              }`}
+                }`}
             >
               Squad (GTCO)
             </button>
             <button
               onClick={() => setProvider("PAYSTACK")}
-              className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${
-                provider === "PAYSTACK"
+              className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${provider === "PAYSTACK"
                   ? "border-blue-500 bg-blue-50 text-blue-700 font-bold"
                   : "border-gray-200 hover:border-blue-200 grayscale opacity-70 hover:grayscale-0 hover:opacity-100"
-              }`}
+                }`}
             >
               Paystack
             </button>
