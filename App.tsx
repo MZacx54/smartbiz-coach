@@ -15,7 +15,7 @@ import Settings from "./components/Settings";
 
 // Lazy loaded components (large, less frequently used)
 const BrandBuilder = lazy(() => import("./components/BrandBuilder"));
-const ContentGenerator = lazy(() => import("./components/ContentGenerator"));
+const ContentStudio = lazy(() => import("./components/ContentStudio"));
 const Compliance = lazy(() => import("./components/Compliance"));
 const BusinessPlanGenerator = lazy(() => import("./components/BusinessPlanGenerator"));
 const GrantMatcher = lazy(() => import("./components/GrantMatcher"));
@@ -107,7 +107,7 @@ const App: React.FC = () => {
     switch (currentView) {
       case AppView.DASHBOARD: return 'Dashboard';
       case AppView.BRAND_BUILDER: return 'AI Brand Builder';
-      case AppView.CONTENT_GENERATOR: return 'Content Generator';
+      case AppView.CONTENT_GENERATOR: return 'Content Studio';
       case AppView.BUSINESS_PLAN: return 'Business Plan';
       case AppView.GRANT_MATCHER: return 'Find Funding & Grants';
       case AppView.MARKETPLACE: return 'Market Square';
@@ -132,7 +132,7 @@ const App: React.FC = () => {
     switch (currentView) {
       case AppView.DASHBOARD: return 'Manage your business growth with AI-powered insights.';
       case AppView.BRAND_BUILDER: return 'Create a stunning brand identity for your business in seconds.';
-      case AppView.CONTENT_GENERATOR: return 'Generate high-converting social media content effortlessly.';
+      case AppView.CONTENT_GENERATOR: return 'Your all-in-one agency creative suite.';
       case AppView.BUSINESS_PLAN: return 'Generate professional business plans to secure funding.';
       case AppView.GRANT_MATCHER: return 'Discover customized grants, loans, and equity funding matching your profile.';
       case AppView.MARKETPLACE: return 'Shop wholesale products and hire tailored freelancer services.';
@@ -432,7 +432,7 @@ const App: React.FC = () => {
                 <Routes>
                   <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} />} />
                   <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} />} />
-                  <Route path="content" element={<ContentGenerator history={contentHistory} onAddToHistory={handleAddContent} brand={savedBrand} />} />
+                  <Route path="content" element={<ContentStudio />} />
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} />} />
                   <Route path="grants" element={<GrantMatcher businessName={user.businessName} />} />
                   <Route path="learning" element={<LearningHub />} />

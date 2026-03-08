@@ -114,34 +114,117 @@ const LandingPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Abstract Dashboard representation */}
-                            <div className="flex aspect-[16/9] w-full bg-slate-50">
-                                <div className="w-1/5 bg-white border-r border-slate-200 p-4 hidden md:block">
-                                    <div className="h-6 w-32 bg-slate-200 rounded animate-pulse mb-8"></div>
-                                    <div className="space-y-4">
-                                        {[1, 2, 3, 4, 5, 6].map(i => (
-                                            <div key={i} className="h-8 w-full bg-slate-100 rounded-md animate-pulse"></div>
-                                        ))}
+                            {/* High-Fidelity Dashboard Mockup */}
+                            <div className="flex aspect-[16/9] w-full bg-slate-50 overflow-hidden font-sans">
+                                {/* Sidebar Mock */}
+                                <div className="w-1/4 max-w-[240px] bg-white border-r border-slate-200 flex flex-col hidden md:flex">
+                                    <div className="p-4 border-b border-slate-100 flex items-center space-x-2">
+                                        <div className="w-6 h-6 bg-green-600 rounded flex items-center justify-center text-white text-xs font-bold">S</div>
+                                        <span className="font-bold text-slate-800 text-sm">SmartBiz</span>
+                                    </div>
+                                    <div className="flex-1 p-2 space-y-1 overflow-hidden">
+                                        <div className="px-2 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Business</div>
+                                        <div className="w-full bg-green-50 text-green-700 rounded-md px-3 py-2 flex items-center space-x-2 text-sm font-medium">
+                                            <span>📊</span><span>Dashboard</span>
+                                        </div>
+                                        <div className="w-full text-slate-600 hover:bg-slate-50 rounded-md px-3 py-2 flex items-center space-x-2 text-sm">
+                                            <span>✨</span><span>Brand Builder</span>
+                                        </div>
+                                        <div className="w-full text-slate-600 hover:bg-slate-50 rounded-md px-3 py-2 flex items-center space-x-2 text-sm">
+                                            <span>✍️</span><span>Content Gen</span>
+                                        </div>
+                                        <div className="w-full text-slate-600 hover:bg-slate-50 rounded-md px-3 py-2 flex items-center space-x-2 text-sm">
+                                            <span>🧾</span><span>Invoices</span>
+                                        </div>
+                                        <div className="w-full text-slate-600 hover:bg-slate-50 rounded-md px-3 py-2 flex items-center space-x-2 text-sm">
+                                            <span>📦</span><span>Inventory</span>
+                                        </div>
+                                        <div className="w-full text-slate-600 hover:bg-slate-50 rounded-md px-3 py-2 flex items-center space-x-2 text-sm">
+                                            <span>📒</span><span>Gbege Book</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-purple-600 text-white rounded-t-xl mx-2 text-center shadow-lg">
+                                        <div className="text-[10px] font-bold mb-1">Upgrade to Smart Access</div>
+                                        <div className="text-[8px] opacity-80 bg-white/20 py-1 rounded">View Plans</div>
                                     </div>
                                 </div>
-                                <div className="flex-1 p-8 overflow-hidden relative">
-                                    <div className="flex justify-between items-center mb-8">
-                                        <div className="h-8 w-48 bg-slate-200 rounded animate-pulse"></div>
-                                        <div className="h-10 w-32 bg-green-100 rounded animate-pulse"></div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-6 mb-8">
-                                        <div className="h-32 bg-white rounded-xl shadow-sm border border-slate-200 animate-pulse"></div>
-                                        <div className="h-32 bg-white rounded-xl shadow-sm border border-slate-200 animate-pulse"></div>
-                                        <div className="h-32 bg-white rounded-xl shadow-sm border border-slate-200 animate-pulse"></div>
-                                    </div>
-                                    <div className="h-64 bg-white rounded-xl shadow-sm border border-slate-200 w-full animate-pulse"></div>
 
-                                    {/* Floating Notification abstract */}
-                                    <div className="absolute top-10 right-10 w-64 h-20 bg-white rounded-lg shadow-xl border border-slate-100 p-4 flex gap-4 animate-bounce" style={{ animationDuration: '3s' }}>
-                                        <div className="w-10 h-10 bg-green-100 rounded-full flex-shrink-0"></div>
-                                        <div className="flex-1 space-y-2 py-1">
-                                            <div className="h-2 bg-slate-200 rounded w-full"></div>
-                                            <div className="h-2 bg-slate-200 rounded w-2/3"></div>
+                                {/* Main Content Mock */}
+                                <div className="flex-1 p-4 sm:p-6 overflow-hidden flex flex-col">
+                                    {/* Header */}
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-800 font-heading">Dashboard</h2>
+                                            <p className="text-xs text-slate-500">Welcome back! Here is your business at a glance.</p>
+                                        </div>
+                                        <div className="hidden sm:flex items-center space-x-2 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <span className="text-xs font-bold text-slate-700">10 Credits</span>
+                                            <span className="text-xs text-blue-600 font-medium ml-2 cursor-pointer">Top Up</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Daily Wisdom Banner */}
+                                    <motion.div
+                                        className="w-full bg-slate-900 rounded-xl p-4 sm:p-6 text-white shadow-lg mb-6 relative overflow-hidden"
+                                        whileHover={{ scale: 1.01 }}
+                                    >
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl font-heading"></div>
+                                        <div className="flex items-center space-x-2 text-yellow-400 text-[10px] font-bold tracking-wider uppercase mb-2">
+                                            <span>💡</span><span>Daily Wisdom</span>
+                                        </div>
+                                        <h3 className="text-lg sm:text-xl font-bold mb-4 font-heading">&quot;No food for lazy man. Go get that bag today!&quot;</h3>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-xs text-slate-400">— SmartBiz Coach</span>
+                                            <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-1 rounded-full border border-red-500/30">
+                                                📢 Month End is coming!
+                                            </span>
+                                        </div>
+                                    </motion.div>
+
+                                    {/* Quick Actions */}
+                                    <div className="mb-2">
+                                        <h4 className="text-xs font-bold text-slate-700 mb-3">Quick Actions</h4>
+                                        <div className="grid grid-cols-4 gap-2 sm:gap-4">
+                                            <div className="bg-white p-2 sm:p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-green-300 transition-colors">
+                                                <div className="text-xl sm:text-2xl mb-1">🧾</div>
+                                                <span className="text-[9px] sm:text-[10px] font-medium text-slate-600">New Invoice</span>
+                                            </div>
+                                            <div className="bg-white p-2 sm:p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-red-300 transition-colors">
+                                                <div className="text-xl sm:text-2xl mb-1">📒</div>
+                                                <span className="text-[9px] sm:text-[10px] font-medium text-slate-600">Record Debt</span>
+                                            </div>
+                                            <div className="bg-white p-2 sm:p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-300 transition-colors">
+                                                <div className="text-xl sm:text-2xl mb-1">📦</div>
+                                                <span className="text-[9px] sm:text-[10px] font-medium text-slate-600">Add Stock</span>
+                                            </div>
+                                            <div className="bg-white p-2 sm:p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-purple-300 transition-colors">
+                                                <div className="text-xl sm:text-2xl mb-1">✨</div>
+                                                <span className="text-[9px] sm:text-[10px] font-medium text-slate-600">Create Post</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Stats Row */}
+                                    <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-4">
+                                        <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-red-500 shadow-sm border-t border-r border-b border-slate-100">
+                                            <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Debts Owed You</div>
+                                            <div className="text-lg sm:text-xl font-bold text-slate-800">₦0</div>
+                                            <div className="text-[8px] sm:text-[9px] text-slate-500 mt-1">Collect this money!</div>
+                                        </div>
+                                        <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-blue-500 shadow-sm border-t border-r border-b border-slate-100">
+                                            <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Stock Value</div>
+                                            <div className="text-lg sm:text-xl font-bold text-slate-800">₦0</div>
+                                            <div className="text-[8px] sm:text-[9px] text-slate-500 mt-1">Total goods in shop</div>
+                                        </div>
+                                        <div className="bg-white p-3 sm:p-4 rounded-xl border-l-4 border-green-500 shadow-sm border-t border-r border-b border-slate-100 relative">
+                                            <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Grant Score</div>
+                                            <div className="text-lg sm:text-xl font-bold text-slate-800">25/100</div>
+                                            <div className="text-[8px] sm:text-[9px] text-green-600 mt-1 font-medium">Get Funding Ready →</div>
+                                            {/* Circular progress abstract */}
+                                            <div className="absolute top-4 right-4 w-8 h-8 rounded-full border-4 border-slate-100 flex items-center justify-center">
+                                                <div className="w-full h-full rounded-full border-4 border-orange-400 border-l-transparent border-b-transparent transform rotate-45"></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
