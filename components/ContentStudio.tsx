@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import * as geminiService from '../services/geminiService';
 
 // Types
 type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan';
@@ -64,14 +64,34 @@ const ContentStudio: React.FC = () => {
     const [planFrequency, setPlanFrequency] = useState<PostFrequency>('5 times/week');
 
     const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedContent, setGeneratedContent] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleGenerate = () => {
+    const handleGenerate = async () => {
         setIsGenerating(true);
-        // Mock API call
-        setTimeout(() => {
+        setError(null);
+        setGeneratedContent(null);
+
+        try {
+            let result;
+            if (activeTab === 'Post Writer') {
+                result = await geminiService.generateSocialContent(postTopic, platform, tone, format);
+            } else if (activeTab === 'Video Script') {
+                result = await geminiService.generateVideoScript(videoTopic, videoPlatform, tone, hookStyle);
+            } else if (activeTab === 'Weekly Plan') {
+                result = await geminiService.generateWeeklyPlan(planGoal); // Simplified niche for now
+            } else if (activeTab === 'Photo Studio') {
+                // Photo studio currently mocks because full text-to-image requires Vertex AI/OpenAI
+                // but we can simulate the "AI thought" process or prompt generation
+                result = { text: "AI Studio (Gemini) can analyze images but requires Vertex AI for full text-to-image generation. Here is a suggested prompt you can use in Midjourney: " + photoDesc };
+            }
+            setGeneratedContent(result);
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Failed to generate content. Please check your API key.");
+        } finally {
             setIsGenerating(false);
-            alert(`${activeTab} generated successfully! (Mock)`);
-        }, 2000);
+        }
     };
 
     const handleUseTrend = (trendTitle: string) => {
@@ -118,8 +138,8 @@ const ContentStudio: React.FC = () => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-bold text-sm transition-colors whitespace-nowrap ${activeTab === tab.id
-                                            ? 'border-indigo-600 text-indigo-600'
-                                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                                        ? 'border-indigo-600 text-indigo-600'
+                                        : 'border-transparent text-slate-500 hover:text-slate-700'
                                         }`}
                                 >
                                     <span>{tab.icon}</span>
@@ -299,6 +319,73 @@ const ContentStudio: React.FC = () => {
                                 <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
                                     {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Weekly Plan</span><span>🚀</span></>}
                                 </button>
+                            </motion.div>
+                        )}
+
+                        {/* RESULT DISPLAY */}
+                        {(generatedContent || error) && (
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-10 pt-10 border-t border-slate-100">
+                                {error ? (
+                                    <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-red-700 text-sm font-medium">
+                                        ⚠️ {error}
+                                    </div>
+                                ) : (
+                                    <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl">
+                                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="text-xl font-bold font-heading">AI Generated Result</h3>
+                                            <button
+                                                onClick={() => {
+                                                    const text = JSON.stringify(generatedContent, null, 2);
+                                                    navigator.clipboard.writeText(text);
+                                                    alert("Copied to clipboard!");
+                                                }}
+                                                className="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full font-bold transition-all border border-white/10"
+                                            >
+                                                Copy Content
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-6 text-slate-300 text-sm leading-relaxed">
+                                            {activeTab === 'Post Writer' && (
+                                                <div className="space-y-4">
+                                                    <p className="bg-white/5 p-4 rounded-2xl border border-white/5 white-space-pre-wrap">{generatedContent.caption}</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {generatedContent.hashtags?.map((tag: string) => (
+                                                            <span key={tag} className="text-indigo-400 font-bold">#{tag}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {activeTab === 'Video Script' && (
+                                                <div className="space-y-4 font-body">
+                                                    <p className="text-indigo-400 font-bold text-lg uppercase tracking-widest">{generatedContent.title}</p>
+                                                    <div className="bg-white/5 p-4 rounded-xl">
+                                                        <p className="text-white font-bold mb-1">Hook:</p>
+                                                        <p>{generatedContent.hook}</p>
+                                                    </div>
+                                                    <div className="bg-white/5 p-4 rounded-xl">
+                                                        <p className="text-white font-bold mb-1">Body:</p>
+                                                        <p>{generatedContent.body}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {activeTab === 'Weekly Plan' && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {generatedContent.days?.map((day: any) => (
+                                                        <div key={day.day} className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                            <p className="text-white font-bold mb-1">{day.day}: {day.theme}</p>
+                                                            <p className="text-xs">{day.postIdea}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            {activeTab === 'Photo Studio' && (
+                                                <p className="italic text-slate-400">{generatedContent.text}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </motion.div>
                         )}
 
