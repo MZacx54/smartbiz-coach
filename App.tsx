@@ -79,9 +79,18 @@ const App: React.FC = () => {
       case AppView.BRAND_BUILDER: return 'AI Brand Builder';
       case AppView.CONTENT_GENERATOR: return 'Content Generator';
       case AppView.BUSINESS_PLAN: return 'Business Plan';
-      case AppView.GRANT_MATCHER: return 'Grant Matcher';
-      case AppView.MARKETPLACE: return 'Marketplace';
+      case AppView.GRANT_MATCHER: return 'Find Funding & Grants';
+      case AppView.MARKETPLACE: return 'Market Square';
       case AppView.SETTINGS: return 'Settings';
+      case AppView.LEARNING_HUB: return 'Learning Hub';
+      case AppView.INVENTORY: return 'Inventory Tracker';
+      case AppView.INVOICE_GENERATOR: return 'Invoice Generator';
+      case AppView.DEBTOR_BOOK: return 'Debtor Book (Gbege Book)';
+      case AppView.SMARTHOME_FINDER: return 'SmartHome Finder';
+      case AppView.CART: return 'Shopping Cart';
+      case AppView.COMPLIANCE: return 'Business Compliance Context';
+      case AppView.DIGITAL_ROADMAP: return 'Digital Marketing Roadmap';
+      case AppView.WHATSAPP_SUPPORT: return 'WhatsApp Live Support';
       default: return 'SmartBiz Coach';
     }
   };
@@ -91,6 +100,16 @@ const App: React.FC = () => {
       case AppView.DASHBOARD: return 'Manage your business growth with AI-powered insights.';
       case AppView.BRAND_BUILDER: return 'Create a stunning brand identity for your business in seconds.';
       case AppView.CONTENT_GENERATOR: return 'Generate high-converting social media content effortlessly.';
+      case AppView.BUSINESS_PLAN: return 'Generate professional business plans to secure funding.';
+      case AppView.GRANT_MATCHER: return 'Discover customized grants, loans, and equity funding matching your profile.';
+      case AppView.MARKETPLACE: return 'Shop wholesale products and hire tailored freelancer services.';
+      case AppView.LEARNING_HUB: return 'Access expert courses on managing and growing Nigerian businesses.';
+      case AppView.INVENTORY: return 'Keep track of an unlimited number of products directly connected to sales.';
+      case AppView.INVOICE_GENERATOR: return 'Easily create professional invoices for clients out of the box.';
+      case AppView.DEBTOR_BOOK: return 'Document and track outstanding debts, and automate reminders.';
+      case AppView.SMARTHOME_FINDER: return 'Explore affordable homes and agent property listings mapped for Nigerians.';
+      case AppView.COMPLIANCE: return 'Learn precisely what business registrations, taxes, and documents are required.';
+      case AppView.DIGITAL_ROADMAP: return 'Gain an actionable, step-by-step digital roadmap for marketing.';
       default: return 'The all-in-one AI platform for Nigerian SMEs.';
     }
   };
@@ -297,7 +316,15 @@ const App: React.FC = () => {
 
   // If not authenticated, show Auth screen
   if (!user) {
-    return <Auth onLogin={handleLogin} />;
+    return (
+      <HelmetProvider>
+        <SEO
+          title="Login & Register"
+          description="Join SmartBiz Coach to access an all-in-one AI platform for Nigerian SMEs. Generate plans, content, and funding."
+        />
+        <Auth onLogin={handleLogin} />
+      </HelmetProvider>
+    );
   }
 
   const renderContent = () => {
@@ -382,8 +409,8 @@ const App: React.FC = () => {
     <button
       onClick={() => handleNavigate(view)}
       className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors ${currentView === view
-          ? "bg-green-50 text-green-700 font-medium"
-          : "text-gray-600 hover:bg-gray-50"
+        ? "bg-green-50 text-green-700 font-medium"
+        : "text-gray-600 hover:bg-gray-50"
         }`}
     >
       <span>{icon}</span>
@@ -523,8 +550,8 @@ const App: React.FC = () => {
               <button
                 onClick={() => handleNavigate(AppView.CART)}
                 className={`flex items-center justify-between w-full p-3 rounded-lg transition-colors ${currentView === AppView.CART
-                    ? "bg-green-50 text-green-700 font-medium"
-                    : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-green-50 text-green-700 font-medium"
+                  : "text-gray-600 hover:bg-gray-50"
                   }`}
               >
                 <div className="flex items-center gap-3">

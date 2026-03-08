@@ -7,6 +7,9 @@ interface SEOProps {
     name?: string;
     type?: string;
     image?: string;
+    url?: string;
+    keywords?: string;
+    schema?: string;
 }
 
 const SEO: React.FC<SEOProps> = ({
@@ -14,13 +17,18 @@ const SEO: React.FC<SEOProps> = ({
     description,
     name = 'SmartBiz Coach',
     type = 'website',
-    image = '/og-image.jpg' // Assuming we'll add an OG image later
+    image = '/og-image.jpg', // Assuming we'll add an OG image later
+    url = 'https://www.smartbizcoach.com.ng',
+    keywords = 'SmartBiz Coach, business coach, Nigerian SME, AI business tools, entrepreneur, business growth',
+    schema
 }) => {
     return (
         <Helmet>
             {/* Standard metadata tags */}
             <title>{title} | SmartBiz Coach</title>
             <meta name='description' content={description} />
+            <meta name='keywords' content={keywords} />
+            <link rel="canonical" href={url} />
 
             {/* Facebook tags */}
             <meta property="og:type" content={type} />
@@ -30,9 +38,16 @@ const SEO: React.FC<SEOProps> = ({
 
             {/* Twitter tags */}
             <meta name="twitter:creator" content={name} />
-            <meta name="twitter:card" content={type} />
+            <meta name="twitter:card" content="summary_large_image" />
             <meta name="twitter:title" content={title} />
             <meta name="twitter:description" content={description} />
+
+            {/* Structured Schema Data */}
+            {schema && (
+                <script type="application/ld+json">
+                    {schema}
+                </script>
+            )}
         </Helmet>
     );
 }
