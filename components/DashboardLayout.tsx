@@ -1,0 +1,201 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AppView, User, CartItem, UserStats, ActionCard } from '../types';
+
+interface DashboardLayoutProps {
+    user: User;
+    userStats: UserStats;
+    actions: ActionCard[];
+    cartItems: CartItem[];
+    currentView: AppView;
+    onNavigate: (view: AppView) => void;
+    children: React.ReactNode;
+}
+
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+    user,
+    cartItems,
+    currentView,
+    onNavigate,
+    children
+}) => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const navigate = useNavigate();
+
+    const handleNavigate = (view: AppView) => {
+        onNavigate(view);
+        setIsMenuOpen(false);
+        window.scrollTo(0, 0);
+    };
+
+    const NavItem = ({
+        view,
+        label,
+        icon,
+    }: {
+        view: AppView;
+        label: string;
+        icon: string;
+    }) => (
+        <button
+            onClick={() => handleNavigate(view)}
+            className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors ${currentView === view
+                ? "bg-green-50 text-green-700 font-medium"
+                : "text-gray-600 hover:bg-gray-50"
+                }`}
+        >
+            <span>{icon}</span>
+            <span>{label}</span>
+        </button>
+    );
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans selection:bg-green-200">
+
+            {/* Mobile Header */}
+            <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-20">
+                <div
+                    className="flex items-center space-x-2 cursor-pointer"
+                    onClick={() => handleNavigate(AppView.DASHBOARD)}
+                >
+                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
+                        S
+                    </div>
+                    <span className="font-bold text-gray-900 font-heading">SmartBiz</span>
+                </div>
+                <div className="flex items-center gap-4">
+                    {cartItems.length > 0 && (
+                        <button
+                            onClick={() => handleNavigate(AppView.CART)}
+                            className="relative text-xl"
+                        >
+                            🛒
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                {cartItems.length}
+                            </span>
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="text-gray-600 focus:outline-none text-2xl"
+                    >
+                        {isMenuOpen ? "✕" : "☰"}
+                    </button>
+                </div>
+            </div>
+
+            {/* Sidebar Navigation */}
+            <div
+                className={`
+          fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
+                    }
+          md:relative md:translate-x-0 transition-transform duration-300 ease-in-out
+          w-64 bg-white border-r border-gray-200 z-30 flex flex-col h-screen
+        `}
+            >
+                <div
+                    className="p-6 border-b border-gray-100 hidden md:flex items-center space-x-2 cursor-pointer"
+                    onClick={() => handleNavigate(AppView.DASHBOARD)}
+                >
+                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
+                        S
+                    </div>
+                    <span className="font-bold text-xl text-gray-900 font-heading">SmartBiz</span>
+                </div>
+
+                {/* User Mini Profile */}
+                <div className="px-6 pt-6 pb-2">
+                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                        Business
+                    </p>
+                    <p className="font-bold text-gray-800 truncate">
+                        {user.businessName}
+                    </p>
+                </div>
+
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                    <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
+                    <NavItem view={AppView.BRAND_BUILDER} label="Brand Builder" icon="✨" />
+                    <NavItem view={AppView.CONTENT_GENERATOR} label="Content Gen" icon="✍️" />
+                    <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices" icon="🧾" />
+                    <NavItem view={AppView.INVENTORY} label="Inventory" icon="📦" />
+                    <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
+
+                    <div className="pt-4 pb-2">
+                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
+                            Growth
+                        </p>
+                    </div>
+                    <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🛒" />
+                    <NavItem view={AppView.SMARTHOME_FINDER} label="SmartHome" icon="🏠" />
+
+                    {cartItems.length > 0 && (
+                        <button
+                            onClick={() => handleNavigate(AppView.CART)}
+                            className={`flex items-center justify-between w-full p-3 rounded-lg transition-colors ${currentView === AppView.CART
+                                ? "bg-green-50 text-green-700 font-medium"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <span>🛍️</span>
+                                <span>Cart</span>
+                            </div>
+                            <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                {cartItems.length}
+                            </span>
+                        </button>
+                    )}
+
+                    <NavItem view={AppView.BUSINESS_PLAN} label="Business Plan" icon="📈" />
+                    <NavItem view={AppView.GRANT_MATCHER} label="Find Funding" icon="💰" />
+                    <NavItem view={AppView.DIGITAL_ROADMAP} label="Marketing Roadmap" icon="🗺️" />
+                    <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
+
+                    <div className="pt-4 pb-2">
+                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
+                            Help
+                        </p>
+                    </div>
+                    <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
+                    <NavItem view={AppView.WHATSAPP_SUPPORT} label="Live Support" icon="🎧" />
+                    <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
+                </nav>
+
+                <div className="p-4 border-t border-gray-100">
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-lg text-white text-center">
+                        <p className="text-xs font-medium opacity-90 mb-2">
+                            Upgrade to Smart Access
+                        </p>
+                        <p className="text-xs opacity-75 mb-3">
+                            Get unlimited AI & Pro guides
+                        </p>
+                        <button
+                            onClick={() => handleNavigate(AppView.SETTINGS)}
+                            className="w-full bg-white/20 hover:bg-white/30 text-xs py-2 rounded transition-colors"
+                        >
+                            View Plans
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
+                <div className="max-w-3xl mx-auto pb-20 md:pb-0">
+                    {children}
+                </div>
+            </main>
+
+            {/* Overlay for mobile menu */}
+            {isMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
+                    onClick={() => setIsMenuOpen(false)}
+                ></div>
+            )}
+        </div>
+    );
+};
+
+export default DashboardLayout;

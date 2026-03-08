@@ -1,7 +1,12 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { HelmetProvider } from 'react-helmet-async';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import SEO from "./components/SEO";
+
+// Layout & Core
+import DashboardLayout from "./components/DashboardLayout";
+import LandingPage from "./components/LandingPage";
 
 // Eagerly loaded components (small, frequently used)
 import Dashboard from "./components/Dashboard";
@@ -12,9 +17,7 @@ import Settings from "./components/Settings";
 const BrandBuilder = lazy(() => import("./components/BrandBuilder"));
 const ContentGenerator = lazy(() => import("./components/ContentGenerator"));
 const Compliance = lazy(() => import("./components/Compliance"));
-const BusinessPlanGenerator = lazy(
-  () => import("./components/BusinessPlanGenerator")
-);
+const BusinessPlanGenerator = lazy(() => import("./components/BusinessPlanGenerator"));
 const GrantMatcher = lazy(() => import("./components/GrantMatcher"));
 const LearningHub = lazy(() => import("./components/LearningHub"));
 const InventoryTracker = lazy(() => import("./components/InventoryTracker"));
@@ -26,6 +29,7 @@ const SmartHomeFinder = lazy(() => import("./components/SmartHomeFinder"));
 const Cart = lazy(() => import("./components/Cart"));
 const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
+
 import {
   AppView,
   ActionCard,
@@ -42,6 +46,9 @@ import { brandService } from "./services/brandService";
 import { billingService } from "./services/billingService";
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // --- State Management ---
 
   // Auth State (Persisted)
@@ -68,13 +75,36 @@ const App: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  // Navigation State
+  // Navigation State -> Converted to Sync with React Router
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Dynamic SEO Helpers
-  const getPageTitle = (view: AppView) => {
-    switch (view) {
+  // Sync router location to currentView
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('/dashboard/brand')) setCurrentView(AppView.BRAND_BUILDER);
+    else if (path.includes('/dashboard/content')) setCurrentView(AppView.CONTENT_GENERATOR);
+    else if (path.includes('/dashboard/invoices')) setCurrentView(AppView.INVOICE_GENERATOR);
+    else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.INVENTORY);
+    else if (path.includes('/dashboard/debtor')) setCurrentView(AppView.DEBTOR_BOOK);
+    else if (path.includes('/dashboard/marketplace')) setCurrentView(AppView.MARKETPLACE);
+    else if (path.includes('/dashboard/smarthome')) setCurrentView(AppView.SMARTHOME_FINDER);
+    else if (path.includes('/dashboard/cart')) setCurrentView(AppView.CART);
+    else if (path.includes('/dashboard/business-plan')) setCurrentView(AppView.BUSINESS_PLAN);
+    else if (path.includes('/dashboard/grants')) setCurrentView(AppView.GRANT_MATCHER);
+    else if (path.includes('/dashboard/roadmap')) setCurrentView(AppView.DIGITAL_ROADMAP);
+    else if (path.includes('/dashboard/learning')) setCurrentView(AppView.LEARNING_HUB);
+    else if (path.includes('/dashboard/compliance')) setCurrentView(AppView.COMPLIANCE);
+    else if (path.includes('/dashboard/support')) setCurrentView(AppView.WHATSAPP_SUPPORT);
+    else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
+    else setCurrentView(AppView.DASHBOARD);
+  }, [location]);
+
+  // Dynamic SEO Helpers (Updated to use location)
+  const getPageTitle = (path: string) => {
+    if (path === '/') return 'SmartBiz Coach | Operating System for Nigerian SMEs';
+    if (path.includes('/login') || path.includes('/register')) return 'Login & Register';
+
+    switch (currentView) {
       case AppView.DASHBOARD: return 'Dashboard';
       case AppView.BRAND_BUILDER: return 'AI Brand Builder';
       case AppView.CONTENT_GENERATOR: return 'Content Generator';
@@ -95,8 +125,11 @@ const App: React.FC = () => {
     }
   };
 
-  const getPageDescription = (view: AppView) => {
-    switch (view) {
+  const getPageDescription = (path: string) => {
+    if (path === '/') return 'The ultimate operating system for Nigerian businesses. Generate premium business plans, social media content, invoices, and find grants instantly.';
+    if (path.includes('/login') || path.includes('/register')) return 'Join SmartBiz Coach to access an all-in-one AI platform for Nigerian SMEs. Generate plans, content, and funding.';
+
+    switch (currentView) {
       case AppView.DASHBOARD: return 'Manage your business growth with AI-powered insights.';
       case AppView.BRAND_BUILDER: return 'Create a stunning brand identity for your business in seconds.';
       case AppView.CONTENT_GENERATOR: return 'Generate high-converting social media content effortlessly.';
@@ -209,13 +242,31 @@ const App: React.FC = () => {
 
   const handleNavigate = (view: AppView) => {
     setCurrentView(view);
-    setIsMenuOpen(false);
-    window.scrollTo(0, 0);
+    // Route to the appropriate path based on AppView
+    switch (view) {
+      case AppView.DASHBOARD: navigate('/dashboard'); break;
+      case AppView.BRAND_BUILDER: navigate('/dashboard/brand'); break;
+      case AppView.CONTENT_GENERATOR: navigate('/dashboard/content'); break;
+      case AppView.INVOICE_GENERATOR: navigate('/dashboard/invoices'); break;
+      case AppView.INVENTORY: navigate('/dashboard/inventory'); break;
+      case AppView.DEBTOR_BOOK: navigate('/dashboard/debtor'); break;
+      case AppView.MARKETPLACE: navigate('/dashboard/marketplace'); break;
+      case AppView.SMARTHOME_FINDER: navigate('/dashboard/smarthome'); break;
+      case AppView.CART: navigate('/dashboard/cart'); break;
+      case AppView.BUSINESS_PLAN: navigate('/dashboard/business-plan'); break;
+      case AppView.GRANT_MATCHER: navigate('/dashboard/grants'); break;
+      case AppView.DIGITAL_ROADMAP: navigate('/dashboard/roadmap'); break;
+      case AppView.LEARNING_HUB: navigate('/dashboard/learning'); break;
+      case AppView.COMPLIANCE: navigate('/dashboard/compliance'); break;
+      case AppView.WHATSAPP_SUPPORT: navigate('/dashboard/support'); break;
+      case AppView.SETTINGS: navigate('/dashboard/settings'); break;
+      default: navigate('/dashboard');
+    }
   };
 
   const handleLogin = (userData: User) => {
     setUser(userData);
-    setCurrentView(AppView.DASHBOARD);
+    navigate('/dashboard');
   };
 
   const handleLogout = () => {
@@ -225,7 +276,7 @@ const App: React.FC = () => {
     setCartItems([]);
     setTransactions([]);
     localStorage.clear();
-    setCurrentView(AppView.DASHBOARD);
+    navigate('/');
   };
 
   const handleSaveBrand = (brand: BrandIdentity) => {
@@ -265,7 +316,7 @@ const App: React.FC = () => {
         },
       ];
     });
-    alert("Item added to cart!");
+    toast.success("Item added to cart!");
   };
 
   const handleRemoveFromCart = (id: string) => {
@@ -305,7 +356,7 @@ const App: React.FC = () => {
 
       toast.dismiss();
       toast.success(`Payment Successful via ${provider}!`);
-      setCurrentView(AppView.DASHBOARD);
+      navigate('/dashboard');
     } catch (error: any) {
       toast.dismiss();
       toast.error(
@@ -314,331 +365,97 @@ const App: React.FC = () => {
     }
   };
 
-  // If not authenticated, show Auth screen
-  if (!user) {
-    return (
-      <HelmetProvider>
-        <SEO
-          title="Login & Register"
-          description="Join SmartBiz Coach to access an all-in-one AI platform for Nigerian SMEs. Generate plans, content, and funding."
-        />
-        <Auth onLogin={handleLogin} />
-      </HelmetProvider>
-    );
-  }
-
-  const renderContent = () => {
-    switch (currentView) {
-      case AppView.DASHBOARD:
-        return (
-          <Dashboard
-            userStats={userStats}
-            actions={actions}
-            onNavigate={handleNavigate}
-          />
-        );
-      case AppView.BRAND_BUILDER:
-        return (
-          <BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} />
-        );
-      case AppView.CONTENT_GENERATOR:
-        return (
-          <ContentGenerator
-            history={contentHistory}
-            onAddToHistory={handleAddContent}
-            brand={savedBrand}
-          />
-        );
-      case AppView.BUSINESS_PLAN:
-        return (
-          <BusinessPlanGenerator
-            brand={savedBrand}
-            businessName={user.businessName}
-          />
-        );
-      case AppView.GRANT_MATCHER:
-        return <GrantMatcher businessName={user.businessName} />;
-      case AppView.LEARNING_HUB:
-        return <LearningHub />;
-      case AppView.INVENTORY:
-        return <InventoryTracker />;
-      case AppView.DEBTOR_BOOK:
-        return <DebtorBook />;
-      case AppView.INVOICE_GENERATOR:
-        return <InvoiceGenerator />;
-      case AppView.MARKETPLACE:
-        return <Marketplace onAddToCart={handleAddToCart} />;
-      case AppView.SMARTHOME_FINDER:
-        return <SmartHomeFinder />;
-      case AppView.CART:
-        return (
-          <Cart
-            items={cartItems}
-            onRemove={handleRemoveFromCart}
-            onClear={handleClearCart}
-            onCheckout={handleCheckout}
-            onBack={() => handleNavigate(AppView.MARKETPLACE)}
-          />
-        );
-      case AppView.COMPLIANCE:
-        return <Compliance />;
-      case AppView.DIGITAL_ROADMAP:
-        return <DigitalRoadmap />;
-      case AppView.WHATSAPP_SUPPORT:
-        return <WhatsAppSupport />;
-      case AppView.SETTINGS:
-        return (
-          <Settings user={user} userStats={userStats} onLogout={handleLogout} />
-        );
-      default:
-        return (
-          <div className="p-10 text-center text-gray-500">Page Not Found</div>
-        );
-    }
-  };
-
-  const NavItem = ({
-    view,
-    label,
-    icon,
-  }: {
-    view: AppView;
-    label: string;
-    icon: string;
-  }) => (
-    <button
-      onClick={() => handleNavigate(view)}
-      className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors ${currentView === view
-        ? "bg-green-50 text-green-700 font-medium"
-        : "text-gray-600 hover:bg-gray-50"
-        }`}
-    >
-      <span>{icon}</span>
-      <span>{label}</span>
-    </button>
-  );
-
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-        {/* Dynamic SEO */}
-        <SEO
-          title={getPageTitle(currentView)}
-          description={getPageDescription(currentView)}
-        />
+      <SEO
+        title={getPageTitle(location.pathname)}
+        description={getPageDescription(location.pathname)}
+      />
 
-        {/* Toast Notifications */}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: "#1f2937",
-              color: "#fff",
-              borderRadius: "0.75rem",
-              padding: "16px",
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: "#1f2937",
+            color: "#fff",
+            borderRadius: "0.75rem",
+            padding: "16px",
+          },
+          success: {
+            iconTheme: {
+              primary: "#10b981",
+              secondary: "#fff",
             },
-            success: {
-              iconTheme: {
-                primary: "#10b981",
-                secondary: "#fff",
-              },
+          },
+          error: {
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#fff",
             },
-            error: {
-              iconTheme: {
-                primary: "#ef4444",
-                secondary: "#fff",
-              },
-            },
-          }}
-        />
+          },
+        }}
+      />
 
-        {/* Mobile Header */}
-        <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-20">
-          <div
-            className="flex items-center space-x-2"
-            onClick={() => handleNavigate(AppView.DASHBOARD)}
-          >
-            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
-              S
-            </div>
-            <span className="font-bold text-gray-900">SmartBiz</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {cartItems.length > 0 && (
-              <button
-                onClick={() => handleNavigate(AppView.CART)}
-                className="relative text-xl"
-              >
-                🛒
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                  {cartItems.length}
-                </span>
-              </button>
-            )}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-600 focus:outline-none text-2xl"
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
+
+        <Route path="/login" element={
+          user ? <Navigate to="/dashboard" replace /> : <Auth onLogin={handleLogin} />
+        } />
+
+        <Route path="/register" element={
+          user ? <Navigate to="/dashboard" replace /> : <Auth onLogin={handleLogin} />
+        } />
+
+        {/* Protected Dashboard Routes */}
+        <Route path="/dashboard/*" element={
+          !user ? <Navigate to="/login" replace /> : (
+            <DashboardLayout
+              user={user}
+              userStats={userStats}
+              actions={actions}
+              cartItems={cartItems}
+              currentView={currentView}
+              onNavigate={handleNavigate}
             >
-              {isMenuOpen ? "✕" : "☰"}
-            </button>
-          </div>
-        </div>
-
-        {/* Sidebar Navigation */}
-        <div
-          className={`
-          fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
-            }
-          md:relative md:translate-x-0 transition-transform duration-300 ease-in-out
-          w-64 bg-white border-r border-gray-200 z-30 flex flex-col h-screen
-        `}
-        >
-          <div
-            className="p-6 border-b border-gray-100 hidden md:flex items-center space-x-2 cursor-pointer"
-            onClick={() => handleNavigate(AppView.DASHBOARD)}
-          >
-            <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
-              S
-            </div>
-            <span className="font-bold text-xl text-gray-900">SmartBiz</span>
-          </div>
-
-          {/* User Mini Profile */}
-          <div className="px-6 pt-6 pb-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">
-              Business
-            </p>
-            <p className="font-bold text-gray-800 truncate">
-              {user.businessName}
-            </p>
-          </div>
-
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
-            <NavItem
-              view={AppView.BRAND_BUILDER}
-              label="Brand Builder"
-              icon="✨"
-            />
-            <NavItem
-              view={AppView.CONTENT_GENERATOR}
-              label="Content Gen"
-              icon="✍️"
-            />
-            <NavItem
-              view={AppView.INVOICE_GENERATOR}
-              label="Invoices"
-              icon="🧾"
-            />
-            <NavItem view={AppView.INVENTORY} label="Inventory" icon="📦" />
-            <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
-
-            <div className="pt-4 pb-2">
-              <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
-                Growth
-              </p>
-            </div>
-            <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🛒" />
-            <NavItem
-              view={AppView.SMARTHOME_FINDER}
-              label="SmartHome"
-              icon="🏠"
-            />
-
-            {cartItems.length > 0 && (
-              <button
-                onClick={() => handleNavigate(AppView.CART)}
-                className={`flex items-center justify-between w-full p-3 rounded-lg transition-colors ${currentView === AppView.CART
-                  ? "bg-green-50 text-green-700 font-medium"
-                  : "text-gray-600 hover:bg-gray-50"
-                  }`}
+              <Suspense
+                fallback={
+                  <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+                    <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-gray-500 animate-pulse font-medium">Crunching data...</p>
+                  </div>
+                }
               >
-                <div className="flex items-center gap-3">
-                  <span>🛍️</span>
-                  <span>Cart</span>
-                </div>
-                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                  {cartItems.length}
-                </span>
-              </button>
-            )}
+                <Routes>
+                  <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} />} />
+                  <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} />} />
+                  <Route path="content" element={<ContentGenerator history={contentHistory} onAddToHistory={handleAddContent} brand={savedBrand} />} />
+                  <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} />} />
+                  <Route path="grants" element={<GrantMatcher businessName={user.businessName} />} />
+                  <Route path="learning" element={<LearningHub />} />
+                  <Route path="inventory" element={<InventoryTracker />} />
+                  <Route path="debtor" element={<DebtorBook />} />
+                  <Route path="invoices" element={<InvoiceGenerator />} />
+                  <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} />} />
+                  <Route path="smarthome" element={<SmartHomeFinder />} />
+                  <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
+                  <Route path="compliance" element={<Compliance />} />
+                  <Route path="roadmap" element={<DigitalRoadmap />} />
+                  <Route path="support" element={<WhatsAppSupport />} />
+                  <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </Suspense>
+            </DashboardLayout>
+          )
+        } />
 
-            <NavItem
-              view={AppView.BUSINESS_PLAN}
-              label="Business Plan"
-              icon="📈"
-            />
-            <NavItem
-              view={AppView.GRANT_MATCHER}
-              label="Find Funding"
-              icon="💰"
-            />
-            <NavItem
-              view={AppView.DIGITAL_ROADMAP}
-              label="Marketing Roadmap"
-              icon="🗺️"
-            />
-            <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
-
-            <div className="pt-4 pb-2">
-              <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
-                Help
-              </p>
-            </div>
-            <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
-            <NavItem
-              view={AppView.WHATSAPP_SUPPORT}
-              label="Live Support"
-              icon="🎧"
-            />
-            <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
-          </nav>
-
-          <div className="p-4 border-t border-gray-100">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-lg text-white text-center">
-              <p className="text-xs font-medium opacity-90 mb-2">
-                Upgrade to Smart Access
-              </p>
-              <p className="text-xs opacity-75 mb-3">
-                Get unlimited AI & Pro guides
-              </p>
-              <button
-                onClick={() => handleNavigate(AppView.SETTINGS)}
-                className="w-full bg-white/20 hover:bg-white/30 text-xs py-2 rounded transition-colors"
-              >
-                View Plans
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
-          <div className="max-w-3xl mx-auto pb-20 md:pb-0">
-            <Suspense
-              fallback={
-                <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                  <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-gray-500 animate-pulse font-medium">
-                    Crunching data...
-                  </p>
-                </div>
-              }
-            >
-              {renderContent()}
-            </Suspense>
-          </div>
-        </main>
-
-        {/* Overlay for mobile menu */}
-        {isMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
-            onClick={() => setIsMenuOpen(false)}
-          ></div>
-        )}
-      </div>
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </HelmetProvider>
   );
 };

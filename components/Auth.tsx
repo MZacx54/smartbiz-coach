@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { User } from '../types';
 import { authService } from '../services/authService';
 
@@ -8,8 +9,14 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
+  const routerLocation = useLocation();
+  const [isLogin, setIsLogin] = useState(!routerLocation.pathname.includes('register'));
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync state if route changes between /login and /register while mounted
+  useEffect(() => {
+    setIsLogin(!routerLocation.pathname.includes('register'));
+  }, [routerLocation.pathname]);
 
   // Form State
   const [email, setEmail] = useState('');
