@@ -281,7 +281,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
         )}
         <div className="uppercase font-bold text-lg leading-none mb-1">{brand.businessName}</div>
         <p className="text-[10px] text-gray-500">{brand.elevatorPitch.substring(0, 50)}...</p>
-        <p className="text-[10px] text-gray-500 mt-1">Tel: +234 800 123 4567</p>
+        <p className="text-[10px] text-gray-500 mt-1">Tel: +234 906 455 6107</p>
       </div>
 
       <div className="mb-4 text-xs">
@@ -443,7 +443,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
       {/* Back */}
       <div className="rounded-xl shadow-xl overflow-hidden h-56 relative flex flex-col justify-center px-8" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
         <p className="text-white/80 text-xs mb-1">Contact</p>
-        <p className="text-white font-bold text-lg mb-4">+234 800 000 0000</p>
+        <p className="text-white font-bold text-lg mb-4">+234 906 455 6107</p>
 
         <p className="text-white/80 text-xs mb-1">Social</p>
         <p className="text-white font-bold text-sm mb-4">@{brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}</p>

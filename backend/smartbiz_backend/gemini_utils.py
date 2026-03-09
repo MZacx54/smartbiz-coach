@@ -9,9 +9,14 @@ def get_model(model_name='gemini-1.5-flash'):
         if not api_key:
             return None
         genai.configure(api_key=api_key)
+        
+        # Ensure model name is correctly formatted
+        if not model_name.startswith('models/'):
+            model_name = f'models/{model_name}'
+            
         return genai.GenerativeModel(model_name)
-    except ImportError:
-        print("Google Generative AI library not installed.")
+    except Exception as e:
+        print(f"Error initializing Gemini model: {e}")
         return None
 
 def clean_json_response(text):
@@ -37,8 +42,6 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None)
         generation_config["response_schema"] = response_schema
 
     try:
-        # Use system_instruction if provided (Gemini 1.5 supports this in the model init or as part of prompt)
-        # For simplicity, we prepended it to prompt if no specific property is used in older SDKs
         full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
         
         response = model.generate_content(
@@ -46,12 +49,18 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None)
             generation_config=generation_config,
         )
         
+        if not response.text:
+            return {"error": "Empty response from AI."}
+
         cleaned_text = clean_json_response(response.text)
         return json.loads(cleaned_text)
     except Exception as e:
         print(f"Gemini JSON generation error: {e}")
         # Return a structured error so frontend doesn't crash
-        return {"error": str(e)}
+        msg = str(e)
+        if "404" in msg and "not found" in msg:
+            return {"error": "AI Model not found. Please check API configuration or quota."}
+        return {"error": msg}
 
 def generate_text_content(prompt):
     model = get_model()

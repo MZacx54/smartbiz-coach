@@ -63,8 +63,7 @@ const WhatsAppSupport: React.FC = () => {
   };
 
   const handleOpenWhatsApp = () => {
-    // Demo number
-    window.open("https://wa.me/2348000000000?text=Hello%20SmartBiz%20Support", "_blank");
+    window.open("https://wa.me/2349064556107?text=Hello%20SmartBiz%20Support", "_blank");
   };
 
   return (
