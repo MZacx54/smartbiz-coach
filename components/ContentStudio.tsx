@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BrandIdentity } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as geminiService from '../services/geminiService';
 
@@ -20,13 +21,8 @@ type PostFrequency = 'Daily' | '5 times/week' | '3 times/week';
 
 // Trends are now fetched from backend
 
-// Define a type for the brand prop, assuming it has a niche property
-interface Brand {
-    niche: string;
-}
-
 interface ContentStudioProps {
-    brand?: Brand; // Make brand optional if it might not always be passed
+    brand?: BrandIdentity | null;
 }
 
 const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
@@ -114,7 +110,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
                 } else {
                     // Text-to-prompt (AI Design Thinking)
                     const prompt = `Style: ${artStyle}, Ratio: ${aspectRatio}. Topic: ${photoDesc}`;
-                    result = await geminiService.generateSuggestedPrompts('Artisan/Product', 'PHOTO', null, null, [prompt]);
+                    result = await geminiService.generateSuggestedPrompts('Artisan/Product', 'PHOTO', undefined, undefined, [prompt]);
                     // Wrap for UI
                     result = { text: "No image uploaded. Here are 3 professional prompts you can use in Midjourney or Canva to create this visual:", prompts: result };
                 }
