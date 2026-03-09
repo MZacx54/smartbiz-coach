@@ -61,7 +61,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
 
     setStep('LOADING');
     setError('');
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('sb_auth_token');
     if (!token) {
       setError("You must be logged in to generate a brand.");
       setStep('INPUT');
@@ -345,13 +345,13 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
         <div className="h-full flex flex-col items-center justify-center p-4 text-center text-white relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle,rgba(255,255,255,0.8)_2px,transparent_2px)] bg-[length:15px_15px]"></div>
 
-          {brand.logoUrl ? (
-            <img src={brand.logoUrl} className="w-16 h-16 rounded-full border-2 border-white mb-4 shadow-lg object-cover z-10" />
+          {brand?.logoUrl ? (
+            <img src={brand.logoUrl} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-cover relative z-10" />
           ) : (
-            <div className="text-4xl font-bold mb-2 border-4 border-white p-2 z-10">{brand.businessName.charAt(0)}</div>
+            <div className="text-4xl font-bold mb-2 border-4 border-white p-2 z-10">{brand?.businessName?.charAt(0) || '?'}</div>
           )}
-          <h3 className="text-lg font-bold uppercase tracking-wider z-10 leading-tight">{brand.businessName}</h3>
-          <p className="text-[10px] mt-2 opacity-90 z-10">{brand.niche}</p>
+          <h3 className="text-lg font-bold uppercase tracking-wider z-10 leading-tight">{brand?.businessName}</h3>
+          <p className="text-[10px] mt-2 opacity-90 z-10">{brand?.niche}</p>
         </div>
 
         {/* Side Fold effect */}
@@ -360,10 +360,10 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
 
       {/* Box Mockup */}
       <div className="relative w-32 h-24 -ml-8 mt-24 transform rotate-[-5deg] z-20">
-        <div className="absolute inset-0 bg-white shadow-xl flex items-center justify-center border border-gray-200" style={{ borderTop: `8px solid ${brand.colors.secondary}` }}>
+        <div className="absolute inset-0 bg-white shadow-xl flex items-center justify-center border border-gray-200" style={{ borderTop: brand?.colors?.secondary ? `8px solid ${brand.colors.secondary}` : '8px solid #ccc' }}>
           <div className="text-center p-1 overflow-hidden">
-            <p className="font-bold text-gray-800 text-[10px] line-clamp-2">{brand.taglines[0]}</p>
-            <p className="text-[8px] text-gray-400 mt-1">{brand.businessName.split(' ')[0]}.com</p>
+            <p className="font-bold text-gray-800 text-[10px] line-clamp-2">{brand?.taglines?.[0] || 'Tagline Placeholder'}</p>
+            <p className="text-[8px] text-gray-400 mt-1">{brand?.businessName ? brand.businessName.split(' ')[0] : 'business'}.com</p>
           </div>
         </div>
         {/* Box Top */}
@@ -378,7 +378,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
     <div className="w-full max-w-xs mx-auto aspect-[4/5] bg-white shadow-xl relative overflow-hidden flex flex-col border border-gray-200">
       {/* Header Image Area */}
       <div className="h-1/2 bg-gray-200 relative">
-        {brand.logoUrl && <img src={brand.logoUrl} className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm" />}
+        {brand?.logoUrl && <img src={brand.logoUrl} className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm" />}
         <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black opacity-60"></div>
         <div className="absolute inset-0 flex items-center justify-center">
           <h2 className="text-white text-3xl font-black uppercase text-center px-4 leading-none drop-shadow-md transform -rotate-2">
@@ -390,12 +390,12 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
 
       {/* Body */}
       <div className="flex-1 bg-white p-5 relative flex flex-col">
-        <div className="absolute -top-12 right-4 w-16 h-16 rounded-full flex items-center justify-center shadow-lg text-white font-bold text-center leading-none transform rotate-12 border-2 border-white" style={{ backgroundColor: brand.colors.accent }}>
+        <div className="absolute -top-12 right-4 w-16 h-16 rounded-full flex items-center justify-center shadow-lg text-white font-bold text-center leading-none transform rotate-12 border-2 border-white" style={{ backgroundColor: brand?.colors?.accent || '#ccc' }}>
           <span className="text-[10px]">UP TO<br /><span className="text-lg">50%</span><br />OFF</span>
         </div>
 
-        <h3 className="text-xl font-bold mb-1 leading-tight" style={{ color: brand.colors.primary }}>{brand.businessName}</h3>
-        <p className="text-gray-600 text-xs mb-3 line-clamp-2">{brand.elevatorPitch}</p>
+        <h3 className="text-xl font-bold mb-1 leading-tight" style={{ color: brand?.colors?.primary || '#333' }}>{brand?.businessName}</h3>
+        <p className="text-gray-600 text-xs mb-3 line-clamp-2">{brand?.elevatorPitch}</p>
 
         <div className="space-y-1 mb-4 flex-1">
           <div className="flex items-center gap-2">
@@ -414,7 +414,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
 
         <div className="mt-auto bg-gray-900 text-white p-2 rounded text-center">
           <p className="font-bold text-sm">ORDER NOW</p>
-          <p className="text-[10px] text-gray-300">0800 123 4567 • @{brand.businessName.replace(/\s/g, '').toLowerCase()}</p>
+          <p className="text-[10px] text-gray-300">0800 123 4567 • @{brand?.businessName ? brand.businessName.replace(/\s/g, '').toLowerCase() : 'business'}</p>
         </div>
       </div>
     </div>
@@ -424,32 +424,32 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
     <div className="w-full max-w-sm mx-auto perspective-1000">
       {/* Front */}
       <div className="bg-white rounded-xl shadow-xl overflow-hidden mb-4 relative h-56 border border-gray-200">
-        <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-full opacity-20" style={{ backgroundColor: brand.colors.secondary }}></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-tr-full opacity-20" style={{ backgroundColor: brand.colors.accent }}></div>
+        <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-full opacity-20" style={{ backgroundColor: brand?.colors?.secondary || '#ccc' }}></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-tr-full opacity-20" style={{ backgroundColor: brand?.colors?.accent || '#eee' }}></div>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10">
-          {brand.logoUrl ? (
+          {brand?.logoUrl ? (
             <img src={brand.logoUrl} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-cover" />
           ) : (
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white mb-2 shadow-md" style={{ backgroundColor: brand.colors.primary }}>
-              {brand.businessName.charAt(0)}
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white mb-2 shadow-md" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
+              {brand?.businessName?.charAt(0) || '?'}
             </div>
           )}
-          <h3 className="font-bold text-xl text-gray-900" style={{ fontFamily: 'serif' }}>{brand.businessName}</h3>
-          <p className="text-xs uppercase tracking-widest mt-1 text-gray-500">{brand.niche}</p>
+          <h3 className="font-bold text-xl text-gray-900" style={{ fontFamily: 'serif' }}>{brand?.businessName}</h3>
+          <p className="text-xs uppercase tracking-widest mt-1 text-gray-500">{brand?.niche}</p>
         </div>
       </div>
 
       {/* Back */}
-      <div className="rounded-xl shadow-xl overflow-hidden h-56 relative flex flex-col justify-center px-8" style={{ backgroundColor: brand.colors.primary }}>
+      <div className="rounded-xl shadow-xl overflow-hidden h-56 relative flex flex-col justify-center px-8" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
         <p className="text-white/80 text-xs mb-1">Contact</p>
         <p className="text-white font-bold text-lg mb-4">+234 800 000 0000</p>
 
         <p className="text-white/80 text-xs mb-1">Social</p>
-        <p className="text-white font-bold text-sm mb-4">@{brand.businessName.replace(/\s+/g, '').toLowerCase()}</p>
+        <p className="text-white font-bold text-sm mb-4">@{brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}</p>
 
         <div className="absolute bottom-4 right-4">
-          <p className="text-white/40 text-[10px]">{brand.elevatorPitch}</p>
+          <p className="text-white/40 text-[10px]">{brand?.elevatorPitch}</p>
         </div>
       </div>
     </div>
@@ -459,14 +459,14 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
     <div className="w-full max-w-sm mx-auto bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <div className="p-3 flex items-center gap-2">
         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-          {brand.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : brand.businessName.charAt(0)}
+          {brand?.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : brand?.businessName?.charAt(0) || '?'}
         </div>
-        <span className="text-xs font-bold text-gray-900">{brand.businessName.replace(/\s+/g, '').toLowerCase()}</span>
+        <span className="text-xs font-bold text-gray-900">{brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}</span>
       </div>
       <div className="aspect-square bg-gray-100 flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-50" style={{ backgroundColor: brand.colors.secondary }}></div>
+        <div className="absolute inset-0 opacity-50" style={{ backgroundColor: brand?.colors?.secondary || '#ccc' }}></div>
         <div className="relative z-10 bg-white p-6 shadow-lg rounded-lg max-w-[80%] text-center">
-          <p className="font-bold text-xl" style={{ color: brand.colors.primary }}>"{brand.taglines[0]}"</p>
+          <p className="font-bold text-xl" style={{ color: brand?.colors?.primary || '#333' }}>"{brand?.taglines?.[0] || 'Tagline Placeholder'}"</p>
         </div>
       </div>
       <div className="p-3">
@@ -474,7 +474,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
           <span>❤️</span><span>💬</span><span>🚀</span>
         </div>
         <p className="text-xs text-gray-800"><span className="font-bold">liked by others</span> and <span className="font-bold">234 others</span></p>
-        <p className="text-xs text-gray-600 mt-1"><span className="font-bold text-gray-900">{brand.businessName}</span> We are open for business! Check out our new collection. #NaijaBusiness #{brand.niche.replace(/\s+/g, '')}</p>
+        <p className="text-xs text-gray-600 mt-1"><span className="font-bold text-gray-900">{brand?.businessName}</span> We are open for business! Check out our new collection. #NaijaBusiness #{brand?.niche ? brand.niche.replace(/\s+/g, '') : 'business'}</p>
       </div>
     </div>
   );
@@ -489,27 +489,27 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
         </div>
       </div>
       {/* Cover Area */}
-      <div className="relative h-48 w-full overflow-hidden" style={{ backgroundColor: brand.colors.primary }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `repeating-linear-gradient(45deg, ${brand.colors.secondary} 0, ${brand.colors.secondary} 10px, transparent 0, transparent 50%)` }}></div>
+      <div className="relative h-48 w-full overflow-hidden" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.secondary ? `repeating-linear-gradient(45deg, ${brand.colors.secondary} 0, ${brand.colors.secondary} 10px, transparent 0, transparent 50%)` : 'none' }}></div>
         <div className="absolute bottom-4 right-6 text-right">
-          <h1 className="text-white font-bold text-2xl shadow-sm">{brand.businessName}</h1>
-          <p className="text-white/90 text-sm">{brand.taglines[0]}</p>
+          <h1 className="text-white font-bold text-2xl shadow-sm">{brand?.businessName}</h1>
+          <p className="text-white/90 text-sm">{brand?.taglines?.[0] || 'Tagline'}</p>
         </div>
       </div>
       {/* Profile Section */}
       <div className="px-6 pb-4 relative">
         <div className="absolute -top-12 left-6 w-24 h-24 rounded-full border-4 border-white bg-white shadow-md overflow-hidden flex items-center justify-center">
-          {brand.logoUrl ? (
+          {brand?.logoUrl ? (
             <img src={brand.logoUrl} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-3xl font-bold" style={{ backgroundColor: brand.colors.accent, color: '#fff' }}>
-              {brand.businessName.charAt(0)}
+            <div className="w-full h-full flex items-center justify-center text-3xl font-bold" style={{ backgroundColor: brand?.colors?.accent || '#ccc', color: '#fff' }}>
+              {brand?.businessName?.charAt(0) || '?'}
             </div>
           )}
         </div>
         <div className="pl-28 pt-2">
-          <h2 className="font-bold text-lg text-gray-900">{brand.businessName}</h2>
-          <p className="text-xs text-gray-500">{brand.elevatorPitch}</p>
+          <h2 className="font-bold text-lg text-gray-900">{brand?.businessName}</h2>
+          <p className="text-xs text-gray-500">{brand?.elevatorPitch}</p>
         </div>
       </div>
     </div>
@@ -518,30 +518,30 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
   const TwitterHeaderPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-lg mx-auto bg-black border border-gray-800 rounded-xl shadow-sm overflow-hidden text-white">
       {/* Header */}
-      <div className="h-32 w-full relative overflow-hidden flex items-center justify-center" style={{ backgroundColor: brand.colors.secondary }}>
-        <div className="absolute inset-0 opacity-30" style={{ backgroundColor: brand.colors.primary }}></div>
-        <h2 className="relative z-10 font-bold text-2xl opacity-50 tracking-widest uppercase">{brand.niche}</h2>
+      <div className="h-32 w-full relative overflow-hidden flex items-center justify-center" style={{ backgroundColor: brand?.colors?.secondary || '#333' }}>
+        <div className="absolute inset-0 opacity-30" style={{ backgroundColor: brand?.colors?.primary || '#000' }}></div>
+        <h2 className="relative z-10 font-bold text-2xl opacity-50 tracking-widest uppercase">{brand?.niche}</h2>
       </div>
 
       {/* Profile Info */}
       <div className="px-4 pb-4 relative">
         <div className="flex justify-between items-start">
           <div className="-mt-8 w-16 h-16 rounded-full border-2 border-black bg-gray-900 overflow-hidden flex items-center justify-center">
-            {brand.logoUrl ? (
+            {brand?.logoUrl ? (
               <img src={brand.logoUrl} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-xl font-bold">{brand.businessName.charAt(0)}</span>
+              <span className="text-xl font-bold">{brand?.businessName?.charAt(0) || '?'}</span>
             )}
           </div>
           <button className="mt-2 border border-gray-600 rounded-full px-4 py-1 text-sm font-bold hover:bg-gray-900">Follow</button>
         </div>
         <div className="mt-2">
-          <h3 className="font-bold text-lg leading-tight">{brand.businessName}</h3>
-          <p className="text-gray-500 text-sm">@{brand.businessName.replace(/\s+/g, '')}</p>
-          <p className="mt-2 text-sm">{brand.socialBio}</p>
+          <h3 className="font-bold text-lg leading-tight">{brand?.businessName}</h3>
+          <p className="text-gray-500 text-sm">@{brand?.businessName ? brand.businessName.replace(/\s+/g, '') : 'business'}</p>
+          <p className="mt-2 text-sm">{brand?.socialBio}</p>
           <div className="flex gap-4 mt-2 text-xs text-gray-500">
             <span>📍 Nigeria</span>
-            <span>🔗 {brand.businessName.replace(/\s+/g, '').toLowerCase()}.com</span>
+            <span>🔗 {brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}.com</span>
           </div>
         </div>
       </div>
@@ -557,18 +557,18 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
 
       <div className="absolute top-4 left-4 flex items-center gap-2 z-20">
         <div className="w-8 h-8 rounded-full overflow-hidden border border-white/50">
-          {brand.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : <div className="bg-green-500 w-full h-full"></div>}
+          {brand?.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : <div className="bg-green-500 w-full h-full"></div>}
         </div>
         <div>
-          <p className="text-white text-sm font-bold shadow-sm">{brand.businessName}</p>
+          <p className="text-white text-sm font-bold shadow-sm">{brand?.businessName}</p>
           <p className="text-white/70 text-xs">Just now</p>
         </div>
       </div>
 
-      <div className="h-full w-full flex flex-col items-center justify-center text-center p-6" style={{ backgroundColor: brand.colors.primary }}>
-        <h2 className="text-white font-bold text-3xl mb-4" style={{ fontFamily: brand.fonts.primary }}>BIG SALES!</h2>
+      <div className="h-full w-full flex flex-col items-center justify-center text-center p-6" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
+        <h2 className="text-white font-bold text-3xl mb-4" style={{ fontFamily: brand?.fonts?.primary || 'sans-serif' }}>BIG SALES!</h2>
         <div className="bg-white text-black p-4 rounded-lg shadow-lg rotate-2 mb-8">
-          <p className="font-bold text-xl">{brand.taglines[0]}</p>
+          <p className="font-bold text-xl">{brand?.taglines?.[0] || 'Quality Products'}</p>
         </div>
         <p className="text-white/90 text-sm">Don't miss out on our new arrivals.</p>
         <div className="absolute bottom-20 animate-bounce">
@@ -586,24 +586,24 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
   const LinkedInBannerPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-lg mx-auto bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       {/* LinkedIn Banner */}
-      <div className="h-28 w-full relative flex items-center pl-8" style={{ backgroundColor: brand.colors.secondary }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `radial-gradient(${brand.colors.primary} 10%, transparent 10%)`, backgroundSize: '10px 10px' }}></div>
+      <div className="h-28 w-full relative flex items-center pl-8" style={{ backgroundColor: brand?.colors?.secondary || '#333' }}>
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.primary ? `radial-gradient(${brand.colors.primary} 10%, transparent 10%)` : 'none', backgroundSize: '10px 10px' }}></div>
         <div className="relative z-10">
-          <h2 className="text-xl font-bold text-white uppercase tracking-wide">{brand.businessName}</h2>
-          <p className="text-xs text-white/90">{brand.elevatorPitch}</p>
+          <h2 className="text-xl font-bold text-white uppercase tracking-wide">{brand?.businessName}</h2>
+          <p className="text-xs text-white/90">{brand?.elevatorPitch}</p>
         </div>
       </div>
       <div className="px-6 pb-6 relative">
         <div className="absolute -top-10 left-6 w-20 h-20 rounded-full border-4 border-white bg-white shadow-md overflow-hidden flex items-center justify-center">
-          {brand.logoUrl ? (
+          {brand?.logoUrl ? (
             <img src={brand.logoUrl} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-2xl font-bold">{brand.businessName.charAt(0)}</div>
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-2xl font-bold">{brand?.businessName?.charAt(0) || '?'}</div>
           )}
         </div>
         <div className="pt-12">
-          <h3 className="font-bold text-lg text-gray-900">{brand.businessName}</h3>
-          <p className="text-sm text-gray-600">{brand.niche} • {brand.taglines[0]}</p>
+          <h3 className="font-bold text-lg text-gray-900">{brand?.businessName}</h3>
+          <p className="text-sm text-gray-600">{brand?.niche} • {brand?.taglines?.[0] || 'Quality'}</p>
           <p className="text-xs text-gray-500 mt-2">Lagos, Nigeria • <span className="text-blue-600 font-bold">Contact info</span></p>
           <div className="flex gap-2 mt-3">
             <button className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold">Connect</button>
@@ -617,21 +617,21 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
   const YouTubeChannelPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-lg mx-auto bg-[#0f0f0f] border border-gray-800 rounded-xl shadow-sm overflow-hidden text-white">
       {/* Channel Art */}
-      <div className="h-32 w-full relative flex flex-col items-center justify-center text-center p-4 overflow-hidden" style={{ backgroundColor: brand.colors.primary }}>
-        <div className="absolute inset-0 opacity-30" style={{ backgroundColor: brand.colors.accent, transform: 'skewY(-5deg) scale(1.5)' }}></div>
-        <h1 className="relative z-10 font-bold text-3xl text-white drop-shadow-lg">{brand.businessName} TV</h1>
+      <div className="h-32 w-full relative flex flex-col items-center justify-center text-center p-4 overflow-hidden" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
+        <div className="absolute inset-0 opacity-30" style={{ backgroundColor: brand?.colors?.accent || '#000', transform: 'skewY(-5deg) scale(1.5)' }}></div>
+        <h1 className="relative z-10 font-bold text-3xl text-white drop-shadow-lg">{brand?.businessName} TV</h1>
         <p className="relative z-10 text-white/90 text-sm font-medium mt-1">New Videos Every Week!</p>
         <button className="relative z-10 mt-2 bg-red-600 text-white px-4 py-1 rounded text-xs font-bold uppercase tracking-wider">Subscribe</button>
       </div>
       {/* Channel Info */}
       <div className="p-4 flex items-start gap-4">
         <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden shrink-0">
-          {brand.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : <span className="text-xl font-bold">{brand.businessName.charAt(0)}</span>}
+          {brand?.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : <span className="text-xl font-bold">{brand?.businessName?.charAt(0) || '?'}</span>}
         </div>
         <div>
-          <h3 className="font-bold text-lg">{brand.businessName}</h3>
-          <p className="text-gray-400 text-xs">@{brand.businessName.replace(/\s+/g, '').toLowerCase()} • 1.2K subscribers • 45 videos</p>
-          <p className="text-gray-300 text-sm mt-1 line-clamp-2">{brand.elevatorPitch} Subscribe for tips on {brand.niche}!</p>
+          <h3 className="font-bold text-lg">{brand?.businessName}</h3>
+          <p className="text-gray-400 text-xs">@{brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'} • 1.2K subscribers • 45 videos</p>
+          <p className="text-gray-300 text-sm mt-1 line-clamp-2">{brand?.elevatorPitch} Subscribe for tips on {brand?.niche}!</p>
         </div>
       </div>
     </div>
@@ -1182,8 +1182,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
                 key={type.id}
                 onClick={() => setFormData({ ...formData, vibe: type.label })}
                 className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center gap-3 ${formData.vibe === type.label
-                    ? 'bg-green-50 border-green-500 ring-1 ring-green-500 shadow-sm'
-                    : 'bg-white border-gray-200 hover:border-green-300 hover:shadow-sm'
+                  ? 'bg-green-50 border-green-500 ring-1 ring-green-500 shadow-sm'
+                  : 'bg-white border-gray-200 hover:border-green-300 hover:shadow-sm'
                   }`}
               >
                 <div className="text-2xl">{type.icon}</div>
