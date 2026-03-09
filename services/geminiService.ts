@@ -133,9 +133,9 @@ export const generateSuggestedPrompts = async (niche: string, contentType: strin
 };
 
 export const generateMarketingVideo = async (script: any, visualStyle: string, onProgress?: (message: string) => void) => {
-    if (onProgress) onProgress('Starting video generation...');
+    if (onProgress) onProgress('Analyzing script for visual scenes...');
     const response = await api.post('content/generate-video/', { script, visual_style: visualStyle });
-    if (onProgress) onProgress('Video generated successfully!');
-    return response.data.videoUrl;
+    if (onProgress) onProgress('Storyboard generated successfully!');
+    return response.data; // Now returns { storyboard: [], message: "" }
 };
 

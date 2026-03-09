@@ -432,7 +432,7 @@ const App: React.FC = () => {
                 <Routes>
                   <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} />} />
                   <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} />} />
-                  <Route path="content" element={<ContentStudio />} />
+                  <Route path="content" element={<ContentStudio brand={savedBrand} />} />
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} />} />
                   <Route path="grants" element={<GrantMatcher businessName={user.businessName} />} />
                   <Route path="learning" element={<LearningHub />} />

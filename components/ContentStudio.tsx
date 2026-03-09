@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as geminiService from '../services/geminiService';
 
 // Types
@@ -17,29 +18,18 @@ type AspectRatio = 'Square (1:1)' | 'Portrait (4:5)' | 'Landscape (16:9)';
 type PrimaryGoal = 'Sales' | 'Brand Awareness' | 'Engagement';
 type PostFrequency = 'Daily' | '5 times/week' | '3 times/week';
 
-interface Trend {
-    id: string;
-    title: string;
-    description: string;
-    tip: string;
+// Trends are now fetched from backend
+
+// Define a type for the brand prop, assuming it has a niche property
+interface Brand {
+    niche: string;
 }
 
-const TRENDS: Trend[] = [
-    {
-        id: '1',
-        title: 'No Gree For Anybody',
-        description: 'Resilience theme.',
-        tip: 'Show persistence.'
-    },
-    {
-        id: '2',
-        title: 'Detty December',
-        description: 'Holiday enjoyment.',
-        tip: 'Party ready products.'
-    }
-];
+interface ContentStudioProps {
+    brand?: Brand; // Make brand optional if it might not always be passed
+}
 
-const ContentStudio: React.FC = () => {
+const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
     const [activeTab, setActiveTab] = useState<TabType>('Post Writer');
 
     // Post Writer State
@@ -47,6 +37,22 @@ const ContentStudio: React.FC = () => {
     const [platform, setPlatform] = useState<Platform>('Instagram');
     const [tone, setTone] = useState<Tone>('Exciting');
     const [format, setFormat] = useState<Format>('Single Post');
+
+    // Trends State
+    const [trends, setTrends] = useState<any[]>([]);
+
+    useEffect(() => {
+        const loadTrends = async () => {
+            try {
+                const data = await geminiService.generateTrendIdeas(brand?.niche || "Small Business");
+                setTrends(Array.isArray(data) ? data : []);
+            } catch (e) {
+                console.error("Failed to load trends:", e);
+                setTrends([]);
+            }
+        };
+        loadTrends();
+    }, [brand]);
 
     // Video Script State
     const [videoTopic, setVideoTopic] = useState('');
@@ -65,32 +71,83 @@ const ContentStudio: React.FC = () => {
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedContent, setGeneratedContent] = useState<any>(null);
+    const [storyboard, setStoryboard] = useState<any>(null);
+    const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Multimodal State
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setImagePreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleGenerate = async () => {
         setIsGenerating(true);
         setError(null);
         setGeneratedContent(null);
+        setStoryboard(null);
 
         try {
             let result;
+            const base64Image = imagePreview ? imagePreview.split(',')[1] : null;
+            const mimeType = selectedImage?.type || 'image/jpeg';
+
             if (activeTab === 'Post Writer') {
                 result = await geminiService.generateSocialContent(postTopic, platform, tone, format);
             } else if (activeTab === 'Video Script') {
                 result = await geminiService.generateVideoScript(videoTopic, videoPlatform, tone, hookStyle);
             } else if (activeTab === 'Weekly Plan') {
-                result = await geminiService.generateWeeklyPlan(planGoal); // Simplified niche for now
+                result = await geminiService.generateWeeklyPlan(planGoal);
             } else if (activeTab === 'Photo Studio') {
-                // Photo studio currently mocks because full text-to-image requires Vertex AI/OpenAI
-                // but we can simulate the "AI thought" process or prompt generation
-                result = { text: "AI Studio (Gemini) can analyze images but requires Vertex AI for full text-to-image generation. Here is a suggested prompt you can use in Midjourney: " + photoDesc };
+                if (imagePreview) {
+                    // Vision analysis
+                    result = await geminiService.editImage(base64Image!, mimeType, photoDesc || "Analyze this image and suggest 3 high-performing social media edits.");
+                } else {
+                    // Text-to-prompt (AI Design Thinking)
+                    const prompt = `Style: ${artStyle}, Ratio: ${aspectRatio}. Topic: ${photoDesc}`;
+                    result = await geminiService.generateSuggestedPrompts('Artisan/Product', 'PHOTO', null, null, [prompt]);
+                    // Wrap for UI
+                    result = { text: "No image uploaded. Here are 3 professional prompts you can use in Midjourney or Canva to create this visual:", prompts: result };
+                }
             }
+            if (result && result.error) {
+                throw new Error(result.error);
+            }
+
+            if (!result || (Object.keys(result).length === 0 && activeTab !== 'Photo Studio')) {
+                throw new Error("AI returned an empty response. Please try a more specific topic.");
+            }
+
             setGeneratedContent(result);
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Failed to generate content. Please check your API key.");
+            setError(err.message || "Failed to generate content. Please check your connection or try again.");
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleGenerateVideo = async () => {
+        if (!generatedContent || activeTab !== 'Video Script') return;
+
+        setIsGeneratingVideo(true);
+        setError(null);
+        try {
+            const result = await geminiService.generateMarketingVideo(generatedContent, 'REALISTIC');
+            setStoryboard(result.storyboard);
+        } catch (err: any) {
+            setError(err.message || "Failed to generate storyboard.");
+        } finally {
+            setIsGeneratingVideo(false);
         }
     };
 
@@ -252,12 +309,36 @@ const ContentStudio: React.FC = () => {
                         {activeTab === 'Photo Studio' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                 <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-3">Upload Reference or Product Image (Optional)</label>
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:border-indigo-500 transition-colors cursor-pointer bg-slate-50 group"
+                                    >
+                                        <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleImageChange} />
+                                        {imagePreview ? (
+                                            <div className="relative inline-block">
+                                                <img src={imagePreview} alt="Preview" className="max-h-48 rounded-xl shadow-md mx-auto" />
+                                                <button onClick={(e) => { e.stopPropagation(); setImagePreview(null); setSelectedImage(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors">
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div className="text-4xl group-hover:scale-110 transition-transform">📸</div>
+                                                <p className="text-sm font-bold text-slate-600">Click or drag image to analyze</p>
+                                                <p className="text-xs text-slate-400">Gemini Vision will help you perfect your visuals</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div>
                                     <div className="flex justify-between items-center mb-3">
-                                        <label className="block text-sm font-bold text-slate-700">Image Description</label>
+                                        <label className="block text-sm font-bold text-slate-700">Instructions / Image Goal</label>
                                     </div>
                                     <div className="relative">
                                         <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm"
-                                            placeholder="e.g. A high quality product shot of a leather bag on a wooden table with sunlight" value={photoDesc} onChange={(e) => setPhotoDesc(e.target.value)}
+                                            placeholder="e.g. Suggest edits to make this look more professional for a luxury brand" value={photoDesc} onChange={(e) => setPhotoDesc(e.target.value)}
                                         ></textarea>
                                     </div>
                                 </div>
@@ -346,42 +427,181 @@ const ContentStudio: React.FC = () => {
                                             </button>
                                         </div>
 
-                                        <div className="space-y-6 text-slate-300 text-sm leading-relaxed">
+                                        <div className="space-y-8 text-slate-300 text-sm leading-relaxed">
                                             {activeTab === 'Post Writer' && (
-                                                <div className="space-y-4">
-                                                    <p className="bg-white/5 p-4 rounded-2xl border border-white/5 white-space-pre-wrap">{generatedContent.caption}</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {generatedContent.hashtags?.map((tag: string) => (
-                                                            <span key={tag} className="text-indigo-400 font-bold">#{tag}</span>
+                                                <div className="space-y-6">
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Main Caption</h4>
+                                                        <p className="text-white whitespace-pre-wrap">{generatedContent.caption}</p>
+                                                        <div className="flex flex-wrap gap-2 pt-2">
+                                                            {generatedContent.hashtags?.map((tag: string) => (
+                                                                <span key={tag} className="text-indigo-300 font-bold">#{tag}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                            <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-2">Call to Action</h4>
+                                                            <p className="text-white font-medium">{generatedContent.callToAction}</p>
+                                                        </div>
+                                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                            <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mb-2">Image Text Overlay</h4>
+                                                            <p className="text-white font-medium italic">"{generatedContent.imageText}"</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="bg-indigo-500/10 p-6 rounded-2xl border border-indigo-500/20">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest mb-3">🤝 Relationship Closer (DM Script)</h4>
+                                                        <p className="text-indigo-100 italic">"Use this to reply to comments or DMs:"</p>
+                                                        <p className="text-white mt-2 font-medium">{generatedContent.dmReply}</p>
+                                                    </div>
+
+                                                    {generatedContent.slides && (
+                                                        <div className="space-y-3">
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">📚 Carousel Guide</h4>
+                                                            <div className="flex space-x-4 overflow-x-auto pb-4 hide-scrollbar">
+                                                                {generatedContent.slides.map((slide: any, i: number) => (
+                                                                    <div key={i} className="min-w-[200px] bg-white/5 p-4 rounded-xl border border-white/5 flex-shrink-0">
+                                                                        <span className="text-[10px] font-bold text-slate-500">SLIDE {i + 1}</span>
+                                                                        <h5 className="text-white font-bold my-1">{slide.title}</h5>
+                                                                        <p className="text-[11px] text-slate-400">{slide.content}</p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {activeTab === 'Video Script' && (
+                                                <div className="space-y-6">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="text-indigo-400 font-extrabold text-2xl font-heading">{generatedContent.title}</h4>
+                                                        <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-[10px] font-bold">⏱️ {generatedContent.estimated_duration}s</span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <div className="space-y-4">
+                                                            <div className="bg-white/5 p-5 rounded-2xl border border-white/5 ring-1 ring-white/10">
+                                                                <h5 className="text-indigo-300 font-bold text-[10px] uppercase mb-2">🪝 The Hook (First 3s)</h5>
+                                                                <p className="text-lg text-white font-heading font-bold italic leading-tight">"{generatedContent.hook}"</p>
+                                                            </div>
+                                                            <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                                                                <h5 className="text-slate-400 font-bold text-[10px] uppercase mb-2">📄 Main Body Script</h5>
+                                                                <p className="text-slate-200 leading-relaxed">{generatedContent.body}</p>
+                                                            </div>
+                                                            <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20">
+                                                                <h5 className="text-emerald-400 font-bold text-[10px] uppercase mb-2">🏁 Strong CTA</h5>
+                                                                <p className="text-white font-bold">{generatedContent.cta}</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-4">
+                                                            <div className="bg-indigo-500/5 p-5 rounded-2xl border border-indigo-500/10 h-full">
+                                                                <h5 className="text-indigo-300 font-bold text-[10px] uppercase mb-4">🎬 Production Cues</h5>
+                                                                <div className="space-y-4">
+                                                                    <div>
+                                                                        <p className="text-xs font-bold text-slate-500 mb-2">VISUALS</p>
+                                                                        <ul className="space-y-2">
+                                                                            {generatedContent.visual_cues?.map((cue: string, i: number) => (
+                                                                                <li key={i} className="text-[11px] text-slate-300 flex items-start space-x-2">
+                                                                                    <span className="text-indigo-500">•</span>
+                                                                                    <span>{cue}</span>
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                    <div className="pt-2 border-t border-white/5">
+                                                                        <p className="text-xs font-bold text-slate-500 mb-2">AUDIO / SFX</p>
+                                                                        <p className="text-[11px] text-slate-300 bg-white/5 p-3 rounded-lg">{generatedContent.audio_suggestions}</p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {!storyboard && (
+                                                                    <button
+                                                                        onClick={handleGenerateVideo}
+                                                                        disabled={isGeneratingVideo}
+                                                                        className="w-full mt-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center space-x-2"
+                                                                    >
+                                                                        {isGeneratingVideo ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Visual Storyboard</span><span>🎥</span></>}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <AnimatePresence>
+                                                        {storyboard && (
+                                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-6 border-t border-white/10 space-y-6">
+                                                                <div className="flex items-center justify-between">
+                                                                    <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest">📽️ Director's Storyboard</h4>
+                                                                    <span className="text-[10px] text-slate-500 italic">Production-Ready View</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                                    {storyboard.map((scene: any, i: number) => (
+                                                                        <div key={i} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden group">
+                                                                            <div className="aspect-video bg-slate-800 flex items-center justify-center p-4 relative group-hover:bg-slate-700 transition-colors">
+                                                                                <span className="absolute top-2 left-2 bg-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded">SCENE {i + 1}</span>
+                                                                                <p className="text-[10px] text-slate-300 text-center italic">{scene.visual}</p>
+                                                                            </div>
+                                                                            <div className="p-3 space-y-2">
+                                                                                <div className="bg-black/20 p-2 rounded text-[9px] border border-white/5">
+                                                                                    <span className="text-amber-400 font-bold">OVERLAY: </span>
+                                                                                    <span className="text-white">"{scene.overlay}"</span>
+                                                                                </div>
+                                                                                <div className="text-[9px] text-slate-400">
+                                                                                    <span className="font-bold text-indigo-400">AUDIO: </span>
+                                                                                    {scene.audio}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            )}
+
+                                            {activeTab === 'Weekly Plan' && (
+                                                <div className="space-y-6">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">7-Day Growth Roadmap</h4>
+                                                        <span className="text-xs text-slate-500">Plan Generated: {new Date().toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {generatedContent.days?.map((day: any) => (
+                                                            <div key={day.day} className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:bg-white/[0.07] transition-colors group">
+                                                                <div className="flex items-center justify-between mb-3">
+                                                                    <span className="text-indigo-400 font-extrabold text-sm uppercase">{day.day}</span>
+                                                                    <span className="w-2 h-2 rounded-full bg-indigo-500 group-hover:animate-pulse"></span>
+                                                                </div>
+                                                                <h5 className="text-white font-bold mb-2 text-sm">{day.theme}</h5>
+                                                                <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">{day.postIdea}</p>
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 </div>
                                             )}
-                                            {activeTab === 'Video Script' && (
-                                                <div className="space-y-4 font-body">
-                                                    <p className="text-indigo-400 font-bold text-lg uppercase tracking-widest">{generatedContent.title}</p>
-                                                    <div className="bg-white/5 p-4 rounded-xl">
-                                                        <p className="text-white font-bold mb-1">Hook:</p>
-                                                        <p>{generatedContent.hook}</p>
-                                                    </div>
-                                                    <div className="bg-white/5 p-4 rounded-xl">
-                                                        <p className="text-white font-bold mb-1">Body:</p>
-                                                        <p>{generatedContent.body}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {activeTab === 'Weekly Plan' && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {generatedContent.days?.map((day: any) => (
-                                                        <div key={day.day} className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                                            <p className="text-white font-bold mb-1">{day.day}: {day.theme}</p>
-                                                            <p className="text-xs">{day.postIdea}</p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+
                                             {activeTab === 'Photo Studio' && (
-                                                <p className="italic text-slate-400">{generatedContent.text}</p>
+                                                <div className="space-y-6">
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest mb-4">AI Analysis & Suggestions</h4>
+                                                        <p className="text-white text-lg leading-relaxed">{generatedContent.text || generatedContent.analysis}</p>
+                                                    </div>
+                                                    {generatedContent.prompts && (
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            {generatedContent.prompts.map((p: string, i: number) => (
+                                                                <div key={i} className="bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20 flex items-start space-x-3 group">
+                                                                    <span className="bg-indigo-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold flex-shrink-0 mt-0.5">P{i + 1}</span>
+                                                                    <p className="text-white text-xs leading-relaxed group-hover:text-indigo-200 transition-colors">{p}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -419,16 +639,23 @@ const ContentStudio: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                            {TRENDS.map(trend => (
-                                <div key={trend.id} className="bg-white rounded-xl p-4 border border-orange-100/50 shadow-sm">
-                                    <h4 className="font-bold text-slate-800 text-sm mb-1">{trend.title}</h4>
-                                    <p className="text-xs text-slate-500 mb-3">{trend.description}</p>
-                                    <div className="bg-orange-50 border border-orange-100 rounded-lg p-2.5 mb-3">
-                                        <p className="text-[10px] text-orange-800 font-medium">Tip: {trend.tip}</p>
+                            {trends.map((trend, i) => (
+                                <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer group">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                            {trend.trendName || trend.title}
+                                        </h4>
+                                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Hot</span>
                                     </div>
+                                    <p className="text-xs text-gray-600 line-clamp-2">{trend.description}</p>
+                                    {trend.application && (
+                                        <div className="mt-2 text-[10px] text-indigo-500 font-medium">
+                                            💡 {trend.application}
+                                        </div>
+                                    )}
                                     <button
-                                        onClick={() => handleUseTrend(trend.title)}
-                                        className="w-full py-2 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold rounded-lg transition-colors"
+                                        onClick={() => handleUseTrend(trend.trendName || trend.title)}
+                                        className="w-full py-2 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold rounded-lg transition-colors mt-3"
                                     >
                                         Use this Trend
                                     </button>

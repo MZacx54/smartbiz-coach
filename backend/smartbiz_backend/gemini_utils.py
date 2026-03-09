@@ -1,7 +1,6 @@
 import os
-from django.conf import settings
 import json
-import time
+import re
 
 def get_model(model_name='gemini-1.5-flash'):
     try:
@@ -15,13 +14,22 @@ def get_model(model_name='gemini-1.5-flash'):
         print("Google Generative AI library not installed.")
         return None
 
+def clean_json_response(text):
+    """
+    Strips markdown code blocks (```json ... ```) and other common non-JSON text.
+    """
+    # Remove markdown code blocks
+    text = re.sub(r'```json\s*', '', text)
+    text = re.sub(r'```\s*', '', text)
+    # Strip leading/trailing whitespace
+    return text.strip()
+
 def generate_json_content(prompt, system_instruction=None, response_schema=None):
     """
     Helper to generate JSON content ensuring valid JSON response.
     """
     model = get_model()
     if not model:
-        print("Gemini model unavailable. Returning empty JSON.")
         return {}
     
     generation_config = {"response_mime_type": "application/json"}
@@ -29,17 +37,23 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None)
         generation_config["response_schema"] = response_schema
 
     try:
+        # Use system_instruction if provided (Gemini 1.5 supports this in the model init or as part of prompt)
+        # For simplicity, we prepended it to prompt if no specific property is used in older SDKs
+        full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
+        
         response = model.generate_content(
-            prompt,
+            full_prompt,
             generation_config=generation_config,
         )
-        return json.loads(response.text)
+        
+        cleaned_text = clean_json_response(response.text)
+        return json.loads(cleaned_text)
     except Exception as e:
         print(f"Gemini JSON generation error: {e}")
-        # Re-raise so the calling view can handle it (e.g. return fallback data)
-        raise e
+        # Return a structured error so frontend doesn't crash
+        return {"error": str(e)}
 
-def generate_text_content(prompt, system_instruction=None):
+def generate_text_content(prompt):
     model = get_model()
     if not model:
         return "AI Service Unavailable."
@@ -49,4 +63,4 @@ def generate_text_content(prompt, system_instruction=None):
         return response.text
     except Exception as e:
         print(f"Gemini text generation error: {e}")
-        raise e
+        return f"Error: {str(e)}"
