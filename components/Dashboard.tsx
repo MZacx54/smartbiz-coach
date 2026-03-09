@@ -174,7 +174,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
               <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">Daily Wisdom</p>
             </div>
             <h2 className="text-lg md:text-xl font-bold font-heading leading-relaxed mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
-              "{motivation.quote}"
+              "{motivation.quote || (motivation as any).error || "No food for lazy man. Go get that bag today!"}"
             </h2>
             <div className="flex justify-between items-end">
               <p className="text-xs text-gray-400 font-medium">— {motivation.author}</p>
