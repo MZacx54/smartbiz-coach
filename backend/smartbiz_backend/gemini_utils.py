@@ -10,11 +10,19 @@ def get_model(model_name='gemini-1.5-flash'):
             return None
         genai.configure(api_key=api_key)
         
-        # Ensure model name is correctly formatted
-        if not model_name.startswith('models/'):
-            model_name = f'models/{model_name}'
-            
-        return genai.GenerativeModel(model_name)
+        # Try multiple model name formats as v1beta/SDK can be picky
+        # We try the alias first, then with models/ prefix
+        try:
+            return genai.GenerativeModel(model_name)
+        except Exception:
+            try:
+                if not model_name.startswith('models/'):
+                    return genai.GenerativeModel(f'models/{model_name}')
+                else:
+                    return genai.GenerativeModel(model_name.replace('models/', ''))
+            except Exception:
+                # Last resort fallback to gemini-pro if 1.5-flash is 404
+                return genai.GenerativeModel('gemini-pro')
     except Exception as e:
         print(f"Error initializing Gemini model: {e}")
         return None
