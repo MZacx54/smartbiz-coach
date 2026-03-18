@@ -3,7 +3,8 @@ from .views import (
     GenerateSocialContentView, GenerateVideoScriptView, GenerateTrendIdeasView, 
     EditImageView, TranscribeAudioView, GenerateDailyMotivationView, 
     GenerateSeasonalTipsView, ChatWithSmartBizView, GenerateSuggestedPromptsView,
-    GenerateWeeklyPlanView, GenerateMarketingVideoView, GenerateDebtReminderView
+    GenerateWeeklyPlanView, GenerateMarketingVideoView, GenerateDebtReminderView,
+    ListModelsView
 )
 
 urlpatterns = [
@@ -25,4 +26,5 @@ urlpatterns = [
     path('generate-video/', GenerateMarketingVideoView.as_view(), name='generate-video'),
     path('generate-marketing-video/', GenerateMarketingVideoView.as_view(), name='generate-marketing-video'),  # Alias
     path('generate-debt-reminder/', GenerateDebtReminderView.as_view(), name='generate-debt-reminder'),
+    path('debug/models/', ListModelsView.as_view(), name='debug-models'),
 ]

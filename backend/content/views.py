@@ -315,3 +315,24 @@ class GenerateDebtReminderView(views.APIView):
             return Response({'message': response.text})
         except Exception as e:
              return Response({'message': f"Hello {name}, please pay N{amount}."}, status=200)
+class ListModelsView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        import google.generativeai as genai
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            return Response({"error": "GEMINI_API_KEY NOT SET"}, status=404)
+        
+        try:
+            genai.configure(api_key=api_key)
+            models = genai.list_models()
+            model_list = []
+            for m in models:
+                model_list.append({
+                    "name": m.name,
+                    "supported_methods": m.supported_generation_methods
+                })
+            return Response({"api_key_last_4": api_key[-4:], "models": model_list})
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
