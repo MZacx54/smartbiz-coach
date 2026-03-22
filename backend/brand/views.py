@@ -69,12 +69,6 @@ class GenerateBrandLogoView(views.APIView):
         
         from smartbiz_backend import gemini_utils
         try:
-            # Try to use Gemini
-            model = gemini_utils.get_model('gemini-1.5-flash')
-            # For real image gen, we'd use Vertex or a specific Image model if enabled, 
-            # but standard Gemini can generate SVG code or detailed prompts.
-            # We'll return an SVG data URI as a real "generated" asset for now.
-            
             prompt_svg = f"Create a simple, modern SVG logo for {prompt}. Use clean shapes. Return ONLY the SVG code. No markdown or explanation."
             svg_code = gemini_utils.generate_text_content(prompt_svg)
             

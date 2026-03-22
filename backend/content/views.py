@@ -102,32 +102,33 @@ class EditImageView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        image_base64 = request.data.get('image')
-        mime_type = request.data.get('mimeType')
+        image_base64 = request.data.get('image_base64') or request.data.get('image')
+        mime_type = request.data.get('mime_type') or request.data.get('mimeType')
         prompt_text = request.data.get('prompt')
         
-        # We need a utility that handles image input.
-        # Assuming gemini_utils can handle it or we use genai directly here for complex media.
-        # For simplicity, implementing inline with gemini_utils pattern
-        
+        if not all([image_base64, mime_type, prompt_text]):
+            return Response({'error': 'Missing image data or prompt'}, status=400)
+            
         try:
-            model = gemini_utils.get_model('gemini-1.5-flash') # Or appropriate vision model
-            response = model.generate_content([
-                {'inline_data': {'mime_type': mime_type, 'data': image_base64}},
-                prompt_text
-            ])
+            # Construct Groq Vision API payload (OpenAI format)
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt_text},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ]
+            response_text = gemini_utils.make_groq_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
+            # Extracted image description or result text
+            return Response({'text': response_text})
             
-            # Extract image from response (similar to frontend logic)
-            # The backend SDK might return it differently.
-            # If the backend returns parts with inline data:
-            for part in response.parts:
-                if part.inline_data:
-                     # Returning base64 directly to frontend
-                    return Response({'image': part.inline_data.data})
-            
-            # Fallback if text
-            return Response({'text': response.text})
-
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
@@ -139,12 +140,25 @@ class TranscribeAudioView(views.APIView):
         mime_type = request.data.get('mimeType')
         
         try:
-            model = gemini_utils.get_model('gemini-1.5-flash')
-            response = model.generate_content([
-                {'inline_data': {'mime_type': mime_type, 'data': audio_base64}},
-                "Transcribe this audio."
-            ])
-            return Response({'transcription': response.text})
+            import requests
+            import base64
+            import tempfile
+            import os
+            
+            api_key = gemini_utils.get_groq_api_key()
+            if not api_key: raise Exception("No API key")
+            
+            headers = {"Authorization": f"Bearer {api_key}"}
+            with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as f:
+                f.write(base64.b64decode(audio_base64))
+                temp_name = f.name
+            
+            with open(temp_name, "rb") as audio_file:
+                files = {"file": audio_file, "model": (None, "whisper-large-v3")}
+                res = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files)
+            os.remove(temp_name)
+            
+            return Response({'transcription': res.json().get('text', '')})
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
@@ -201,13 +215,10 @@ class ChatWithSmartBizView(views.APIView):
         
         # Simple chat handling for now
         try:
-            model = gemini_utils.get_model('gemini-1.5-flash')
-            
-            # Convert simple history slightly if needed, but assuming gemini utils/sdk handles it or we restart.
-            # Ideally we pass history.
-            chat = model.start_chat(history=history or [])
-            response = chat.send_message(message)
-            return Response({'text': response.text})
+            messages = history or []
+            messages.append({"role": "user", "content": message})
+            text = gemini_utils.make_groq_request(messages)
+            return Response({'text': text})
         except Exception as e:
             # Fallback if history format is issue or network
             return Response({'text': "I'm having trouble connecting. Please try again or check network."}, status=200)
@@ -227,14 +238,17 @@ class GenerateSuggestedPromptsView(views.APIView):
         if image:
              prompt = f"""Based on this image and the niche "{niche}", suggest 3 editing or caption prompts. 
              Return JSON list of strings (array)."""
-             parts = [
-                 {'inline_data': {'mime_type': mime_type, 'data': image}},
-                 prompt
+             messages = [
+                 {
+                     "role": "user",
+                     "content": [
+                         {"type": "text", "text": prompt},
+                         {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image}"}}
+                     ]
+                 }
              ]
              try:
-                model = gemini_utils.get_model('gemini-1.5-flash')
-                response = model.generate_content(parts)
-                text = response.text
+                text = gemini_utils.make_groq_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
                 lines = [line.strip().lstrip('-0123456789. ') for line in text.splitlines() if line.strip()]
                 return Response(lines[:3])
              except Exception as e:
@@ -310,29 +324,24 @@ class GenerateDebtReminderView(views.APIView):
         """
         
         try:
-            model = gemini_utils.get_model()
-            response = model.generate_content(prompt)
-            return Response({'message': response.text})
+            text = gemini_utils.generate_text_content(prompt)
+            return Response({'message': text})
         except Exception as e:
              return Response({'message': f"Hello {name}, please pay N{amount}."}, status=200)
 class ListModelsView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        import google.generativeai as genai
-        api_key = os.environ.get("GEMINI_API_KEY")
+        api_key = gemini_utils.get_groq_api_key()
         if not api_key:
-            return Response({"error": "GEMINI_API_KEY NOT SET"}, status=404)
+            return Response({"error": "API_KEY NOT SET"}, status=404)
         
         try:
-            genai.configure(api_key=api_key)
-            models = genai.list_models()
-            model_list = []
-            for m in models:
-                model_list.append({
-                    "name": m.name,
-                    "supported_methods": m.supported_generation_methods
-                })
+            import requests
+            headers = {"Authorization": f"Bearer {api_key}"}
+            res = requests.get("https://api.groq.com/openai/v1/models", headers=headers)
+            models = res.json().get('data', [])
+            model_list = [{"name": m["id"]} for m in models]
             return Response({"api_key_last_4": api_key[-4:], "models": model_list})
         except Exception as e:
             return Response({"error": str(e)}, status=500)

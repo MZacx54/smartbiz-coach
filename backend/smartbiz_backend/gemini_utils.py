@@ -1,90 +1,89 @@
 import os
 import json
-import re
+import urllib.request
+import urllib.error
 
-# List of models to try in order of preference
-MODELS_TO_TRY = [
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-1.0-pro',
-    'models/gemini-1.5-flash',
-    'models/gemini-1.5-flash-8b',
-    'models/gemini-1.0-pro'
-]
+# We preserve the file name `gemini_utils.py` to avoid breaking imports globally,
+# but the underlying AI engine is now Groq (Meta Llama 3 models)
 
-def get_model(model_name):
-    import google.generativeai as genai
-    api_key = os.environ.get("GEMINI_API_KEY")
+# Default models for Groq
+DEFAULT_TEXT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_VISION_MODEL = "llama-3.2-90b-vision-preview"
+
+def get_groq_api_key():
+    # Attempt to use GROQ_API_KEY first, fallback to GEMINI_API_KEY if user just renamed value
+    return os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY")
+
+def make_groq_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None):
+    api_key = get_groq_api_key()
     if not api_key:
-        return None
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel(model_name)
+        raise Exception("Configuration Error: GROQ_API_KEY or GEMINI_API_KEY not found in environment.")
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.7,
+    }
+
+    if response_format:
+        payload["response_format"] = response_format
+
+    req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
+    try:
+        with urllib.request.urlopen(req) as response:
+            result = json.loads(response.read().decode())
+            return result['choices'][0]['message']['content']
+    except urllib.error.HTTPError as e:
+        error_msg = e.read().decode()
+        print(f"Groq API Error: {e.code} - {error_msg}")
+        raise Exception(f"AI Provider Error: {e.code} - {error_msg}")
 
 def clean_json_response(text):
-    """
-    Strips markdown code blocks (```json ... ```) and other common non-JSON text.
-    """
     if not text:
-        return ""
+        return "{}"
+    import re
     text = re.sub(r'```json\s*', '', text)
     text = re.sub(r'```\s*', '', text)
     return text.strip()
 
 def generate_json_content(prompt, system_instruction=None, response_schema=None):
     """
-    Helper to generate JSON content ensuring valid JSON response, with model fallback.
+    Generates JSON content using Groq's Llama-3 model.
     """
-    generation_config = {"response_mime_type": "application/json"}
-    if response_schema:
-        generation_config["response_schema"] = response_schema
-
-    full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
+    messages = []
+    if system_instruction:
+        messages.append({"role": "system", "content": system_instruction})
     
-    last_error = "No API key configured."
-    
-    for model_name in MODELS_TO_TRY:
-        try:
-            model = get_model(model_name)
-            if not model:
-                continue
-                
-            response = model.generate_content(
-                full_prompt,
-                generation_config=generation_config,
-            )
-            
-            if not response.text:
-                continue
+    # Force JSON instruction for safety
+    prompt = prompt + "\n\nIMPORTANT: You must return a valid JSON object ONLY. No markdown, no conversational text."
+    messages.append({"role": "user", "content": prompt})
 
-            cleaned_text = clean_json_response(response.text)
-            return json.loads(cleaned_text)
-        except Exception as e:
-            last_error = str(e)
-            print(f"Gemini error with {model_name}: {e}")
-            # Continue to next model if it's a 404/not found error
-            if "404" in last_error or "not found" in last_error or "not supported" in last_error:
-                continue
-            else:
-                # If it's a different error (e.g. invalid key), stop and report it
-                break
-
-    return {"error": f"Failed after trying all models. Last Error: {last_error}"}
+    try:
+        # Llama 3 models support JSON mode
+        response_text = make_groq_request(messages, model=DEFAULT_TEXT_MODEL, response_format={"type": "json_object"})
+        cleaned_text = clean_json_response(response_text)
+        return json.loads(cleaned_text)
+    except Exception as e:
+        print(f"Groq JSON generation error: {e}")
+        return {"error": str(e)}
 
 def generate_text_content(prompt):
-    last_error = "No API key configured."
-    for model_name in MODELS_TO_TRY:
-        try:
-            model = get_model(model_name)
-            if not model:
-                continue
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            last_error = str(e)
-            print(f"Gemini text error with {model_name}: {e}")
-            if "404" in last_error or "not found" in last_error:
-                continue
-            else:
-                break
-                
-    return f"Error: {last_error}"
+    """
+    Generates pure text content using Groq's Llama-3 model.
+    """
+    messages = [{"role": "user", "content": prompt}]
+    try:
+        return make_groq_request(messages, model=DEFAULT_TEXT_MODEL)
+    except Exception as e:
+        print(f"Groq text generation error: {e}")
+        return f"Error: {str(e)}"
+
+# Placeholder proxy to prevent import errors in EditImageView
+def get_model(model_name=None):
+    return None
