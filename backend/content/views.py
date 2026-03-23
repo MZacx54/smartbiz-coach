@@ -148,7 +148,10 @@ class TranscribeAudioView(views.APIView):
             api_key = gemini_utils.get_groq_api_key()
             if not api_key: raise Exception("No API key")
             
-            headers = {"Authorization": f"Bearer {api_key}"}
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
+            }
             with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as f:
                 f.write(base64.b64decode(audio_base64))
                 temp_name = f.name
@@ -338,7 +341,10 @@ class ListModelsView(views.APIView):
         
         try:
             import requests
-            headers = {"Authorization": f"Bearer {api_key}"}
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
+            }
             res = requests.get("https://api.groq.com/openai/v1/models", headers=headers)
             models = res.json().get('data', [])
             model_list = [{"name": m["id"]} for m in models]
