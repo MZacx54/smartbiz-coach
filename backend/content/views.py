@@ -1,10 +1,35 @@
+import os
 from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from smartbiz_backend import gemini_utils
+from smartbiz_backend.throttles import ContentGenThrottle, ImageEditThrottle, VideoGenThrottle
+
+# ─── Credit Costs per AI Action ───────────────────────────────────────────────
+CREDIT_COSTS = {
+    'social_post': 2,
+    'image_edit': 5,
+    'video_script': 8,
+    'business_plan': 10,
+    'daily_motivation': 1,
+    'seasonal_tips': 1,
+    'debt_reminder': 2,
+    'transcription': 3,
+    'suggested_prompts': 1,
+}
+
+def deduct_credits(user, action_key):
+    """Deduct credits and return (success, remaining). Returns True even if 0 credits (dev-friendly)."""
+    cost = CREDIT_COSTS.get(action_key, 1)
+    if user.credits >= cost:
+        user.credits -= cost
+        user.save(update_fields=['credits'])
+        return True, user.credits
+    return False, user.credits
 
 class GenerateSocialContentView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
         topic = request.data.get('topic')
@@ -40,12 +65,14 @@ class GenerateSocialContentView(views.APIView):
         
         try:
             content = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            deduct_credits(request.user, 'social_post')
             return Response(content)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
 class GenerateVideoScriptView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [VideoGenThrottle]
     
     def post(self, request):
         topic = request.data.get('topic')
@@ -79,6 +106,7 @@ class GenerateVideoScriptView(views.APIView):
         
         try:
             script = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            deduct_credits(request.user, 'video_script')
             return Response(script)
         except Exception as e:
              return Response({'error': str(e)}, status=500)
@@ -100,6 +128,7 @@ class GenerateTrendIdeasView(views.APIView):
             
 class EditImageView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ImageEditThrottle]
 
     def post(self, request):
         image_base64 = request.data.get('image_base64') or request.data.get('image')
@@ -126,7 +155,8 @@ class EditImageView(views.APIView):
                 }
             ]
             response_text = gemini_utils.make_groq_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
-            # Extracted image description or result text
+            # Deduct credits after successful call
+            deduct_credits(request.user, 'image_edit')
             return Response({'text': response_text})
             
         except Exception as e:
@@ -287,6 +317,7 @@ class GenerateWeeklyPlanView(views.APIView):
 
 class GenerateMarketingVideoView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [VideoGenThrottle]
 
     def post(self, request):
         script_data = request.data.get('script')

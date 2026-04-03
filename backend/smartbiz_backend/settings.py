@@ -164,14 +164,6 @@ else:
     else:
         print(f"Warning: Frontend assets not found")
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-}
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -193,8 +185,8 @@ if not DEBUG:
 
 # Validate critical environment variables
 import sys
-if not os.environ.get('GEMINI_API_KEY'):
-    print("WARNING: GEMINI_API_KEY not set. AI features will not work.")
+if not os.environ.get('GROQ_API_KEY') and not os.environ.get('GEMINI_API_KEY'):
+    print("WARNING: No AI API key set (GROQ_API_KEY). AI features will not work.")
 
 if not os.environ.get('SECRET_KEY') or 'django-insecure' in os.environ.get('SECRET_KEY', ''):
     print("WARNING: Using insecure SECRET_KEY")
@@ -205,3 +197,56 @@ PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
 
 # Squad Configuration
 SQUAD_SECRET_KEY = os.getenv('SQUAD_SECRET_KEY')
+
+# ─── Email Configuration ──────────────────────────────────────────────────────
+# Railway has no native email service. We use Gmail SMTP (free, 500/day).
+# Set these in Railway env vars:
+#   EMAIL_HOST_USER = your Gmail address (e.g. smartbizcoach@gmail.com)
+#   EMAIL_HOST_PASSWORD = Gmail App Password (NOT your main password)
+#   To create App Password: myaccount.google.com → Security → App Passwords
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@smartbizcoach.com.ng')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Fall back to console if no email credentials set (useful for dev)
+if not EMAIL_HOST_USER:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# ─── DRF Throttling (Rate Limiting) ──────────────────────────────────────────
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '200/day',       # Global: 200 requests/user/day
+        'brand_gen': '5/hour',   # Brand generation
+        'content_gen': '20/hour',# Content generation
+        'business_plan': '3/day',# Business plan
+        'video_gen': '5/day',    # Video script generation
+        'image_edit': '10/day',  # Image editing
+    }
+}
+
+# ─── Sentry Error Tracking ────────────────────────────────────────────────────
+SENTRY_DSN = os.getenv('SENTRY_DSN', '')  # Set SENTRY_DSN in Railway env vars
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=0.1,   # 10% of requests for performance tracing
+        send_default_pii=False,   # Don't send personal data to Sentry
+        environment="production" if not DEBUG else "development",
+    )

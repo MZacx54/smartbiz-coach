@@ -4,8 +4,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import BrandIdentity
 from .serializers import BrandSerializer
+from smartbiz_backend.throttles import BrandGenThrottle
+from content.views import deduct_credits
 class GenerateBrandView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [BrandGenThrottle]
 
     def post(self, request, *args, **kwargs):
         name = request.data.get('name')
@@ -53,6 +56,7 @@ class GenerateBrandView(views.APIView):
         
         try:
             brand_identity = gemini_utils.generate_json_content(prompt)
+            deduct_credits(request.user, 'brand_gen')
             return Response(brand_identity)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
