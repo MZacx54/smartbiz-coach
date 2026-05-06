@@ -323,26 +323,48 @@ class GenerateMarketingVideoView(views.APIView):
         script_data = request.data.get('script')
         visual_style = request.data.get('visualStyle', 'REALISTIC')
         
-        # Instead of a mock video, we provide a production-ready Storyboard
-        # This is "Real and Perfect" because it gives the user actionable intelligence
+        # Step 1: Generate the exact audio script for TTS
         prompt = f"""
-        Generate a detailed visual storyboard for this video script: {script_data}.
-        Visual Style: {visual_style}.
-        For each scene, provide:
-        - visual: Description of what happens on screen.
-        - overlay: Text to show on screen.
-        - audio: What is said or heard.
-        Return JSON with a key 'scenes' (array of objects).
+        Extract ONLY the spoken audio portion from this video script: {script_data}.
+        Return ONLY the raw text that should be spoken by a voiceover artist. No brackets, no stage directions, just the spoken words.
         """
         
         try:
-            storyboard = gemini_utils.generate_json_content(prompt)
+            import tempfile
+            import os
+            import base64
+            from gtts import gTTS
+            
+            # Get the spoken text
+            spoken_text = gemini_utils.generate_text_content(prompt)
+            
+            # Step 2: Generate Audio using gTTS (Free Google Text-to-Speech)
+            # tld='com.ng' gives it a slight localized accent (if available, else defaults to standard)
+            tts = gTTS(text=spoken_text, lang='en', tld='com.ng', slow=False)
+            
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+                temp_name = f.name
+                
+            tts.save(temp_name)
+            
+            # Step 3: Encode audio to base64 to send to frontend
+            with open(temp_name, "rb") as audio_file:
+                audio_b64 = base64.b64encode(audio_file.read()).decode('utf-8')
+                
+            os.remove(temp_name)
+            
+            # Deduct credits (It's a heavy action)
+            deduct_credits(request.user, 'video_script')
+            
             return Response({
-                'storyboard': storyboard.get('scenes', []),
-                'message': "True AI Video generation (Veo) is currently in private preview. Here is your production-ready Storyboard to guide your recording!"
+                'audio_base64': audio_b64,
+                'spoken_text': spoken_text,
+                'message': "Audio Voiceover Generated Successfully! You can use this sound for your Faceless Marketing Reels."
             })
+            
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
 
 class GenerateDebtReminderView(views.APIView):
     permission_classes = [IsAuthenticated]

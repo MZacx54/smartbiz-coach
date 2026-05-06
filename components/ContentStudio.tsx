@@ -69,6 +69,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
     const [generatedContent, setGeneratedContent] = useState<any>(null);
     const [storyboard, setStoryboard] = useState<any>(null);
     const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [spokenText, setSpokenText] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Multimodal State
@@ -91,6 +93,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
         setError(null);
         setGeneratedContent(null);
         setStoryboard(null);
+        setAudioUrl(null);
+        setSpokenText(null);
 
         try {
             let result;
@@ -139,7 +143,13 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
         setError(null);
         try {
             const result = await geminiService.generateMarketingVideo(generatedContent, 'REALISTIC');
-            setStoryboard(result.storyboard);
+            if (result.storyboard) setStoryboard(result.storyboard);
+            if (result.audio_base64) {
+                // Convert base64 to Blob URL for playback
+                const audioBlob = new Blob([Uint8Array.from(atob(result.audio_base64), c => c.charCodeAt(0))], { type: 'audio/mp3' });
+                setAudioUrl(URL.createObjectURL(audioBlob));
+                setSpokenText(result.spoken_text);
+            }
         } catch (err: any) {
             setError(err.message || "Failed to generate storyboard.");
         } finally {
@@ -530,10 +540,24 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
                                                     <AnimatePresence>
                                                         {storyboard && (
                                                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-6 border-t border-white/10 space-y-6">
-                                                                <div className="flex items-center justify-between">
-                                                                    <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest">📽️ Director's Storyboard</h4>
-                                                                    <span className="text-[10px] text-slate-500 italic">Production-Ready View</span>
+                                                                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                                                    <div>
+                                                                        <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest">📽️ Director's Storyboard</h4>
+                                                                        <span className="text-[10px] text-slate-500 italic">Production-Ready View</span>
+                                                                    </div>
+                                                                    {audioUrl && (
+                                                                        <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center gap-3">
+                                                                            <span className="text-[10px] text-indigo-400 font-bold uppercase whitespace-nowrap">🎙️ Voiceover Generated</span>
+                                                                            <audio controls src={audioUrl} className="h-8 w-48 scale-90 origin-left" />
+                                                                        </div>
+                                                                    )}
                                                                 </div>
+                                                                {spokenText && (
+                                                                    <div className="bg-indigo-900/30 border border-indigo-500/20 p-4 rounded-xl">
+                                                                        <h4 className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Generated Script:</h4>
+                                                                        <p className="text-sm text-slate-300 italic">"{spokenText}"</p>
+                                                                    </div>
+                                                                )}
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                                                     {storyboard.map((scene: any, i: number) => (
                                                                         <div key={i} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden group">
