@@ -1,6 +1,11 @@
 
 import React, { useState } from 'react';
 import { analyzeBusinessName } from '../services/geminiService';
+import { BrandIdentity } from '../types';
+
+interface ComplianceProps {
+  brand?: BrandIdentity | null;
+}
 
 interface ChecklistItem {
   id: string;
@@ -9,7 +14,7 @@ interface ChecklistItem {
   isCompleted: boolean;
 }
 
-const Compliance: React.FC = () => {
+const Compliance: React.FC<ComplianceProps> = ({ brand }) => {
   const [checklist, setChecklist] = useState<ChecklistItem[]>([
     { id: '1', title: 'Perform Name Availability Search', description: 'Check if your business name is free on CAC.', isCompleted: false },
     { id: '2', title: 'Register Business Name (BN)', description: 'Official registration for Sole Proprietors.', isCompleted: false },
