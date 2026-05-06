@@ -4,7 +4,7 @@ from .views import (
     EditImageView, TranscribeAudioView, GenerateDailyMotivationView, 
     GenerateSeasonalTipsView, ChatWithSmartBizView, GenerateSuggestedPromptsView,
     GenerateWeeklyPlanView, GenerateMarketingVideoView, GenerateDebtReminderView,
-    ListModelsView
+    ListModelsView, GetTrendingTopicsView
 )
 
 urlpatterns = [
@@ -24,7 +24,9 @@ urlpatterns = [
     path('suggest-prompts/', GenerateSuggestedPromptsView.as_view(), name='suggest-prompts'),  # Alias
     path('generate-weekly-plan/', GenerateWeeklyPlanView.as_view(), name='generate-weekly-plan'),
     path('generate-video/', GenerateMarketingVideoView.as_view(), name='generate-video'),
+    path('generate-audio/', GenerateMarketingVideoView.as_view(), name='generate_video'),
     path('generate-marketing-video/', GenerateMarketingVideoView.as_view(), name='generate-marketing-video'),  # Alias
     path('generate-debt-reminder/', GenerateDebtReminderView.as_view(), name='generate-debt-reminder'),
+    path('trends/today/', GetTrendingTopicsView.as_view(), name='trending_topics'),
     path('debug/models/', ListModelsView.as_view(), name='debug-models'),
 ]

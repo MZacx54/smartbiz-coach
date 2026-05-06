@@ -58,6 +58,17 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
 
     // Photo Studio State
     const [photoDesc, setPhotoDesc] = useState('');
+
+    // Check for Trend Jacking on mount
+    useEffect(() => {
+        const activeTrend = localStorage.getItem('sb_active_trend');
+        if (activeTrend) {
+            setPostTopic(`Write a viral post about my product, incorporating the trending topic: ${activeTrend}`);
+            setVideoTopic(`Create a video script that ties my business into the trending topic: ${activeTrend}`);
+            setPhotoDesc(`A scene relating my product to the trending topic: ${activeTrend}`);
+            localStorage.removeItem('sb_active_trend'); // Clear it so it doesn't persist forever
+        }
+    }, []);
     const [artStyle, setArtStyle] = useState<ArtStyle>('Realistic');
     const [aspectRatio, setAspectRatio] = useState<AspectRatio>('Square (1:1)');
 

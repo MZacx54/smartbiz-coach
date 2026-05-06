@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AppView, ActionCard, UserStats, DailyMotivation, SeasonalAlert, Transaction, Debtor, InventoryItem } from '../types';
-import { generateDailyMotivation, generateSeasonalTips } from '../services/geminiService';
+import { generateDailyMotivation, generateSeasonalTips, getTrendingTopics } from '../services/geminiService';
 
 interface DashboardProps {
   userStats: UserStats;
@@ -99,6 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
   const [totalDebt, setTotalDebt] = useState(0);
   const [stockValue, setStockValue] = useState(0);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -115,6 +116,13 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
         setSeasonalAlert(s);
       } catch (e) {
         console.error("Failed to load seasonal tips", e);
+      }
+
+      try {
+        const trends = await getTrendingTopics();
+        setTrendingTopics(trends);
+      } catch (e) {
+        console.error("Failed to load trends", e);
       }
 
       // Business Data (From LocalStorage for Dashboard View)
@@ -248,6 +256,40 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
           <CircularProgress percentage={userStats.grantReadinessScore} color={userStats.grantReadinessScore > 70 ? '#16a34a' : '#f59e0b'} />
         </div>
       </div>
+
+      {/* Trending Today Widget (Trend Jacking) */}
+      {trendingTopics.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl p-5 shadow-lg relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full mix-blend-overlay filter blur-xl"></div>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">🔥</span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Trending in Nigeria Today</h3>
+              </div>
+              <p className="text-xs text-blue-200">Jack these trends to go viral instantly.</p>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {trendingTopics.map(trend => (
+                <button 
+                  key={trend.id}
+                  onClick={() => {
+                    // Navigate to Content Generator and we could pass state via localStorage
+                    localStorage.setItem('sb_active_trend', trend.title);
+                    onNavigate(AppView.CONTENT_GENERATOR);
+                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[11px] font-bold px-3 py-2 rounded-lg transition-colors flex items-center gap-1 group"
+                >
+                  <span className="text-blue-300">#</span>
+                  {trend.title}
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity ml-1">🚀</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Action List */}

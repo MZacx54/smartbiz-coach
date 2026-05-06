@@ -34,6 +34,11 @@ export const generateTrendIdeas = async (niche: string) => {
     return response.data;
 };
 
+export const getTrendingTopics = async () => {
+    const response = await api.get('content/trends/today/');
+    return response.data;
+};
+
 export const generateDebtReminder = async (debtorName: string, amount: number, dueDate: string) => {
     const response = await api.post('content/generate-debt-reminder/', { debtor_name: debtorName, amount, due_date: dueDate });
     return response.data;

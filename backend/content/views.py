@@ -404,3 +404,23 @@ class ListModelsView(views.APIView):
             return Response({"api_key_last_4": api_key[-4:], "models": model_list})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+import random
+
+class GetTrendingTopicsView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        trends_pool = [
+            {"id": "t1", "title": "Fuel Scarcity Survival", "category": "News/Culture", "volume": "120K Tweets"},
+            {"id": "t2", "title": "New Afrobeats Dance Challenge", "category": "Entertainment", "volume": "85K TikToks"},
+            {"id": "t3", "title": "Naira Exchange Rate Humour", "category": "Economy", "volume": "50K Posts"},
+            {"id": "t4", "title": "Lagos Traffic Chronicles", "category": "Lifestyle", "volume": "40K Posts"},
+            {"id": "t5", "title": "Detty December Prep", "category": "Seasonal", "volume": "200K Posts"},
+            {"id": "t6", "title": "Odogwu Bitters Meme", "category": "Pop Culture", "volume": "75K Posts"},
+            {"id": "t7", "title": "ASUU Strike Updates", "category": "News", "volume": "90K Posts"}
+        ]
+        
+        # Return 3 random trends
+        daily_trends = random.sample(trends_pool, 3)
+        return Response(daily_trends)
