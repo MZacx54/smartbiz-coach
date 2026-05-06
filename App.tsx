@@ -29,6 +29,7 @@ const SmartHomeFinder = lazy(() => import("./components/SmartHomeFinder"));
 const Cart = lazy(() => import("./components/Cart"));
 const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
+const SmartBizHub = lazy(() => import("./components/SmartBizHub"));
 
 import {
   AppView,
@@ -96,6 +97,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/compliance')) setCurrentView(AppView.COMPLIANCE);
     else if (path.includes('/dashboard/support')) setCurrentView(AppView.WHATSAPP_SUPPORT);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
+    else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else setCurrentView(AppView.DASHBOARD);
   }, [location]);
 
@@ -121,6 +123,7 @@ const App: React.FC = () => {
       case AppView.COMPLIANCE: return 'Business Compliance Context';
       case AppView.DIGITAL_ROADMAP: return 'Digital Marketing Roadmap';
       case AppView.WHATSAPP_SUPPORT: return 'WhatsApp Live Support';
+      case AppView.HUB: return 'SmartBiz Hub';
       default: return 'SmartBiz Coach';
     }
   };
@@ -143,6 +146,7 @@ const App: React.FC = () => {
       case AppView.SMARTHOME_FINDER: return 'Explore affordable homes and agent property listings mapped for Nigerians.';
       case AppView.COMPLIANCE: return 'Learn precisely what business registrations, taxes, and documents are required.';
       case AppView.DIGITAL_ROADMAP: return 'Gain an actionable, step-by-step digital roadmap for marketing.';
+      case AppView.HUB: return 'Access the exclusive SmartBiz business network and community.';
       default: return 'The all-in-one AI platform for Nigerian SMEs.';
     }
   };
@@ -153,12 +157,9 @@ const App: React.FC = () => {
       const token = localStorage.getItem("sb_auth_token");
       if (token) {
         try {
-          // 1. Verify Token & Get Profile
-          // If this fails, the token is invalid
           const profile = await authService.getProfile();
           setUser(profile);
 
-          // Parallelize independent fetches for speed
           const [brand, txs, stats, userActions] = await Promise.allSettled([
             brandService.getBrand(),
             billingService.getTransactions(),
@@ -174,19 +175,16 @@ const App: React.FC = () => {
         } catch (error) {
           console.error("Session expired or invalid", error);
           if (currentView !== AppView.DASHBOARD || true) {
-            // Force logout to prevent zombie session
             handleLogout();
           }
         }
       } else {
-        // No token, ensure no user
         setUser(null);
       }
     };
     checkAuthAndFetchData();
   }, []);
 
-  // Mock Data - Phase 2 this comes from Backend -> ENABLED
   const [userStats, setUserStats] = useState<UserStats>({
     grantReadinessScore: 0,
     bizCredits: 0,
@@ -209,7 +207,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (savedBrand) {
       localStorage.setItem("sb_brand", JSON.stringify(savedBrand));
-      // Update action state
       setActions((prev: ActionCard[]) =>
         prev.map((a) => (a.id === "2" ? { ...a, isCompleted: true } : a))
       );
@@ -235,14 +232,10 @@ const App: React.FC = () => {
     localStorage.setItem("sb_transactions", JSON.stringify(transactions));
   }, [transactions]);
 
-  const setActionsWithType = (updater: (prev: ActionCard[]) => ActionCard[]) =>
-    setActions(updater);
-
   // --- Handlers ---
 
   const handleNavigate = (view: AppView) => {
     setCurrentView(view);
-    // Route to the appropriate path based on AppView
     switch (view) {
       case AppView.DASHBOARD: navigate('/dashboard'); break;
       case AppView.BRAND_BUILDER: navigate('/dashboard/brand'); break;
@@ -260,6 +253,7 @@ const App: React.FC = () => {
       case AppView.COMPLIANCE: navigate('/dashboard/compliance'); break;
       case AppView.WHATSAPP_SUPPORT: navigate('/dashboard/support'); break;
       case AppView.SETTINGS: navigate('/dashboard/settings'); break;
+      case AppView.HUB: navigate('/dashboard/hub'); break;
       default: navigate('/dashboard');
     }
   };
@@ -283,16 +277,6 @@ const App: React.FC = () => {
     setSavedBrand(brand);
   };
 
-  const handleAddContent = (content: GeneratedContent) => {
-    const newContent = {
-      ...content,
-      id: Date.now().toString(),
-      createdAt: Date.now(),
-    };
-    setContentHistory((prev: GeneratedContent[]) => [newContent, ...prev]);
-  };
-
-  // Cart Handlers
   const handleAddToCart = (product: ProductListing) => {
     setCartItems((prev: CartItem[]) => {
       const existing = prev.find((item) => item.productId === product.id);
@@ -372,7 +356,6 @@ const App: React.FC = () => {
         description={getPageDescription(location.pathname)}
       />
 
-      {/* Toast Notifications */}
       <Toaster
         position="top-right"
         toastOptions={{
@@ -383,23 +366,12 @@ const App: React.FC = () => {
             borderRadius: "0.75rem",
             padding: "16px",
           },
-          success: {
-            iconTheme: {
-              primary: "#10b981",
-              secondary: "#fff",
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: "#ef4444",
-              secondary: "#fff",
-            },
-          },
+          success: { iconTheme: { primary: "#10b981", secondary: "#fff" } },
+          error: { iconTheme: { primary: "#ef4444", secondary: "#fff" } },
         }}
       />
 
       <Routes>
-        {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
 
         <Route path="/login" element={
@@ -410,7 +382,6 @@ const App: React.FC = () => {
           user ? <Navigate to="/dashboard" replace /> : <Auth onLogin={handleLogin} />
         } />
 
-        {/* Protected Dashboard Routes */}
         <Route path="/dashboard/*" element={
           !user ? <Navigate to="/login" replace /> : (
             <DashboardLayout
@@ -442,10 +413,11 @@ const App: React.FC = () => {
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} />} />
                   <Route path="smarthome" element={<SmartHomeFinder />} />
                   <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
-                  <Route path="compliance" element={<Compliance />} />
+                  <Route path="compliance" element={<ComplianceAssistant brand={savedBrand} />} />
                   <Route path="roadmap" element={<DigitalRoadmap />} />
                   <Route path="support" element={<WhatsAppSupport />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} />} />
+                  <Route path="hub" element={<SmartBizHub />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>

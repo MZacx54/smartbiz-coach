@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'billing',
     'content',
     'business',
+    'marketplace',
 ]
 
 MIDDLEWARE = [
