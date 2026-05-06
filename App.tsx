@@ -413,7 +413,7 @@ const App: React.FC = () => {
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} />} />
                   <Route path="smarthome" element={<SmartHomeFinder />} />
                   <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
-                  <Route path="compliance" element={<ComplianceAssistant brand={savedBrand} />} />
+                  <Route path="compliance" element={<Compliance brand={savedBrand} />} />
                   <Route path="roadmap" element={<DigitalRoadmap />} />
                   <Route path="support" element={<WhatsAppSupport />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} />} />

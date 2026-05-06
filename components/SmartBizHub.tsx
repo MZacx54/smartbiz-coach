@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Truck, Store, Users, Briefcase, CheckCircle, MessageCircle, ArrowRight } from 'lucide-react';
-import { api } from '../utils/api'; // Ensure this uses your authenticated fetch wrapper
+import api from '../services/api';
 
 interface Vendor {
   id: number;
@@ -21,7 +21,7 @@ interface Listing {
   created_at: string;
 }
 
-export function SmartBizHub() {
+export default function SmartBizHub() {
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [listings, setListings] = useState<Listing[]>([]);
@@ -47,7 +47,7 @@ export function SmartBizHub() {
       if (searchQuery) url += `search=${searchQuery}`;
       
       const response = await api.get(url);
-      setListings(response); // Adjust depending on your api.get implementation
+      setListings(response.data); // Adjust depending on your api.get implementation
     } catch (error) {
       console.error("Failed to fetch listings", error);
     } finally {
