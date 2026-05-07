@@ -478,8 +478,9 @@ class GetTrendingTopicsView(views.APIView):
             {"id": "t6", "title": "Odogwu Bitters Meme", "category": "Pop Culture", "volume": "75K Posts"},
             {"id": "t7", "title": "ASUU Strike Updates", "category": "News", "volume": "90K Posts"}
         ]
-        
-            return Response(daily_trends)
+        # Return 3 random trends
+        daily_trends = random.sample(trends_pool, 3)
+        return Response(daily_trends)
 
 
 class GenerateSalesScriptView(views.APIView):
