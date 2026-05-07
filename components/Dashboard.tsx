@@ -163,7 +163,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
     { label: 'SmartBiz Hub', icon: <Store className="w-5 h-5" />, view: AppView.HUB, color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
     { label: 'Sales Closer', icon: <MessageCircle className="w-5 h-5" />, view: AppView.SALES_ASSISTANT, color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
     { label: 'Debt Tracker', icon: <AlertCircle className="w-5 h-5" />, view: AppView.DEBTOR_BOOK, color: 'bg-rose-500/10 text-rose-600 border-rose-500/20' },
-    { label: 'Inventory AI', icon: <Package className="w-5 h-5" />, view: AppView.INVENTORY, color: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+    { label: 'Inventory AI', icon: <Package className="w-5 h-5" />, view: AppView.PRODUCT_MANAGER, color: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   ];
 
   return (

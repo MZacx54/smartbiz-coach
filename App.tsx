@@ -34,6 +34,7 @@ const ProductMagic = lazy(() => import("./components/ProductMagic"));
 const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
 const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
+const ProductManager = lazy(() => import("./components/ProductManager"));
 
 import {
   AppView,
@@ -103,6 +104,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/sales-assistant')) setCurrentView(AppView.SALES_ASSISTANT);
     else if (path.includes('/dashboard/order-gen')) setCurrentView(AppView.ORDER_GENERATOR);
     else if (path.includes('/dashboard/store-preview')) setCurrentView(AppView.STOREFRONT);
+    else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.PRODUCT_MANAGER);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else if (path.includes('/dashboard/product-magic')) setCurrentView(AppView.PRODUCT_MAGIC);
@@ -267,6 +269,7 @@ const App: React.FC = () => {
       case AppView.SALES_ASSISTANT: navigate('/dashboard/sales-assistant'); break;
       case AppView.ORDER_GENERATOR: navigate('/dashboard/order-gen'); break;
       case AppView.STOREFRONT: navigate('/dashboard/store-preview'); break;
+      case AppView.PRODUCT_MANAGER: navigate('/dashboard/inventory'); break;
       case AppView.SETTINGS: navigate('/dashboard/settings'); break;
       case AppView.HUB: navigate('/dashboard/hub'); break;
       case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
@@ -428,7 +431,7 @@ const App: React.FC = () => {
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} />} />
                   <Route path="grants" element={<GrantMatcher businessName={user.businessName} />} />
                   <Route path="learning" element={<LearningHub />} />
-                  <Route path="inventory" element={<InventoryTracker />} />
+                  <Route path="inventory" element={<ProductManager />} />
                   <Route path="debtor" element={<DebtorBook />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} />} />

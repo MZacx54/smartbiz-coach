@@ -119,7 +119,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.CONTENT_GENERATOR} label="Content Gen" icon="✍️" />
                     <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices" icon="🧾" />
                     <NavItem view={AppView.ORDER_GENERATOR} label="Order Gen" icon="📄" />
-                    <NavItem view={AppView.INVENTORY} label="Inventory" icon="📦" />
+                    <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory" icon="📦" />
                     <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
 
                     <div className="pt-4 pb-2">
