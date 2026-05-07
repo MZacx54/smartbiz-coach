@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MessageCircle, ShoppingBag, ShieldCheck, Instagram, Twitter, Globe, ArrowRight, Star, Heart, MapPin, Phone } from 'lucide-react';
+import { MessageCircle, ShoppingBag, ShieldCheck, Globe, ArrowRight, Star, Heart, MapPin, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BrandIdentity } from '../types';
 import api from '../services/api';
+
+// Inline SVG replacements for brand icons removed from lucide-react v1.x
+const InstagramIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+    <circle cx="12" cy="12" r="4"/>
+    <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/>
+  </svg>
+);
+
+const TwitterIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
 
 const PublicStorefront: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -159,8 +174,8 @@ const PublicStorefront: React.FC = () => {
         {/* Footer */}
         <footer className="text-center space-y-6 pb-12">
            <div className="flex justify-center gap-6">
-              <Instagram className="w-5 h-5 text-slate-400 hover:text-pink-500 transition-colors cursor-pointer" />
-              <Twitter className="w-5 h-5 text-slate-400 hover:text-sky-500 transition-colors cursor-pointer" />
+              <InstagramIcon className="w-5 h-5 text-slate-400 hover:text-pink-500 transition-colors cursor-pointer" />
+              <TwitterIcon className="w-5 h-5 text-slate-400 hover:text-sky-500 transition-colors cursor-pointer" />
               <Globe className="w-5 h-5 text-slate-400 hover:text-slate-900 transition-colors cursor-pointer" />
            </div>
            
