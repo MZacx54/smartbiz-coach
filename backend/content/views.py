@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from smartbiz_backend import gemini_utils
 from smartbiz_backend.throttles import ContentGenThrottle, ImageEditThrottle, VideoGenThrottle
+from brand.models import BrandIdentity
 
 # ─── Credit Costs per AI Action ───────────────────────────────────────────────
 CREDIT_COSTS = {
@@ -26,6 +27,22 @@ def deduct_credits(user, action_key):
         user.save(update_fields=['credits'])
         return True, user.credits
     return False, user.credits
+
+def get_brand_context(user):
+    """Fetch and format brand identity for AI context."""
+    try:
+        brand = BrandIdentity.objects.get(user=user)
+        return f"""
+        BUSINESS CONTEXT:
+        - Name: {brand.business_name}
+        - Niche: {brand.niche}
+        - Target Audience: {brand.target_audience}
+        - Brand Voice/Tone: {brand.brand_voice}
+        - Tagline: {brand.taglines[0] if brand.taglines else 'N/A'}
+        - Vibe: {brand.vibe}
+        """
+    except BrandIdentity.DoesNotExist:
+        return "BUSINESS CONTEXT: General Nigerian MSME. No specific brand profile yet."
 
 class GenerateSocialContentView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -50,13 +67,18 @@ class GenerateSocialContentView(views.APIView):
         # We can refine this prompt or use a system instruction if we want strict schema
         # For now, let's ask for JSON directly in the prompt or rely on the utility if we updated it to support schemas well.
         
-        # Re-using the system prompt logic from frontend but adapted for the backend utility
         # Ideally, we pass the prompts into the utility or keep them here.
-        system_prompt = """
-        You are a top-tier Social Media Manager for Nigerian small businesses.
+        brand_context = get_brand_context(request.user)
+        system_prompt = f"""
+        {brand_context}
+        
+        You are a Senior Digital Marketer specializing in Nigerian MSMEs. 
+        Your goal is to write high-converting, viral social media content that reflects the specific brand context above.
+        Be creative, use local context where appropriate (but remain professional), and ensure the content is unique to this business.
+        
         Return JSON with keys: 
         - caption: The primary post caption.
-        - hashtags: Array of relevant hashtags.
+        - hashtags: Array of relevant hashtags (include a mix of niche and Nigerian tags).
         - callToAction: A punchy CTA.
         - imageText: Text that should be overlaid on the image/graphic.
         - dmReply: A script the business owner can use to reply to customers who comment or DM.
@@ -92,8 +114,14 @@ class GenerateVideoScriptView(views.APIView):
         - estimated_duration: In seconds.
         """
         
-        system_prompt = """
-        You are a viral content creator specializing in short-form video (TikTok, Reels, Shorts).
+        brand_context = get_brand_context(request.user)
+        system_prompt = f"""
+        {brand_context}
+        
+        You are a professional Video Scriptwriter and Director.
+        Create a script that perfectly matches the brand voice and target audience described in the context.
+        Ensure the script is engaging, flows well, and is optimized for viral short-form video.
+        
         Return JSON with keys: 
         - title: Catchy video title.
         - hook: A scroll-stopping opening line.
@@ -116,12 +144,22 @@ class GenerateTrendIdeasView(views.APIView):
     
     def post(self, request):
         niche = request.data.get('niche')
-        prompt = f"""List 3 trending social media concepts or seasonal angles currently popular in Nigeria suitable for a "{niche}" business.
+        brand_context = get_brand_context(request.user)
+        
+        system_instruction = f"""
+        {brand_context}
+        
+        You are a Strategic Growth Consultant for Nigerian businesses. 
+        Instead of generic trends, provide 3 UNIQUE, brand-specific marketing angles or concepts that this EXACT business can use today to stand out.
+        Think outside the box. Connect the business niche with current Nigerian pop culture, seasonal events, or specific local challenges.
+        
         Return JSON list of objects with keys: trendName, description, application.
         """
         
+        prompt = f"Provide 3 hyper-personalized marketing concept ideas for this business."
+        
         try:
-            trends = gemini_utils.generate_json_content(prompt)
+            trends = gemini_utils.generate_json_content(prompt, system_instruction=system_instruction)
             return Response(trends)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
@@ -199,9 +237,11 @@ class GenerateDailyMotivationView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        business_name = request.data.get('businessName')
-        prompt = f"""Generate a short, punchy daily motivation quote for a Nigerian business owner named "{business_name}".
-        Mix English and Pidgin. It should be inspiring, specifically for an entrepreneur ("Hustle spirit").
+        brand_context = get_brand_context(request.user)
+        prompt = f"""
+        {brand_context}
+        Generate a short, punchy daily motivation quote for this specific entrepreneur.
+        Mix English and Pidgin. It should be inspiring, specifically for their business type and brand vibe.
         Return JSON with keys: quote, author, theme (HUSTLE, RESILIENCE, GROWTH).
         """
         
@@ -221,10 +261,12 @@ class GenerateSeasonalTipsView(views.APIView):
     def post(self, request):
         from datetime import datetime
         date_str = datetime.now().strftime("%Y-%m-%d")
+        brand_context = get_brand_context(request.user)
         
-        prompt = f"""Based on today's date ({date_str}), what is the upcoming major event or season in Nigeria?
-        (e.g., Valentine, Ramadan, Easter, Christmas, Rainy Season, Back to School).
-        Give one business tip for a small vendor to prepare.
+        prompt = f"""
+        {brand_context}
+        Based on today's date ({date_str}), what is the upcoming major event or season in Nigeria?
+        Provide a strategic marketing tip specifically for this business to capitalize on this season.
         Return JSON with keys: title, description, actionItem, season.
         """
         
@@ -246,9 +288,16 @@ class ChatWithSmartBizView(views.APIView):
         history = request.data.get('history', [])
         message = request.data.get('message')
         
-        # Simple chat handling for now
+        # Inject brand context into chat
+        brand_context = get_brand_context(request.user)
         try:
-            messages = history or []
+            messages = []
+            messages.append({
+                "role": "system", 
+                "content": f"You are a professional Digital Marketing Consultant for Nigerian MSMEs. Brand Profile: {brand_context}"
+            })
+            if history:
+                messages.extend(history)
             messages.append({"role": "user", "content": message})
             text = gemini_utils.make_groq_request(messages)
             return Response({'text': text})
@@ -268,8 +317,12 @@ class GenerateSuggestedPromptsView(views.APIView):
         
         trend_context = f"Consider trends: {', '.join(trends)}." if trends else ""
         
+        brand_context = get_brand_context(request.user)
+        
         if image:
-             prompt = f"""Based on this image and the niche "{niche}", suggest 3 editing or caption prompts. 
+             prompt = f"""
+             {brand_context}
+             Based on this image and the brand niche above, suggest 3 creative editing or caption prompts. 
              Return JSON list of strings (array)."""
              messages = [
                  {
@@ -287,7 +340,9 @@ class GenerateSuggestedPromptsView(views.APIView):
              except Exception as e:
                  return Response(["Enhance brightness", "Focus on product", "Add logo"], status=200)
         else:
-            prompt = f"""Suggest 3 creative and viral {context} ideas for a Nigerian business in the "{niche}" niche. {trend_context}
+            prompt = f"""
+            {brand_context}
+            Suggest 3 creative and viral {context} ideas for this specific business. {trend_context}
             Return JSON list of strings (array).
             """
             try:
@@ -301,10 +356,12 @@ class GenerateWeeklyPlanView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        niche = request.data.get('niche')
-        prompt = f"""Create a 7-day social media content plan for a Nigerian business in the "{niche}" niche.
+        brand_context = get_brand_context(request.user)
+        prompt = f"""
+        {brand_context}
+        Create a 7-day social media content plan for this specific business.
         Balance promotional, educational, and entertainment content.
-        Themes: Motivation Monday, Tuesday Tips, etc.
+        Themes should be professional yet engaging, reflecting the brand voice.
         Return JSON with keys: weekStartDate, days (array of objects with day, theme, postIdea).
         """
         
@@ -468,9 +525,18 @@ Return JSON with these keys:
         }
 
         prompt = mode_prompts.get(mode, mode_prompts['ANALYZE'])
-
+        brand_context = get_brand_context(request.user)
+        
+        system_instruction = f"""
+        {brand_context}
+        
+        You are a Product Presentation Expert and AI Photo Analyst for Nigerian MSMEs. 
+        Analyze the provided image and give advice that is hyper-personalized to the brand context above.
+        Don't just give general advice; tell them how to style this product SPECIFICALLY for their brand.
+        """
+        
         try:
-            result = gemini_utils.generate_json_content(prompt, image_base64=image_base64, mime_type=mime_type)
+            result = gemini_utils.generate_json_content(prompt, system_instruction=system_instruction, image_base64=image_base64, mime_type=mime_type)
             deduct_credits(request.user, 'image_edit')
             return Response(result)
         except Exception as e:
