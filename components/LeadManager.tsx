@@ -165,12 +165,27 @@ const LeadManager: React.FC = () => {
                                     </a>
                                 </div>
 
-                                <div className="mt-auto flex justify-between items-center pt-6 border-t border-slate-50">
+                                 <div className="mt-auto flex justify-between items-center pt-6 border-t border-slate-50">
                                     <div className="flex gap-2">
-                                        <button onClick={() => updateLeadStatus(lead.id, 'WON')} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
+                                        <button 
+                                            onClick={() => updateLeadStatus(lead.id, 'NEGOTIATING')} 
+                                            title="Mark as Negotiating"
+                                            className={`p-2.5 rounded-xl transition-all shadow-sm ${lead.status === 'NEGOTIATING' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white'}`}
+                                        >
+                                            <Filter className="w-5 h-5" />
+                                        </button>
+                                        <button 
+                                            onClick={() => updateLeadStatus(lead.id, 'WON')} 
+                                            title="Mark as Won"
+                                            className={`p-2.5 rounded-xl transition-all shadow-sm ${lead.status === 'WON' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'}`}
+                                        >
                                             <CheckCircle2 className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => updateLeadStatus(lead.id, 'LOST')} className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm">
+                                        <button 
+                                            onClick={() => updateLeadStatus(lead.id, 'LOST')} 
+                                            title="Mark as Lost"
+                                            className={`p-2.5 rounded-xl transition-all shadow-sm ${lead.status === 'LOST' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white'}`}
+                                        >
                                             <AlertCircle className="w-5 h-5" />
                                         </button>
                                     </div>
