@@ -3,7 +3,7 @@ from django.db.models import Q
 from .models import VendorVerification, MarketplaceListing
 from .serializers import VendorVerificationSerializer, MarketplaceListingSerializer
 
-class VendorProfileView(generics.RetrieveUpdateCreateAPIView):
+class VendorProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = VendorVerificationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
