@@ -33,8 +33,9 @@ const PublicStorefront: React.FC = () => {
           api.get(`/api/marketplace/products/u/${slug}/`)
         ]);
         setBrand(brandRes.data);
-        setProducts(productsRes.data);
+        setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
       } catch (err) {
+        console.error('Fetch error:', err);
         setError('Store not found or moved.');
       } finally {
         setIsLoading(false);
@@ -145,7 +146,7 @@ const PublicStorefront: React.FC = () => {
               <ShoppingBag className="w-6 h-6 text-slate-200" />
            </div>
 
-           {products.length > 0 ? (
+           {Array.isArray(products) && products.length > 0 ? (
              <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
                 {products.map((product) => (
                   <motion.div 
