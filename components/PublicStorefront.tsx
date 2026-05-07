@@ -68,10 +68,10 @@ const PublicStorefront: React.FC = () => {
             style={{ borderColor: primaryColor }}
           >
             {brand.logoUrl ? (
-              <img src={brand.logoUrl} alt={brand.businessName} className="w-full h-full object-cover" />
+              <img src={brand.logoUrl} alt={brand.businessName || 'Business'} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-slate-50 text-3xl font-black text-slate-300">
-                {brand.businessName.charAt(0)}
+                {(brand.businessName || 'B').charAt(0)}
               </div>
             )}
           </motion.div>
