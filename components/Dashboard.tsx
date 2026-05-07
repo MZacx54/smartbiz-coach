@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Zap, TrendingUp, Calendar, AlertCircle, CheckCircle, Package, Receipt, Users, BrainCircuit, Activity, Wand2, Store, MessageCircle } from 'lucide-react';
+import { Sparkles, Zap, TrendingUp, Calendar, AlertCircle, CheckCircle, Package, Receipt, Users, BrainCircuit, Activity, Wand2, Store, MessageCircle, Globe } from 'lucide-react';
 import { AppView, ActionCard, UserStats, DailyMotivation, SeasonalAlert, Transaction, Debtor, InventoryItem } from '../types';
 import { generateDailyMotivation, generateSeasonalTips, getTrendingTopics } from '../services/geminiService';
 
@@ -183,6 +183,12 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
           <span className="text-xs font-bold text-gray-700">{userStats.bizCredits} Credits</span>
           <button onClick={() => onNavigate(AppView.SETTINGS)} className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded transition-colors font-bold">Top Up</button>
         </div>
+        <button 
+          onClick={() => onNavigate(AppView.STOREFRONT)}
+          className="bg-indigo-600 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-lg shadow-indigo-100 flex items-center gap-2 hover:bg-indigo-700 transition-all active:scale-95"
+        >
+          <Globe className="w-3.5 h-3.5" /> My Store Link
+        </button>
       </div>
 
       {/* Hero / Motivation Section */}

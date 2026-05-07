@@ -6,6 +6,7 @@ class BrandIdentity(models.Model):
     business_name = models.CharField(max_length=255)
     niche = models.CharField(max_length=100)
     vibe = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True, blank=True, null=True)
     
     # JSON Fields for structured data
     colors = models.JSONField(default=dict)
@@ -29,6 +30,19 @@ class BrandIdentity(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            import uuid
+            base_slug = slugify(self.business_name)
+            if not base_slug:
+                base_slug = "biz"
+            self.slug = base_slug
+            # Simple check for uniqueness (will handle race conditions in production with DB constraints)
+            if BrandIdentity.objects.filter(slug=self.slug).exists():
+                self.slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.business_name} ({self.user.username})"

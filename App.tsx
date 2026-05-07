@@ -33,6 +33,7 @@ const SmartBizHub = lazy(() => import("./components/SmartBizHub"));
 const ProductMagic = lazy(() => import("./components/ProductMagic"));
 const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
+const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
 
 import {
   AppView,
@@ -101,6 +102,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/support')) setCurrentView(AppView.WHATSAPP_SUPPORT);
     else if (path.includes('/dashboard/sales-assistant')) setCurrentView(AppView.SALES_ASSISTANT);
     else if (path.includes('/dashboard/order-gen')) setCurrentView(AppView.ORDER_GENERATOR);
+    else if (path.includes('/dashboard/store-preview')) setCurrentView(AppView.STOREFRONT);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else if (path.includes('/dashboard/product-magic')) setCurrentView(AppView.PRODUCT_MAGIC);
@@ -264,6 +266,7 @@ const App: React.FC = () => {
       case AppView.WHATSAPP_SUPPORT: navigate('/dashboard/support'); break;
       case AppView.SALES_ASSISTANT: navigate('/dashboard/sales-assistant'); break;
       case AppView.ORDER_GENERATOR: navigate('/dashboard/order-gen'); break;
+      case AppView.STOREFRONT: navigate('/dashboard/store-preview'); break;
       case AppView.SETTINGS: navigate('/dashboard/settings'); break;
       case AppView.HUB: navigate('/dashboard/hub'); break;
       case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
@@ -386,6 +389,11 @@ const App: React.FC = () => {
 
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/u/:slug" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicStorefront />
+          </Suspense>
+        } />
 
         <Route path="/login" element={
           user ? <Navigate to="/dashboard" replace /> : <Auth onLogin={handleLogin} />
@@ -434,6 +442,7 @@ const App: React.FC = () => {
                   <Route path="hub" element={<SmartBizHub />} />
                   <Route path="product-magic" element={<ProductMagic />} />
                   <Route path="order-gen" element={<OrderGenerator />} />
+                  <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>

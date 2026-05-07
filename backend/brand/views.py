@@ -116,3 +116,14 @@ class BrandDetail(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return BrandIdentity.objects.filter(user=self.request.user)
+
+class PublicStorefrontView(views.APIView):
+    permission_classes = [] # Public view
+
+    def get(self, request, slug):
+        try:
+            brand = BrandIdentity.objects.get(slug=slug)
+            serializer = BrandSerializer(brand)
+            return Response(serializer.data)
+        except BrandIdentity.DoesNotExist:
+            return Response({'error': 'Store not found'}, status=404)
