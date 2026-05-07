@@ -1,7 +1,98 @@
-from rest_framework import generics, permissions, filters
+from rest_framework import generics, permissions, filters, views
 from django.db.models import Q
-from .models import VendorVerification, MarketplaceListing, Product
-from .serializers import VendorVerificationSerializer, MarketplaceListingSerializer, ProductSerializer
+from .models import VendorVerification, MarketplaceListing, Product, Lead
+from .serializers import VendorVerificationSerializer, MarketplaceListingSerializer, ProductSerializer, LeadSerializer
+
+# ... existing views ...
+
+class LeadListCreateView(generics.ListCreateAPIView):
+    serializer_class = LeadSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        # Business owners see their leads
+        if self.request.user.is_authenticated:
+            return Lead.objects.filter(brand__user=self.request.user).order_by('-created_at')
+        return Lead.objects.none()
+
+    def perform_create(self, serializer):
+        # If public, we need to find the brand from the product
+        product_id = self.request.data.get('product')
+        if product_id:
+            product = Product.objects.get(id=product_id)
+            serializer.save(brand=product.brand)
+        else:
+            # General inquiry to the user's own brand (if authenticated)
+            from brand.models import BrandIdentity
+            brand = BrandIdentity.objects.get(user=self.request.user)
+            serializer.save(brand=brand)
+
+class LeadDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = LeadSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Lead.objects.filter(brand__user=self.request.user)
+
+class EcosystemAnalyticsView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Sum, Count
+        user_products = Product.objects.filter(brand__user=request.user)
+        user_leads = Lead.objects.filter(brand__user=request.user)
+        
+        # Calculations
+        inventory_value = user_products.filter(product_type='PHYSICAL').aggregate(total=Sum('price'))['total'] or 0
+        property_value = user_products.filter(product_type='PROPERTY').aggregate(total=Sum('price'))['total'] or 0
+        service_count = user_products.filter(product_type='SERVICE').count()
+        
+        total_leads = user_leads.count()
+        won_leads = user_leads.filter(status='WON').count()
+        conversion_rate = (won_leads / total_leads * 100) if total_leads > 0 else 0
+        
+        return Response({
+            'ecosystem_value': float(inventory_value + property_value),
+            'inventory_value': float(inventory_value),
+            'property_value': float(property_value),
+            'service_count': service_count,
+            'total_leads': total_leads,
+            'won_leads': won_leads,
+            'conversion_rate': round(conversion_rate, 1),
+            'top_categories': user_products.values('category').annotate(count=Count('id')).order_by('-count')[:3]
+        })
+
+class OrderCreateView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        items = request.data.get('items', [])
+        reference = request.data.get('reference')
+        total_amount = request.data.get('total_amount')
+        
+        leads_created = []
+        for item in items:
+            product_id = item.get('productId')
+            try:
+                product = Product.objects.get(id=product_id)
+                lead = Lead.objects.create(
+                    brand=product.brand,
+                    product=product,
+                    customer_name=request.user.get_full_name() or request.user.username,
+                    customer_contact=request.user.email,
+                    message=f"Order paid via reference: {reference}. Qty: {item.get('quantity')}",
+                    lead_type='ORDER',
+                    status='WON',
+                    quoted_price=float(item.get('price')) * int(item.get('quantity'))
+                )
+                leads_created.append(lead.id)
+            except Product.DoesNotExist:
+                continue
+
+        return Response({
+            "message": "Order processed and leads created for vendors",
+            "leads": leads_created
+        }, status=status.HTTP_201_CREATED)
 
 class VendorProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = VendorVerificationSerializer
@@ -46,12 +137,24 @@ class ProductListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Product.objects.filter(brand__user=self.request.user)
+        # Allow filtering by type for unified commerce engine
+        queryset = Product.objects.filter(brand__user=self.request.user)
+        product_type = self.request.query_params.get('product_type')
+        if product_type:
+            queryset = queryset.filter(product_type=product_type)
+        return queryset
 
     def perform_create(self, serializer):
         from brand.models import BrandIdentity
         brand = BrandIdentity.objects.get(user=self.request.user)
         serializer.save(brand=brand)
+
+class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Product.objects.filter(brand__user=self.request.user)
 
 class PublicBrandProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
@@ -60,3 +163,27 @@ class PublicBrandProductListView(generics.ListAPIView):
     def get_queryset(self):
         slug = self.kwargs.get('slug')
         return Product.objects.filter(brand__slug=slug, is_public=True)
+
+class GlobalMarketplaceListView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [] # Public
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'description', 'category', 'location', 'brand__business_name']
+
+    def get_queryset(self):
+        # Only show items promoted to market square
+        queryset = Product.objects.filter(is_promoted=True).order_by('-created_at')
+        product_type = self.request.query_params.get('product_type')
+        if product_type:
+            queryset = queryset.filter(product_type=product_type)
+        return queryset
+
+class DashboardSearchView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'description', 'category', 'location']
+
+    def get_queryset(self):
+        # Search across ALL the user's ecosystem items
+        return Product.objects.filter(brand__user=self.request.user).order_by('-created_at')

@@ -116,8 +116,8 @@ export const editImage = async (imageBase64: string, mimeType: string, prompt: s
 export const editProductImage = editImage;
 
 // More content generation functions
-export const generateSocialContent = async (topic: string, platform: string, tone: string, format: string) => {
-    const response = await api.post('content/generate-social-content/', { topic, platform, tone, format });
+export const generateSocialContent = async (topic: string, platform: string, tone: string, format: string, context?: string) => {
+    const response = await api.post('content/generate-social-content/', { topic, platform, tone, format, context });
     return response.data;
 };
 

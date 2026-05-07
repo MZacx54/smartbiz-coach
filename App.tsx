@@ -35,6 +35,7 @@ const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
 const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
 const ProductManager = lazy(() => import("./components/ProductManager"));
+const LeadManager = lazy(() => import("./components/LeadManager"));
 
 import {
   AppView,
@@ -98,6 +99,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/business-plan')) setCurrentView(AppView.BUSINESS_PLAN);
     else if (path.includes('/dashboard/grants')) setCurrentView(AppView.GRANT_MATCHER);
     else if (path.includes('/dashboard/roadmap')) setCurrentView(AppView.DIGITAL_ROADMAP);
+    else if (path.includes('/dashboard/leads')) setCurrentView(AppView.LEAD_MANAGER);
     else if (path.includes('/dashboard/learning')) setCurrentView(AppView.LEARNING_HUB);
     else if (path.includes('/dashboard/compliance')) setCurrentView(AppView.COMPLIANCE);
     else if (path.includes('/dashboard/support')) setCurrentView(AppView.WHATSAPP_SUPPORT);
@@ -136,6 +138,7 @@ const App: React.FC = () => {
       case AppView.SALES_ASSISTANT: return 'AI Sales Assistant';
       case AppView.HUB: return 'SmartBiz Hub';
       case AppView.PRODUCT_MAGIC: return 'Product Magic - AI Photo Enhancement';
+      case AppView.LEAD_MANAGER: return 'Lead Manager';
       default: return 'SmartBiz Coach';
     }
   };
@@ -296,12 +299,12 @@ const App: React.FC = () => {
     setSavedBrand(brand);
   };
 
-  const handleAddToCart = (product: ProductListing) => {
+  const handleAddToCart = (product: UnifiedItem) => {
     setCartItems((prev: CartItem[]) => {
-      const existing = prev.find((item) => item.productId === product.id);
+      const existing = prev.find((item) => item.productId === String(product.id));
       if (existing) {
         return prev.map((item) =>
-          item.productId === product.id
+          item.productId === String(product.id)
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -310,12 +313,12 @@ const App: React.FC = () => {
         ...prev,
         {
           id: Date.now().toString(),
-          productId: product.id,
-          title: product.title,
+          productId: String(product.id),
+          title: product.name,
           price: product.price,
-          image: product.image,
+          image: product.image_url,
           quantity: 1,
-          vendorId: product.vendorId,
+          vendorId: String(product.id), // Fallback
         },
       ];
     });
@@ -340,25 +343,35 @@ const App: React.FC = () => {
         ? await billingService.verifyPayment(reference, amount)
         : await billingService.verifySquadPayment(reference, amount);
 
-      const newTx: Transaction = {
-        id: reference,
-        date: Date.now(),
-        amount: amount,
-        description: `Direct Credit Purchase (${provider})`,
-        status: "SUCCESS",
-        provider: provider,
-        type: "CREDIT_TOPUP",
-      };
-
-      setTransactions((prev: Transaction[]) => [newTx, ...prev]);
-      setCartItems([]);
-
-      if (result.credits !== undefined) {
-        setUserStats((prev) => ({ ...prev, bizCredits: result.credits }));
+      // If there are items in the cart, this is a product order
+      if (cartItems.length > 0) {
+        await api.post('/api/marketplace/orders/create/', {
+          items: cartItems,
+          reference: reference,
+          total_amount: amount
+        });
+        toast.success("Order placed successfully!");
+        setCartItems([]);
+      } else {
+        // This is a credit top-up
+        if (result.credits !== undefined) {
+          setUserStats((prev) => ({ ...prev, bizCredits: result.credits }));
+        }
+        
+        const newTx: Transaction = {
+          id: reference,
+          date: Date.now(),
+          amount: amount,
+          description: `Direct Credit Purchase (${provider})`,
+          status: "SUCCESS",
+          provider: provider,
+          type: "CREDIT_TOPUP",
+        };
+        setTransactions((prev: Transaction[]) => [newTx, ...prev]);
+        toast.success(`Credits added via ${provider}!`);
       }
 
       toast.dismiss();
-      toast.success(`Payment Successful via ${provider}!`);
       navigate('/dashboard');
     } catch (error: any) {
       toast.dismiss();
@@ -434,17 +447,18 @@ const App: React.FC = () => {
                   <Route path="inventory" element={<ProductManager />} />
                   <Route path="debtor" element={<DebtorBook />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
-                  <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} />} />
-                  <Route path="smarthome" element={<SmartHomeFinder />} />
+                  <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" />} />
+                  <Route path="smarthome" element={<Marketplace onAddToCart={handleAddToCart} initialType="PROPERTY" />} />
+                  <Route path="hub" element={<Marketplace onAddToCart={handleAddToCart} initialType="B2B" />} />
                   <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
                   <Route path="compliance" element={<Compliance brand={savedBrand} />} />
                   <Route path="roadmap" element={<DigitalRoadmap />} />
                   <Route path="support" element={<WhatsAppSupport />} />
                   <Route path="sales-assistant" element={<SalesAssistant />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} />} />
-                  <Route path="hub" element={<SmartBizHub />} />
                   <Route path="product-magic" element={<ProductMagic />} />
                   <Route path="order-gen" element={<OrderGenerator />} />
+                  <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>

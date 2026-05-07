@@ -7,7 +7,7 @@ import * as geminiService from '../services/geminiService';
 
 // Types
 type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan';
-type Platform = 'Instagram' | 'Facebook' | 'Twitter' | 'LinkedIn';
+type Platform = 'Instagram' | 'Facebook' | 'Twitter' | 'LinkedIn' | 'TikTok';
 type Tone = 'Exciting' | 'Professional' | 'Funny' | 'Informative';
 type Format = 'Single Post' | 'Carousel' | 'Story' | 'Reel';
 
@@ -116,7 +116,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
             const mimeType = selectedImage?.type || 'image/jpeg';
 
             if (activeTab === 'Post Writer') {
-                result = await geminiService.generateSocialContent(postTopic, platform, tone, format);
+                const context = `Niche: ${brand?.niche || 'General'}. Vibe: ${brand?.vibe || 'Professional'}. Targets: ${brand?.targetAudience || 'Nigerian Audience'}.`;
+                result = await geminiService.generateSocialContent(postTopic, platform, tone, format, context);
             } else if (activeTab === 'Video Script') {
                 result = await geminiService.generateVideoScript(videoTopic, videoPlatform, tone, hookStyle);
             } else if (activeTab === 'Weekly Plan') {
@@ -252,7 +253,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Platform</label>
                                         <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
-                                            <option value="Instagram">Instagram</option><option value="Facebook">Facebook</option><option value="Twitter">Twitter</option><option value="LinkedIn">LinkedIn</option>
+                                            <option value="Instagram">📸 Instagram</option>
+                                            <option value="TikTok">🎵 TikTok</option>
+                                            <option value="Facebook">👥 Facebook</option>
+                                            <option value="Twitter">🐦 Twitter</option>
+                                            <option value="LinkedIn">💼 LinkedIn</option>
                                         </select>
                                     </div>
                                     <div>

@@ -87,6 +87,7 @@ export enum AppView {
   ORDER_GENERATOR = 'ORDER_GENERATOR',
   STOREFRONT = 'STOREFRONT',
   PRODUCT_MANAGER = 'PRODUCT_MANAGER',
+  LEAD_MANAGER = 'LEAD_MANAGER',
 }
 
 export type ActionType = "URGENT" | "INFO" | "GROWTH" | "COMPLETED";
@@ -378,3 +379,21 @@ export interface SeasonalAlert {
   actionItem: string;
   season: string; // e.g. "Rainy Season", "Valentine's"
 }
+
+ e x p o r t   i n t e r f a c e   U n i f i e d I t e m   { 
+     i d :   n u m b e r ; 
+     n a m e :   s t r i n g ; 
+     d e s c r i p t i o n :   s t r i n g ; 
+     p r i c e :   n u m b e r ; 
+     p r i c e _ m a x ? :   n u m b e r ; 
+     i m a g e _ u r l :   s t r i n g ; 
+     c a t e g o r y :   s t r i n g ; 
+     p r o d u c t _ t y p e :   ' P H Y S I C A L '   |   ' S E R V I C E '   |   ' P R O P E R T Y '   |   ' B 2 B ' ; 
+     l o c a t i o n :   s t r i n g ; 
+     m e t a d a t a :   a n y ; 
+     b r a n d _ n a m e ? :   s t r i n g ; 
+     i s _ p u b l i c :   b o o l e a n ; 
+     i s _ p r o m o t e d :   b o o l e a n ; 
+     s t o c k _ c o u n t :   n u m b e r ; 
+ }  
+ 

@@ -101,9 +101,18 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
   const [stockValue, setStockValue] = useState(0);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
+  const [ecosystemStats, setEcosystemStats] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
+      // Ecosystem Analytics
+      try {
+        const response = await api.get('/api/marketplace/analytics/');
+        setEcosystemStats(response.data);
+      } catch (e) {
+        console.error("Failed to load ecosystem analytics", e);
+      }
+
       // AI Data
       try {
         const m = await generateDailyMotivation("Entrepreneur");
@@ -160,10 +169,10 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
   const quickActions = [
     { label: 'AI Content', icon: <Sparkles className="w-5 h-5" />, view: AppView.CONTENT_GENERATOR, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' },
     { label: 'Product Magic', icon: <Wand2 className="w-5 h-5" />, view: AppView.PRODUCT_MAGIC, color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
-    { label: 'SmartBiz Hub', icon: <Store className="w-5 h-5" />, view: AppView.HUB, color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+    { label: 'Market Square', icon: <Globe className="w-5 h-5" />, view: AppView.MARKETPLACE, color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
     { label: 'Sales Closer', icon: <MessageCircle className="w-5 h-5" />, view: AppView.SALES_ASSISTANT, color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
     { label: 'Debt Tracker', icon: <AlertCircle className="w-5 h-5" />, view: AppView.DEBTOR_BOOK, color: 'bg-rose-500/10 text-rose-600 border-rose-500/20' },
-    { label: 'Inventory AI', icon: <Package className="w-5 h-5" />, view: AppView.PRODUCT_MANAGER, color: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+    { label: 'Unified Catalog', icon: <Package className="w-5 h-5" />, view: AppView.PRODUCT_MANAGER, color: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   ];
 
   return (
@@ -262,34 +271,34 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
 
         {/* Inventory Value (Asset) */}
         <div
-          onClick={() => onNavigate(AppView.INVENTORY)}
+          onClick={() => onNavigate(AppView.PRODUCT_MANAGER)}
           className="bg-white p-5 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 flex flex-col justify-between cursor-pointer hover:border-blue-200 hover:shadow-md transition-all group relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-8 -mt-8 opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="flex justify-between items-start mb-4 relative z-10">
-            <p className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider">Stock Value</p>
+            <p className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider">Ecosystem Value</p>
             <div className="bg-blue-50 p-2 rounded-lg text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                 <Package className="w-4 h-4" />
             </div>
           </div>
           <div className="relative z-10">
-            <h3 className="text-2xl font-bold text-gray-900 font-heading">₦{stockValue.toLocaleString()}</h3>
-            <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1"><Activity className="w-3 h-3 text-emerald-400" /> Tracking smoothly</p>
+            <h3 className="text-2xl font-bold text-gray-900 font-heading">₦{(ecosystemStats?.ecosystem_value || stockValue).toLocaleString()}</h3>
+            <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1"><Activity className="w-3 h-3 text-emerald-400" /> {ecosystemStats?.service_count || 0} services active</p>
           </div>
         </div>
 
-        {/* Grant Score (Growth) */}
+        {/* Lead Analytics (Growth) */}
         <div
-          onClick={() => onNavigate(AppView.COMPLIANCE)}
-          className="bg-white p-5 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 flex items-center justify-between cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all group relative overflow-hidden"
+          onClick={() => onNavigate(AppView.LEAD_MANAGER)}
+          className="bg-white p-5 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 flex items-center justify-between cursor-pointer hover:border-indigo-200 hover:shadow-md transition-all group relative overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-full -mr-8 -mt-8 opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-full -mr-8 -mt-8 opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="relative z-10">
-            <p className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider mb-2">Funding Readines</p>
-            <h3 className="text-2xl font-bold text-gray-900">{userStats.grantReadinessScore}/100</h3>
-            <p className="text-[10px] text-green-600 font-bold mt-1">Get Funding Ready →</p>
+            <p className="text-[11px] font-extrabold text-gray-500 uppercase tracking-wider mb-2">Lead Conversion</p>
+            <h3 className="text-2xl font-bold text-gray-900">{ecosystemStats?.conversion_rate || 0}%</h3>
+            <p className="text-[10px] text-indigo-600 font-bold mt-1">{ecosystemStats?.won_leads || 0} deals won today →</p>
           </div>
-          <CircularProgress percentage={userStats.grantReadinessScore} color={userStats.grantReadinessScore > 70 ? '#16a34a' : '#f59e0b'} />
+          <CircularProgress percentage={ecosystemStats?.conversion_rate || 0} color="#6366f1" />
         </div>
       </div>
 
@@ -355,32 +364,32 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
         {/* Recent Activity */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold font-heading text-gray-900">Recent Transactions</h3>
-            <button onClick={() => onNavigate(AppView.SETTINGS)} className="text-xs text-indigo-600 font-bold">View All</button>
+            <h3 className="text-sm font-bold font-heading text-gray-900">Recent Inquiries & Orders</h3>
+            <button onClick={() => onNavigate(AppView.LEAD_MANAGER)} className="text-xs text-indigo-600 font-bold">View Inbox</button>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            {recentTransactions.length === 0 ? (
+            {!ecosystemStats || ecosystemStats.total_leads === 0 ? (
               <div className="p-6 text-center text-gray-400 text-xs italic">
-                No recent activity recorded.
+                No recent inquiries. Share your store link to get started!
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {recentTransactions.map(tx => (
-                  <div key={tx.id} className="p-3 flex justify-between items-center hover:bg-gray-50">
+                {/* We assume ecosystemStats contains some recent leads or we fetch them separately */}
+                <div className="p-4 bg-indigo-50/30 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${tx.type === 'PURCHASE' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
-                        {tx.type === 'PURCHASE' ? '🛒' : '💰'}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-900 truncate max-w-[120px]">{tx.description}</p>
-                        <p className="text-[10px] text-gray-400">{new Date(tx.date).toLocaleDateString()}</p>
-                      </div>
+                        <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-xs">📬</div>
+                        <div>
+                            <p className="text-xs font-bold text-slate-800">New Potential Deals</p>
+                            <p className="text-[10px] text-slate-500">{ecosystemStats.total_leads} Total Inquiries</p>
+                        </div>
                     </div>
-                    <span className="text-xs font-bold text-gray-900">
-                      {tx.type === 'PURCHASE' ? '-' : '+'} ₦{tx.amount.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
+                    <button 
+                        onClick={() => onNavigate(AppView.LEAD_MANAGER)}
+                        className="bg-white px-3 py-1.5 rounded-lg border border-indigo-100 text-[10px] font-black text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all"
+                    >
+                        Review Now
+                    </button>
+                </div>
               </div>
             )}
           </div>

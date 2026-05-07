@@ -136,60 +136,96 @@ const PublicStorefront: React.FC = () => {
            </a>
         </div>
 
-        {/* Product Collection */}
-        <section className="space-y-10">
-           <div className="flex justify-between items-end border-b border-slate-100 pb-6">
-              <div>
-                <h3 className="text-2xl font-black text-slate-800" style={{ fontFamily: headingFont }}>Our Collection</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Handpicked products for you</p>
-              </div>
-              <ShoppingBag className="w-6 h-6 text-slate-200" />
-           </div>
+        {/* Catalog Sections */}
+        {['PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B'].map(type => {
+          const typeProducts = products.filter(p => p.product_type === type);
+          if (typeProducts.length === 0) return null;
 
-           {Array.isArray(products) && products.length > 0 ? (
-             <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-                {products.map((product) => (
-                  <motion.div 
-                    key={product.id}
-                    whileHover={{ y: -8 }}
-                    className="group bg-slate-50/30 rounded-[40px] overflow-hidden border border-slate-100 flex flex-col transition-all"
-                  >
-                    <div className="aspect-[4/5] relative overflow-hidden bg-slate-100">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ShoppingBag className="w-16 h-16 text-slate-200" />
+          return (
+            <section key={type} className="space-y-10">
+               <div className="flex justify-between items-end border-b border-slate-100 pb-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-800" style={{ fontFamily: headingFont }}>
+                      {type === 'PHYSICAL' && 'Our Collection'}
+                      {type === 'SERVICE' && 'Professional Services'}
+                      {type === 'PROPERTY' && 'Real Estate & Properties'}
+                      {type === 'B2B' && 'Wholesale & B2B'}
+                    </h3>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                      {type === 'PHYSICAL' && 'Premium retail products'}
+                      {type === 'SERVICE' && 'Expert solutions for you'}
+                      {type === 'PROPERTY' && 'Discover your next space'}
+                      {type === 'B2B' && 'Bulk deals and partnerships'}
+                    </p>
+                  </div>
+                  <ShoppingBag className="w-6 h-6 text-slate-200" />
+               </div>
+
+               <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+                  {typeProducts.map((product) => (
+                    <motion.div 
+                      key={product.id}
+                      whileHover={{ y: -8 }}
+                      className="group bg-slate-50/30 rounded-[40px] overflow-hidden border border-slate-100 flex flex-col transition-all"
+                    >
+                      <div className="aspect-[4/5] relative overflow-hidden bg-slate-100">
+                        {product.image_url ? (
+                          <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ShoppingBag className="w-16 h-16 text-slate-200" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-lg flex justify-between items-center">
+                          <span className="text-xs font-black text-slate-800">₦{parseFloat(product.price).toLocaleString()}</span>
+                          {product.location && <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-0.5"><MapPin className="w-2 h-2" /> {product.location}</span>}
                         </div>
-                      )}
-                      <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-lg flex justify-between items-center">
-                        <span className="text-xs font-black text-slate-800">₦{parseFloat(product.price).toLocaleString()}</span>
-                        {product.is_promoted && <span className="bg-indigo-600 text-[8px] text-white px-2 py-0.5 rounded-full uppercase font-black tracking-widest">Featured</span>}
                       </div>
-                    </div>
-                    <div className="p-6 flex-1 flex flex-col">
-                      <h4 className="font-bold text-base text-slate-800 mb-2 line-clamp-1">{product.name}</h4>
-                      <p className="text-[11px] text-slate-500 line-clamp-2 mb-6 flex-1 leading-relaxed">{product.description}</p>
-                      <button 
-                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hi ${brand.businessName}, I'm interested in "${product.name}" (₦${parseFloat(product.price).toLocaleString()}) from your store!`)}`, '_blank')}
-                        className="w-full bg-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl border border-slate-200 hover:border-indigo-600 hover:text-indigo-600 hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <MessageCircle className="w-4 h-4" /> Order Now
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="p-6 flex-1 flex flex-col">
+                        <h4 className="font-bold text-base text-slate-800 mb-2 line-clamp-1">{product.name}</h4>
+                        <p className="text-[11px] text-slate-500 line-clamp-2 mb-6 flex-1 leading-relaxed">{product.description}</p>
+                        <button 
+                          onClick={async () => {
+                            // 1. Log the lead in the backend
+                            try {
+                              await api.post('/api/marketplace/leads/', {
+                                product: product.id,
+                                customer_name: 'Store Visitor',
+                                customer_contact: 'WhatsApp',
+                                message: `Interested in ${product.name} from public storefront.`,
+                                lead_type: product.product_type === 'B2B' ? 'B2B' : product.product_type === 'PHYSICAL' ? 'ORDER' : 'INQUIRY'
+                              });
+                            } catch (err) {
+                              console.error('Failed to log lead', err);
+                            }
+
+                            // 2. Open WhatsApp for immediate conversion
+                            const message = `Hi ${brand.businessName}, I'm interested in "${product.name}" (₦${parseFloat(product.price).toLocaleString()}) from your store!`;
+                            window.open(`https://wa.me/${brand.phone || ''}?text=${encodeURIComponent(message)}`, '_blank');
+                          }}
+                          className="w-full bg-white text-[10px] font-black uppercase tracking-[0.2em] py-4 rounded-2xl border border-slate-200 hover:border-indigo-600 hover:text-indigo-600 hover:shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                        >
+                          <MessageCircle className="w-4 h-4" /> 
+                          {type === 'PHYSICAL' ? 'Order Now' : type === 'SERVICE' ? 'Hire Pro' : 'Inquire'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+               </div>
+            </section>
+          );
+        })}
+
+        {products.length === 0 && (
+          <div className="bg-slate-50 rounded-[40px] p-20 text-center space-y-6 border-2 border-dashed border-slate-200">
+             <ShoppingBag className="w-16 h-16 text-slate-200 mx-auto" />
+             <div className="space-y-2">
+               <p className="text-lg font-black text-slate-800">No Products Yet</p>
+               <p className="text-sm font-medium text-slate-400">The business catalog is being updated. Check back soon!</p>
              </div>
-           ) : (
-             <div className="bg-slate-50 rounded-[40px] p-20 text-center space-y-6 border-2 border-dashed border-slate-200">
-                <ShoppingBag className="w-16 h-16 text-slate-200 mx-auto" />
-                <div className="space-y-2">
-                  <p className="text-lg font-black text-slate-800">No Products Yet</p>
-                  <p className="text-sm font-medium text-slate-400">The business catalog is being updated. Check back soon!</p>
-                </div>
-             </div>
-           )}
-        </section>
+          </div>
+        )}
+on>
 
         {/* Policies */}
         <section className="bg-slate-50 rounded-[50px] p-12 space-y-8">

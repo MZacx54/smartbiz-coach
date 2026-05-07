@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppView, User, CartItem, UserStats, ActionCard } from '../types';
+import GlobalSearch from './GlobalSearch';
 
 interface DashboardLayoutProps {
     user: User;
@@ -124,15 +125,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
                     <div className="pt-4 pb-2">
                         <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
-                            Growth
+                            Marketplace Ecosystem
                         </p>
                     </div>
-                    <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🛒" />
-                    <NavItem view={AppView.SMARTHOME_FINDER} label="SmartHome" icon="🏠" />
-                    <NavItem view={AppView.PRODUCT_MAGIC} label="Product Magic" icon="🪄" />
-                    <NavItem view={AppView.SALES_ASSISTANT} label="Sales Closer" icon="💬" />
-                    <NavItem view={AppView.STOREFRONT} label="My Storefront" icon="🔗" />
+                    <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🏛️" />
                     <NavItem view={AppView.HUB} label="SmartBiz Hub" icon="🤝" />
+                    <NavItem view={AppView.LEAD_MANAGER} label="Lead Inbox" icon="📬" />
+                    <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
+                    <NavItem view={AppView.SALES_ASSISTANT} label="Sales Closer" icon="💬" />
 
                     {cartItems.length > 0 && (
                         <button
@@ -186,8 +186,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
 
             {/* Main Content Area */}
-            <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
-                <div className="max-w-3xl mx-auto pb-20 md:pb-0">
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen bg-slate-50/30">
+                <div className="max-w-5xl mx-auto space-y-8 pb-20 md:pb-0">
+                    {/* Header with Search */}
+                    <header className="hidden md:flex justify-between items-center bg-white/40 backdrop-blur-md p-4 rounded-3xl border border-white/60 sticky top-0 z-20 shadow-sm">
+                        <GlobalSearch onResultClick={(item) => onNavigate(AppView.PRODUCT_MANAGER)} />
+                        
+                        <div className="flex items-center gap-4">
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged in as</p>
+                                <p className="text-xs font-bold text-slate-800">{user.businessName}</p>
+                            </div>
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-indigo-100">
+                                {user.businessName?.charAt(0) || 'B'}
+                            </div>
+                        </div>
+                    </header>
+
                     {children}
                 </div>
             </main>

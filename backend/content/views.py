@@ -54,28 +54,41 @@ class GenerateSocialContentView(views.APIView):
         platform = request.data.get('platform')
         tone = request.data.get('tone')
         format_type = request.data.get('format', 'SINGLE')
+        user_context = request.data.get('context', '')
 
         if not all([topic, platform, tone]):
              return Response({'error': 'Missing required parameters'}, status=400)
+
+        # Platform-specific optimization instructions
+        platform_hooks = ""
+        if platform.upper() == 'TIKTOK':
+            platform_hooks = "Focus on a strong hook in the first 3 seconds. Use trending sounds/vibe. Keep it fast-paced and relatable."
+        elif platform.upper() == 'INSTAGRAM':
+            platform_hooks = "Focus on aesthetic appeal and engagement-driven captions."
+        elif platform.upper() == 'LINKEDIN':
+            platform_hooks = "Focus on professional value, thought leadership, and storytelling."
 
         prompt = f"""
         Write a { 'Carousel (multi-slide)' if format_type == 'CAROUSEL' else 'Single Image' } social media post for {platform}.
         Topic: "{topic}"
         Tone: "{tone}"
+        
+        {platform_hooks}
+        
+        USER SPECIFIED CONTEXT: {user_context}
+        
         Include a caption, hashtags, and call to action.
         """
         
-        # We can refine this prompt or use a system instruction if we want strict schema
-        # For now, let's ask for JSON directly in the prompt or rely on the utility if we updated it to support schemas well.
-        
-        # Ideally, we pass the prompts into the utility or keep them here.
         brand_context = get_brand_context(request.user)
         system_prompt = f"""
         {brand_context}
         
         You are a Senior Digital Marketer specializing in Nigerian MSMEs. 
-        Your goal is to write high-converting, viral social media content that reflects the specific brand context above.
+        Your goal is to write high-converting, viral social media content that reflects the specific brand context and user context above.
         Be creative, use local context where appropriate (but remain professional), and ensure the content is unique to this business.
+        
+        If the platform is TikTok, ensure the caption is punchy and optimized for short-form video discovery.
         
         Return JSON with keys: 
         - caption: The primary post caption.
