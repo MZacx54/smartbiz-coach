@@ -53,9 +53,10 @@ def clean_json_response(text):
     text = re.sub(r'```\s*', '', text)
     return text.strip()
 
-def generate_json_content(prompt, system_instruction=None, response_schema=None):
+def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, mime_type=None):
     """
     Generates JSON content using Groq's Llama-3 model.
+    Supports vision if image_base64 is provided.
     """
     messages = []
     if system_instruction:
@@ -63,11 +64,30 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None)
     
     # Force JSON instruction for safety
     prompt = prompt + "\n\nIMPORTANT: You must return a valid JSON object ONLY. No markdown, no conversational text."
-    messages.append({"role": "user", "content": prompt})
+    
+    if image_base64:
+        # Vision request format
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{mime_type or 'image/jpeg'};base64,{image_base64}"
+                    }
+                }
+            ]
+        })
+        model = DEFAULT_VISION_MODEL
+    else:
+        # Standard text request
+        messages.append({"role": "user", "content": prompt})
+        model = DEFAULT_TEXT_MODEL
 
     try:
         # Llama 3 models support JSON mode
-        response_text = make_groq_request(messages, model=DEFAULT_TEXT_MODEL, response_format={"type": "json_object"})
+        response_text = make_groq_request(messages, model=model, response_format={"type": "json_object"})
         cleaned_text = clean_json_response(response_text)
         return json.loads(cleaned_text)
     except Exception as e:

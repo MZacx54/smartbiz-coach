@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Wand2, ArrowRight } from 'lucide-react';
 import { BrandIdentity } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as geminiService from '../services/geminiService';
@@ -26,6 +28,7 @@ interface ContentStudioProps {
 }
 
 const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<TabType>('Post Writer');
 
     // Post Writer State
@@ -378,6 +381,22 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
                                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start space-x-3">
                                     <span className="text-xl">⚠️</span>
                                     <p className="text-sm text-amber-800 leading-relaxed font-medium">Generating images consumes more credits. Please ensure your prompt is detailed to get the best results first time.</p>
+                                </div>
+
+                                <div 
+                                    onClick={() => navigate('/dashboard/product-magic')}
+                                    className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5 flex items-center justify-between cursor-pointer group hover:shadow-md transition-all mt-4"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
+                                            <Wand2 className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-indigo-900 text-sm">Have a real product photo?</h4>
+                                            <p className="text-[11px] text-indigo-600 font-medium">Use Product Magic to enhance your actual products with AI analysis.</p>
+                                        </div>
+                                    </div>
+                                    <ArrowRight className="w-5 h-5 text-indigo-400 group-hover:translate-x-1 transition-transform" />
                                 </div>
 
                                 <button onClick={handleGenerate} disabled={isGenerating || !photoDesc.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">

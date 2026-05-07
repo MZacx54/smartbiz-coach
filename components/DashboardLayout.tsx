@@ -151,7 +151,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
                     <NavItem view={AppView.BUSINESS_PLAN} label="Business Plan" icon="📈" />
                     <NavItem view={AppView.GRANT_MATCHER} label="Find Funding" icon="💰" />
-                    <NavItem view={AppView.DIGITAL_ROADMAP} label="Marketing Roadmap" icon="🗺️" />
+                    <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
                     <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
 
                     <div className="pt-4 pb-2">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Truck, Store, Users, Briefcase, CheckCircle, MessageCircle, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Truck, Store, Users, Briefcase, CheckCircle, MessageCircle, ArrowRight, Package, Box } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import api from '../services/api';
 
 interface Vendor {
@@ -33,6 +34,7 @@ export default function SmartBizHub() {
     { id: 'WHOLESALE', name: 'Wholesale', icon: Store },
     { id: 'INFLUENCER', name: 'Influencers', icon: Users },
     { id: 'SERVICES', name: 'Services', icon: Briefcase },
+    { id: 'RAW_MATERIALS', name: 'Raw Materials', icon: Box },
   ];
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function SmartBizHub() {
   const fetchListings = async () => {
     setLoading(true);
     try {
-      let url = '/api/marketplace/listings/?';
+      let url = 'marketplace/listings/?';
       if (activeCategory !== 'ALL') url += `category=${activeCategory}&`;
       if (searchQuery) url += `search=${searchQuery}`;
       
@@ -71,7 +73,10 @@ export default function SmartBizHub() {
             The trusted B2B marketplace for Nigerian MSMEs. Find verified dispatch riders, wholesale suppliers, and micro-influencers to scale your business.
           </p>
         </div>
-        <button className="bg-white text-blue-900 px-6 py-3 rounded-full font-semibold shadow-lg hover:bg-blue-50 transition-all flex items-center gap-2 shrink-0">
+        <button 
+          onClick={() => toast.success("Vendor Dashboard coming soon! You will be able to post listings directly.")}
+          className="bg-white text-blue-900 px-6 py-3 rounded-full font-semibold shadow-lg hover:bg-blue-50 transition-all flex items-center gap-2 shrink-0 active:scale-95"
+        >
           Post a Listing <ArrowRight className="w-4 h-4" />
         </button>
       </div>
