@@ -34,7 +34,7 @@ const ProductManager: React.FC = () => {
   const fetchProducts = async () => {
     try {
       const response = await api.get('/api/marketplace/products/');
-      setProducts(response.data);
+      setProducts(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       toast.error('Failed to load products');
     } finally {
@@ -281,7 +281,7 @@ const ProductManager: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <AnimatePresence>
-              {products.map((product) => (
+              {Array.isArray(products) && products.map((product) => (
                 <motion.div 
                   key={product.id}
                   layout
