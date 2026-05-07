@@ -118,7 +118,7 @@ const PublicStorefront: React.FC = () => {
         {/* Contact Links */}
         <div className="max-w-xl mx-auto space-y-4">
            <a 
-            href={`https://wa.me/?text=Hi ${brand.businessName}, I saw your store on SmartBiz and I'm interested in your services!`}
+            href={`https://wa.me/?text=${encodeURIComponent(`Hi ${brand.businessName || 'there'}, I saw your store on SmartBiz and I'm interested in your services!`)}`}
             target="_blank"
             className="group flex items-center justify-between p-5 rounded-3xl text-white shadow-xl shadow-indigo-100 transition-all hover:-translate-y-1 active:scale-95"
             style={{ backgroundColor: primaryColor }}
