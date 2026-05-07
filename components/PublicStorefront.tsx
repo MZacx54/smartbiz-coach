@@ -225,9 +225,8 @@ const PublicStorefront: React.FC = () => {
              </div>
           </div>
         )}
-      </section>
 
-      {/* Policies */}
+        {/* Policies */}
         <section className="bg-slate-50 rounded-[50px] p-12 space-y-8">
            <h3 className="font-black text-slate-800 uppercase tracking-widest text-xs">Our Commitment</h3>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
