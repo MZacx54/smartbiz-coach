@@ -83,6 +83,7 @@ export enum AppView {
   SETTINGS = 'SETTINGS',
   HUB = 'HUB',
   PRODUCT_MAGIC = 'PRODUCT_MAGIC',
+  SALES_ASSISTANT = 'SALES_ASSISTANT',
 }
 
 export type ActionType = "URGENT" | "INFO" | "GROWTH" | "COMPLETED";

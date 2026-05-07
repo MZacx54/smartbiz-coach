@@ -17,6 +17,7 @@ CREDIT_COSTS = {
     'debt_reminder': 2,
     'transcription': 3,
     'suggested_prompts': 1,
+    'sales_script': 2,
 }
 
 def deduct_credits(user, action_key):
@@ -478,9 +479,52 @@ class GetTrendingTopicsView(views.APIView):
             {"id": "t7", "title": "ASUU Strike Updates", "category": "News", "volume": "90K Posts"}
         ]
         
-        # Return 3 random trends
-        daily_trends = random.sample(trends_pool, 3)
-        return Response(daily_trends)
+            return Response(daily_trends)
+
+
+class GenerateSalesScriptView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
+
+    def post(self, request):
+        context = request.data.get('context', 'CLOSING') # CLOSING, OBJECTION, FOLLOW_UP, GREETING
+        customer_message = request.data.get('customer_message', '')
+        
+        brand_context = get_brand_context(request.user)
+        
+        mode_prompts = {
+            'CLOSING': "Help me close this sale. The customer is interested but hasn't paid yet.",
+            'OBJECTION': f"The customer has an objection: '{customer_message}'. Help me handle it professionally.",
+            'FOLLOW_UP': "Generate a polite but firm follow-up message for a customer who stopped replying.",
+            'GREETING': "Create a warm, professional first-contact message for a new inquiry.",
+            'PRICE_ISSUE': "The customer says the price is too high. Help me explain the value professionally.",
+        }
+        
+        goal = mode_prompts.get(context, mode_prompts['CLOSING'])
+        
+        system_prompt = f"""
+        {brand_context}
+        
+        You are a Master Sales Closer and Digital Marketer for Nigerian businesses. 
+        Your goal is to provide 3 different response options for the business owner to send on WhatsApp.
+        Options should range from:
+        1. Professional & Direct
+        2. Friendly & Persuasive (using local Nigerian context/pidgin where appropriate)
+        3. Urgent (Scarcity/FOMO)
+        
+        Return JSON with keys: 
+        - options: Array of 3 strings (the response messages).
+        - strategy_tip: A one-sentence tip on why these options work.
+        """
+        
+        prompt = f"{goal} \nCustomer Message: '{customer_message}'"
+        
+        try:
+            result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            deduct_credits(request.user, 'sales_script')
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 
 class AnalyzeProductView(views.APIView):

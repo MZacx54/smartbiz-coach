@@ -31,6 +31,7 @@ const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
 const SmartBizHub = lazy(() => import("./components/SmartBizHub"));
 const ProductMagic = lazy(() => import("./components/ProductMagic"));
+const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 
 import {
   AppView,
@@ -97,6 +98,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/learning')) setCurrentView(AppView.LEARNING_HUB);
     else if (path.includes('/dashboard/compliance')) setCurrentView(AppView.COMPLIANCE);
     else if (path.includes('/dashboard/support')) setCurrentView(AppView.WHATSAPP_SUPPORT);
+    else if (path.includes('/dashboard/sales-assistant')) setCurrentView(AppView.SALES_ASSISTANT);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else if (path.includes('/dashboard/product-magic')) setCurrentView(AppView.PRODUCT_MAGIC);
@@ -125,6 +127,7 @@ const App: React.FC = () => {
       case AppView.COMPLIANCE: return 'Business Compliance Context';
       case AppView.DIGITAL_ROADMAP: return 'Digital Marketing Roadmap';
       case AppView.WHATSAPP_SUPPORT: return 'WhatsApp Live Support';
+      case AppView.SALES_ASSISTANT: return 'AI Sales Assistant';
       case AppView.HUB: return 'SmartBiz Hub';
       case AppView.PRODUCT_MAGIC: return 'Product Magic - AI Photo Enhancement';
       default: return 'SmartBiz Coach';
@@ -149,6 +152,7 @@ const App: React.FC = () => {
       case AppView.SMARTHOME_FINDER: return 'Explore affordable homes and agent property listings mapped for Nigerians.';
       case AppView.COMPLIANCE: return 'Learn precisely what business registrations, taxes, and documents are required.';
       case AppView.DIGITAL_ROADMAP: return 'Gain an actionable, step-by-step digital roadmap for marketing.';
+      case AppView.SALES_ASSISTANT: return 'Leverage AI to close more deals and manage customer relationships.';
       case AppView.HUB: return 'Access the exclusive SmartBiz business network and community.';
       case AppView.PRODUCT_MAGIC: return 'Transform phone photos into professional product shots with AI analysis.';
       default: return 'The all-in-one AI platform for Nigerian SMEs.';
@@ -256,6 +260,7 @@ const App: React.FC = () => {
       case AppView.LEARNING_HUB: navigate('/dashboard/learning'); break;
       case AppView.COMPLIANCE: navigate('/dashboard/compliance'); break;
       case AppView.WHATSAPP_SUPPORT: navigate('/dashboard/support'); break;
+      case AppView.SALES_ASSISTANT: navigate('/dashboard/sales-assistant'); break;
       case AppView.SETTINGS: navigate('/dashboard/settings'); break;
       case AppView.HUB: navigate('/dashboard/hub'); break;
       case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
@@ -421,6 +426,7 @@ const App: React.FC = () => {
                   <Route path="compliance" element={<Compliance brand={savedBrand} />} />
                   <Route path="roadmap" element={<DigitalRoadmap />} />
                   <Route path="support" element={<WhatsAppSupport />} />
+                  <Route path="sales-assistant" element={<SalesAssistant />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} />} />
                   <Route path="hub" element={<SmartBizHub />} />
                   <Route path="product-magic" element={<ProductMagic />} />
