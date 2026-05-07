@@ -424,3 +424,54 @@ class GetTrendingTopicsView(views.APIView):
         # Return 3 random trends
         daily_trends = random.sample(trends_pool, 3)
         return Response(daily_trends)
+
+
+class AnalyzeProductView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ImageEditThrottle]
+
+    def post(self, request):
+        image_base64 = request.data.get('image_base64')
+        mime_type = request.data.get('mime_type', 'image/jpeg')
+        mode = request.data.get('mode', 'ANALYZE')
+
+        if not image_base64:
+            return Response({'error': 'No image provided'}, status=400)
+
+        mode_prompts = {
+            'ANALYZE': """Analyze this product photo for e-commerce/social media use.
+Return JSON with these keys:
+- suggestions: array of 4-5 specific improvement tips (lighting, angle, background, props, etc.)
+- quality_score: integer 0-100 rating the photo quality for selling online
+- social_media_tips: array of 3 tips for posting this product on Instagram/TikTok
+- color_palette: array of 5 hex color codes found in the image (e.g. "#FF5733")
+- composition_notes: one paragraph about framing, rule of thirds, focal point
+- enhanced_description: a compelling 2-sentence product description a Nigerian seller could use on Instagram or WhatsApp status""",
+
+            'BG_REMOVE': """Analyze this product photo's background.
+Return JSON with these keys:
+- suggestions: array of 4 specific tips for improving or replacing the background (what color/scene would work best for this product type)
+- quality_score: integer 0-100 rating background cleanliness
+- social_media_tips: array of 3 background styling tips for social media product shots
+- color_palette: array of 5 hex color codes that would make great backgrounds for this product
+- composition_notes: one paragraph about how the current background affects the product visibility
+- enhanced_description: a 2-sentence description focusing on the product's visual appeal against a clean background""",
+
+            'SOCIAL_READY': """Analyze this product for social media marketing in Nigeria.
+Return JSON with these keys:
+- suggestions: array of 4 posting strategy tips (best time to post, story vs feed, reels ideas)
+- quality_score: integer 0-100 rating how social-media-ready this photo is
+- social_media_tips: array of 5 items, each being a ready-to-use caption with emojis and 3 relevant Nigerian hashtags
+- color_palette: array of 5 hex brand colors detected in the product
+- composition_notes: one paragraph about how to crop/edit this for different platforms (IG story vs feed vs TikTok)
+- enhanced_description: a viral-style 3-sentence product pitch a Nigerian entrepreneur would use on WhatsApp Business"""
+        }
+
+        prompt = mode_prompts.get(mode, mode_prompts['ANALYZE'])
+
+        try:
+            result = gemini_utils.generate_json_content(prompt, image_base64=image_base64, mime_type=mime_type)
+            deduct_credits(request.user, 'image_edit')
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)

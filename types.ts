@@ -82,6 +82,7 @@ export enum AppView {
   WHATSAPP_SUPPORT = 'WHATSAPP_SUPPORT',
   SETTINGS = 'SETTINGS',
   HUB = 'HUB',
+  PRODUCT_MAGIC = 'PRODUCT_MAGIC',
 }
 
 export type ActionType = "URGENT" | "INFO" | "GROWTH" | "COMPLETED";

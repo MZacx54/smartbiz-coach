@@ -30,6 +30,7 @@ const Cart = lazy(() => import("./components/Cart"));
 const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
 const SmartBizHub = lazy(() => import("./components/SmartBizHub"));
+const ProductMagic = lazy(() => import("./components/ProductMagic"));
 
 import {
   AppView,
@@ -98,6 +99,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/support')) setCurrentView(AppView.WHATSAPP_SUPPORT);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
+    else if (path.includes('/dashboard/product-magic')) setCurrentView(AppView.PRODUCT_MAGIC);
     else setCurrentView(AppView.DASHBOARD);
   }, [location]);
 
@@ -124,6 +126,7 @@ const App: React.FC = () => {
       case AppView.DIGITAL_ROADMAP: return 'Digital Marketing Roadmap';
       case AppView.WHATSAPP_SUPPORT: return 'WhatsApp Live Support';
       case AppView.HUB: return 'SmartBiz Hub';
+      case AppView.PRODUCT_MAGIC: return 'Product Magic - AI Photo Enhancement';
       default: return 'SmartBiz Coach';
     }
   };
@@ -147,6 +150,7 @@ const App: React.FC = () => {
       case AppView.COMPLIANCE: return 'Learn precisely what business registrations, taxes, and documents are required.';
       case AppView.DIGITAL_ROADMAP: return 'Gain an actionable, step-by-step digital roadmap for marketing.';
       case AppView.HUB: return 'Access the exclusive SmartBiz business network and community.';
+      case AppView.PRODUCT_MAGIC: return 'Transform phone photos into professional product shots with AI analysis.';
       default: return 'The all-in-one AI platform for Nigerian SMEs.';
     }
   };
@@ -254,6 +258,7 @@ const App: React.FC = () => {
       case AppView.WHATSAPP_SUPPORT: navigate('/dashboard/support'); break;
       case AppView.SETTINGS: navigate('/dashboard/settings'); break;
       case AppView.HUB: navigate('/dashboard/hub'); break;
+      case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
       default: navigate('/dashboard');
     }
   };
@@ -418,6 +423,7 @@ const App: React.FC = () => {
                   <Route path="support" element={<WhatsAppSupport />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} />} />
                   <Route path="hub" element={<SmartBizHub />} />
+                  <Route path="product-magic" element={<ProductMagic />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>
