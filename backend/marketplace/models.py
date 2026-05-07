@@ -35,3 +35,22 @@ class MarketplaceListing(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.vendor.business_name}"
+
+class Product(models.Model):
+    brand = models.ForeignKey('brand.BrandIdentity', on_delete=models.CASCADE, related_name='products')
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=12, decimal_places=2)
+    image_url = models.URLField(blank=True, null=True)
+    category = models.CharField(max_length=100, blank=True)
+    
+    # Unified Commerce Flags
+    is_public = models.BooleanField(default=True) # Shown on Personal Storefront
+    is_promoted = models.BooleanField(default=False) # Shown in Market Square
+    
+    stock_count = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.brand.business_name})"

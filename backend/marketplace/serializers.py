@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import VendorVerification, MarketplaceListing
+from .models import VendorVerification, MarketplaceListing, Product
 
 class VendorVerificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,3 +13,9 @@ class MarketplaceListingSerializer(serializers.ModelSerializer):
     class Meta:
         model = MarketplaceListing
         fields = ['id', 'vendor', 'title', 'description', 'category', 'price_min', 'price_max', 'location', 'is_active', 'created_at']
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = '__all__'
+        read_only_fields = ['brand']

@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, filters
 from django.db.models import Q
-from .models import VendorVerification, MarketplaceListing
-from .serializers import VendorVerificationSerializer, MarketplaceListingSerializer
+from .models import VendorVerification, MarketplaceListing, Product
+from .serializers import VendorVerificationSerializer, MarketplaceListingSerializer, ProductSerializer
 
 class VendorProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = VendorVerificationSerializer
@@ -40,3 +40,23 @@ class MarketplaceListingListView(generics.ListCreateAPIView):
             defaults={'business_name': self.request.user.business_name or 'My Business'}
         )
         serializer.save(vendor=vendor)
+
+class ProductListCreateView(generics.ListCreateAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Product.objects.filter(brand__user=self.request.user)
+
+    def perform_create(self, serializer):
+        from brand.models import BrandIdentity
+        brand = BrandIdentity.objects.get(user=self.request.user)
+        serializer.save(brand=brand)
+
+class PublicBrandProductListView(generics.ListAPIView):
+    serializer_class = ProductSerializer
+    permission_classes = [] # Public
+
+    def get_queryset(self):
+        slug = self.kwargs.get('slug')
+        return Product.objects.filter(brand__slug=slug, is_public=True)
