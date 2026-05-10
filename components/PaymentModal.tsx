@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { usePaystackPayment } from "react-paystack";
-import SquadPay, { SquadParams } from "react-squadpay";
+import SquadPay from "react-squadpay";
 
 const PAYSTACK_PUBLIC_KEY =
   import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
@@ -38,7 +38,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const initializePaystack = usePaystackPayment(config);
 
-  const squadParams: SquadParams = {
+  const squadParams: any = {
     key: SQUAD_PUBLIC_KEY,
     email: email,
     amount: amount, // react-squadpay multiplies by 100 internally

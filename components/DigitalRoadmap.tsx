@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RoadmapStep, BrandIdentity } from '../types';
-import { Sparkles, CheckCircle2, ChevronRight, Globe, MessageCircle, Instagram, Linkedin, Video } from 'lucide-react';
+import { Sparkles, CheckCircle2, ChevronRight, Globe, MessageCircle, Camera, Briefcase, Video, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -10,7 +10,7 @@ const DigitalRoadmap: React.FC = () => {
   const [brand, setBrand] = useState<BrandIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getInitialSteps = (niche: string = 'Retail') => {
+  const getInitialSteps = (niche: string = 'Retail'): RoadmapStep[] => {
     const defaultSteps: RoadmapStep[] = [
       { id: '1', title: 'Set up WhatsApp Business Profile', description: 'Download the WhatsApp Business App and create a profile with your logo, address, and hours.', platform: 'WhatsApp', isCompleted: false },
     ];
@@ -90,8 +90,8 @@ const DigitalRoadmap: React.FC = () => {
       case 'Facebook': return <Globe className="w-4 h-4 text-blue-600" />;
       case 'Google': return <MapPin className="w-4 h-4 text-rose-500" />;
       case 'TikTok': return <Video className="w-4 h-4 text-slate-900" />;
-      case 'LinkedIn': return <Linkedin className="w-4 h-4 text-blue-700" />;
-      case 'Instagram': return <Instagram className="w-4 h-4 text-pink-500" />;
+      case 'LinkedIn': return <Briefcase className="w-4 h-4 text-blue-700" />;
+      case 'Instagram': return <Camera className="w-4 h-4 text-pink-500" />;
       default: return <Sparkles className="w-4 h-4 text-amber-500" />;
     }
   };
@@ -217,4 +217,3 @@ const DigitalRoadmap: React.FC = () => {
 };
 
 export default DigitalRoadmap;
-gitalRoadmap;

@@ -47,7 +47,9 @@ import {
   CartItem,
   ProductListing,
   Transaction,
+  UnifiedItem,
 } from "./types";
+import api from "./services/api";
 import { authService } from "./services/authService";
 import { brandService } from "./services/brandService";
 import { billingService } from "./services/billingService";
@@ -315,7 +317,7 @@ const App: React.FC = () => {
           id: Date.now().toString(),
           productId: String(product.id),
           title: product.name,
-          price: product.price,
+          price: parseFloat(product.price),
           image: product.image_url,
           quantity: 1,
           vendorId: String(product.id), // Fallback

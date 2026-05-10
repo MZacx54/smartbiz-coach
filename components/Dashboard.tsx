@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Sparkles, Zap, TrendingUp, Calendar, AlertCircle, CheckCircle, Package, Receipt, Users, BrainCircuit, Activity, Wand2, Store, MessageCircle, Globe } from 'lucide-react';
 import { AppView, ActionCard, UserStats, DailyMotivation, SeasonalAlert, Transaction, Debtor, InventoryItem } from '../types';
 import { generateDailyMotivation, generateSeasonalTips, getTrendingTopics } from '../services/geminiService';
+import api from '../services/api';
 
 interface DashboardProps {
   userStats: UserStats;

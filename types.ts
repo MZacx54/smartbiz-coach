@@ -20,6 +20,7 @@ export interface BrandIdentity {
   targetAudience: string;
   logoPrompt: string; // The prompt for the image generator
   logoUrl?: string; // The actual generated image URL
+  phone?: string; // Business contact phone
 
   // Upgrade: Trust & Operations Kit
   policies: {
