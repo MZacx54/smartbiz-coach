@@ -28,12 +28,27 @@ const PublicStorefront: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [brandRes, productsRes] = await Promise.all([
-          api.get(`/api/brand/u/${slug}/`),
-          api.get(`/api/marketplace/products/u/${slug}/`)
-        ]);
-        setBrand(brandRes.data);
-        setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
+        let brandData, productsData;
+        
+        if (slug) {
+          const [brandRes, productsRes] = await Promise.all([
+            api.get(`/api/brand/u/${slug}/`),
+            api.get(`/api/marketplace/products/u/${slug}/`)
+          ]);
+          brandData = brandRes.data;
+          productsData = productsRes.data;
+        } else {
+          // If no slug, we are in 'store-preview' mode for the logged-in user
+          const [brandRes, productsRes] = await Promise.all([
+            api.get('/api/brand/'),
+            api.get('/api/marketplace/products/')
+          ]);
+          brandData = Array.isArray(brandRes.data) ? brandRes.data[0] : brandRes.data;
+          productsData = productsRes.data;
+        }
+
+        setBrand(brandData);
+        setProducts(Array.isArray(productsData) ? productsData : []);
       } catch (err) {
         console.error('Fetch error:', err);
         setError('Store not found or moved.');

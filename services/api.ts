@@ -5,6 +5,8 @@ const cleanBaseUrl = configuredUrl.endsWith('/api') ? configuredUrl.slice(0, -4)
 
 const api = axios.create({
   baseURL: cleanBaseUrl,
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRFToken',
   headers: {
     'Content-Type': 'application/json',
   },
