@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -17,6 +17,6 @@ urlpatterns = [
     path('business/', include('business.urls')),
     path('content/', include('content.urls')),
 
-    # Serve React App for any other route
-    re_path(r'^.*$', TemplateView.as_view(template_name='index.html')),
+    # Serve React App for any other route by redirecting browser traffic to the live Vercel site
+    re_path(r'^.*$', RedirectView.as_view(url='https://smartbizcoach.com.ng/', permanent=False)),
 ]
