@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const configuredUrl = import.meta.env.VITE_API_URL || 'https://www.smartbizcoach.com.ng';
+const configuredUrl = import.meta.env.VITE_API_URL || 'https://api.smartbizcoach.com.ng';
 const cleanBaseUrl = configuredUrl.endsWith('/api') ? configuredUrl.slice(0, -4) : (configuredUrl.endsWith('/api/') ? configuredUrl.slice(0, -5) : configuredUrl);
 
 const api = axios.create({
