@@ -2,7 +2,12 @@ from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, get_user_model
+from django.core.mail import send_mail
+from django.conf import settings
+import random
 from .serializers import UserSerializer
+from .models import PasswordResetCode
+
 
 User = get_user_model()
 
@@ -146,3 +151,83 @@ class UserActionsView(views.APIView):
             }
         ]
         return Response(actions)
+
+
+class ForgotPasswordView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({'error': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Return generic success to avoid email enumeration security vulnerability
+            return Response({'message': 'If a matching account exists, a reset code has been sent.'}, status=status.HTTP_200_OK)
+
+        # Generate a 6-digit random code
+        code = "".join(random.choices("0123456789", k=6))
+        
+        # Invalidate any previous codes
+        PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
+        
+        # Save new code
+        PasswordResetCode.objects.create(user=user, code=code)
+        
+        # Send Email
+        subject = "SmartBiz Coach - Password Reset Code"
+        message = f"Hello {user.first_name or user.username},\n\nYour password reset code is: {code}\n\nThis code is valid for 15 minutes. If you did not request a password reset, please ignore this email.\n\nBest regards,\nSmartBiz Coach Team"
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Error sending email: {e}")
+            # In DEBUG mode, return the code for easier local testing/development
+            if settings.DEBUG:
+                return Response({
+                    'message': 'If a matching account exists, a reset code has been sent.',
+                    'debug_code': code
+                }, status=status.HTTP_200_OK)
+
+        return Response({'message': 'If a matching account exists, a reset code has been sent.'}, status=status.HTTP_200_OK)
+
+
+class ResetPasswordView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        code = request.data.get('code')
+        new_password = request.data.get('new_password')
+
+        if not email or not code or not new_password:
+            return Response({'error': 'Email, code, and new password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'Invalid request.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retrieve the latest active reset code for this user
+        reset_code = PasswordResetCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at').first()
+
+        if not reset_code or not reset_code.is_valid():
+            return Response({'error': 'Invalid or expired reset code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Code is valid, update password
+        user.set_password(new_password)
+        user.save()
+
+        # Mark code as used
+        reset_code.is_used = True
+        reset_code.save()
+
+        return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)

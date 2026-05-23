@@ -40,5 +40,16 @@ export const authService = {
     getActions: async () => {
         const response = await api.get('users/actions/');
         return response.data;
+    },
+
+    forgotPassword: async (email: string) => {
+        const response = await api.post('users/forgot-password/', { email });
+        return response.data;
+    },
+
+    resetPassword: async (data: any) => {
+        const response = await api.post('users/reset-password/', data);
+        return response.data;
     }
 };
+

@@ -10,12 +10,18 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const routerLocation = useLocation();
-  const [isLogin, setIsLogin] = useState(!routerLocation.pathname.includes('register'));
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot_password' | 'reset_password_code'>(
+    routerLocation.pathname.includes('register') ? 'register' : 'login'
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   // Sync state if route changes between /login and /register while mounted
   useEffect(() => {
-    setIsLogin(!routerLocation.pathname.includes('register'));
+    if (routerLocation.pathname.includes('register')) {
+      setAuthMode('register');
+    } else if (routerLocation.pathname.includes('login')) {
+      setAuthMode('login');
+    }
   }, [routerLocation.pathname]);
 
   // Form State
@@ -27,16 +33,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [location, setLocation] = useState('');
   const [currency, setCurrency] = useState('NGN');
 
+  // Password Recovery State
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Call Backend API
     try {
-      if (isLogin) {
+      if (authMode === 'login') {
         const response = await authService.login({ username: email, password });
         onLogin(response.user);
-      } else {
+      } else if (authMode === 'register') {
         const response = await authService.register({
           username: email,
           email,
@@ -49,15 +58,33 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           has_onboarded: true
         });
 
-        // If registration was successful, we now get a token provided backend was updated
         if (response.token) {
-          localStorage.setItem('sb_auth_token', response.token); // Manually set token if not handled in service
+          localStorage.setItem('sb_auth_token', response.token);
           onLogin(response.user);
         } else {
-          // Fallback if backend doesn't return token (old behavior)
           const loginResponse = await authService.login({ username: email, password });
           onLogin(loginResponse.user);
         }
+      } else if (authMode === 'forgot_password') {
+        const response = await authService.forgotPassword(email);
+        let alertMessage = "A 6-digit reset code has been sent to your email.";
+        if (response.debug_code) {
+          alertMessage += ` (Debug Code: ${response.debug_code})`;
+          setCode(response.debug_code); // Pre-fill debug code for easy local testing
+        }
+        alert(alertMessage);
+        setAuthMode('reset_password_code');
+        setIsLoading(false);
+      } else if (authMode === 'reset_password_code') {
+        await authService.resetPassword({
+          email,
+          code,
+          new_password: newPassword
+        });
+        alert("Password has been reset successfully! You can now sign in with your new password.");
+        setAuthMode('login');
+        setPassword('');
+        setIsLoading(false);
       }
     } catch (error: any) {
       console.error("Auth Error", error);
@@ -66,7 +93,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       if (error.response?.data) {
         const data = error.response.data;
         if (typeof data === 'object') {
-          // Extract first error message from object
           const firstKey = Object.keys(data)[0];
           const firstError = data[firstKey];
           errorMsg = `${firstKey}: ${Array.isArray(firstError) ? firstError[0] : firstError}`;
@@ -119,15 +145,21 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-white">
           <div className="mb-10">
             <h3 className="text-2xl font-bold font-heading text-slate-900">
-              {isLogin ? 'Sign In' : 'Get Started'}
+              {authMode === 'login' && 'Sign In'}
+              {authMode === 'register' && 'Get Started'}
+              {authMode === 'forgot_password' && 'Reset Password'}
+              {authMode === 'reset_password_code' && 'Verify Code'}
             </h3>
             <p className="text-slate-500 text-sm mt-2">
-              {isLogin ? 'Access your business dashboard.' : 'Create your professional account.'}
+              {authMode === 'login' && 'Access your business dashboard.'}
+              {authMode === 'register' && 'Create your professional account.'}
+              {authMode === 'forgot_password' && 'Enter your email to receive a recovery code.'}
+              {authMode === 'reset_password_code' && 'Enter the 6-digit code and a new password.'}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {!isLogin && (
+            {authMode === 'register' && (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -199,29 +231,81 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               </>
             )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Email Address</label>
-              <input
-                type="email"
-                required
-                className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
-                placeholder="name@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+            {authMode !== 'reset_password_code' ? (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Verifying Email</label>
+                <div className="w-full px-4 py-3 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-sm font-medium">
+                  {email}
+                </div>
+              </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Password</label>
-              <input
-                type="password"
-                required
-                className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            {(authMode === 'login' || authMode === 'register') && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Password</label>
+                <input
+                  type="password"
+                  required
+                  className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            )}
+
+            {authMode === 'login' && (
+              <div className="text-right mt-1">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('forgot_password')}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            )}
+
+            {authMode === 'reset_password_code' && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">6-Digit Reset Code</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm text-center font-bold tracking-widest text-slate-850"
+                    placeholder="000000"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">New Password</label>
+                  <input
+                    type="password"
+                    required
+                    className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
             <button
               type="submit"
@@ -231,21 +315,50 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                isLogin ? 'Sign In' : 'Create Account'
+                <>
+                  {authMode === 'login' && 'Sign In'}
+                  {authMode === 'register' && 'Create Account'}
+                  {authMode === 'forgot_password' && 'Send Reset Code'}
+                  {authMode === 'reset_password_code' && 'Reset Password'}
+                </>
               )}
             </button>
           </form>
 
           <div className="mt-8 text-center text-sm border-t border-slate-100 pt-6">
-            <span className="text-slate-500">
-              {isLogin ? "New to SmartBiz? " : "Already have an account? "}
-            </span>
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-slate-900 font-bold hover:underline"
-            >
-              {isLogin ? 'Create Account' : 'Sign In'}
-            </button>
+            {authMode === 'login' && (
+              <>
+                <span className="text-slate-500">New to SmartBiz? </span>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('register')}
+                  className="text-slate-900 font-bold hover:underline"
+                >
+                  Create Account
+                </button>
+              </>
+            )}
+            {authMode === 'register' && (
+              <>
+                <span className="text-slate-500">Already have an account? </span>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('login')}
+                  className="text-slate-900 font-bold hover:underline"
+                >
+                  Sign In
+                </button>
+              </>
+            )}
+            {(authMode === 'forgot_password' || authMode === 'reset_password_code') && (
+              <button
+                type="button"
+                onClick={() => setAuthMode('login')}
+                className="text-slate-900 font-bold hover:underline flex items-center justify-center mx-auto gap-2"
+              >
+                &larr; Back to Sign In
+              </button>
+            )}
           </div>
         </div>
       </div>

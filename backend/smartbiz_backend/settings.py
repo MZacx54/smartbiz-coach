@@ -95,10 +95,12 @@ DATABASES = {
     'default': dj_database_url.config(default='sqlite:///db.sqlite3', conn_max_age=600)
 }
 
-# Set a strict 3-second connection timeout to prevent database connection hangs during startup
+# Set a strict 3-second connection timeout to prevent database connection hangs during startup (only for non-SQLite databases)
 if 'OPTIONS' not in DATABASES['default']:
     DATABASES['default']['OPTIONS'] = {}
-DATABASES['default']['OPTIONS']['connect_timeout'] = 3
+if 'sqlite' not in DATABASES['default'].get('ENGINE', ''):
+    DATABASES['default']['OPTIONS']['connect_timeout'] = 3
+
 
 
 

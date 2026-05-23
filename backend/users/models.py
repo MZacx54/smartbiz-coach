@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
@@ -16,3 +17,18 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_codes')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    def is_valid(self):
+        expiry = self.created_at + timezone.timedelta(minutes=15)
+        return not self.is_used and timezone.now() < expiry
+
+    def __str__(self):
+        return f"{self.user.email} - {self.code}"
+
