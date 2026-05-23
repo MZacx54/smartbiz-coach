@@ -208,19 +208,25 @@ PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
 # Squad Configuration
 SQUAD_SECRET_KEY = os.getenv('SQUAD_SECRET_KEY')
 
-# ─── Email Configuration ──────────────────────────────────────────────────────
-# Railway has no native email service. We use Gmail SMTP (free, 500/day).
+# ─── Email Configuration (Brevo / Sendinblue SMTP) ───────────────────────────
+# Provider: Brevo (https://app.brevo.com → SMTP & API)
 # Set these in Railway env vars:
-#   EMAIL_HOST_USER = your Gmail address (e.g. smartbizcoach@gmail.com)
-#   EMAIL_HOST_PASSWORD = Gmail App Password (NOT your main password)
-#   To create App Password: myaccount.google.com → Security → App Passwords
+#   EMAIL_HOST          = smtp-relay.brevo.com
+#   EMAIL_PORT          = 587
+#   EMAIL_HOST_USER     = aa3358001@smtp-brevo.com   (your Brevo SMTP login)
+#   EMAIL_HOST_PASSWORD = <your Brevo SMTP key>      (the key ending in YoqCCw)
+#   DEFAULT_FROM_EMAIL  = noreply@smartbizcoach.com.ng  (a verified Brevo sender)
+#
+# ⚠  Brevo blocks SMTP keys by IP by default.
+#    Go to Brevo → Settings → SMTP & API → Authorized IPs and add Railway's IP,
+#    OR set the SMTP key to "Allow all IPs" in the Brevo dashboard.
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp-relay.brevo.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'noreply@smartbizcoach.com.ng')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@smartbizcoach.com.ng')
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # Fall back to console if no email credentials set (useful for dev)
