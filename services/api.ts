@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-const configuredUrl = import.meta.env.VITE_API_URL || 'https://api.smartbizcoach.com.ng';
-const cleanBaseUrl = configuredUrl.endsWith('/api') ? configuredUrl.slice(0, -4) : (configuredUrl.endsWith('/api/') ? configuredUrl.slice(0, -5) : configuredUrl);
+// Force the correct production API URL, bypassing any faulty environment variables
+const configuredUrl = 'https://api.smartbizcoach.com.ng';
+const cleanBaseUrl = configuredUrl; // The endpoint paths in services already include /api/users/ etc. Wait, no they don't!
+
 
 const api = axios.create({
   baseURL: cleanBaseUrl,
