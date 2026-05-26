@@ -1,20 +1,18 @@
 import axios from 'axios';
 
-// Force the correct production API URL, bypassing any faulty environment variables
-const configuredUrl = 'https://api.smartbizcoach.com.ng';
-const cleanBaseUrl = configuredUrl; // The endpoint paths in services already include /api/users/ etc. Wait, no they don't!
-
+// Base URL comes from the Vercel environment variable VITE_API_URL
+// which must be set to: https://api.smartbizcoach.com.ng
+// All service calls use paths like 'users/login/' which get prefixed with /api/
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.smartbizcoach.com.ng';
 
 const api = axios.create({
-  baseURL: cleanBaseUrl,
-  xsrfCookieName: 'csrftoken',
-  xsrfHeaderName: 'X-CSRFToken',
+  baseURL: `${BASE_URL}/api/`,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add a request interceptor to include the auth token
+// Attach auth token to every request automatically
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('sb_auth_token');
