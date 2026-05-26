@@ -1,53 +1,34 @@
 #!/bin/bash
+set -e
 
-echo "--- SmartBiz Coach Container Starting ---"
-echo "Check: Working directory is $(pwd)"
-echo "Check: STATIC_ROOT exists: $(ls -d staticfiles 2>/dev/null || echo 'No')"
+echo "========================================="
+echo "  SmartBiz Coach - Container Starting"
+echo "========================================="
+echo "Python version: $(python --version)"
+echo "Working directory: $(pwd)"
+echo "PORT env: ${PORT:-'not set, defaulting to 8000'}"
+echo "DEBUG env: ${DEBUG:-'not set'}"
+echo "DATABASE_URL set: $(if [ -n "$DATABASE_URL" ]; then echo 'YES'; else echo 'NO'; fi)"
 
-# Step 1: Database Migrations
-echo "Checking database connection and running migrations..."
-if python manage.py migrate --noinput; then
-    echo "Database migrations completed successfully!"
-else
-    echo "WARNING: Database migrations failed! Continuing server startup..."
-fi
+# Step 1: Run database migrations
+echo ""
+echo "--- Step 1: Running Database Migrations ---"
+python manage.py migrate --noinput 2>&1 || echo "WARNING: Migrations failed, continuing..."
+echo "--- Migrations step complete ---"
 
-# Step 2: Seeding Default Admin
-echo "Checking if default superuser needs to be created..."
-python -c "
-import os
-import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smartbiz_backend.settings')
-try:
-    django.setup()
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    
-    # Check if any superuser exists
-    if not User.objects.filter(is_superuser=True).exists():
-        username = 'admin'
-        email = 'admin@smartbizcoach.com.ng'
-        password = 'SmartBizAdmin2026!'
-        
-        # Avoid conflict if 'admin' username or email exists but is not superuser
-        User.objects.filter(username=username).delete()
-        User.objects.filter(email=email).delete()
-        
-        User.objects.create_superuser(username, email, password)
-        print('SUCCESS: Default superuser admin created successfully!')
-    else:
-        print('INFO: Superuser already exists.')
-except Exception as e:
-    print(f'WARNING: Failed to check/create superuser: {e}')
-"
+# Step 2: Collect static files (in case they weren't collected during build)
+echo ""
+echo "--- Step 2: Collecting Static Files ---"
+python manage.py collectstatic --noinput 2>&1 || echo "WARNING: collectstatic failed, continuing..."
+echo "--- Static files step complete ---"
 
-# Step 3: Start Server
+# Step 3: Start Gunicorn
 PORT=${PORT:-8000}
-echo "--- Starting Gunicorn ---"
-echo "Binding to 0.0.0.0:$PORT"
-echo "Timeout is 120s"
+echo ""
+echo "========================================="
+echo "  Starting Gunicorn on 0.0.0.0:$PORT"
+echo "========================================="
 
-# Using 1 worker and 4 threads to reduce memory pressure during debug
 exec gunicorn smartbiz_backend.wsgi:application \
     --bind 0.0.0.0:$PORT \
     --workers 1 \
@@ -55,6 +36,6 @@ exec gunicorn smartbiz_backend.wsgi:application \
     --timeout 120 \
     --access-logfile - \
     --error-logfile - \
-    --log-level debug \
+    --log-level info \
     --capture-output \
     --enable-stdio-inheritance
