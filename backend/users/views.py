@@ -176,26 +176,30 @@ class ForgotPasswordView(views.APIView):
         # Save new code
         PasswordResetCode.objects.create(user=user, code=code)
         
-        # Send Email
+        # Send Email in a background thread to make the API response instant
+        import threading
         subject = "SmartBiz Coach - Password Reset Code"
         message = f"Hello {user.first_name or user.username},\n\nYour password reset code is: {code}\n\nThis code is valid for 15 minutes. If you did not request a password reset, please ignore this email.\n\nBest regards,\nSmartBiz Coach Team"
         
-        try:
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            print(f"Error sending email: {e}")
-            # In DEBUG mode, return the code for easier local testing/development
-            if settings.DEBUG:
-                return Response({
-                    'message': 'If a matching account exists, a reset code has been sent.',
-                    'debug_code': code
-                }, status=status.HTTP_200_OK)
+        def send_email_async():
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Error sending async email: {e}")
+
+        # Start the background thread
+        email_thread = threading.Thread(target=send_email_async)
+        email_thread.start()
+
+        # In DEBUG mode, we can still print the code to the server logs for development ease
+        if settings.DEBUG:
+            print(f"DEBUG: Password reset code for {email} is {code}")
 
         return Response({'message': 'If a matching account exists, a reset code has been sent.'}, status=status.HTTP_200_OK)
 
