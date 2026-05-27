@@ -188,7 +188,11 @@ class ForgotPasswordView(views.APIView):
             api_key = settings.EMAIL_HOST_PASSWORD
             from_email = settings.DEFAULT_FROM_EMAIL
             
-            if api_key and api_key.startswith('xkeysib-'):
+            # Print safe debugging info to Railway logs (hiding actual credentials)
+            key_preview = f"{api_key[:8]}..." if api_key else "None"
+            print(f"DEBUG: Email sending check - api_key length: {len(api_key) if api_key else 0}, starts with 'xkeysib-': {bool(api_key and api_key.startswith('xkeysib-'))}, preview: {key_preview}, sender: {from_email}")
+            
+            if api_key and (api_key.startswith('xkeysib-') or len(api_key) > 20):
                 print("Attempting to send email via Brevo HTTP REST API (port 443)...")
                 try:
                     url = "https://api.brevo.com/v3/smtp/email"
