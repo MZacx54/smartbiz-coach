@@ -178,20 +178,57 @@ class ForgotPasswordView(views.APIView):
         
         # Send Email in a background thread to make the API response instant
         import threading
+        import urllib.request
+        import json
         subject = "SmartBiz Coach - Password Reset Code"
         message = f"Hello {user.first_name or user.username},\n\nYour password reset code is: {code}\n\nThis code is valid for 15 minutes. If you did not request a password reset, please ignore this email.\n\nBest regards,\nSmartBiz Coach Team"
         
         def send_email_async():
+            # If we are using Brevo, we can bypass SMTP port blocks entirely by using their HTTP API (Port 443 / HTTPS)
+            api_key = settings.EMAIL_HOST_PASSWORD
+            from_email = settings.DEFAULT_FROM_EMAIL
+            
+            if api_key and api_key.startswith('xkeysib-'):
+                print("Attempting to send email via Brevo HTTP REST API (port 443)...")
+                try:
+                    url = "https://api.brevo.com/v3/smtp/email"
+                    headers = {
+                        "accept": "application/json",
+                        "api-key": api_key,
+                        "content-type": "application/json"
+                    }
+                    data = {
+                        "sender": {"email": from_email, "name": "SmartBiz Coach"},
+                        "to": [{"email": email}],
+                        "subject": subject,
+                        "textContent": message
+                    }
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(data).encode("utf-8"),
+                        headers=headers,
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        res_body = response.read().decode("utf-8")
+                        print(f"Brevo HTTP API Success: {res_body}")
+                        return
+                except Exception as api_err:
+                    print(f"Brevo HTTP API failed, falling back to SMTP: {api_err}")
+            
+            # Fallback to standard Django SMTP send_mail
             try:
+                print("Attempting to send email via SMTP...")
                 send_mail(
                     subject,
                     message,
-                    settings.DEFAULT_FROM_EMAIL,
+                    from_email,
                     [email],
                     fail_silently=False,
                 )
+                print("SMTP Email sent successfully!")
             except Exception as e:
-                print(f"Error sending async email: {e}")
+                print(f"Error sending email via SMTP: {e}")
 
         # Start the background thread
         email_thread = threading.Thread(target=send_email_async)
