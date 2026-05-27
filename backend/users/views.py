@@ -184,52 +184,54 @@ class ForgotPasswordView(views.APIView):
         message = f"Hello {user.first_name or user.username},\n\nYour password reset code is: {code}\n\nThis code is valid for 15 minutes. If you did not request a password reset, please ignore this email.\n\nBest regards,\nSmartBiz Coach Team"
         
         def send_email_async():
-            # If we are using Brevo, we can bypass SMTP port blocks entirely by using their HTTP API (Port 443 / HTTPS)
-            api_key = settings.EMAIL_HOST_PASSWORD
-            from_email = settings.DEFAULT_FROM_EMAIL
-            
-            # Print safe debugging info to Railway logs (hiding actual credentials)
-            key_preview = f"{api_key[:8]}..." if api_key else "None"
-            print(f"DEBUG: Email sending check - api_key length: {len(api_key) if api_key else 0}, starts with 'xkeysib-': {bool(api_key and api_key.startswith('xkeysib-'))}, preview: {key_preview}, sender: {from_email}")
-            
-            if api_key and (api_key.startswith('xkeysib-') or len(api_key) > 20):
+            import urllib.error
+            # If we are using Brevo, bypass SMTP port blocks entirely using their HTTP API (Port 443 / HTTPS)
+            api_key = (settings.EMAIL_HOST_PASSWORD or '').strip()
+            from_email = (settings.DEFAULT_FROM_EMAIL or '').strip()
+
+            # Print safe debugging info to Railway logs (masking the actual key)
+            key_preview = f"{api_key[:12]}..." if api_key else "None"
+            print(f"DEBUG: api_key length={len(api_key)}, starts_with_xkeysib={api_key.startswith('xkeysib-')}, preview={key_preview}, sender={from_email}")
+
+            if api_key and len(api_key) > 20:
                 print("Attempting to send email via Brevo HTTP REST API (port 443)...")
                 try:
                     url = "https://api.brevo.com/v3/smtp/email"
-                    headers = {
-                        "accept": "application/json",
-                        "api-key": api_key,
-                        "content-type": "application/json"
-                    }
-                    data = {
+                    payload = {
                         "sender": {"email": from_email, "name": "SmartBiz Coach"},
                         "to": [{"email": email}],
                         "subject": subject,
                         "textContent": message
                     }
-                    req = urllib.request.Request(
-                        url,
-                        data=json.dumps(data).encode("utf-8"),
-                        headers=headers,
-                        method="POST"
-                    )
-                    with urllib.request.urlopen(req, timeout=10) as response:
+                    payload_bytes = json.dumps(payload).encode("utf-8")
+                    req = urllib.request.Request(url, data=payload_bytes, method="POST")
+                    # Set headers individually to avoid any dict formatting issues
+                    req.add_header("accept", "application/json")
+                    req.add_header("api-key", api_key)
+                    req.add_header("content-type", "application/json")
+
+                    with urllib.request.urlopen(req, timeout=15) as response:
                         res_body = response.read().decode("utf-8")
-                        print(f"Brevo HTTP API Success: {res_body}")
-                        return
+                        print(f"Brevo HTTP API SUCCESS: status={response.status}, body={res_body}")
+                        return  # Email sent - done!
+
+                except urllib.error.HTTPError as http_err:
+                    # Read the full Brevo error response body for diagnostics
+                    try:
+                        err_body = http_err.read().decode("utf-8")
+                    except Exception:
+                        err_body = "(could not read error body)"
+                    print(f"Brevo HTTP API FAILED: status={http_err.code}, reason={http_err.reason}, body={err_body}")
+                    print("Falling back to SMTP...")
+
                 except Exception as api_err:
-                    print(f"Brevo HTTP API failed, falling back to SMTP: {api_err}")
-            
+                    print(f"Brevo HTTP API FAILED (unexpected error): {api_err}")
+                    print("Falling back to SMTP...")
+
             # Fallback to standard Django SMTP send_mail
             try:
                 print("Attempting to send email via SMTP...")
-                send_mail(
-                    subject,
-                    message,
-                    from_email,
-                    [email],
-                    fail_silently=False,
-                )
+                send_mail(subject, message, from_email, [email], fail_silently=False)
                 print("SMTP Email sent successfully!")
             except Exception as e:
                 print(f"Error sending email via SMTP: {e}")
