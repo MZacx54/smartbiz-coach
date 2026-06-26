@@ -32,3 +32,32 @@ class PasswordResetCode(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.code}"
 
+
+class UserCompliance(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='compliance')
+    name_search_completed = models.BooleanField(default=False)
+    business_reg_completed = models.BooleanField(default=False)
+    tin_obtained_completed = models.BooleanField(default=False)
+    bank_account_completed = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Compliance for {self.user.username}"
+
+
+class AgentHireRequest(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hire_requests')
+    business_name = models.CharField(max_length=255)
+    business_type = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=50)
+    status = models.CharField(max_length=50, default='Pending', choices=[
+        ('Pending', 'Pending'),
+        ('Assigned', 'Assigned'),
+        ('Completed', 'Completed')
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Hire Request: {self.business_name} ({self.status})"
+
+

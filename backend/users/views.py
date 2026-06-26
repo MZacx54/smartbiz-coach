@@ -5,8 +5,8 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 import random
-from .serializers import UserSerializer
-from .models import PasswordResetCode
+from .serializers import UserSerializer, UserComplianceSerializer, AgentHireRequestSerializer
+from .models import PasswordResetCode, UserCompliance, AgentHireRequest
 
 
 User = get_user_model()
@@ -278,3 +278,76 @@ class ResetPasswordView(views.APIView):
         reset_code.save()
 
         return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
+
+
+class ComplianceStatusView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        compliance, _ = UserCompliance.objects.get_or_create(user=request.user)
+        serializer = UserComplianceSerializer(compliance)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        compliance, _ = UserCompliance.objects.get_or_create(user=request.user)
+        allowed_fields = {'name_search_completed', 'business_reg_completed', 'tin_obtained_completed', 'bank_account_completed'}
+        data = {k: v for k, v in request.data.items() if k in allowed_fields}
+        serializer = UserComplianceSerializer(compliance, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AgentHireRequestView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = AgentHireRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        hire_request = serializer.save(user=request.user)
+
+        # Send email notification (async) to admin
+        import threading, json, urllib.request, urllib.error
+        def send_notification():
+            api_key = (settings.EMAIL_HOST_PASSWORD or '').strip()
+            from_email = (settings.DEFAULT_FROM_EMAIL or '').strip()
+            admin_email = 'noreply@smartbizcoach.com.ng'
+
+            subject = f"New Agent Hire Request: {hire_request.business_name}"
+            body = (
+                f"A user has requested an agent to handle their business registration.\n\n"
+                f"User: {request.user.email}\n"
+                f"Business Name: {hire_request.business_name}\n"
+                f"Business Type: {hire_request.business_type}\n"
+                f"Phone: {hire_request.phone_number}\n\n"
+                f"Login to admin to view: https://api.smartbizcoach.com.ng/admin/"
+            )
+
+            if api_key and len(api_key) > 20:
+                try:
+                    url = "https://api.brevo.com/v3/smtp/email"
+                    payload = {
+                        "sender": {"email": from_email, "name": "SmartBiz Coach"},
+                        "to": [{"email": admin_email}],
+                        "subject": subject,
+                        "textContent": body
+                    }
+                    payload_bytes = json.dumps(payload).encode("utf-8")
+                    req = urllib.request.Request(url, data=payload_bytes, method="POST")
+                    req.add_header("accept", "application/json")
+                    req.add_header("api-key", api_key)
+                    req.add_header("content-type", "application/json")
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        print(f"Hire request email sent: {resp.status}")
+                except Exception as e:
+                    print(f"Failed to send hire request email: {e}")
+
+        threading.Thread(target=send_notification).start()
+
+        return Response({
+            'message': 'Your hire request has been submitted. An agent will contact you within 24 hours.',
+            'id': hire_request.id
+        }, status=status.HTTP_201_CREATED)
