@@ -17,11 +17,8 @@ const LandingPage: React.FC = () => {
             <nav className="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 transition-all">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
-                        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('/')}>
-                            <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-green-600/20">
-                                S
-                            </div>
-                            <span className="font-bold text-2xl tracking-tight text-slate-900 font-heading">SmartBiz</span>
+                        <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
+                            <img src="/logo-horizontal.png" alt="SmartBiz Coach" className="h-10 w-auto object-contain" />
                         </div>
 
                         <div className="hidden md:flex space-x-8 items-center">

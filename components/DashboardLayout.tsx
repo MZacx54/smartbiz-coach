@@ -56,13 +56,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {/* Mobile Header */}
             <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-20">
                 <div
-                    className="flex items-center space-x-2 cursor-pointer"
+                    className="flex items-center cursor-pointer"
                     onClick={() => handleNavigate(AppView.DASHBOARD)}
                 >
-                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
-                        S
-                    </div>
-                    <span className="font-bold text-gray-900 font-heading">SmartBiz</span>
+                    <img src="/logo-horizontal.png" alt="SmartBiz Coach" className="h-8 w-auto object-contain" />
                 </div>
                 <div className="flex items-center gap-4">
                     {cartItems.length > 0 && (
@@ -95,13 +92,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         `}
             >
                 <div
-                    className="p-6 border-b border-gray-100 hidden md:flex items-center space-x-2 cursor-pointer"
+                    className="p-6 border-b border-gray-100 hidden md:flex items-center cursor-pointer"
                     onClick={() => handleNavigate(AppView.DASHBOARD)}
                 >
-                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">
-                        S
-                    </div>
-                    <span className="font-bold text-xl text-gray-900 font-heading">SmartBiz</span>
+                    <img src="/logo-horizontal.png" alt="SmartBiz Coach" className="h-8 w-auto object-contain" />
                 </div>
 
                 {/* User Mini Profile */}
