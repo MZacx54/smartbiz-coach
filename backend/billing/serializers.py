@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Transaction, CreditPurchase
+from .models import Transaction, CreditPurchase, CreditLedger
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,3 +12,9 @@ class CreditPurchaseSerializer(serializers.ModelSerializer):
         model = CreditPurchase
         fields = '__all__'
         read_only_fields = ['user', 'timestamp']
+
+class CreditLedgerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditLedger
+        fields = '__all__'
+

@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatWithSmartBiz } from '../services/geminiService';
 import VoiceInput from './VoiceInput';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 interface ChatMessage {
   id: number;
@@ -9,7 +12,12 @@ interface ChatMessage {
   sender: 'user' | 'bot';
 }
 
-const WhatsAppSupport: React.FC = () => {
+interface WhatsAppSupportProps {
+  credits?: number;
+  onUpdateCredits?: (credits: number) => void;
+}
+
+const WhatsAppSupport: React.FC<WhatsAppSupportProps> = ({ credits = 0, onUpdateCredits }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 1, text: "Hello! I am SmartBiz AI. Ask me anything about your business or the app!", sender: 'bot' }
@@ -17,24 +25,36 @@ const WhatsAppSupport: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Credit modal state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
+
   // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!message.trim()) return;
-
-    const userMsgText = message;
-
+  const executeSendMessage = async (userMsgText: string, deduct: boolean, cost: number) => {
     // Add user message
     const newUserMsg: ChatMessage = { id: Date.now(), text: userMsgText, sender: 'user' };
     setMessages(prev => [...prev, newUserMsg]);
     setMessage('');
     setIsTyping(true);
+    setShowCreditPrompt(false);
 
     try {
+      if (deduct) {
+        const billingResponse = await billingService.deductCredits(cost, 'AI Live Support Chat');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+      } else {
+        usageLimiter.incrementUsage('ai_chat');
+      }
+
+      // Prepare history for Gemini
+      const history = messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model' as const,
+        parts: [{ text: m.text }]
+      }));
       // Prepare history for Gemini
       const history = messages.map(m => ({
         role: m.sender === 'user' ? 'user' : 'model' as const,
@@ -60,6 +80,28 @@ const WhatsAppSupport: React.FC = () => {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!message.trim()) return;
+
+    const userMsgText = message;
+    const usage = usageLimiter.checkUsage('ai_chat', credits);
+    
+    if (!usage.allowed) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    if (usage.useCredits) {
+      setDeductOnConfirm(() => async () => { await executeSendMessage(userMsgText, true, usage.cost); });
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    await executeSendMessage(userMsgText, false, 0);
   };
 
   const handleOpenWhatsApp = () => {
@@ -142,6 +184,15 @@ const WhatsAppSupport: React.FC = () => {
           </button>
         </form>
       </div>
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Live Support Chat"
+        creditCost={1}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

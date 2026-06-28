@@ -383,6 +383,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateCredits = (newCredits: number) => {
+    setUserStats((prev) => ({ ...prev, bizCredits: newCredits }));
+  };
+
   return (
     <HelmetProvider>
       <SEO
@@ -441,23 +445,23 @@ const App: React.FC = () => {
               >
                 <Routes>
                   <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} />} />
-                  <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} />} />
-                  <Route path="content" element={<ContentStudio brand={savedBrand} />} />
-                  <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} />} />
-                  <Route path="grants" element={<GrantMatcher businessName={user.businessName} />} />
+                  <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="content" element={<ContentStudio brand={savedBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="grants" element={<GrantMatcher businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="learning" element={<LearningHub />} />
                   <Route path="inventory" element={<ProductManager />} />
-                  <Route path="debtor" element={<DebtorBook />} />
+                  <Route path="debtor" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" />} />
                   <Route path="smarthome" element={<Marketplace onAddToCart={handleAddToCart} initialType="PROPERTY" />} />
                   <Route path="hub" element={<Marketplace onAddToCart={handleAddToCart} initialType="B2B" />} />
                   <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
-                  <Route path="compliance" element={<Compliance brand={savedBrand} user={user} />} />
+                  <Route path="compliance" element={<Compliance brand={savedBrand} user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="roadmap" element={<DigitalRoadmap />} />
-                  <Route path="support" element={<WhatsAppSupport />} />
-                  <Route path="sales-assistant" element={<SalesAssistant />} />
-                  <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} />} />
+                  <Route path="support" element={<WhatsAppSupport credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="sales-assistant" element={<SalesAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onTopUpSuccess={handleUpdateCredits} />} />
                   <Route path="product-magic" element={<ProductMagic />} />
                   <Route path="order-gen" element={<OrderGenerator />} />
                   <Route path="leads" element={<LeadManager />} />

@@ -3,8 +3,8 @@ from django.conf import settings
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Transaction, CreditPurchase
-from .serializers import TransactionSerializer, CreditPurchaseSerializer
+from .models import Transaction, CreditPurchase, CreditLedger
+from .serializers import TransactionSerializer, CreditPurchaseSerializer, CreditLedgerSerializer
 
 class TransactionListView(generics.ListAPIView):
     serializer_class = TransactionSerializer
@@ -13,12 +13,14 @@ class TransactionListView(generics.ListAPIView):
     def get_queryset(self):
         return Transaction.objects.filter(user=self.request.user).order_by('-created_at')
 
+class CreditLedgerListView(generics.ListAPIView):
+    serializer_class = CreditLedgerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CreditLedger.objects.filter(user=self.request.user).order_by('-created_at')
+
 class CreditPurchaseView(generics.CreateAPIView):
-    """
-    Initializes a credit purchase. 
-    In the future, this can call Paystack's initialize endpoint.
-    For now, it acts as a record of intent.
-    """
     serializer_class = CreditPurchaseSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -30,8 +32,6 @@ class VerifyPaymentView(APIView):
 
     def post(self, request, *args, **kwargs):
         reference = request.data.get('reference')
-        amount_intended = request.data.get('amount') # In Naira
-
         if not reference:
             return Response({"error": "No reference provided"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -47,17 +47,19 @@ class VerifyPaymentView(APIView):
             response_data = response.json()
 
             if response_data.get('status') and response_data['data']['status'] == 'success':
-                # Double check amount (Paystack returns amount in kobo)
-                paystack_amount = response_data['data']['amount'] / 100
+                paystack_amount_naira = response_data['data']['amount'] / 100
                 
                 # Check if this transaction was already processed
                 if Transaction.objects.filter(reference=reference, status='SUCCESS').exists():
-                    return Response({"message": "Payment already processed"}, status=status.HTTP_200_OK)
+                    return Response({
+                        "message": "Payment already processed",
+                        "credits": request.user.credits
+                    }, status=status.HTTP_200_OK)
 
                 # Create transaction record
                 Transaction.objects.create(
                     user=request.user,
-                    amount=paystack_amount,
+                    amount=paystack_amount_naira,
                     description=f"Direct Credit Purchase - Ref: {reference}",
                     status='SUCCESS',
                     provider='PAYSTACK',
@@ -65,10 +67,29 @@ class VerifyPaymentView(APIView):
                     reference=reference
                 )
 
+                # Map Naira amount to Credit Packs (Starter: N300=50, Grower: N1000=250, Pro: N3000=1000)
+                # Fallback to 1 Credit per N6 if custom amount
+                credits_purchased = 0
+                if abs(paystack_amount_naira - 300) < 5:
+                    credits_purchased = 50
+                elif abs(paystack_amount_naira - 1000) < 5:
+                    credits_purchased = 250
+                elif abs(paystack_amount_naira - 3000) < 5:
+                    credits_purchased = 1000
+                else:
+                    # Generic fallback: roughly N6 per credit
+                    credits_purchased = int(paystack_amount_naira / 6)
+
                 # Update user credits
-                # Credits are 1 per Naira in this implementation
-                request.user.credits += int(paystack_amount)
+                request.user.credits += credits_purchased
                 request.user.save()
+
+                # Record in CreditLedger
+                CreditLedger.objects.create(
+                    user=request.user,
+                    amount=credits_purchased,
+                    activity=f"Purchased credit pack ({credits_purchased} credits)"
+                )
 
                 return Response({
                     "message": "Payment verified successfully",
@@ -83,68 +104,35 @@ class VerifyPaymentView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class VerifySquadPaymentView(APIView):
+class DeductCreditsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
-        reference = request.data.get('reference')
+    def post(self, request):
+        credit_cost = request.data.get('amount')
+        activity = request.data.get('activity', 'AI Generation')
 
-        if not reference:
-            return Response({"error": "No reference provided"}, status=status.HTTP_400_BAD_REQUEST)
+        if not credit_cost or not isinstance(credit_cost, int) or credit_cost <= 0:
+            return Response({"error": "Valid positive credit amount required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Verify with Squad
-        # Use Sandbox URL if DEBUG is True, otherwise Production
-        base_url = "https://sandbox-api-d.squadco.com" if settings.DEBUG else "https://api.squadco.com"
-        
-        # NOTE: If you are using 'squadpy', you would initialize it here.
-        # Since we want to ensure zero dependency issues, we use requests directly with improved URL handling.
-        
-        url = f"{base_url}/transaction/verify/{reference}"
-        headers = {
-            "Authorization": f"Bearer {settings.SQUAD_SECRET_KEY}",
-            "Content-Type": "application/json",
-        }
+        user = request.user
+        if user.credits < credit_cost:
+            return Response({
+                "error": "Insufficient credits",
+                "credits": user.credits
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            response = requests.get(url, headers=headers)
-            response_data = response.json()
+        # Deduct credits
+        user.credits -= credit_cost
+        user.save()
 
-            # Squad verification response structure check
-            if response.status_code == 200 and response_data.get('status') == 200 and response_data.get('data', {}).get('transaction_status') == 'success':
-                
-                # Squad amount is usually in kobo (confirm with documentation)
-                # We assume kobo based on standard Nigerian payment gateway practice
-                transaction_data = response_data['data']
-                squad_amount = transaction_data.get('amount', 0) / 100
-                
-                # Check if this transaction was already processed
-                if Transaction.objects.filter(reference=reference, status='SUCCESS').exists():
-                    return Response({"message": "Payment already processed"}, status=status.HTTP_200_OK)
+        # Log to ledger
+        CreditLedger.objects.create(
+            user=user,
+            amount=-credit_cost,
+            activity=activity
+        )
 
-                # Create transaction record
-                Transaction.objects.create(
-                    user=request.user,
-                    amount=squad_amount,
-                    description=f"Direct Credit Purchase (Squad) - Ref: {reference}",
-                    status='SUCCESS',
-                    provider='SQUAD',
-                    type='CREDIT_TOPUP',
-                    reference=reference
-                )
-
-                # Update user credits
-                request.user.credits += int(squad_amount)
-                request.user.save()
-
-                return Response({
-                    "message": "Payment verified successfully",
-                    "credits": request.user.credits
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({
-                    "error": "Payment verification failed",
-                    "details": response_data.get('message', 'Unknown error')
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({
+            "message": "Credits deducted successfully",
+            "credits": user.credits
+        }, status=status.HTTP_200_OK)

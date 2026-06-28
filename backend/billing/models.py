@@ -9,7 +9,6 @@ class Transaction(models.Model):
     ]
     PROVIDER_CHOICES = [
         ('PAYSTACK', 'Paystack'),
-        ('SQUAD', 'Squad'),
     ]
     TYPE_CHOICES = [
         ('PURCHASE', 'Purchase'),
@@ -34,3 +33,13 @@ class CreditPurchase(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     amount = models.IntegerField()
     timestamp = models.DateTimeField(auto_now_add=True)
+
+class CreditLedger(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='credit_ledger')
+    amount = models.IntegerField()  # Negative for spend, positive for purchase
+    activity = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.amount} ({self.activity})"
+

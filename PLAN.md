@@ -55,3 +55,5 @@ Before full backend integration, we are expanding the AI capabilities to provide
 - [x] Create Django apps (`users`, `brand`, `billing`).
 - [x] Replace local AI calls with Django API endpoints (Proxy).
 - [x] Integrate SQLite/Postgres via Django.
+
+how do I now update and add my picture, or Configure Tailwind CSS for styling. simple put I want to connect it to github so that whenever I push to git it will update on the website just as I on railway and vercel for smartbiz coach main domain.

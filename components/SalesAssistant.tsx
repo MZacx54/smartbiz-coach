@@ -3,6 +3,9 @@ import { MessageCircle, Send, Copy, Check, Info, ShieldCheck, ArrowRight, Wand2 
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 type SalesContext = 'CLOSING' | 'OBJECTION' | 'FOLLOW_UP' | 'GREETING' | 'PRICE_ISSUE';
 
@@ -11,12 +14,21 @@ interface SalesResult {
   strategy_tip: string;
 }
 
-const SalesAssistant: React.FC = () => {
+interface SalesAssistantProps {
+  credits?: number;
+  onUpdateCredits?: (credits: number) => void;
+}
+
+const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCredits }) => {
   const [context, setContext] = useState<SalesContext>('CLOSING');
   const [customerMessage, setCustomerMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<SalesResult | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  // Credit modal state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
 
   const contextOptions: { id: SalesContext; label: string; icon: string; desc: string }[] = [
     { id: 'CLOSING', label: 'Close the Sale', icon: '💰', desc: 'Convert interest into payment' },
@@ -26,9 +38,17 @@ const SalesAssistant: React.FC = () => {
     { id: 'GREETING', label: 'First Contact', icon: '👋', desc: 'Professional first reply' },
   ];
 
-  const handleGenerate = async () => {
+  const executeGenerate = async (deduct: boolean, cost: number) => {
     setIsGenerating(true);
+    setShowCreditPrompt(false);
     try {
+      if (deduct) {
+        const billingResponse = await billingService.deductCredits(cost, 'AI Sales Assistant');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+      } else {
+        usageLimiter.incrementUsage('sales_assistant');
+      }
+
       const response = await api.post('/api/content/generate-sales-script/', {
         context,
         customer_message: customerMessage
@@ -40,6 +60,24 @@ const SalesAssistant: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleGenerate = async () => {
+    const usage = usageLimiter.checkUsage('sales_assistant', credits);
+    
+    if (!usage.allowed) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    if (usage.useCredits) {
+      setDeductOnConfirm(() => async () => { await executeGenerate(true, usage.cost); });
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    await executeGenerate(false, 0);
   };
 
   const copyToClipboard = (text: string, index: number) => {
@@ -221,6 +259,15 @@ const SalesAssistant: React.FC = () => {
           </AnimatePresence>
         </div>
       </div>
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Sales Assistant"
+        creditCost={1}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

@@ -162,18 +162,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 rounded-lg text-white text-center">
-                        <p className="text-xs font-medium opacity-90 mb-2">
-                            Upgrade to Smart Access
+                    <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-4 rounded-lg text-white text-center shadow-lg relative overflow-hidden">
+                        <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                            Available Credits
                         </p>
-                        <p className="text-xs opacity-75 mb-3">
-                            Get unlimited AI & Pro guides
+                        <p className="text-3xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
+                            {userStats.bizCredits}
                         </p>
                         <button
                             onClick={() => handleNavigate(AppView.SETTINGS)}
-                            className="w-full bg-white/20 hover:bg-white/30 text-xs py-2 rounded transition-colors"
+                            className="w-full bg-green-500 hover:bg-green-400 text-slate-900 font-bold text-xs py-2 rounded transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                         >
-                            View Plans
+                            ⚡ Top Up Balance
                         </button>
                     </div>
                 </div>
@@ -187,7 +188,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <GlobalSearch onResultClick={(item) => onNavigate(AppView.PRODUCT_MANAGER)} />
                         
                         <div className="flex items-center gap-4">
-                            <div className="text-right">
+                            <div
+                              onClick={() => handleNavigate(AppView.SETTINGS)}
+                              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"
+                            >
+                                <span className="text-sm">⚡</span>
+                                <span className="text-sm font-bold text-slate-700">{userStats.bizCredits}</span>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Credits</span>
+                            </div>
+                            <div className="text-right ml-2 hidden sm:block">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged in as</p>
                                 <p className="text-xs font-bold text-slate-800">{user.businessName}</p>
                             </div>

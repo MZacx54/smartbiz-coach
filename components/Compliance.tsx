@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { analyzeBusinessName } from '../services/geminiService';
 import { getComplianceStatus, updateComplianceStatus, submitHireRequest, ComplianceStatus } from '../services/complianceService';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 import { BrandIdentity, User } from '../types';
 
 interface ComplianceProps {
   brand?: BrandIdentity | null;
   user?: User | null;
+  credits?: number;
+  onUpdateCredits?: (credits: number) => void;
 }
 
 const CHECKLIST = [
@@ -50,7 +55,10 @@ const BUSINESS_TYPES = [
   'Incorporated Trustee (NGO/Church)',
 ];
 
-const Compliance: React.FC<ComplianceProps> = ({ brand, user }) => {
+const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpdateCredits }) => {
+  // Credit prompt state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
   const [compliance, setCompliance] = useState<ComplianceStatus>({
     name_search_completed: false,
     business_reg_completed: false,
@@ -119,12 +127,17 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user }) => {
     }
   };
 
-  const handleAnalyzeName = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nameToAnalyze) return;
+  const executeNameAnalysis = async (deduct: boolean, cost: number) => {
     setIsAnalyzing(true);
     setAnalysisResult(null);
+    setShowCreditPrompt(false);
     try {
+      if (deduct) {
+        const billingResponse = await billingService.deductCredits(cost, 'AI Name Availability Check');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+      } else {
+        usageLimiter.incrementUsage('name_check');
+      }
       const result = await analyzeBusinessName(nameToAnalyze);
       setAnalysisResult(result);
     } catch {
@@ -132,6 +145,24 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user }) => {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleAnalyzeName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nameToAnalyze) return;
+
+    const usage = usageLimiter.checkUsage('name_check', credits);
+    if (!usage.allowed) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+    if (usage.useCredits) {
+      setDeductOnConfirm(() => async () => { await executeNameAnalysis(true, usage.cost); });
+      setShowCreditPrompt(true);
+      return;
+    }
+    await executeNameAnalysis(false, 0);
   };
 
   const handleHireSubmit = async (e: React.FormEvent) => {
@@ -461,6 +492,15 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user }) => {
           </div>
         </div>
       )}
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Name Availability Check"
+        creditCost={1}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

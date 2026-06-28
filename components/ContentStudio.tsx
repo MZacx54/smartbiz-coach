@@ -4,6 +4,9 @@ import { Wand2, ArrowRight } from 'lucide-react';
 import { BrandIdentity } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as geminiService from '../services/geminiService';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 // Types
 type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan';
@@ -25,11 +28,17 @@ type PostFrequency = 'Daily' | '5 times/week' | '3 times/week';
 
 interface ContentStudioProps {
     brand?: BrandIdentity | null;
+    credits: number;
+    onUpdateCredits: (credits: number) => void;
 }
 
-const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
+const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateCredits }) => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<TabType>('Post Writer');
+
+    // Credit limits modal state
+    const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+    const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
 
     // Post Writer State
     const [postTopic, setPostTopic] = useState('');
@@ -102,7 +111,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
         }
     };
 
-    const handleGenerate = async () => {
+    const executeGeneration = async (deduct: boolean, cost: number) => {
         setIsGenerating(true);
         setError(null);
         setGeneratedContent(null);
@@ -111,6 +120,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
         setSpokenText(null);
 
         try {
+            if (deduct) {
+                const billingResponse = await billingService.deductCredits(cost, `AI Content Studio - ${activeTab}`);
+                onUpdateCredits(billingResponse.credits);
+            }
+
             let result;
             const base64Image = imagePreview ? imagePreview.split(',')[1] : null;
             const mimeType = selectedImage?.type || 'image/jpeg';
@@ -124,13 +138,10 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
                 result = await geminiService.generateWeeklyPlan(planGoal);
             } else if (activeTab === 'Photo Studio') {
                 if (imagePreview) {
-                    // Vision analysis
                     result = await geminiService.editImage(base64Image!, mimeType, photoDesc || "Analyze this image and suggest 3 high-performing social media edits.");
                 } else {
-                    // Text-to-prompt (AI Design Thinking)
                     const prompt = `Style: ${artStyle}, Ratio: ${aspectRatio}. Topic: ${photoDesc}`;
                     result = await geminiService.generateSuggestedPrompts('Artisan/Product', 'PHOTO', undefined, undefined, [prompt]);
-                    // Wrap for UI
                     result = { text: "No image uploaded. Here are 3 professional prompts you can use in Midjourney or Canva to create this visual:", prompts: result };
                 }
             }
@@ -142,13 +153,37 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
                 throw new Error("AI returned an empty response. Please try a more specific topic.");
             }
 
+            if (!deduct) {
+                usageLimiter.incrementUsage('content_generator');
+            }
+
             setGeneratedContent(result);
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Failed to generate content. Please check your connection or try again.");
+            setError(err?.response?.data?.error || err.message || "Failed to generate content. Please try again.");
         } finally {
             setIsGenerating(false);
+            setShowCreditPrompt(false);
         }
+    };
+
+    const handleGenerate = async () => {
+        const usage = usageLimiter.checkUsage('content_generator', credits);
+        if (!usage.allowed) {
+            setDeductOnConfirm(null);
+            setShowCreditPrompt(true);
+            return;
+        }
+
+        if (usage.useCredits) {
+            setDeductOnConfirm(() => async () => {
+                await executeGeneration(true, usage.cost);
+            });
+            setShowCreditPrompt(true);
+            return;
+        }
+
+        await executeGeneration(false, 0);
     };
 
     const handleGenerateVideo = async () => {
@@ -721,6 +756,15 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand }) => {
 
                 </div>
             </div>
+            
+            <CreditPromptModal
+                isOpen={showCreditPrompt}
+                featureLabel="AI Content Generator"
+                creditCost={2}
+                currentCredits={credits}
+                onConfirm={deductOnConfirm || (() => {})}
+                onClose={() => setShowCreditPrompt(false)}
+            />
         </div>
     );
 };

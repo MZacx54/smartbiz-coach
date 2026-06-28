@@ -2,17 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrandIdentity } from '../types';
 import { generateBrandIdentity, generateBrandLogo } from '../services/geminiService';
 import ShareActions from './ShareActions';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 interface BrandBuilderProps {
   savedBrand: BrandIdentity | null;
   onSave: (brand: BrandIdentity) => void;
+  credits: number;
+  onUpdateCredits: (credits: number) => void;
 }
 
-const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
+const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits, onUpdateCredits }) => {
   const [step, setStep] = useState<'INPUT' | 'LOADING' | 'RESULT'>('INPUT');
   const [formData, setFormData] = useState({ name: '', niche: '', vibe: '', description: '', tone: 'Corporate' });
   const [localBrandData, setLocalBrandData] = useState<BrandIdentity | null>(null);
   const [error, setError] = useState<string>('');
+
+  // Credit limits modal state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
 
   // New States for upgraded features
   const [activeTab, setActiveTab] = useState<'IDENTITY' | 'TRUST' | 'WHATSAPP' | 'PACKAGING' | 'MOCKUP'>('IDENTITY');
@@ -59,6 +68,44 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
     e.preventDefault();
     if (!formData.name || !formData.niche || !formData.vibe) return;
 
+    const usage = usageLimiter.checkUsage('brand_builder', credits);
+    if (!usage.allowed) {
+      setDeductOnConfirm(null); // Just opens to show "insufficient credits"
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    if (usage.useCredits) {
+      setDeductOnConfirm(() => async () => {
+        setStep('LOADING');
+        setError('');
+        setShowCreditPrompt(false);
+        const token = localStorage.getItem('sb_auth_token');
+        if (!token) {
+          setError("You must be logged in to generate a brand.");
+          setStep('INPUT');
+          return;
+        }
+        try {
+          const billingResponse = await billingService.deductCredits(usage.cost, "AI Brand Identity Builder");
+          onUpdateCredits(billingResponse.credits);
+
+          const result = await generateBrandIdentity(formData.name, formData.niche, formData.vibe, token, formData.description, formData.tone);
+          setLocalBrandData(result);
+          onSave(result);
+          setStep('RESULT');
+          setActiveTab('IDENTITY');
+          setWaLinkMessage(`Hello ${result.businessName}, I would like to make an enquiry.`);
+        } catch (err: any) {
+          setError(err?.response?.data?.error || "Failed to generate brand. Please try again.");
+          setStep('INPUT');
+        }
+      });
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    // Free Generation
     setStep('LOADING');
     setError('');
     const token = localStorage.getItem('sb_auth_token');
@@ -69,6 +116,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
     }
     try {
       const result = await generateBrandIdentity(formData.name, formData.niche, formData.vibe, token, formData.description, formData.tone);
+      usageLimiter.incrementUsage('brand_builder');
       setLocalBrandData(result);
       onSave(result);
       setStep('RESULT');
@@ -1210,6 +1258,15 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave }) => {
           Generate Full Brand Kit ✨
         </button>
       </form>
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Brand Builder"
+        creditCost={5}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

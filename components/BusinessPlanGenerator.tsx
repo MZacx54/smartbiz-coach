@@ -2,41 +2,66 @@
 import React, { useState } from 'react';
 import { BusinessPlan, BrandIdentity } from '../types';
 import { generateBusinessPlan } from '../services/geminiService';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 interface BusinessPlanGeneratorProps {
   brand: BrandIdentity | null;
-  businessName: string; // Fallback if brand is null
+  businessName: string;
+  credits: number;
+  onUpdateCredits: (credits: number) => void;
 }
 
-const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, businessName }) => {
+const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, businessName, credits, onUpdateCredits }) => {
   const [step, setStep] = useState<'INPUT' | 'LOADING' | 'RESULT'>('INPUT');
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [plan, setPlan] = useState<BusinessPlan | null>(null);
   const [error, setError] = useState('');
 
+  // Credit modal state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
+
   // Defaults from Brand Identity if available
   const name = brand?.businessName || businessName;
   const niche = brand?.niche || 'General Business';
 
-  const handleGenerate = async () => {
-    if (!name) {
-      setError("Business name is required.");
-      return;
-    }
-
+  const executeGenerate = async () => {
     setStep('LOADING');
     setError('');
-
+    setShowCreditPrompt(false);
     try {
-      // Combine brand elevator pitch with user details for better context
+      const billingResponse = await billingService.deductCredits(15, 'AI Business Plan Generator');
+      onUpdateCredits(billingResponse.credits);
       const context = `${brand?.elevatorPitch ? `Elevator Pitch: ${brand.elevatorPitch}. ` : ''} ${additionalDetails}`;
       const result = await generateBusinessPlan(name, niche, context);
       setPlan(result);
       setStep('RESULT');
-    } catch (e) {
-      setError("Failed to generate business plan. Please try again.");
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Failed to generate business plan. Please try again.');
       setStep('INPUT');
     }
+  };
+
+  const handleGenerate = async () => {
+    if (!name) {
+      setError('Business name is required.');
+      return;
+    }
+
+    const usage = usageLimiter.checkUsage('business_plan', credits);
+    if (!usage.allowed) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    // Business plan always costs credits (free limit = 0)
+    setDeductOnConfirm(() => async () => {
+      await executeGenerate();
+    });
+    setShowCreditPrompt(true);
   };
 
   const Section = ({ title, content }: { title: string, content: string }) => (
@@ -166,7 +191,19 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
           <span>Generate Plan</span>
           <span>🚀</span>
         </button>
+        <p className="text-center text-xs text-orange-600 font-semibold mt-2">
+          ⚡ Costs 15 credits per generation
+        </p>
       </div>
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Business Plan Generator"
+        creditCost={15}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

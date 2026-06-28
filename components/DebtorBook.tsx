@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Debtor } from '../types';
 import { generateDebtReminder } from '../services/geminiService';
 import ShareActions from './ShareActions';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
-const DebtorBook: React.FC = () => {
+interface DebtorBookProps {
+  credits?: number;
+  onUpdateCredits?: (credits: number) => void;
+}
+
+const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits }) => {
   const [debtors, setDebtors] = useState<Debtor[]>(() => {
     const saved = localStorage.getItem('sb_debtors');
     return saved ? JSON.parse(saved) : [];
@@ -15,6 +23,10 @@ const DebtorBook: React.FC = () => {
   const [reminder, setReminder] = useState<{ text: string, debtor: Debtor } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [reminderTone, setReminderTone] = useState<'POLITE' | 'FIRM' | 'STRICT'>('POLITE');
+
+  // Credit modal state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     localStorage.setItem('sb_debtors', JSON.stringify(debtors));
@@ -44,9 +56,16 @@ const DebtorBook: React.FC = () => {
     setDebtors(debtors.map(d => d.id === id ? { ...d, status: 'PAID' } : d));
   };
 
-  const handleGenerateReminder = async (debtor: Debtor) => {
+  const executeGenerateReminder = async (debtor: Debtor, deduct: boolean, cost: number) => {
     setIsGenerating(true);
+    setShowCreditPrompt(false);
     try {
+      if (deduct) {
+        const billingResponse = await billingService.deductCredits(cost, 'AI Debt Reminder');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+      } else {
+        usageLimiter.incrementUsage('debt_reminder');
+      }
       const text = await generateDebtReminder(debtor.name, debtor.amount, reminderTone);
       setReminder({ text, debtor });
     } catch (e) {
@@ -54,6 +73,21 @@ const DebtorBook: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleGenerateReminder = async (debtor: Debtor) => {
+    const usage = usageLimiter.checkUsage('debt_reminder', credits);
+    if (!usage.allowed) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+    if (usage.useCredits) {
+      setDeductOnConfirm(() => async () => { await executeGenerateReminder(debtor, true, usage.cost); });
+      setShowCreditPrompt(true);
+      return;
+    }
+    await executeGenerateReminder(debtor, false, 0);
   };
 
   const totalDebt = debtors.filter(d => d.status !== 'PAID').reduce((acc, d) => acc + d.amount, 0);
@@ -161,6 +195,15 @@ const DebtorBook: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Debt Reminder"
+        creditCost={1}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

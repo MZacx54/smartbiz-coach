@@ -2,12 +2,17 @@
 import React, { useState } from 'react';
 import { Grant } from '../types';
 import { findGrants } from '../services/geminiService';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 interface GrantMatcherProps {
   businessName: string;
+  credits?: number;
+  onUpdateCredits?: (credits: number) => void;
 }
 
-const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName }) => {
+const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, onUpdateCredits }) => {
   const [step, setStep] = useState<'INPUT' | 'LOADING' | 'RESULT'>('INPUT');
   const [grants, setGrants] = useState<Grant[]>([]);
   const [error, setError] = useState('');
@@ -19,12 +24,23 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName }) => {
     gender: 'Male'
   });
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Credit modal state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
+
+  const executeSearch = async (deduct: boolean, cost: number) => {
     setStep('LOADING');
     setError('');
+    setShowCreditPrompt(false);
 
     try {
+      if (deduct) {
+        const billingResponse = await billingService.deductCredits(cost, 'AI Grant Search');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+      } else {
+        usageLimiter.incrementUsage('grant_search');
+      }
+
       const results = await findGrants({
         businessName,
         ...formData
@@ -35,6 +51,25 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName }) => {
       setError("Could not fetch grant data. Please try again.");
       setStep('INPUT');
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const usage = usageLimiter.checkUsage('grant_search', credits);
+    
+    if (!usage.allowed) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    if (usage.useCredits) {
+      setDeductOnConfirm(() => async () => { await executeSearch(true, usage.cost); });
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    await executeSearch(false, 0);
   };
 
   const getScoreColor = (score: number) => {
@@ -240,6 +275,15 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName }) => {
           </button>
         </form>
       </div>
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Grant Search"
+        creditCost={2}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };
