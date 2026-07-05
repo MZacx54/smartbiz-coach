@@ -259,7 +259,13 @@ const InvoiceGenerator: React.FC = () => {
         </div>
 
         <button 
-          onClick={() => setStep('PREVIEW')}
+          onClick={() => {
+            // Save invoice to localStorage for Business Health tracking
+            const saved = JSON.parse(localStorage.getItem('sb_invoices') || '[]');
+            const invData = { id: invoice.id, clientName: invoice.clientName, total: calculateTotal(), date: invoice.date };
+            localStorage.setItem('sb_invoices', JSON.stringify([invData, ...saved].slice(0, 50)));
+            setStep('PREVIEW');
+          }}
           className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-lg mt-4"
         >
           Generate Invoice

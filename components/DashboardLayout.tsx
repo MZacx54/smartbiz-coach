@@ -15,6 +15,8 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     user,
+    userStats,
+    actions,
     cartItems,
     currentView,
     onNavigate,

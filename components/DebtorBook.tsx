@@ -20,7 +20,8 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   const [newDebtor, setNewDebtor] = useState({ name: '', amount: '', phone: '', itemsBought: '', dueDate: '' });
 
   // Reminder State
-  const [reminder, setReminder] = useState<{ text: string, debtor: Debtor } | null>(null);
+  const [reminder, setReminder] = useState<{ text: { english: string, pidgin: string }, debtor: Debtor } | null>(null);
+  const [activeTab, setActiveTab] = useState<'english' | 'pidgin'>('english');
   const [isGenerating, setIsGenerating] = useState(false);
   const [reminderTone, setReminderTone] = useState<'POLITE' | 'FIRM' | 'STRICT'>('POLITE');
 
@@ -66,8 +67,17 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       } else {
         usageLimiter.incrementUsage('debt_reminder');
       }
-      const text = await generateDebtReminder(debtor.name, debtor.amount, reminderTone);
-      setReminder({ text, debtor });
+      // API now returns { english, pidgin } structured response
+      const result = await generateDebtReminder(debtor.name, debtor.amount, reminderTone);
+      // Handle both old (message string) and new (english+pidgin object) responses
+      if (typeof result === 'string') {
+        setReminder({ text: { english: result, pidgin: `Abeg ${debtor.name}, please settle the ₦${debtor.amount.toLocaleString()} balance. Na important matter be this.` }, debtor });
+      } else if (result?.english || result?.pidgin) {
+        setReminder({ text: { english: result.english, pidgin: result.pidgin }, debtor });
+      } else if (result?.message) {
+        // Backwards compat - old single message response
+        setReminder({ text: { english: result.message, pidgin: `Abeg ${debtor.name}, settle the ₦${debtor.amount.toLocaleString()} wey you owe. Thank you.` }, debtor });
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -131,16 +141,45 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
 
       {/* Reminder Modal */}
       {reminder && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
             <div className="flex justify-between items-start mb-4">
-              <h3 className="font-bold text-gray-900">AI Reminder Generated</h3>
-              <button onClick={() => setReminder(null)} className="text-gray-400">✕</button>
+              <h3 className="font-bold text-gray-900 font-heading text-lg">AI Reminder Generated</h3>
+              <button onClick={() => setReminder(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
-            <div className="bg-gray-100 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap mb-4 italic border-l-4 border-indigo-500">
-              "{reminder.text}"
+
+            {/* Tab buttons */}
+            <div className="flex border-b border-slate-200 mb-4">
+              <button
+                onClick={() => setActiveTab('english')}
+                className={`flex-1 py-2.5 font-bold text-xs uppercase tracking-wider ${activeTab === 'english' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-400 hover:text-slate-600'}`}
+              >
+                🇬🇧 English Version
+              </button>
+              <button
+                onClick={() => setActiveTab('pidgin')}
+                className={`flex-1 py-2.5 font-bold text-xs uppercase tracking-wider ${activeTab === 'pidgin' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-indigo-600 hover:text-indigo-800'}`}
+              >
+                🇳🇬 Naija Pidgin
+              </button>
             </div>
-            <ShareActions text={reminder.text} title="Debt Reminder" />
+
+            <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap mb-4 italic border-l-4 border-indigo-500 max-h-60 overflow-y-auto">
+              "{reminder.text[activeTab]}"
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <a
+                href={`https://wa.me/${reminder.debtor.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(reminder.text[activeTab])}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-600/10 hover:-translate-y-0.5 active:scale-95"
+              >
+                <span>💬</span> Send Directly to WhatsApp
+              </a>
+              
+              <ShareActions text={reminder.text[activeTab]} title="Debt Reminder" />
+            </div>
           </div>
         </div>
       )}

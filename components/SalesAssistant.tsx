@@ -11,7 +11,9 @@ type SalesContext = 'CLOSING' | 'OBJECTION' | 'FOLLOW_UP' | 'GREETING' | 'PRICE_
 
 interface SalesResult {
   options: string[];
+  one_liner: string;
   strategy_tip: string;
+  do_not_say: string[];
 }
 
 interface SalesAssistantProps {
@@ -197,8 +199,48 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
+                {/* One Liner Opener */}
+                {result.one_liner && (
+                  <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 rounded-[32px] shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
+                    <div className="flex items-start gap-4">
+                      <div className="bg-white/10 p-2.5 rounded-xl text-xl">
+                        🎯
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-xs uppercase tracking-wider text-amber-100 mb-1">One-Liner Hook Opener</h4>
+                        <p className="text-sm font-bold leading-relaxed">"{result.one_liner}"</p>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(result.one_liner);
+                            toast.success("Opener copied!");
+                          }}
+                          className="mt-2.5 bg-white/20 hover:bg-white/30 text-white text-[10px] font-bold px-3 py-1 rounded-lg transition-all"
+                        >
+                          Copy Opener
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Do Not Say Warnings */}
+                {result.do_not_say && result.do_not_say.length > 0 && (
+                  <div className="bg-red-50 border border-red-100 text-red-800 p-5 rounded-[24px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">⚠️</span>
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-red-900">What to AVOID saying:</h4>
+                    </div>
+                    <ul className="list-disc pl-5 space-y-1 text-xs font-semibold">
+                      {result.do_not_say.map((phrase, idx) => (
+                        <li key={idx}>"{phrase}"</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between px-2">
-                  <h3 className="font-bold text-slate-800 text-lg">Response Options</h3>
+                  <h3 className="font-bold text-slate-800 text-lg font-heading">Response Options</h3>
                   <div className="flex items-center gap-2 bg-emerald-100 px-3 py-1.5 rounded-full">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span className="text-[10px] font-bold text-emerald-700 uppercase">Pro Strategy</span>

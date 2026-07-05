@@ -238,7 +238,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                 {user.logo ? <img src={user.logo} className="w-full h-full object-cover" /> : (user.name ? user.name.charAt(0) : 'U')}
               </div>
               <div>
-                <h4 className="text-lg font-bold text-gray-900">{user.name || user.username}</h4>
+                <h4 className="text-lg font-bold text-gray-900">{user.name || 'User'}</h4>
                 <p className="text-gray-500 text-sm">{user.email}</p>
                 {user.businessName && (
                   <p className="text-xs text-indigo-600 font-semibold mt-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block">

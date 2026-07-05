@@ -11,13 +11,15 @@ CREDIT_COSTS = {
     'social_post': 2,
     'image_edit': 5,
     'video_script': 8,
-    'business_plan': 10,
+    'business_plan': 15,  # Upgraded plans cost more
     'daily_motivation': 1,
     'seasonal_tips': 1,
-    'debt_reminder': 2,
+    'debt_reminder': 1,   # As configured in usageLimiter
     'transcription': 3,
     'suggested_prompts': 1,
-    'sales_script': 2,
+    'sales_script': 1,    # As configured in usageLimiter
+    'health_score': 5,
+    'pricing_assistant': 2,
 }
 
 def deduct_credits(user, action_key):
@@ -254,19 +256,36 @@ class GenerateDailyMotivationView(views.APIView):
         brand_context = get_brand_context(request.user)
         prompt = f"""
         {brand_context}
-        Generate a short, punchy daily motivation quote for this specific entrepreneur.
-        Mix English and Pidgin. It should be inspiring, specifically for their business type and brand vibe.
-        Return JSON with keys: quote, author, theme (HUSTLE, RESILIENCE, GROWTH).
+        Generate a personalized daily action plan (not just a generic motivation quote) for this specific entrepreneur.
+        It should consist of 3 short, actionable, punchy tasks they should complete today to grow their business (marketing task, operational task, financial task).
+        
+        Return JSON with keys: 
+        - quote: "A motivating, personal quote/message (mix of English and Pidgin) targeted to their industry",
+        - author: "SmartBiz Coach",
+        - theme: "ACTION_PLAN",
+        - actions: Array of 3 strings (specific task descriptions, e.g. "Create 1 Instagram reel showing your newest collection", "Check your stock levels for high demand products", "Review outstanding debts and send 1 reminder")
         """
         
         try:
             content = gemini_utils.generate_json_content(prompt)
+            # Ensure actions is a list of strings if the AI returned it empty
+            if not content.get('actions') or not isinstance(content.get('actions'), list):
+                content['actions'] = [
+                    "Promote one key product on your WhatsApp Status today.",
+                    "Review your stock levels to see what needs restocking.",
+                    "Check your outstanding invoices and follow up on pending payments."
+                ]
             return Response(content)
         except Exception as e:
             return Response({
                 "quote": "No food for lazy man. Go get that bag today!",
                 "author": "SmartBiz Coach",
-                "theme": "HUSTLE"
+                "theme": "HUSTLE",
+                "actions": [
+                    "Promote one key product on your WhatsApp Status today.",
+                    "Review your stock levels to see what needs restocking.",
+                    "Check your outstanding invoices and follow up on pending payments."
+                ]
             })
 
 class GenerateSeasonalTipsView(views.APIView):
@@ -445,16 +464,29 @@ class GenerateDebtReminderView(views.APIView):
         amount = request.data.get('amount')
         tone = request.data.get('tone', 'POLITE')
         
-        prompt = f"""Write a WhatsApp message to a debtor named "{name}" who owes N{amount}. 
+        prompt = f"""Write two versions of a WhatsApp message to a debtor named "{name}" who owes N{amount}. 
         Tone: {tone}. 
         Context: Nigerian Business owner sending to a customer.
+        
+        Return JSON with keys:
+        - english: "The formal/standard English message",
+        - pidgin: "The Nigerian Pidgin version of the message (make it authentic, e.g. using terms like 'abeg', 'make we settle this matter')"
         """
         
         try:
-            text = gemini_utils.generate_text_content(prompt)
-            return Response({'message': text})
+            result = gemini_utils.generate_json_content(prompt)
+            if not result.get('english') or not result.get('pidgin'):
+                # fallback structure
+                text = gemini_utils.generate_text_content(f"Write a debt reminder to {name} for {amount} in {tone} tone.")
+                return Response({'english': text, 'pidgin': f"Abeg {name}, make we settle the ₦{amount} payment. Thank you."})
+            # Deduct credits
+            deduct_credits(request.user, 'debt_reminder')
+            return Response(result)
         except Exception as e:
-             return Response({'message': f"Hello {name}, please pay N{amount}."}, status=200)
+             return Response({
+                 'english': f"Hello {name}, please pay N{amount}.",
+                 'pidgin': f"Abeg {name}, make we settle the ₦{amount} payment. Thank you."
+             }, status=200)
 class ListModelsView(views.APIView):
     permission_classes = [IsAuthenticated]
     
@@ -520,15 +552,16 @@ class GenerateSalesScriptView(views.APIView):
         {brand_context}
         
         You are a Master Sales Closer and Digital Marketer for Nigerian businesses. 
-        Your goal is to provide 3 different response options for the business owner to send on WhatsApp.
-        Options should range from:
+        Your goal is to provide 3 different response options for the business owner to send on WhatsApp:
         1. Professional & Direct
-        2. Friendly & Persuasive (using local Nigerian context/pidgin where appropriate)
-        3. Urgent (Scarcity/FOMO)
+        2. Naija Friendly (using warm local Nigerian context/pidgin where appropriate)
+        3. Urgent (FOMO/Scarcity)
         
         Return JSON with keys: 
         - options: Array of 3 strings (the response messages).
+        - one_liner: A single high-impact one-liner opener that immediately hooks the customer.
         - strategy_tip: A one-sentence tip on why these options work.
+        - do_not_say: Array of 2-3 phrases/arguments the seller must AVOID using in this specific situation (e.g. "We don't do refunds", "Our price is final").
         """
         
         prompt = f"{goal} \nCustomer Message: '{customer_message}'"

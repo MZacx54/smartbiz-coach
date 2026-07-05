@@ -63,6 +63,9 @@ export interface Grant {
   requirements: string[];
   deadline?: string;
   type: "GRANT" | "LOAN" | "EQUITY";
+  eligibility_checklist?: string[];
+  application_steps?: string[];
+  is_currently_open?: boolean;
 }
 
 export enum AppView {
@@ -89,6 +92,7 @@ export enum AppView {
   STOREFRONT = 'STOREFRONT',
   PRODUCT_MANAGER = 'PRODUCT_MANAGER',
   LEAD_MANAGER = 'LEAD_MANAGER',
+  PRICING_ASSISTANT = 'PRICING_ASSISTANT',
 }
 
 export type ActionType = "URGENT" | "INFO" | "GROWTH" | "COMPLETED";
@@ -371,7 +375,8 @@ export interface Transaction {
 export interface DailyMotivation {
   quote: string;
   author: string; // usually "SmartBiz AI"
-  theme: "HUSTLE" | "RESILIENCE" | "GROWTH";
+  theme: string;
+  actions?: string[];
 }
 
 export interface SeasonalAlert {

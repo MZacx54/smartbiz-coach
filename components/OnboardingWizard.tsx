@@ -91,7 +91,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
           <div className="text-center space-y-6">
             <motion.div className="text-7xl" animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}>🚀</motion.div>
             <div>
-              <h2 className="text-2xl font-extrabold text-slate-900 mb-2 font-heading">Welcome, {user.firstName || user.businessName || 'Entrepreneur'}!</h2>
+              <h2 className="text-2xl font-extrabold text-slate-900 mb-2 font-heading">Welcome, {user.businessName || 'Entrepreneur'}!</h2>
               <p className="text-slate-500">We're excited to have you. In 3 quick steps, we'll personalize SmartBiz Coach for your business so you get the most value from day one.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 text-left pt-2">

@@ -122,54 +122,101 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
 
           {grants.map((grant) => (
             <div key={grant.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="p-6 flex flex-col md:flex-row gap-6">
-                {/* Left: Score & Info */}
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(grant.type)}`}>
-                      {grant.type}
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${getScoreColor(grant.matchScore)}`}>
-                      {grant.matchScore}% Match
-                    </div>
-                  </div>
-
-                  <h3 className="text-xl font-bold text-gray-900">{grant.name}</h3>
-                  <p className="text-sm text-gray-500 font-medium mb-3">{grant.provider}</p>
-
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg mb-4">
-                    <span className="font-semibold">Why: </span> {grant.matchReason}
-                  </p>
-
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span>💰</span>
-                    <span className="font-semibold text-gray-900">{grant.amountRange}</span>
-                  </div>
-                  {grant.deadline && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                      <span>📅</span>
-                      <span>Deadline: {grant.deadline}</span>
-                    </div>
-                  )}
+              {/* Header inside card */}
+              <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center flex-wrap gap-2">
+                <div className="flex gap-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getTypeColor(grant.type)}`}>
+                    {grant.type}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    grant.is_currently_open 
+                      ? 'bg-green-100 text-green-700 border border-green-200' 
+                      : 'bg-red-100 text-red-700 border border-red-200'
+                  }`}>
+                    {grant.is_currently_open ? '● OPEN' : '● CLOSED'}
+                  </span>
                 </div>
+                <div className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${getScoreColor(grant.matchScore)}`}>
+                  {grant.matchScore}% Match
+                </div>
+              </div>
 
-                {/* Right: Requirements & Action */}
-                <div className="md:w-1/3 border-t md:border-t-0 md:border-l border-gray-100 md:pl-6 pt-4 md:pt-0 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Requirements</h4>
-                    <ul className="space-y-2">
-                      {grant.requirements.map((req, i) => (
-                        <li key={i} className="text-xs text-gray-600 flex items-start gap-2">
-                          <span className="text-green-500 mt-0.5">✓</span>
-                          {req}
-                        </li>
-                      ))}
-                    </ul>
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{grant.name}</h3>
+                <p className="text-sm text-gray-500 font-semibold mb-4">{grant.provider}</p>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Left Column: Info & Eligibility */}
+                  <div className="space-y-4">
+                    <p className="text-xs text-gray-700 bg-indigo-50/50 p-3 rounded-lg border border-indigo-100/50">
+                      <span className="font-bold text-indigo-900">Why it matches: </span> {grant.matchReason}
+                    </p>
+
+                    <div className="flex flex-col gap-1.5 text-xs text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <span>💰</span>
+                        <span className="font-bold text-gray-900">{grant.amountRange}</span>
+                      </div>
+                      {grant.deadline && (
+                        <div className="flex items-center gap-2">
+                          <span>📅</span>
+                          <span>Deadline: <strong className="text-slate-800">{grant.deadline}</strong></span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Eligibility Checklist */}
+                    {grant.eligibility_checklist && (
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2.5">Your Eligibility Checklist</h4>
+                        <div className="space-y-2">
+                          {grant.eligibility_checklist.map((item, idx) => (
+                            <label key={idx} className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-600 select-none">
+                              <input type="checkbox" className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                              <span>{item}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  <button className="w-full mt-4 bg-indigo-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">
-                    Start Application
-                  </button>
+                  {/* Right Column: Steps & Apply */}
+                  <div className="space-y-4 flex flex-col justify-between">
+                    <div className="space-y-4">
+                      {/* Requirements */}
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Requirements</h4>
+                        <ul className="space-y-1.5">
+                          {grant.requirements.map((req, i) => (
+                            <li key={i} className="text-xs text-gray-600 flex items-start gap-2">
+                              <span className="text-green-500 mt-0.5">✓</span>
+                              <span>{req}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Application Steps */}
+                      {grant.application_steps && (
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">How to Apply</h4>
+                          <ol className="space-y-1.5">
+                            {grant.application_steps.map((stepDesc, i) => (
+                              <li key={i} className="text-xs text-gray-600 flex items-start gap-2">
+                                <span className="bg-indigo-100 text-indigo-700 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">{i+1}</span>
+                                <span>{stepDesc}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+                    </div>
+
+                    <button className="w-full mt-4 bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all hover:-translate-y-0.5 active:scale-95 shadow-lg shadow-indigo-600/10">
+                      Start Application 🚀
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

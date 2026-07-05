@@ -36,6 +36,7 @@ const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
 const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
 const ProductManager = lazy(() => import("./components/ProductManager"));
 const LeadManager = lazy(() => import("./components/LeadManager"));
+const PricingAssistant = lazy(() => import("./components/PricingAssistant"));
 
 import {
   AppView,
@@ -188,7 +189,18 @@ const App: React.FC = () => {
 
           if (brand.status === "fulfilled" && brand.value)
             setSavedBrand(brand.value);
-          if (txs.status === "fulfilled") setTransactions(txs.value);
+          if (txs.status === "fulfilled") {
+            const mappedTxs: Transaction[] = txs.value.map((t: any) => ({
+              id: String(t.id),
+              date: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
+              amount: parseFloat(t.amount) || 0,
+              description: t.description || '',
+              status: t.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
+              provider: t.provider || 'PAYSTACK',
+              type: t.type || 'PURCHASE'
+            }));
+            setTransactions(mappedTxs);
+          }
           if (stats.status === "fulfilled") setUserStats(stats.value);
           if (userActions.status === "fulfilled") setActions(userActions.value);
         } catch (error) {
@@ -278,6 +290,7 @@ const App: React.FC = () => {
       case AppView.SETTINGS: navigate('/dashboard/settings'); break;
       case AppView.HUB: navigate('/dashboard/hub'); break;
       case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
+      case AppView.PRICING_ASSISTANT: navigate('/dashboard/pricing-assistant'); break;
       default: navigate('/dashboard');
     }
   };
@@ -341,9 +354,7 @@ const App: React.FC = () => {
     try {
       toast.loading(`Verifying ${provider} payment...`);
 
-      const result = provider === 'PAYSTACK'
-        ? await billingService.verifyPayment(reference, amount)
-        : await billingService.verifySquadPayment(reference, amount);
+      const result = await billingService.verifyPayment(reference, amount);
 
       // If there are items in the cart, this is a product order
       if (cartItems.length > 0) {
@@ -444,7 +455,7 @@ const App: React.FC = () => {
                 }
               >
                 <Routes>
-                  <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} />} />
+                  <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="content" element={<ContentStudio brand={savedBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
@@ -466,6 +477,7 @@ const App: React.FC = () => {
                   <Route path="order-gen" element={<OrderGenerator />} />
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
+                  <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>

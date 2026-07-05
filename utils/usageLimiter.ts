@@ -1,4 +1,4 @@
-export type FeatureKey = 'brand_builder' | 'content_generator' | 'name_check' | 'business_plan' | 'grant_search' | 'debt_reminder' | 'ai_chat' | 'sales_assistant';
+export type FeatureKey = 'brand_builder' | 'content_generator' | 'name_check' | 'business_plan' | 'grant_search' | 'debt_reminder' | 'ai_chat' | 'sales_assistant' | 'health_score' | 'pricing_assistant';
 
 interface FeatureConfig {
   freeLimit: number;
@@ -15,6 +15,8 @@ export const FEATURE_CONFIGS: Record<FeatureKey, FeatureConfig> = {
   debt_reminder: { freeLimit: 3, creditCost: 1, label: 'AI Debt Reminder' },
   ai_chat: { freeLimit: 5, creditCost: 1, label: 'AI Live Support Chat' },
   sales_assistant: { freeLimit: 2, creditCost: 1, label: 'AI Sales Assistant' },
+  health_score: { freeLimit: 1, creditCost: 5, label: 'AI Business Health Score' },
+  pricing_assistant: { freeLimit: 2, creditCost: 2, label: 'AI Pricing Assistant' },
 };
 
 interface UsageRecord {

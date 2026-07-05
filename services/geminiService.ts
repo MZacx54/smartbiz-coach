@@ -90,8 +90,36 @@ export const searchLocalVendors = async (query: string, location: string = 'Lago
     return response.data; // Expecting { text: string, places: [] }
 };
 
-export const generateBusinessPlan = async (businessName: string, niche: string, context?: string) => {
-    const response = await api.post('/api/business/generate-plan/', { business_name: businessName, niche, context });
+export const generateBusinessPlan = async (params: {
+    businessName: string;
+    niche: string;
+    details: string;
+    startupCapital?: string;
+    employeesCount?: string;
+    revenueModel?: string;
+}) => {
+    const response = await api.post('/api/business/generate-plan/', params);
+    return response.data;
+};
+
+export const getBusinessHealthScore = async (params: {
+    businessProfile: any;
+    debts: any[];
+    stock: any[];
+    invoices: any[];
+    compliance: any;
+}) => {
+    const response = await api.post('/api/business/health-score/', params);
+    return response.data;
+};
+
+export const getPricingSuggestion = async (params: {
+    productName: string;
+    costPrice: number;
+    competitorPrice?: string;
+    targetMargin?: number;
+}) => {
+    const response = await api.post('/api/business/pricing-assistant/', params);
     return response.data;
 };
 

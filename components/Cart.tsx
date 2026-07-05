@@ -17,9 +17,9 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
 
   const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  const handlePaymentSuccess = (provider: 'PAYSTACK' | 'SQUAD', reference: string) => {
+  const handlePaymentSuccess = (reference: string) => {
     setShowPayment(false);
-    onCheckout(provider, total, reference);
+    onCheckout('PAYSTACK', total, reference);
   };
 
   if (items.length === 0) {

@@ -85,9 +85,9 @@ const SmartHomeFinder: React.FC<SmartHomeFinderProps> = ({ userEmail }) => {
         setShowInspectionModal(true);
     };
 
-    const handleInspectionConfirmed = (provider: 'PAYSTACK' | 'SQUAD') => {
+    const handleInspectionConfirmed = (reference: string) => {
         setShowInspectionModal(false);
-        alert(`Inspection Booked! The agent has been notified. You paid via ${provider}.`);
+        alert(`Inspection Booked! The agent has been notified. Reference: ${reference}`);
     };
 
     // --- Detail View ---

@@ -1,14 +1,19 @@
 
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Zap, TrendingUp, Calendar, AlertCircle, CheckCircle, Package, Receipt, Users, BrainCircuit, Activity, Wand2, Store, MessageCircle, Globe } from 'lucide-react';
+import { Sparkles, Zap, TrendingUp, Calendar, AlertCircle, CheckCircle, Package, Receipt, Users, BrainCircuit, Activity, Wand2, Store, MessageCircle, Globe, Award, ShieldAlert, CheckSquare, RefreshCw, BarChart2 } from 'lucide-react';
 import { AppView, ActionCard, UserStats, DailyMotivation, SeasonalAlert, Transaction, Debtor, InventoryItem } from '../types';
-import { generateDailyMotivation, generateSeasonalTips, getTrendingTopics } from '../services/geminiService';
+import { generateDailyMotivation, generateSeasonalTips, getTrendingTopics, getBusinessHealthScore } from '../services/geminiService';
 import api from '../services/api';
+import { usageLimiter } from '../utils/usageLimiter';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 interface DashboardProps {
   userStats: UserStats;
   actions: ActionCard[];
   onNavigate: (view: AppView) => void;
+  credits: number;
+  onUpdateCredits: (credits: number) => void;
 }
 
 const CircularProgress = ({ percentage, color }: { percentage: number; color: string }) => {
@@ -93,7 +98,7 @@ const ActionCardItem: React.FC<{ action: ActionCard; onClick: () => void }> = ({
   );
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, credits, onUpdateCredits }) => {
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [seasonalAlert, setSeasonalAlert] = useState<SeasonalAlert | null>(null);
 
@@ -103,6 +108,20 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [trendingTopics, setTrendingTopics] = useState<any[]>([]);
   const [ecosystemStats, setEcosystemStats] = useState<any>(null);
+  const [complianceStatus, setComplianceStatus] = useState<any>(null);
+
+  // Daily action plan checklist state
+  const [completedTasks, setCompletedTasks] = useState<Record<number, boolean>>({});
+
+  // Business Health Score States
+  const [healthScore, setHealthScore] = useState<any>(() => {
+    const saved = localStorage.getItem('sb_health_score_data');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isCalculatingHealth, setIsCalculatingHealth] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -112,6 +131,14 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
         setEcosystemStats(response.data);
       } catch (e) {
         console.error("Failed to load ecosystem analytics", e);
+      }
+
+      // Compliance
+      try {
+        const compResponse = await api.get('/api/users/compliance/');
+        setComplianceStatus(compResponse.data);
+      } catch (e) {
+        console.error("Failed to load compliance status", e);
       }
 
       // AI Data
@@ -160,9 +187,79 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
       } catch (e) {
         console.error("Error loading dashboard data", e);
       }
+
+      // Daily task checklist loader
+      const savedTasks = localStorage.getItem('sb_completed_daily_tasks_data');
+      if (savedTasks) {
+        try {
+          const parsed = JSON.parse(savedTasks);
+          const today = new Date().toISOString().split('T')[0];
+          if (parsed.date === today) {
+            setCompletedTasks(parsed.tasks || {});
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
     };
     loadData();
   }, []);
+
+  const toggleTask = (index: number) => {
+    const updated = { ...completedTasks, [index]: !completedTasks[index] };
+    setCompletedTasks(updated);
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem('sb_completed_daily_tasks_data', JSON.stringify({
+      date: today,
+      tasks: updated
+    }));
+  };
+
+  const executeAnalyzeHealth = async () => {
+    setIsCalculatingHealth(true);
+    setShowCreditPrompt(false);
+    try {
+      const billingResponse = await billingService.deductCredits(5, 'AI Business Health Score');
+      onUpdateCredits(billingResponse.credits);
+
+      const savedDebtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
+      const savedInventory = JSON.parse(localStorage.getItem('sb_inventory') || '[]');
+      const savedInvoices = JSON.parse(localStorage.getItem('sb_invoices') || '[]');
+      const savedBrand = JSON.parse(localStorage.getItem('sb_brand') || 'null');
+      const savedUser = JSON.parse(localStorage.getItem('sb_user') || 'null');
+
+      const result = await getBusinessHealthScore({
+        businessProfile: savedBrand || { businessName: savedUser?.businessName || 'My Business', niche: 'General' },
+        debts: savedDebtors,
+        stock: savedInventory,
+        invoices: savedInvoices,
+        compliance: complianceStatus || {}
+      });
+
+      setHealthScore(result);
+      localStorage.setItem('sb_health_score_data', JSON.stringify(result));
+      setShowHealthModal(true);
+    } catch (e: any) {
+      console.error("Health analysis failed", e);
+    } finally {
+      setIsCalculatingHealth(false);
+    }
+  };
+
+  const handleAnalyzeHealth = async () => {
+    const usage = usageLimiter.checkUsage('health_score', credits);
+    if (!usage.allowed) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+    if (usage.useCredits) {
+      setDeductOnConfirm(() => async () => { await executeAnalyzeHealth(); });
+      setShowCreditPrompt(true);
+      return;
+    }
+    await executeAnalyzeHealth();
+  };
 
   const activeActions = actions.filter(a => !a.isCompleted);
 
@@ -203,26 +300,57 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
 
       {/* Hero / Motivation Section */}
       {motivation && (
-        <div className="bg-slate-900 rounded-xl p-6 text-white shadow-xl relative overflow-hidden group">
+        <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group">
           {/* Abstract Background Shapes */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
-          <div className="absolute -bottom-8 left-0 w-64 h-64 bg-green-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-25"></div>
+          <div className="absolute -bottom-8 left-0 w-64 h-64 bg-emerald-600 rounded-full mix-blend-multiply filter blur-3xl opacity-25"></div>
 
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">💡</span>
-              <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">Daily Wisdom</p>
-            </div>
-            <h2 className="text-lg md:text-xl font-bold font-heading leading-relaxed mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300">
-              "{motivation.quote?.trim() || (motivation as any).error || "No food for lazy man. Go get that bag today!"}"
-            </h2>
-            <div className="flex justify-between items-end">
-              <p className="text-xs text-gray-400 font-medium">— {motivation.author}</p>
-              {seasonalAlert && (
-                <div className="bg-orange-500/20 border border-orange-500/50 px-3 py-1 rounded-full text-[10px] font-bold text-orange-200 animate-pulse">
-                  📢 {seasonalAlert.season} is coming!
+          <div className="relative z-10 grid md:grid-cols-5 gap-6">
+            <div className="md:col-span-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">🎯</span>
+                  <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest font-heading">Daily Focus Plan</p>
                 </div>
-              )}
+                <h2 className="text-base md:text-lg font-bold font-heading leading-relaxed mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-200">
+                  "{motivation.quote?.trim() || "No food for lazy man. Go get that bag today!"}"
+                </h2>
+              </div>
+              <div className="flex justify-between items-end border-t border-slate-800/80 pt-3 mt-3">
+                <p className="text-xs text-slate-400 font-medium">— {motivation.author || 'SmartBiz Coach'}</p>
+                {seasonalAlert && (
+                  <div className="bg-orange-500/20 border border-orange-500/50 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-orange-300 animate-pulse">
+                    📢 {seasonalAlert.season}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Daily Actions Checklist */}
+            <div className="md:col-span-2 bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 p-4 rounded-xl">
+              <h3 className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>Today's Actions</span>
+              </h3>
+              <div className="space-y-3">
+                {(motivation.actions || [
+                  "Share one product today on WhatsApp status",
+                  "Review stock levels of popular items",
+                  "Send reminder for any outstanding debt"
+                ]).map((action, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={!!completedTasks[i]}
+                      onChange={() => toggleTask(i)}
+                      className="mt-0.5 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800 cursor-pointer"
+                    />
+                    <span className={`leading-relaxed cursor-pointer select-none transition-all ${completedTasks[i] ? 'text-emerald-400 line-through font-medium' : 'text-slate-200'}`} onClick={() => toggleTask(i)}>
+                      {action}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -248,6 +376,83 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
             </button>
           ))}
         </div>
+      </div>
+
+      {/* AI Business Health Score Panel */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-50 p-2.5 rounded-xl text-indigo-600">
+              <BarChart2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800 text-lg font-heading">AI Business Health Diagnostic</h3>
+              <p className="text-slate-500 text-xs mt-0.5">Scored based on inventory, outstanding debts, invoices & compliance.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {healthScore && (
+              <button
+                onClick={() => setShowHealthModal(true)}
+                className="w-1/2 sm:w-auto px-4 py-2.5 border border-slate-200 text-slate-600 font-bold rounded-xl text-xs hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>📜 View Report</span>
+              </button>
+            )}
+            <button
+              onClick={handleAnalyzeHealth}
+              disabled={isCalculatingHealth}
+              className="w-1/2 sm:w-auto px-5 py-2.5 bg-indigo-600 disabled:bg-slate-200 text-white font-bold rounded-xl text-xs hover:bg-indigo-700 transition-all hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
+            >
+              {isCalculatingHealth ? (
+                <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Analyzing...</>
+              ) : (
+                <><span>🔍 {healthScore ? 'Re-Analyze' : 'Analyze Business'}</span></>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {healthScore ? (
+          <div className="grid md:grid-cols-4 gap-6 items-center">
+            {/* Score circle */}
+            <div className="flex flex-col items-center justify-center border-r border-slate-100 pr-0 md:pr-6">
+              <CircularProgress percentage={healthScore.score} color={healthScore.score >= 70 ? '#10b981' : healthScore.score >= 50 ? '#f59e0b' : '#ef4444'} />
+              <p className="text-xs font-bold text-slate-600 mt-2 uppercase tracking-wider">Health Score</p>
+            </div>
+
+            {/* Metrics */}
+            <div className="md:col-span-3 space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {Object.entries(healthScore.metrics || {}).map(([key, val]) => (
+                  <div key={key} className="bg-slate-50 p-3.5 rounded-xl border border-slate-100/50">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{key}</p>
+                    <div className="flex items-end gap-1.5">
+                      <span className="text-base font-bold text-slate-850 leading-none">{val as number}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action recommendations summary */}
+              {healthScore.recommendations && healthScore.recommendations.length > 0 && (
+                <div className="bg-amber-50/50 border border-amber-100/50 p-4 rounded-xl flex items-start gap-3">
+                  <div className="bg-amber-100 text-amber-700 p-1.5 rounded-lg mt-0.5 text-xs">💡</div>
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-900 uppercase">Top Recommendation:</h4>
+                    <p className="text-xs text-amber-850 mt-1">
+                      <strong className="font-semibold">{healthScore.recommendations[0].title}</strong> — {healthScore.recommendations[0].impact} (Use {healthScore.recommendations[0].tool})
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+            <p className="text-xs text-slate-500">Run a diagnostic to calculate your business health, identify cash flow risks, and get a compliance score.</p>
+          </div>
+        )}
       </div>
 
       {/* Business Snapshot (Financials) */}
@@ -396,6 +601,106 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate })
           </div>
         </div>
       </div>
+
+      {/* Business Health Score Detailed Report Modal */}
+      {showHealthModal && healthScore && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl animate-in zoom-in-95">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="font-bold text-slate-900 font-heading text-xl">AI Diagnostic Report</h3>
+                <p className="text-xs text-slate-500">Comprehensive health breakdown & strategic roadmap</p>
+              </div>
+              <button onClick={() => setShowHealthModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Score breakdown */}
+              <div className="bg-slate-900 rounded-2xl p-6 text-white flex flex-col sm:flex-row items-center gap-6 shadow-lg">
+                <CircularProgress percentage={healthScore.score} color="#10b981" />
+                <div>
+                  <h4 className="text-lg font-bold font-heading">Your Business is {healthScore.score >= 70 ? 'Healthy! 🚀' : healthScore.score >= 50 ? 'Stable ⚖️' : 'At Risk ⚠️'}</h4>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Based on analyzing debts, stock value, and invoices, your operations are performing at a {healthScore.score}% rating.
+                  </p>
+                </div>
+              </div>
+
+              {/* Strengths & Weaknesses */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-2xl">
+                  <h4 className="text-emerald-900 font-bold text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Award className="w-4 h-4 text-emerald-600" /> Strengths
+                  </h4>
+                  <ul className="space-y-2">
+                    {(healthScore.strengths || []).map((s: string, idx: number) => (
+                      <li key={idx} className="text-xs text-emerald-800 flex items-start gap-1.5 leading-relaxed">
+                        <span className="font-bold text-emerald-500">•</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="bg-rose-50 border border-rose-100 p-5 rounded-2xl">
+                  <h4 className="text-rose-900 font-bold text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-rose-600" /> Risks / Weaknesses
+                  </h4>
+                  <ul className="space-y-2">
+                    {(healthScore.weaknesses || []).map((w: string, idx: number) => (
+                      <li key={idx} className="text-xs text-rose-800 flex items-start gap-1.5 leading-relaxed">
+                        <span className="font-bold text-rose-400">•</span>
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Detailed Recommendations List */}
+              <div>
+                <h4 className="text-slate-800 font-bold text-sm mb-3">🛠️ Recommended Action Items</h4>
+                <div className="space-y-3">
+                  {(healthScore.recommendations || []).map((rec: any, idx: number) => (
+                    <div key={idx} className="border border-slate-100 p-4 rounded-xl bg-slate-50/50 hover:bg-slate-50 transition-colors flex justify-between items-center gap-4 flex-wrap sm:flex-nowrap">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                            rec.priority === 'HIGH' ? 'bg-red-100 text-red-700' : rec.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {rec.priority} Priority
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-semibold">Impact: {rec.impact}</span>
+                        </div>
+                        <h5 className="font-bold text-xs text-slate-800 mt-1.5">{rec.title}</h5>
+                      </div>
+                      <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wide whitespace-nowrap">
+                        Use {rec.tool}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowHealthModal(false)}
+              className="mt-6 w-full py-3 bg-slate-905 hover:bg-slate-900 text-white font-bold rounded-xl text-sm shadow-md transition-all active:scale-98"
+            >
+              Dismiss Report
+            </button>
+          </div>
+        </div>
+      )}
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="AI Business Health Score"
+        creditCost={5}
+        currentCredits={credits}
+        onConfirm={deductOnConfirm || (() => {})}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

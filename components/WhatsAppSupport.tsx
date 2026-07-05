@@ -55,11 +55,6 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = ({ credits = 0, onUpdate
         role: m.sender === 'user' ? 'user' : 'model' as const,
         parts: [{ text: m.text }]
       }));
-      // Prepare history for Gemini
-      const history = messages.map(m => ({
-        role: m.sender === 'user' ? 'user' : 'model' as const,
-        parts: [{ text: m.text }]
-      }));
 
       // Get AI response
       const responseText = await chatWithSmartBiz(history, userMsgText);
