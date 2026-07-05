@@ -2,6 +2,7 @@ from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from smartbiz_backend import gemini_utils
+from content.views import deduct_credits
 
 class GenerateBusinessPlanView(views.APIView):
     permission_classes = [IsAuthenticated]
