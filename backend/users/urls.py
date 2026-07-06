@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     RegisterView, LoginView, ProfileView, UserStatsView, UserActionsView,
-    ForgotPasswordView, ResetPasswordView, ComplianceStatusView, AgentHireRequestView
+    ForgotPasswordView, ResetPasswordView, ComplianceStatusView, AgentHireRequestView,
+    SetupAdminView
 )
 
 urlpatterns = [
@@ -14,5 +15,6 @@ urlpatterns = [
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     path('compliance/', ComplianceStatusView.as_view(), name='compliance'),
     path('hire-agent/', AgentHireRequestView.as_view(), name='hire-agent'),
+    path('setup-admin/', SetupAdminView.as_view(), name='setup-admin'),
 ]
 

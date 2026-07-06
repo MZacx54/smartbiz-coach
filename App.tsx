@@ -309,8 +309,21 @@ const App: React.FC = () => {
     navigate('/');
   };
 
-  const handleSaveBrand = (brand: BrandIdentity) => {
+  const handleSaveBrand = async (brand: BrandIdentity) => {
     setSavedBrand(brand);
+    try {
+      if (savedBrand && savedBrand.id) {
+        const updated = await brandService.updateBrand(Number(savedBrand.id), brand);
+        setSavedBrand(updated);
+      } else {
+        const saved = await brandService.createBrand(brand);
+        setSavedBrand(saved);
+      }
+      toast.success("Brand identity synchronized with database!");
+    } catch (error) {
+      console.error("Failed to sync brand with backend:", error);
+      toast.error("Saved locally (Offline mode)");
+    }
   };
 
   const handleAddToCart = (product: UnifiedItem) => {

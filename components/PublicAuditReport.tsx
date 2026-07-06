@@ -4,6 +4,7 @@ import { ShieldCheck, FileText, CheckCircle, Award, BarChart3, TrendingUp, Downl
 import { motion } from 'framer-motion';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { mapDbToBrand } from '../services/brandService';
 
 const PublicAuditReport: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -16,10 +17,11 @@ const PublicAuditReport: React.FC = () => {
         let brandData;
         if (slug) {
           const res = await api.get(`/api/brand/u/${slug}/`);
-          brandData = res.data;
+          brandData = mapDbToBrand(res.data);
         } else {
           const res = await api.get('/api/brand/');
-          brandData = Array.isArray(res.data) ? res.data[0] : res.data;
+          const rawBrand = Array.isArray(res.data) ? res.data[0] : res.data;
+          brandData = mapDbToBrand(rawBrand);
         }
         setBrand(brandData);
       } catch (err) {

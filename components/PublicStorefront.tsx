@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BrandIdentity } from '../types';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { mapDbToBrand } from '../services/brandService';
 
 // Inline SVG replacements for brand icons
 const InstagramIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -49,7 +50,7 @@ const PublicStorefront: React.FC = () => {
             api.get(`/api/brand/u/${slug}/`),
             api.get(`/api/marketplace/products/u/${slug}/`)
           ]);
-          brandData = brandRes.data;
+          brandData = mapDbToBrand(brandRes.data);
           productsData = productsRes.data;
         } else {
           // Preview mode for currently logged-in user
@@ -57,7 +58,8 @@ const PublicStorefront: React.FC = () => {
             api.get('/api/brand/'),
             api.get('/api/marketplace/products/')
           ]);
-          brandData = Array.isArray(brandRes.data) ? brandRes.data[0] : brandRes.data;
+          const rawBrand = Array.isArray(brandRes.data) ? brandRes.data[0] : brandRes.data;
+          brandData = mapDbToBrand(rawBrand);
           productsData = productsRes.data;
         }
 
@@ -99,10 +101,10 @@ const PublicStorefront: React.FC = () => {
           }
         };
 
-        const finalBrand = brandData || (isTractionMode ? mockBrand : null);
+        const finalBrand = brandData || (isTractionMode || !slug ? mockBrand : null);
         const finalProducts = Array.isArray(productsData) && productsData.length > 0 
           ? productsData 
-          : (isTractionMode ? [
+          : (isTractionMode || !slug ? [
               { id: 101, name: "Premium Ankara Textile - 6 Yards", price: "12500.00", product_type: "PHYSICAL", description: "Premium cotton African print fabric, suitable for all types of traditional outfits.", image_url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff", stock_count: 240 },
               { id: 102, name: "Logistics Dispatch Delivery Run", price: "3500.00", product_type: "SERVICE", description: "Intra-city dispatch logistics delivery within Lagos mainland.", image_url: "", stock_count: 150 },
               { id: 103, name: "Warehouse Storage Unit - 100sqm", price: "250000.00", product_type: "B2B", description: "Secure, dry, and easily accessible warehouse storage unit located in Ikeja.", image_url: "", stock_count: 3 }

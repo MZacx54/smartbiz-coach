@@ -351,3 +351,55 @@ class AgentHireRequestView(views.APIView):
             'message': 'Your hire request has been submitted. An agent will contact you within 24 hours.',
             'id': hire_request.id
         }, status=status.HTTP_201_CREATED)
+
+
+from django.http import HttpResponse
+
+class SetupAdminView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        html = """
+        <html>
+        <body style="font-family: sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px;">
+            <h2>Setup Django Admin Account</h2>
+            <form method="POST">
+                <div style="margin-bottom: 15px;">
+                    <label>Admin Email:</label><br/>
+                    <input type="email" name="email" value="meshachzax@gmail.com" style="width: 100%; padding: 8px;" required />
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label>Password:</label><br/>
+                    <input type="password" name="password" style="width: 100%; padding: 8px;" required />
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label>Secret Token (Only required if admin already exists):</label><br/>
+                    <input type="text" name="secret_token" style="width: 100%; padding: 8px;" />
+                </div>
+                <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer;">Create / Update Admin</button>
+            </form>
+        </body>
+        </html>
+        """
+        return HttpResponse(html)
+
+    def post(self, request):
+        email = request.data.get('email', 'meshachzax@gmail.com')
+        password = request.data.get('password')
+        secret_token = request.data.get('secret_token')
+
+        if not password:
+            return HttpResponse("Password is required", status=400)
+
+        # Allow if no superuser exists or if secret_token matches SECRET_KEY
+        if User.objects.filter(is_superuser=True).exists():
+            if secret_token != settings.SECRET_KEY:
+                return HttpResponse("Unauthorized: Admin already exists and secret token is invalid.", status=403)
+
+        user, created = User.objects.get_or_create(username=email, defaults={'email': email})
+        user.set_password(password)
+        user.is_superuser = True
+        user.is_staff = True
+        user.save()
+
+        return HttpResponse(f"Successfully {'created' if created else 'updated'} admin account for {email}!<br/><br/><a href='/admin/'>Go to Django Admin</a>")

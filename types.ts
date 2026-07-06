@@ -1,4 +1,5 @@
 export interface BrandIdentity {
+  id?: string | number;
   businessName: string;
   niche: string;
   vibe: string;
