@@ -24,6 +24,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
+    const [tractionMode, setTractionMode] = useState(() => localStorage.getItem('sb_idice_traction_mode') === 'true');
+
+    const toggleTraction = () => {
+        const newVal = !tractionMode;
+        setTractionMode(newVal);
+        localStorage.setItem('sb_idice_traction_mode', String(newVal));
+        window.location.reload();
+    };
 
     const handleNavigate = (view: AppView) => {
         onNavigate(view);
@@ -64,6 +72,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <img src="/logo-horizontal.png" alt="SmartBiz Coach" className="h-8 w-auto object-contain" />
                 </div>
                 <div className="flex items-center gap-4">
+                    <button
+                        onClick={toggleTraction}
+                        className={`text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
+                            tractionMode
+                                ? 'bg-emerald-500 text-white border-emerald-450'
+                                : 'bg-slate-100 text-slate-500 border-slate-200'
+                        }`}
+                    >
+                        📈 {tractionMode ? 'ON' : 'OFF'}
+                    </button>
                     {cartItems.length > 0 && (
                         <button
                             onClick={() => handleNavigate(AppView.CART)}
@@ -190,6 +208,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <GlobalSearch onResultClick={(item) => onNavigate(AppView.PRODUCT_MANAGER)} />
                         
                         <div className="flex items-center gap-4">
+                            <button
+                                onClick={toggleTraction}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all ${
+                                    tractionMode
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-emerald-400 shadow-sm shadow-emerald-100'
+                                        : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border-slate-200 hover:text-slate-700'
+                                }`}
+                            >
+                                <span>📈</span>
+                                <span>Traction Mode: {tractionMode ? 'ON' : 'OFF'}</span>
+                            </button>
                             <div
                               onClick={() => handleNavigate(AppView.SETTINGS)}
                               className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"

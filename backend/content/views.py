@@ -20,6 +20,8 @@ CREDIT_COSTS = {
     'sales_script': 1,    # As configured in usageLimiter
     'health_score': 5,
     'pricing_assistant': 2,
+    'blog_post': 5,
+    'partnership_pitch': 3,
 }
 
 def deduct_credits(user, action_key):
@@ -629,6 +631,84 @@ Return JSON with these keys:
         try:
             result = gemini_utils.generate_json_content(prompt, system_instruction=system_instruction, image_base64=image_base64, mime_type=mime_type)
             deduct_credits(request.user, 'image_edit')
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class GenerateBlogPostView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
+
+    def post(self, request):
+        topic = request.data.get('topic')
+        tone = request.data.get('tone', 'Informative')
+        length = request.data.get('length', 'Medium')
+        
+        if not topic:
+            return Response({'error': 'Missing required parameter: topic'}, status=400)
+            
+        brand_context = get_brand_context(request.user)
+        
+        system_prompt = f"""
+        {brand_context}
+        
+        You are a Professional Content Writer and SEO & GEO (Generative Engine Optimization) Specialist for Nigerian SMEs.
+        Your goal is to write a high-impact, long-form blog post about the selected topic.
+        
+        CRITICAL GEO (Generative Engine Optimization) INSTRUCTIONS:
+        1. Statistics Addition: Weave credible, quantitative details/statistics into the narrative.
+        2. Quotation Addition: Cite authoritative voices or industry experts (e.g. Aliko Dangote, SMEDAN Directors, PwC reports, Central Bank statements, etc.).
+        3. Source Citation: Explicitly name reputable sources or whitepapers.
+        4. Fluency & Concreteness: Write short, precise, and semantically clear sentences that can be easily parsed and cited by AI large language models.
+        5. Domain Vocabulary: Use domain-specific vocabulary terms and explain them clearly.
+        
+        Return JSON with keys:
+        - title: An SEO-optimized headline.
+        - metaDescription: A compelling 150-character meta description.
+        - blogContent: The full body of the blog post in Markdown format, with headers (##, ###) and clean bullet points.
+        - keywords: Array of 5 target SEO keywords.
+        """
+        
+        prompt = f"Write a {length} blog post about: '{topic}' with a {tone} tone. Optimize it for both human readers and AI crawlers using the GEO strategy."
+        
+        try:
+            result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            deduct_credits(request.user, 'blog_post')
+            return Response(result)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class GeneratePartnershipPitchView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
+
+    def post(self, request):
+        partner_name = request.data.get('partner_name', 'SMEDAN')
+        pitch_type = request.data.get('pitch_type', 'Workshop')
+        call_to_action = request.data.get('call_to_action', 'Zoom meeting')
+        
+        brand_context = get_brand_context(request.user)
+        
+        system_prompt = f"""
+        {brand_context}
+        
+        You are a Master Business Developer and Corporate Communicator specializing in B2B partnerships with Nigerian government agencies, hubs, and NGOs.
+        Your goal is to write a highly persuasive partnership proposal email pitch.
+        
+        Return JSON with keys:
+        - subjectLine: A professional email subject line.
+        - emailBody: The full body of the email in professional corporate format.
+        - keyBenefits: Array of 3 main benefits for the target partner (why they should partner with us).
+        - followUpStrategy: A short sentence detailing when and how to follow up.
+        """
+        
+        prompt = f"Write a partnership proposal email pitch to {partner_name}. Our offer type is: '{pitch_type}' and the call to action is: '{call_to_action}'."
+        
+        try:
+            result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            deduct_credits(request.user, 'partnership_pitch')
             return Response(result)
         except Exception as e:
             return Response({'error': str(e)}, status=500)

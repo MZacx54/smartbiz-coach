@@ -99,6 +99,7 @@ const ActionCardItem: React.FC<{ action: ActionCard; onClick: () => void }> = ({
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, credits, onUpdateCredits }) => {
+  const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [seasonalAlert, setSeasonalAlert] = useState<SeasonalAlert | null>(null);
 
@@ -125,6 +126,70 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
 
   useEffect(() => {
     const loadData = async () => {
+      const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
+      if (isTractionMode) {
+        setEcosystemStats({
+          ecosystem_value: 8450000,
+          total_leads: 342,
+          won_leads: 268,
+          conversion_rate: 78,
+          service_count: 12
+        });
+        setComplianceStatus({
+          cac_status: 'REGISTERED',
+          cac_number: 'RC-1849204',
+          tin_number: 'TIN-9284102-001',
+          has_corporate_account: true,
+          has_tin: true,
+          tax_compliance: 'COMPLIANT'
+        });
+        setMotivation({
+          quote: "Success in the Nigerian market is built on local relationships, relentless branding, and flawless credit management.",
+          author: "SmartBiz AI",
+          theme: "General",
+          actions: [
+            "Review low stock levels and generate purchase orders to Dangote Group supplier.",
+            "Send polite WhatsApp debt reminders to Meshach (₦25,000 pending).",
+            "Update your WhatsApp Status catalog with the new premium Ankara textiles."
+          ]
+        });
+        setSeasonalAlert({
+          title: "Q3 Business Expansion Opportunity",
+          description: "Lenders and NGO grants like IDICE are opening this quarter. Prepare your updated business plan and inventory valuation reports now.",
+          actionItem: "Get Ready",
+          season: "Q3"
+        });
+        setTrendingTopics([
+          { id: "t1", title: "IDICE Growth Lab 2026", category: "Grants", volume: "250K SME signups" },
+          { id: "t2", title: "Naira Stabilization Strategies", category: "Finance", volume: "180K Posts" },
+          { id: "t3", title: "AI-Powered SME Audits", category: "Tech", volume: "95K Posts" }
+        ]);
+        setTotalDebt(45200);
+        setStockValue(8450000);
+        setRecentTransactions([
+          { id: 'tx-1', amount: 350000, description: 'Direct Store Order (Paid via Paystack)', status: 'SUCCESS', provider: 'PAYSTACK', type: 'PURCHASE', created_at: new Date(Date.now() - 3600000 * 4).toISOString() } as any,
+          { id: 'tx-2', amount: 120000, description: 'Wholesale Invoice INV-4920', status: 'SUCCESS', provider: 'PAYSTACK', type: 'PURCHASE', created_at: new Date(Date.now() - 3600000 * 24).toISOString() } as any,
+          { id: 'tx-3', amount: 450000, description: 'Logistics Partnership Escrow Deposit', status: 'SUCCESS', provider: 'PAYSTACK', type: 'PURCHASE', created_at: new Date(Date.now() - 3600000 * 48).toISOString() } as any,
+        ]);
+        
+        // Populate mock health score if not already customized
+        const saved = localStorage.getItem('sb_health_score_data');
+        if (!saved) {
+          const mockScore = {
+            score: 88,
+            metrics: { financials: 92, brand: 85, compliance: 90, operations: 85 },
+            recommendations: [
+              { title: "Consolidate debt list", impact: "Improves cash liquidity by 15%", tool: "Gbege Book Reminders", priority: "HIGH" }
+            ],
+            strengths: ["Highly active customer invoice flow", "Compliant with CAC regulations", "Solid gross profit margins"],
+            weaknesses: ["Shortage of low stock alert items", "3 outstanding unresolved customer invoices"]
+          };
+          setHealthScore(mockScore);
+          localStorage.setItem('sb_health_score_data', JSON.stringify(mockScore));
+        }
+        return;
+      }
+
       // Ecosystem Analytics
       try {
         const response = await api.get('/api/marketplace/analytics/');
@@ -601,6 +666,99 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           </div>
         </div>
       </div>
+
+      {/* Traction & Partnerships Section (Traction Mode Only) */}
+      {isTractionMode && (
+        <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm space-y-6 mt-6">
+          <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+            <div>
+              <h3 className="font-extrabold text-slate-900 font-heading text-base flex items-center gap-2">
+                <span className="text-emerald-500">📈</span> Verified Traction & Pilot Reports (IDICE Growth Lab)
+              </h3>
+              <p className="text-xs text-slate-500">Simulated dashboard for assessing active pilots and monthly sales traction.</p>
+            </div>
+            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full animate-pulse">
+              IDICE Selectable MVP
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Sales Growth Chart */}
+            <div className="lg:col-span-2 space-y-4">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Monthly Transaction Value (2026)</h4>
+              <div className="h-48 flex items-end gap-3 pt-6 border-b border-l border-slate-100 px-2">
+                {[
+                  { month: 'Jan', val: '₦3.2M', height: '25%' },
+                  { month: 'Feb', val: '₦4.8M', height: '38%' },
+                  { month: 'Mar', val: '₦6.1M', height: '48%' },
+                  { month: 'Apr', val: '₦7.5M', height: '60%' },
+                  { month: 'May', val: '₦9.8M', height: '78%' },
+                  { month: 'Jun', val: '₦12.4M', height: '98%' },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer h-full justify-end">
+                    <span className="text-[10px] font-black text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity mb-1">{item.val}</span>
+                    <div 
+                      style={{ height: item.height }} 
+                      className="w-full bg-gradient-to-t from-emerald-600 to-teal-500 rounded-t-lg group-hover:from-emerald-500 group-hover:to-teal-400 transition-all duration-500 shadow-sm"
+                    ></div>
+                    <span className="text-[10px] font-bold text-slate-400 mt-1">{item.month}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Active User Stats */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Active User Base Growth</h4>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500 font-medium">SMEs & Merchants</span>
+                  <span className="text-sm font-bold text-slate-800">5,842</span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: '85%' }}></div>
+                </div>
+                <div className="flex justify-between items-center text-[10px] text-slate-400">
+                  <span>Target: 6,000</span>
+                  <span className="text-emerald-600 font-bold">85% Year Growth</span>
+                </div>
+                
+                <div className="border-t border-slate-100 pt-3 mt-2 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Avg Retention Rate</span>
+                    <span className="font-bold text-slate-800">92.4%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Monthly Active Rate</span>
+                    <span className="font-bold text-slate-800">88.2%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pilot Partnerships */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-widest">Active Pilot Partnerships & Cohorts</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { name: 'Lagos Innovates', role: 'SME Digitization Pilot', logo: '🏛️' },
+                { name: 'CcHUB Nigeria', role: 'Cohort 4 Incubator', logo: '💡' },
+                { name: 'Fate Foundation', role: 'Accelerator Program', logo: '🤝' },
+                { name: 'NIRSAL MFB Escrow', role: 'Direct Microfinance Pilot', logo: '💰' },
+              ].map((partner, idx) => (
+                <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
+                  <span className="text-2xl">{partner.logo}</span>
+                  <div>
+                    <p className="text-xs font-bold text-slate-850 leading-none">{partner.name}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">{partner.role}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Business Health Score Detailed Report Modal */}
       {showHealthModal && healthScore && (

@@ -21,6 +21,11 @@ export interface BrandIdentity {
   logoPrompt: string; // The prompt for the image generator
   logoUrl?: string; // The actual generated image URL
   phone?: string; // Business contact phone
+  cacNumber?: string;
+  tin?: string;
+  email?: string;
+  location?: string;
+  whatsapp?: string;
 
   // Upgrade: Trust & Operations Kit
   policies: {
@@ -233,6 +238,18 @@ export interface Invoice {
   taxRate: number;
   currency: string;
   note?: string;
+  
+  // Expanded audit & bank details
+  senderAddress?: string;
+  senderEmail?: string;
+  senderPhone?: string;
+  senderTin?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  paymentStatus?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE';
+  paymentTerms?: 'DUE_ON_RECEIPT' | 'NET_15' | 'NET_30' | 'NET_60';
+  dueDate?: string;
 }
 
 // --- Marketplace Types ---

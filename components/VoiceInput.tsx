@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { transcribeAudio } from '../services/geminiService';
+import { toast } from 'react-hot-toast';
 
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
@@ -37,7 +38,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
       setIsRecording(true);
     } catch (err) {
       console.error("Error accessing microphone:", err);
-      alert("Could not access microphone. Please check permissions.");
+      toast.error("Microphone access failed. Please type your query manually in the text field instead.");
     }
   };
 
@@ -56,7 +57,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
           onTranscript(text);
         } catch (error) {
           console.error(error);
-          alert("Failed to transcribe audio.");
+          toast.error("Could not transcribe voice. Please try typing your input.");
         } finally {
           setIsProcessing(false);
         }

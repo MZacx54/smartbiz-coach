@@ -172,3 +172,17 @@ export const generateMarketingVideo = async (script: any, visualStyle: string, o
     return response.data; // Now returns { storyboard: [], message: "" }
 };
 
+export const generateBlogPost = async (topic: string, tone: string, length: string) => {
+    const response = await api.post('/api/content/generate-blog-post/', { topic, tone, length });
+    return response.data;
+};
+
+export const generatePartnershipPitch = async (partnerName: string, pitchType: string, callToAction: string) => {
+    const response = await api.post('/api/content/generate-partnership-pitch/', {
+        partner_name: partnerName,
+        pitch_type: pitchType,
+        call_to_action: callToAction
+    });
+    return response.data;
+};
+

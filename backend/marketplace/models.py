@@ -63,6 +63,12 @@ class Product(models.Model):
     is_promoted = models.BooleanField(default=False) # Shown in Market Square
     
     stock_count = models.IntegerField(default=1)
+    
+    # Inventory Valuation & Auditing fields
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    sku = models.CharField(max_length=100, blank=True, null=True)
+    low_stock_threshold = models.IntegerField(default=5)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

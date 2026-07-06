@@ -242,10 +242,16 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
               <span className="font-bold text-slate-800 text-sm">SmartBiz Coach</span>
             </div>
             <button
-              onClick={() => onComplete({ ...user, hasOnboarded: true })}
-              className="text-xs text-slate-400 hover:text-slate-600 font-semibold transition-colors"
+              onClick={() => onComplete({
+                ...user,
+                location: user.location || 'Lagos, Nigeria',
+                phone: user.phone || '08123456789',
+                businessName: user.businessName || 'SmartBiz Merchant Ltd',
+                hasOnboarded: true
+              })}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors"
             >
-              Skip setup →
+              Express Onboarding (Skip) →
             </button>
           </div>
 

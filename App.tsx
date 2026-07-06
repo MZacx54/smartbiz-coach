@@ -20,12 +20,10 @@ const Compliance = lazy(() => import("./components/Compliance"));
 const BusinessPlanGenerator = lazy(() => import("./components/BusinessPlanGenerator"));
 const GrantMatcher = lazy(() => import("./components/GrantMatcher"));
 const LearningHub = lazy(() => import("./components/LearningHub"));
-const InventoryTracker = lazy(() => import("./components/InventoryTracker"));
 const DigitalRoadmap = lazy(() => import("./components/DigitalRoadmap"));
 const WhatsAppSupport = lazy(() => import("./components/WhatsAppSupport"));
 const InvoiceGenerator = lazy(() => import("./components/InvoiceGenerator"));
 const Marketplace = lazy(() => import("./components/Marketplace"));
-const SmartHomeFinder = lazy(() => import("./components/SmartHomeFinder"));
 const Cart = lazy(() => import("./components/Cart"));
 const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
@@ -37,6 +35,7 @@ const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
 const ProductManager = lazy(() => import("./components/ProductManager"));
 const LeadManager = lazy(() => import("./components/LeadManager"));
 const PricingAssistant = lazy(() => import("./components/PricingAssistant"));
+const PublicAuditReport = lazy(() => import("./components/PublicAuditReport"));
 
 import {
   AppView,
@@ -423,8 +422,14 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/u/:slug" element={
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>}>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-650 border-t-transparent rounded-full animate-spin" /></div>}>
             <PublicStorefront />
+          </Suspense>
+        } />
+        
+        <Route path="/u/:slug/audit" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-650 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicAuditReport />
           </Suspense>
         } />
 
@@ -478,6 +483,7 @@ const App: React.FC = () => {
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="audit" element={<PublicAuditReport />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>

@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wand2, ArrowRight } from 'lucide-react';
+import { Wand2, ArrowRight, Eye, Copy, Check, Calendar, Mail, FileText, Plus, HelpCircle } from 'lucide-react';
 import { BrandIdentity } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as geminiService from '../services/geminiService';
 import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
+import { toast } from 'react-hot-toast';
 
 // Types
-type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan';
+type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan' | 'Blog Writer' | 'Partnership Pitch';
 type Platform = 'Instagram' | 'Facebook' | 'Twitter' | 'LinkedIn' | 'TikTok';
 type Tone = 'Exciting' | 'Professional' | 'Funny' | 'Informative';
 type Format = 'Single Post' | 'Carousel' | 'Story' | 'Reel';
@@ -23,8 +24,6 @@ type AspectRatio = 'Square (1:1)' | 'Portrait (4:5)' | 'Landscape (16:9)';
 
 type PrimaryGoal = 'Sales' | 'Brand Awareness' | 'Engagement';
 type PostFrequency = 'Daily' | '5 times/week' | '3 times/week';
-
-// Trends are now fetched from backend
 
 interface ContentStudioProps {
     brand?: BrandIdentity | null;
@@ -71,6 +70,20 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     // Photo Studio State
     const [photoDesc, setPhotoDesc] = useState('');
 
+    // Weekly Plan State
+    const [planGoal, setPlanGoal] = useState<PrimaryGoal>('Brand Awareness');
+    const [planFrequency, setPlanFrequency] = useState<PostFrequency>('5 times/week');
+
+    // Blog Writer State
+    const [blogTopic, setBlogTopic] = useState('');
+    const [blogTone, setBlogTone] = useState<string>('Informative');
+    const [blogLength, setBlogLength] = useState<string>('Medium');
+
+    // Partnership Pitch State
+    const [partnerName, setPartnerName] = useState<string>('SMEDAN');
+    const [pitchType, setPitchType] = useState<string>('Free Digital Literacy Workshops');
+    const [pitchCta, setPitchCta] = useState<string>('Schedule a 10-minute Zoom call');
+
     // Check for Trend Jacking on mount
     useEffect(() => {
         const activeTrend = localStorage.getItem('sb_active_trend');
@@ -83,10 +96,6 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     }, []);
     const [artStyle, setArtStyle] = useState<ArtStyle>('Realistic');
     const [aspectRatio, setAspectRatio] = useState<AspectRatio>('Square (1:1)');
-
-    // Weekly Plan State
-    const [planGoal, setPlanGoal] = useState<PrimaryGoal>('Brand Awareness');
-    const [planFrequency, setPlanFrequency] = useState<PostFrequency>('5 times/week');
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedContent, setGeneratedContent] = useState<any>(null);
@@ -136,6 +145,10 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 result = await geminiService.generateVideoScript(videoTopic, videoPlatform, tone, hookStyle);
             } else if (activeTab === 'Weekly Plan') {
                 result = await geminiService.generateWeeklyPlan(planGoal);
+            } else if (activeTab === 'Blog Writer') {
+                result = await geminiService.generateBlogPost(blogTopic, blogTone, blogLength);
+            } else if (activeTab === 'Partnership Pitch') {
+                result = await geminiService.generatePartnershipPitch(partnerName, pitchType, pitchCta);
             } else if (activeTab === 'Photo Studio') {
                 if (imagePreview) {
                     result = await geminiService.editImage(base64Image!, mimeType, photoDesc || "Analyze this image and suggest 3 high-performing social media edits.");
@@ -145,6 +158,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                     result = { text: "No image uploaded. Here are 3 professional prompts you can use in Midjourney or Canva to create this visual:", prompts: result };
                 }
             }
+            
             if (result && result.error) {
                 throw new Error(result.error);
             }
@@ -158,6 +172,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             }
 
             setGeneratedContent(result);
+            toast.success('Content crafted successfully!');
         } catch (err: any) {
             console.error(err);
             setError(err?.response?.data?.error || err.message || "Failed to generate content. Please try again.");
@@ -180,28 +195,24 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 await executeGeneration(true, usage.cost);
             });
             setShowCreditPrompt(true);
-            return;
+        } else {
+            await executeGeneration(false, 0);
         }
-
-        await executeGeneration(false, 0);
     };
 
     const handleGenerateVideo = async () => {
         if (!generatedContent || activeTab !== 'Video Script') return;
 
         setIsGeneratingVideo(true);
-        setError(null);
         try {
-            const result = await geminiService.generateMarketingVideo(generatedContent, 'REALISTIC');
-            if (result.storyboard) setStoryboard(result.storyboard);
-            if (result.audio_base64) {
-                // Convert base64 to Blob URL for playback
-                const audioBlob = new Blob([Uint8Array.from(atob(result.audio_base64), c => c.charCodeAt(0))], { type: 'audio/mp3' });
-                setAudioUrl(URL.createObjectURL(audioBlob));
-                setSpokenText(result.spoken_text);
-            }
-        } catch (err: any) {
-            setError(err.message || "Failed to generate storyboard.");
+            const visualStyle = 'Professional Cinematic';
+            const response = await geminiService.generateMarketingVideo(generatedContent, visualStyle, (msg) => {
+                toast.loading(msg, { id: 'vid-gen' });
+            });
+            setStoryboard(response.storyboard);
+            toast.success('Video storyboard drafted!', { id: 'vid-gen' });
+        } catch (err) {
+            toast.error('Failed to generate video layout', { id: 'vid-gen' });
         } finally {
             setIsGeneratingVideo(false);
         }
@@ -210,14 +221,17 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const handleUseTrend = (trendTitle: string) => {
         if (activeTab === 'Post Writer') setPostTopic(`Incorporate the trend: ${trendTitle}. `);
         if (activeTab === 'Video Script') setVideoTopic(`Incorporate the trend: ${trendTitle}. `);
+        if (activeTab === 'Blog Writer') setBlogTopic(`Write about the trend: ${trendTitle}. `);
         if (activeTab === 'Photo Studio') setPhotoDesc(`A scene representing: ${trendTitle}. `);
     };
 
     const tabs: { id: TabType; icon: string }[] = [
         { id: 'Post Writer', icon: '✍️' },
+        { id: 'Blog Writer', icon: '📝' },
         { id: 'Video Script', icon: '🎬' },
-        { id: 'Photo Studio', icon: '📸' },
-        { id: 'Weekly Plan', icon: '📅' }
+        { id: 'Weekly Plan', icon: '📅' },
+        { id: 'Partnership Pitch', icon: '🤝' },
+        { id: 'Photo Studio', icon: '📸' }
     ];
 
     return (
@@ -232,9 +246,6 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                     </div>
                     <p className="text-sm text-slate-500">Your all-in-one agency creative suite.</p>
                 </div>
-                <button className="text-indigo-600 font-bold text-sm hover:underline">
-                    View History
-                </button>
             </div>
 
             {/* Tabs Layout */}
@@ -249,7 +260,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    onClick={() => {
+                                        setActiveTab(tab.id);
+                                        setGeneratedContent(null);
+                                        setError(null);
+                                    }}
                                     className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-bold text-sm transition-colors whitespace-nowrap ${activeTab === tab.id
                                         ? 'border-indigo-600 text-indigo-600'
                                         : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -280,14 +295,13 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                         <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm"
                                             placeholder="e.g. 50% discount on all wigs this weekend" value={postTopic} onChange={(e) => setPostTopic(e.target.value)}
                                         ></textarea>
-                                        <div className="absolute bottom-3 right-3 text-xl opacity-50">🎙️</div>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Platform</label>
-                                        <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
+                                        <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
                                             <option value="Instagram">📸 Instagram</option>
                                             <option value="TikTok">🎵 TikTok</option>
                                             <option value="Facebook">👥 Facebook</option>
@@ -297,13 +311,13 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Tone</label>
-                                        <select value={tone} onChange={(e) => setTone(e.target.value as Tone)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
+                                        <select value={tone} onChange={(e) => setTone(e.target.value as Tone)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
                                             <option value="Exciting">🤩 Exciting</option><option value="Professional">💼 Professional</option><option value="Funny">😂 Funny</option><option value="Informative">🧠 Informative</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Format</label>
-                                        <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
+                                        <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
                                             <option value="Single Post">🖼️ Single Post</option><option value="Carousel">📚 Carousel</option><option value="Story">📱 Story</option><option value="Reel">🎬 Reel</option>
                                         </select>
                                     </div>
@@ -311,6 +325,79 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                                 <button onClick={handleGenerate} disabled={isGenerating || !postTopic.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
                                     {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Post</span><span>✨</span></>}
+                                </button>
+                            </motion.div>
+                        )}
+
+                        {/* BLOG WRITER */}
+                        {activeTab === 'Blog Writer' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Blog Topic / Concept</label>
+                                    <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm"
+                                        placeholder="e.g. How to get your Nigerian business ready for compliance audits" 
+                                        value={blogTopic} onChange={(e) => setBlogTopic(e.target.value)}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Writing Tone</label>
+                                        <select value={blogTone} onChange={(e) => setBlogTone(e.target.value)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="Informative">🧠 Informative & Factual (GEO Strategy)</option>
+                                            <option value="Persuasive">🔥 Persuasive & Conversion focused</option>
+                                            <option value="Inspirational">🌟 Inspirational Storytelling</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Length Target</label>
+                                        <select value={blogLength} onChange={(e) => setBlogLength(e.target.value)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="Short (400 words)">Short (400 words)</option>
+                                            <option value="Medium (800 words)">Medium (800 words)</option>
+                                            <option value="Long Deep-Dive (1500 words)">Long Deep-Dive (1500 words)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button onClick={handleGenerate} disabled={isGenerating || !blogTopic.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Blog Article</span><span>✍️</span></>}
+                                </button>
+                            </motion.div>
+                        )}
+
+                        {/* PARTNERSHIP PITCH */}
+                        {activeTab === 'Partnership Pitch' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Target Agency / NGO</label>
+                                        <select value={partnerName} onChange={(e) => setPartnerName(e.target.value)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="SMEDAN">SMEDAN (Federal Micro-loans)</option>
+                                            <option value="FATE Foundation">FATE Foundation (Accelerator/Alumni)</option>
+                                            <option value="LSETF (Lagos Trust Fund)">LSETF (Lagos Trust Fund)</option>
+                                            <option value="NITDA">NITDA (Tech Inclusion Workshops)</option>
+                                            <option value="MATAN (Market Traders)">MATAN (Market Traders Association)</option>
+                                            <option value="General Investor Pitch">General Investor Pitch Deck</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Offer Description</label>
+                                        <select value={pitchType} onChange={(e) => setPitchType(e.target.value)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="Free Digital Literacy Workshops">Free Digital Literacy Workshops</option>
+                                            <option value="Subsidized SME Subscriptions">Subsidized SME Subscriptions</option>
+                                            <option value="Co-Branded Incubation Program">Co-Branded Incubation Program</option>
+                                            <option value="API Escrow integration pilot">API Escrow Integration Pilot</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Call to Action (CTA)</label>
+                                        <select value={pitchCta} onChange={(e) => setPitchCta(e.target.value)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="Schedule a 10-minute Zoom call">10-Min Discovery Zoom Call</option>
+                                            <option value="Schedule a physical office presentation">Physical Office Presentation</option>
+                                            <option value="Review our shared Google Drive proposal">Review PDF Proposal Link</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Pitch Proposal</span><span>🤝</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -328,7 +415,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                     </div>
                                     <div className="relative">
                                         <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm"
-                                            placeholder="e.g. 3 reasons to buy our organic soap" value={videoTopic} onChange={(e) => setVideoTopic(e.target.value)}
+                                            placeholder="e.g. 3 reasons to digitize your retail inventory list" value={videoTopic} onChange={(e) => setVideoTopic(e.target.value)}
                                         ></textarea>
                                     </div>
                                 </div>
@@ -336,31 +423,28 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Platform</label>
-                                        <select value={videoPlatform} onChange={(e) => setVideoPlatform(e.target.value as VideoPlatform)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
-                                            <option value="TikTok">TikTok</option><option value="Instagram Reel">Instagram Reel</option><option value="YouTube Shorts">YouTube Shorts</option>
+                                        <select value={videoPlatform} onChange={(e) => setVideoPlatform(e.target.value as VideoPlatform)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="TikTok">🎵 TikTok</option>
+                                            <option value="Instagram Reel">📸 Instagram Reel</option>
+                                            <option value="YouTube Shorts">🎥 YouTube Shorts</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Tone</label>
+                                        <select value={tone} onChange={(e) => setTone(e.target.value as Tone)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="Exciting">🤩 Exciting</option><option value="Professional">💼 Professional</option><option value="Funny">😂 Funny</option><option value="Informative">🧠 Informative</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Hook Style</label>
-                                        <select value={hookStyle} onChange={(e) => setHookStyle(e.target.value as HookStyle)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
-                                            <option value="Educational">🎓 Educational</option><option value="Controversial">🌶️ Controversial</option><option value="Storytelling">📖 Storytelling</option>
+                                        <select value={hookStyle} onChange={(e) => setHookStyle(e.target.value as HookStyle)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="Educational">🧠 Educational</option><option value="Controversial">🔥 Controversial</option><option value="Storytelling">📚 Storytelling</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Length</label>
-                                        <select value={videoLength} onChange={(e) => setVideoLength(e.target.value as VideoLength)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
-                                            <option value="15s">⏱️ 15 Seconds</option><option value="30s">⏱️ 30 Seconds</option><option value="60s">⏱️ 60 Seconds</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start space-x-3">
-                                    <span className="text-xl">ℹ️</span>
-                                    <p className="text-sm text-blue-800 leading-relaxed font-medium">Video scripts will include visual cues, text overlays, and audio suggestions to make your recording process seamless.</p>
                                 </div>
 
                                 <button onClick={handleGenerate} disabled={isGenerating || !videoTopic.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Script</span><span>✨</span></>}
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Video Script</span><span>🎬</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -369,78 +453,31 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                         {activeTab === 'Photo Studio' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-3">Upload Reference or Product Image (Optional)</label>
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:border-indigo-500 transition-colors cursor-pointer bg-slate-50 group"
-                                    >
-                                        <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleImageChange} />
-                                        {imagePreview ? (
-                                            <div className="relative inline-block">
-                                                <img src={imagePreview} alt="Preview" className="max-h-48 rounded-xl shadow-md mx-auto" />
-                                                <button onClick={(e) => { e.stopPropagation(); setImagePreview(null); setSelectedImage(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors">
-                                                    ✕
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                <div className="text-4xl group-hover:scale-110 transition-transform">📸</div>
-                                                <p className="text-sm font-bold text-slate-600">Click or drag image to analyze</p>
-                                                <p className="text-xs text-slate-400">Gemini Vision will help you perfect your visuals</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Tell us what image you want to create / analyze</label>
+                                    <textarea rows={3} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm"
+                                        placeholder="e.g. Premium Ankara textile roll overlayed with gold sparkles" value={photoDesc} onChange={(e) => setPhotoDesc(e.target.value)}
+                                    ></textarea>
                                 </div>
 
-                                <div>
-                                    <div className="flex justify-between items-center mb-3">
-                                        <label className="block text-sm font-bold text-slate-700">Instructions / Image Goal</label>
-                                    </div>
-                                    <div className="relative">
-                                        <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm"
-                                            placeholder="e.g. Suggest edits to make this look more professional for a luxury brand" value={photoDesc} onChange={(e) => setPhotoDesc(e.target.value)}
-                                        ></textarea>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Art Style</label>
-                                        <select value={artStyle} onChange={(e) => setArtStyle(e.target.value as ArtStyle)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
-                                            <option value="Realistic">📸 Realistic photo</option><option value="3D Render">🧊 3D Render</option><option value="Minimalist">⚪ Minimalist</option><option value="Cartoon">🎨 Cartoon / Illustration</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Aspect Ratio</label>
-                                        <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
-                                            <option value="Square (1:1)">🟦 Square (1:1) - Instagram</option><option value="Portrait (4:5)">🟨 Portrait (4:5) - Feed</option><option value="Landscape (16:9)">🟩 Landscape (16:9) - YouTube</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start space-x-3">
-                                    <span className="text-xl">⚠️</span>
-                                    <p className="text-sm text-amber-800 leading-relaxed font-medium">Generating images consumes more credits. Please ensure your prompt is detailed to get the best results first time.</p>
-                                </div>
-
-                                <div 
-                                    onClick={() => navigate('/dashboard/product-magic')}
-                                    className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5 flex items-center justify-between cursor-pointer group hover:shadow-md transition-all mt-4"
+                                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-indigo-500 transition-colors relative cursor-pointer bg-slate-50/50"
+                                    onClick={() => fileInputRef.current?.click()}
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200 group-hover:scale-110 transition-transform">
-                                            <Wand2 className="w-6 h-6" />
+                                    <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                                    {imagePreview ? (
+                                        <div className="relative w-40 h-40 mx-auto rounded-lg overflow-hidden border border-slate-250">
+                                            <img src={imagePreview} alt="Selected preview" className="w-full h-full object-cover" />
                                         </div>
+                                    ) : (
                                         <div>
-                                            <h4 className="font-bold text-indigo-900 text-sm">Have a real product photo?</h4>
-                                            <p className="text-[11px] text-indigo-600 font-medium">Use Product Magic to enhance your actual products with AI analysis.</p>
+                                            <span className="text-3xl">📸</span>
+                                            <p className="text-xs font-bold text-slate-700 mt-2">Upload product photo to analyze visual quality</p>
+                                            <p className="text-[10px] text-slate-400">Supports PNG, JPG, JPEG (Max 5MB)</p>
                                         </div>
-                                    </div>
-                                    <ArrowRight className="w-5 h-5 text-indigo-400 group-hover:translate-x-1 transition-transform" />
+                                    )}
                                 </div>
 
                                 <button onClick={handleGenerate} disabled={isGenerating || !photoDesc.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Image</span><span>📸</span></>}
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Analyze Image</span><span>📸</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -450,16 +487,16 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Primary Goal</label>
-                                        <select value={planGoal} onChange={(e) => setPlanGoal(e.target.value as PrimaryGoal)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
-                                            <option value="Brand Awareness">📢 Brand Awareness (Grow Audience)</option>
-                                            <option value="Sales">💰 Drive Sales (Promos/Offers)</option>
-                                            <option value="Engagement">💬 Maximize Engagement (Comments/Shares)</option>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Campaign Goal</label>
+                                        <select value={planGoal} onChange={(e) => setPlanGoal(e.target.value as PrimaryGoal)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                                            <option value="Sales">💰 Increase Direct Product Sales</option>
+                                            <option value="Brand Awareness">📈 Grow Brand Authority & Trust</option>
+                                            <option value="Engagement">🤝 Engage Community & Gather Reviews</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Post Frequency</label>
-                                        <select value={planFrequency} onChange={(e) => setPlanFrequency(e.target.value as PostFrequency)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none appearance-none">
+                                        <select value={planFrequency} onChange={(e) => setPlanFrequency(e.target.value as PostFrequency)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
                                             <option value="3 times/week">3 times / week (Relaxed)</option>
                                             <option value="5 times/week">5 times / week (Standard)</option>
                                             <option value="Daily">Daily (Aggressive Growth)</option>
@@ -495,7 +532,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 onClick={() => {
                                                     const text = JSON.stringify(generatedContent, null, 2);
                                                     navigator.clipboard.writeText(text);
-                                                    alert("Copied to clipboard!");
+                                                    toast.success("Copied to clipboard!");
                                                 }}
                                                 className="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full font-bold transition-all border border-white/10"
                                             >
@@ -532,21 +569,65 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         <p className="text-indigo-100 italic">"Use this to reply to comments or DMs:"</p>
                                                         <p className="text-white mt-2 font-medium">{generatedContent.dmReply}</p>
                                                     </div>
+                                                </div>
+                                            )}
 
-                                                    {generatedContent.slides && (
-                                                        <div className="space-y-3">
-                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">📚 Carousel Guide</h4>
-                                                            <div className="flex space-x-4 overflow-x-auto pb-4 hide-scrollbar">
-                                                                {generatedContent.slides.map((slide: any, i: number) => (
-                                                                    <div key={i} className="min-w-[200px] bg-white/5 p-4 rounded-xl border border-white/5 flex-shrink-0">
-                                                                        <span className="text-[10px] font-bold text-slate-500">SLIDE {i + 1}</span>
-                                                                        <h5 className="text-white font-bold my-1">{slide.title}</h5>
-                                                                        <p className="text-[11px] text-slate-400">{slide.content}</p>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                                            {activeTab === 'Blog Writer' && (
+                                                <div className="space-y-6">
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Blog Post Headline</h4>
+                                                        <h3 className="text-lg font-bold text-white font-heading">{generatedContent.title}</h3>
+                                                    </div>
+                                                    
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Meta Description</h4>
+                                                        <p className="text-slate-350 italic">"{generatedContent.metaDescription}"</p>
+                                                    </div>
+
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Article Body (GEO Optimized)</h4>
+                                                        <div className="text-slate-200 whitespace-pre-wrap leading-relaxed max-w-none text-xs font-medium">
+                                                            {generatedContent.blogContent}
                                                         </div>
-                                                    )}
+                                                    </div>
+
+                                                    <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                                        <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-2">Target SEO Keywords</h4>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {generatedContent.keywords?.map((keyword: string) => (
+                                                                <span key={keyword} className="bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded-full text-[10px] font-bold">#{keyword}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {activeTab === 'Partnership Pitch' && (
+                                                <div className="space-y-6">
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Proposal Subject Line</h4>
+                                                        <p className="text-white font-bold">{generatedContent.subjectLine}</p>
+                                                    </div>
+
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Email Body Proposal</h4>
+                                                        <p className="text-white whitespace-pre-wrap leading-relaxed text-xs">{generatedContent.emailBody}</p>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                                                            <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-3">Key Benefits to Partner</h4>
+                                                            <ul className="list-disc pl-4 space-y-2 text-slate-350 text-xs">
+                                                                {generatedContent.keyBenefits?.map((b: string, i: number) => (
+                                                                    <li key={i}>{b}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                                                            <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mb-3">Recommended Follow Up</h4>
+                                                            <p className="text-white text-xs leading-relaxed">{generatedContent.followUpStrategy}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -568,107 +649,73 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                                 <p className="text-slate-200 leading-relaxed">{generatedContent.body}</p>
                                                             </div>
                                                             <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20">
-                                                                <h5 className="text-emerald-400 font-bold text-[10px] uppercase mb-2">🏁 Strong CTA</h5>
-                                                                <p className="text-white font-bold">{generatedContent.cta}</p>
+                                                                <h5 className="text-emerald-300 font-bold text-[10px] uppercase mb-2">📣 Call to Action (CTA)</h5>
+                                                                <p className="text-white italic">"{generatedContent.callToAction}"</p>
                                                             </div>
                                                         </div>
 
+                                                        {/* Storyboard Rendering */}
                                                         <div className="space-y-4">
-                                                            <div className="bg-indigo-500/5 p-5 rounded-2xl border border-indigo-500/10 h-full">
-                                                                <h5 className="text-indigo-300 font-bold text-[10px] uppercase mb-4">🎬 Production Cues</h5>
-                                                                <div className="space-y-4">
-                                                                    <div>
-                                                                        <p className="text-xs font-bold text-slate-500 mb-2">VISUALS</p>
-                                                                        <ul className="space-y-2">
-                                                                            {generatedContent.visual_cues?.map((cue: string, i: number) => (
-                                                                                <li key={i} className="text-[11px] text-slate-300 flex items-start space-x-2">
-                                                                                    <span className="text-indigo-500">•</span>
-                                                                                    <span>{cue}</span>
-                                                                                </li>
-                                                                            ))}
-                                                                        </ul>
-                                                                    </div>
-                                                                    <div className="pt-2 border-t border-white/5">
-                                                                        <p className="text-xs font-bold text-slate-500 mb-2">AUDIO / SFX</p>
-                                                                        <p className="text-[11px] text-slate-300 bg-white/5 p-3 rounded-lg">{generatedContent.audio_suggestions}</p>
-                                                                    </div>
-                                                                </div>
-
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <h5 className="text-indigo-300 font-bold text-xs uppercase">🎬 Scene Storyboard Planner</h5>
                                                                 {!storyboard && (
                                                                     <button
                                                                         onClick={handleGenerateVideo}
                                                                         disabled={isGeneratingVideo}
-                                                                        className="w-full mt-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center space-x-2"
+                                                                        className="bg-indigo-650 hover:bg-indigo-700 text-white font-bold text-[9px] uppercase tracking-wider px-3.5 py-2 rounded-xl flex items-center space-x-1.5 transition-all"
                                                                     >
-                                                                        {isGeneratingVideo ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Visual Storyboard</span><span>🎥</span></>}
+                                                                        <span>Generate Visuals</span>
                                                                     </button>
                                                                 )}
                                                             </div>
-                                                        </div>
-                                                    </div>
 
-                                                    <AnimatePresence>
-                                                        {storyboard && (
-                                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-6 border-t border-white/10 space-y-6">
-                                                                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                                                                    <div>
-                                                                        <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest">📽️ Director's Storyboard</h4>
-                                                                        <span className="text-[10px] text-slate-500 italic">Production-Ready View</span>
-                                                                    </div>
-                                                                    {audioUrl && (
-                                                                        <div className="bg-white/5 border border-white/10 p-3 rounded-xl flex items-center gap-3">
-                                                                            <span className="text-[10px] text-indigo-400 font-bold uppercase whitespace-nowrap">🎙️ Voiceover Generated</span>
-                                                                            <audio controls src={audioUrl} className="h-8 w-48 scale-90 origin-left" />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                {spokenText && (
-                                                                    <div className="bg-indigo-900/30 border border-indigo-500/20 p-4 rounded-xl">
-                                                                        <h4 className="text-[10px] text-indigo-400 font-bold uppercase mb-2">Generated Script:</h4>
-                                                                        <p className="text-sm text-slate-300 italic">"{spokenText}"</p>
-                                                                    </div>
-                                                                )}
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                            {storyboard ? (
+                                                                <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                                                                     {storyboard.map((scene: any, i: number) => (
-                                                                        <div key={i} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden group">
-                                                                            <div className="aspect-video bg-slate-800 flex items-center justify-center p-4 relative group-hover:bg-slate-700 transition-colors">
-                                                                                <span className="absolute top-2 left-2 bg-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded">SCENE {i + 1}</span>
-                                                                                <p className="text-[10px] text-slate-300 text-center italic">{scene.visual}</p>
-                                                                            </div>
-                                                                            <div className="p-3 space-y-2">
-                                                                                <div className="bg-black/20 p-2 rounded text-[9px] border border-white/5">
-                                                                                    <span className="text-amber-400 font-bold">OVERLAY: </span>
-                                                                                    <span className="text-white">"{scene.overlay}"</span>
-                                                                                </div>
-                                                                                <div className="text-[9px] text-slate-400">
-                                                                                    <span className="font-bold text-indigo-400">AUDIO: </span>
-                                                                                    {scene.audio}
-                                                                                </div>
-                                                                            </div>
+                                                                        <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-1.5">
+                                                                            <span className="text-[9px] font-bold text-slate-500 uppercase">Scene {i + 1}</span>
+                                                                            <p className="text-white text-xs font-semibold">{scene.visual}</p>
+                                                                            <p className="text-[10px] text-slate-400 italic">Audio: "{scene.audio}"</p>
                                                                         </div>
                                                                     ))}
                                                                 </div>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
+                                                            ) : (
+                                                                <div className="bg-white/5 p-8 rounded-2xl border border-white/5 text-center text-xs text-slate-500">
+                                                                    Click "Generate Visuals" to draft a step-by-step storyboard for this script.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             )}
 
                                             {activeTab === 'Weekly Plan' && (
                                                 <div className="space-y-6">
                                                     <div className="flex items-center justify-between mb-4">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">7-Day Growth Roadmap</h4>
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">7-Day Growth Calendar Grid</h4>
                                                         <span className="text-xs text-slate-500">Plan Generated: {new Date().toLocaleDateString()}</span>
                                                     </div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                        {generatedContent.days?.map((day: any) => (
-                                                            <div key={day.day} className="bg-white/5 p-5 rounded-2xl border border-white/5 hover:bg-white/[0.07] transition-colors group">
-                                                                <div className="flex items-center justify-between mb-3">
-                                                                    <span className="text-indigo-400 font-extrabold text-sm uppercase">{day.day}</span>
-                                                                    <span className="w-2 h-2 rounded-full bg-indigo-500 group-hover:animate-pulse"></span>
+                                                    
+                                                    {/* Calendar view Grid */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                        {generatedContent.days?.map((day: any, idx: number) => (
+                                                            <div key={day.day || idx} className="bg-slate-800/80 border border-slate-700/50 p-4 rounded-2xl flex flex-col justify-between space-y-3 group hover:border-indigo-500 transition-colors">
+                                                                <div>
+                                                                    <div className="flex justify-between items-center text-[10px] font-bold uppercase text-indigo-400">
+                                                                        <span>{day.day || `Day ${idx + 1}`}</span>
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                                                    </div>
+                                                                    <h5 className="text-white font-bold text-xs mt-2 line-clamp-1">{day.theme}</h5>
+                                                                    <p className="text-[10px] text-slate-400 mt-1.5 leading-normal line-clamp-3">{day.postIdea || day.idea}</p>
                                                                 </div>
-                                                                <h5 className="text-white font-bold mb-2 text-sm">{day.theme}</h5>
-                                                                <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">{day.postIdea}</p>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        toast.success(`${day.day || 'Day'} post drafted and queued!`);
+                                                                    }}
+                                                                    className="w-full bg-white/5 hover:bg-white/15 text-white font-bold text-[9px] uppercase tracking-wider py-2 rounded-xl transition-all"
+                                                                >
+                                                                    Schedule Draft
+                                                                </button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -708,62 +755,49 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                     {/* Wallet Balance */}
                     <div className="bg-indigo-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/30 rounded-full blur-2xl font-heading -mr-10 -mt-10 pointer-events-none"></div>
-
-                        <div className="relative z-10">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-bold text-indigo-200 tracking-wider uppercase">Wallet Balance</span>
-                                <span className="text-emerald-400 text-xl">💎</span>
-                            </div>
-                            <div className="text-4xl font-extrabold mb-3">0 Credits</div>
-                            <p className="text-xs text-indigo-200 leading-relaxed font-medium">
-                                Generating videos costs 50 credits.
-                            </p>
-                        </div>
+                        <p className="text-[10px] uppercase tracking-widest font-black text-indigo-300">Biz Studio Balance</p>
+                        <h3 className="text-3xl font-black font-heading mt-1">{credits} Credits</h3>
+                        <button onClick={() => navigate('/dashboard/settings')} className="mt-4 w-full bg-white/10 hover:bg-white/20 py-2.5 rounded-xl font-bold text-xs transition-colors">
+                            Top Up Credits
+                        </button>
                     </div>
 
-                    {/* Trending Now */}
-                    <div className="bg-[#fff9f0] border border-orange-100 rounded-2xl p-6 shadow-sm">
-                        <div className="flex items-center space-x-2 mb-6">
-                            <span className="text-xl">🔥</span>
-                            <h3 className="font-bold text-orange-900 text-lg">Trending Now</h3>
-                        </div>
-
+                    {/* Trend Spotting */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <h4 className="font-bold text-slate-800 text-sm mb-4 flex items-center justify-between">
+                            <span>Naija Trends Today</span>
+                            <span className="text-xs bg-indigo-50 text-indigo-650 px-2 py-0.5 rounded-full font-bold">Live</span>
+                        </h4>
                         <div className="space-y-4">
-                            {trends.map((trend, i) => (
-                                <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer group">
-                                    <div className="flex justify-between items-start mb-1">
-                                        <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                            {trend.trendName || trend.title}
-                                        </h4>
-                                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Hot</span>
-                                    </div>
-                                    <p className="text-xs text-gray-600 line-clamp-2">{trend.description}</p>
-                                    {trend.application && (
-                                        <div className="mt-2 text-[10px] text-indigo-500 font-medium">
-                                            💡 {trend.application}
+                            {trends.length === 0 ? (
+                                <div className="text-center py-6 text-xs text-slate-400">Loading trend jack ideas...</div>
+                            ) : (
+                                trends.map((trend) => (
+                                    <div key={trend.id || trend.title} className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl transition-all border border-slate-100 group">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-wider">{trend.category || "General"}</span>
                                         </div>
-                                    )}
-                                    <button
-                                        onClick={() => handleUseTrend(trend.trendName || trend.title)}
-                                        className="w-full py-2 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold rounded-lg transition-colors mt-3"
-                                    >
-                                        Use this Trend
-                                    </button>
-                                </div>
-                            ))}
+                                        <h5 className="font-extrabold text-xs text-slate-850 group-hover:text-indigo-600 transition-colors line-clamp-1">{trend.title}</h5>
+                                        <p className="text-[10px] text-slate-400 mt-1">{trend.volume || "Trending fast"}</p>
+                                        <button onClick={() => handleUseTrend(trend.title)} className="mt-2.5 w-full bg-white group-hover:bg-indigo-600 group-hover:text-white border border-slate-200 group-hover:border-indigo-600 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1">
+                                            Jack This Trend <ArrowRight className="w-2.5 h-2.5" />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
-
                 </div>
             </div>
-            
+
+            {/* Billing limit triggers */}
             <CreditPromptModal
                 isOpen={showCreditPrompt}
-                featureLabel="AI Content Generator"
-                creditCost={2}
+                onClose={() => setShowCreditPrompt(false)}
+                creditCost={activeTab === 'Post Writer' ? 2 : activeTab === 'Blog Writer' ? 5 : activeTab === 'Partnership Pitch' ? 3 : activeTab === 'Video Script' ? 8 : 1}
+                featureLabel={activeTab}
                 currentCredits={credits}
                 onConfirm={deductOnConfirm || (() => {})}
-                onClose={() => setShowCreditPrompt(false)}
             />
         </div>
     );
