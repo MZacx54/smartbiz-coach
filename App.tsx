@@ -443,14 +443,44 @@ const App: React.FC = () => {
 
         <Route path="/dashboard/*" element={
           !user ? <Navigate to="/login" replace /> : (
-            <DashboardLayout
-              user={user}
-              userStats={userStats}
-              actions={actions}
-              cartItems={cartItems}
-              currentView={currentView}
-              onNavigate={handleNavigate}
-            >
+            <>
+              {(!user.has_onboarded && !user.hasOnboarded) && (
+                <Suspense fallback={null}>
+                  <OnboardingWizard
+                    user={user}
+                    onComplete={async (updatedUser) => {
+                      try {
+                        const res = await authService.updateProfile({
+                          has_onboarded: true,
+                          location: updatedUser.location,
+                          phone: updatedUser.phone,
+                          business_name: updatedUser.businessName
+                        });
+                        setUser({
+                          ...user,
+                          has_onboarded: true,
+                          hasOnboarded: true,
+                          location: res.location || updatedUser.location,
+                          phone: res.phone || updatedUser.phone,
+                          businessName: res.business_name || updatedUser.businessName,
+                          business_name: res.business_name || updatedUser.businessName
+                        });
+                        toast.success("Profile initialized!");
+                      } catch (e) {
+                        setUser({ ...user, has_onboarded: true, hasOnboarded: true });
+                      }
+                    }}
+                  />
+                </Suspense>
+              )}
+              <DashboardLayout
+                user={user}
+                userStats={userStats}
+                actions={actions}
+                cartItems={cartItems}
+                currentView={currentView}
+                onNavigate={handleNavigate}
+              >
               <Suspense
                 fallback={
                   <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -488,7 +518,8 @@ const App: React.FC = () => {
                 </Routes>
               </Suspense>
             </DashboardLayout>
-          )
+          </>
+        )
         } />
 
         {/* Catch all */}

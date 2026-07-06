@@ -171,9 +171,11 @@ export interface User {
   name: string;
   email: string;
   businessName: string;
+  business_name?: string;
   plan: "Free" | "Pro";
   // New Onboarding Fields
   hasOnboarded?: boolean;
+  has_onboarded?: boolean;
   logo?: string;
   phone?: string;
   location?: string;
