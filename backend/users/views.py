@@ -408,17 +408,55 @@ class TestGeminiView(views.APIView):
     permission_classes = []
 
     def get(self, request):
+        import urllib.request
+        import json
+        import os
+        from django.conf import settings
+        
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            return Response({"status": "error", "message": "No API key found in environment"}, status=500)
+            
+        list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+        models = []
+        try:
+            with urllib.request.urlopen(list_url, timeout=10) as response:
+                result = json.loads(response.read().decode())
+                models = [m.get("name") for m in result.get("models", [])]
+        except Exception as list_err:
+            return Response({
+                "status": "error",
+                "message": "Failed to list models from Gemini API. Key may be invalid or restricted.",
+                "error": str(list_err)
+            }, status=500)
+
+        # Try to match a model
+        test_model = "gemini-1.5-flash"
+        matched = False
+        for candidate in ["models/gemini-2.5-flash", "models/gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-1.5-pro"]:
+            if candidate in models:
+                test_model = candidate.split("/")[-1]
+                matched = True
+                break
+                
+        if not matched and models:
+            # Fallback to the first available model if it supports generateContent
+            test_model = models[0].split("/")[-1]
+
         from smartbiz_backend.gemini_utils import make_gemini_request
         try:
-            response_text = make_gemini_request("Return the word SUCCESS and nothing else.")
+            response_text = make_gemini_request("Return the word SUCCESS and nothing else.", model=test_model)
             return Response({
                 "status": "success",
-                "message": "Gemini API key is working perfectly!",
-                "response": response_text
+                "message": "Gemini API is working!",
+                "selected_model": test_model,
+                "response": response_text,
+                "available_models": models
             })
         except Exception as e:
             return Response({
                 "status": "error",
-                "message": "Gemini API call failed",
-                "error": str(e)
+                "message": f"Gemini API call failed using model {test_model}",
+                "error": str(e),
+                "available_models": models
             }, status=500)
