@@ -3,7 +3,7 @@ import axios from 'axios';
 // Base URL comes from the Vercel environment variable VITE_API_URL
 // which must be set to: https://api.smartbizcoach.com.ng
 // All service calls use paths like 'users/login/' which get prefixed with /api/
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.smartbizcoach.com.ng';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://smartbiz-coach.onrender.com';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/`,

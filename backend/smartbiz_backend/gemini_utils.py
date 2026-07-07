@@ -4,8 +4,8 @@ import urllib.request
 import urllib.error
 
 # Google Gemini defaults
-DEFAULT_TEXT_MODEL = "gemini-1.5-flash"
-DEFAULT_VISION_MODEL = "gemini-1.5-flash"
+DEFAULT_TEXT_MODEL = "gemini-2.5-flash"
+DEFAULT_VISION_MODEL = "gemini-2.5-flash"
 
 def get_gemini_api_key():
     # Attempt to use GEMINI_API_KEY first, fallback to GROQ_API_KEY if needed
