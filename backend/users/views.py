@@ -403,3 +403,22 @@ class SetupAdminView(views.APIView):
         user.save()
 
         return HttpResponse(f"Successfully {'created' if created else 'updated'} admin account for {email}!<br/><br/><a href='/admin/'>Go to Django Admin</a>")
+
+class TestGeminiView(views.APIView):
+    permission_classes = []
+
+    def get(self, request):
+        from smartbiz_backend.gemini_utils import make_gemini_request
+        try:
+            response_text = make_gemini_request("Return the word SUCCESS and nothing else.")
+            return Response({
+                "status": "success",
+                "message": "Gemini API key is working perfectly!",
+                "response": response_text
+            })
+        except Exception as e:
+            return Response({
+                "status": "error",
+                "message": "Gemini API call failed",
+                "error": str(e)
+            }, status=500)
