@@ -194,8 +194,8 @@ if not DEBUG:
 
 # Validate critical environment variables
 import sys
-if not os.environ.get('GROQ_API_KEY') and not os.environ.get('GEMINI_API_KEY'):
-    print("WARNING: No AI API key set (GROQ_API_KEY). AI features will not work.")
+if not os.environ.get('GEMINI_API_KEY'):
+    print("WARNING: No GEMINI_API_KEY set. AI features will not work.")
 
 if not os.environ.get('SECRET_KEY') or 'django-insecure' in os.environ.get('SECRET_KEY', ''):
     print("WARNING: Using insecure SECRET_KEY")

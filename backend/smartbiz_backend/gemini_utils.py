@@ -8,19 +8,14 @@ DEFAULT_TEXT_MODEL = "gemini-2.5-flash"
 DEFAULT_VISION_MODEL = "gemini-2.5-flash"
 
 def get_gemini_api_key():
-    # Attempt to use GEMINI_API_KEY first, fallback to GROQ_API_KEY if needed
-    return os.environ.get("GEMINI_API_KEY") or os.environ.get("GROQ_API_KEY")
-
-def get_groq_api_key():
-    # Backwards compatibility alias
-    return get_gemini_api_key()
+    return os.environ.get("GEMINI_API_KEY")
 
 def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None):
     api_key = get_gemini_api_key()
     if not api_key:
         raise Exception("Configuration Error: GEMINI_API_KEY not found in environment.")
 
-    # Translate messages array from OpenAI/Groq format to Gemini REST format
+    # Translate messages array from OpenAI format to Gemini REST format
     contents = []
     
     # Extract system instruction if present in messages list (OpenAI style)
@@ -121,14 +116,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         print(f"Gemini API Error: {e.code} - {error_msg}")
         raise Exception(f"AI Provider Error: {e.code} - {error_msg}")
 
-def make_groq_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None):
-    # Backwards-compatible alias to keep views clean
-    # Map Groq models to Gemini models
-    if "vision" in str(model).lower():
-        gemini_model = DEFAULT_VISION_MODEL
-    else:
-        gemini_model = DEFAULT_TEXT_MODEL
-    return make_gemini_request(messages, model=gemini_model, response_format=response_format)
+
 
 def clean_json_response(text):
     if not text:

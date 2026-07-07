@@ -195,7 +195,7 @@ class EditImageView(views.APIView):
             return Response({'error': 'Missing image data or prompt'}, status=400)
             
         try:
-            # Construct Groq Vision API payload (OpenAI format)
+            # Construct Vision API payload (OpenAI format)
             messages = [
                 {
                     "role": "user",
@@ -210,7 +210,7 @@ class EditImageView(views.APIView):
                     ]
                 }
             ]
-            response_text = gemini_utils.make_groq_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
+            response_text = gemini_utils.make_gemini_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
             # Deduct credits after successful call
             deduct_credits(request.user, 'image_edit')
             return Response({'text': response_text})
@@ -223,31 +223,18 @@ class TranscribeAudioView(views.APIView):
     
     def post(self, request):
         audio_base64 = request.data.get('audio')
-        mime_type = request.data.get('mimeType')
-        
+        mime_type = request.data.get('mimeType') or 'audio/m4a'
+        if not audio_base64:
+            return Response({'error': 'No audio data'}, status=400)
+            
         try:
-            import requests
-            import base64
-            import tempfile
-            import os
-            
-            api_key = gemini_utils.get_groq_api_key()
-            if not api_key: raise Exception("No API key")
-            
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-            }
-            with tempfile.NamedTemporaryFile(suffix=".m4a", delete=False) as f:
-                f.write(base64.b64decode(audio_base64))
-                temp_name = f.name
-            
-            with open(temp_name, "rb") as audio_file:
-                files = {"file": audio_file, "model": (None, "whisper-large-v3")}
-                res = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files)
-            os.remove(temp_name)
-            
-            return Response({'transcription': res.json().get('text', '')})
+            # Use Gemini to transcribe the audio natively
+            text = gemini_utils.generate_text_content(
+                "Transcribe this audio file accurately. Return ONLY the transcribed text, nothing else.",
+                audio_base64=audio_base64,
+                mime_type=mime_type
+            )
+            return Response({'transcription': text})
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
@@ -334,7 +321,7 @@ class ChatWithSmartBizView(views.APIView):
             if history:
                 messages.extend(history)
             messages.append({"role": "user", "content": message})
-            text = gemini_utils.make_groq_request(messages)
+            text = gemini_utils.make_gemini_request(messages)
             return Response({'text': text})
         except Exception as e:
             # Fallback if history format is issue or network
@@ -369,7 +356,7 @@ class GenerateSuggestedPromptsView(views.APIView):
                  }
              ]
              try:
-                text = gemini_utils.make_groq_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
+                text = gemini_utils.make_gemini_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
                 lines = [line.strip().lstrip('-0123456789. ') for line in text.splitlines() if line.strip()]
                 return Response(lines[:3])
              except Exception as e:
@@ -493,20 +480,16 @@ class ListModelsView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        api_key = gemini_utils.get_groq_api_key()
+        api_key = gemini_utils.get_gemini_api_key()
         if not api_key:
-            return Response({"error": "API_KEY NOT SET"}, status=404)
+            return Response({"error": "GEMINI_API_KEY NOT SET"}, status=404)
         
         try:
             import requests
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-            }
-            res = requests.get("https://api.groq.com/openai/v1/models", headers=headers)
-            models = res.json().get('data', [])
-            model_list = [{"name": m["id"]} for m in models]
-            return Response({"api_key_last_4": api_key[-4:], "models": model_list})
+            res = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}")
+            models_data = res.json().get('models', [])
+            model_list = [{"name": m["name"].split("/")[-1]} for m in models_data]
+            return Response({"api_key_last_4": api_key[-4:] if len(api_key) > 4 else "...", "models": model_list})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
