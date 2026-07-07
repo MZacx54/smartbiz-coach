@@ -449,6 +449,77 @@ const LandingPage: React.FC = () => {
                         </div>
                     </motion.div>
                 </div>
+            {/* ───────── BLOG OUTLINE & SOCIAL STRATEGY SECTION ───────── */}
+            <section id="blog" className="py-24 bg-slate-50 border-t border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                        <span className="inline-block py-1 px-3 rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold tracking-wider uppercase mb-4 border border-indigo-200">Featured Guides & Insights</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 font-heading mb-4">SmartBiz Blog & Strategy Studio</h2>
+                        <p className="text-xl text-slate-500 max-w-2xl mx-auto">Get actionable growth frameworks, digital marketing tactics, and compliance secrets for Nigerian business success.</p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {/* Blog Card 1 */}
+                        <motion.div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
+                            <div className="bg-indigo-600 text-white py-4 px-6 font-bold text-xs uppercase tracking-widest">
+                                Marketing Strategy
+                            </div>
+                            <div className="p-6 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-3">Scaling Your Retail Business with WhatsApp status sales loops</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                        Discover how local brands in Lagos generate over ₦500,000 monthly using targeted status updates, automated objection handling scripts, and seamless invoice closing.
+                                    </p>
+                                </div>
+                                <div className="border-t border-slate-100 pt-4 flex justify-between items-center text-xs font-bold text-indigo-600">
+                                    <span>5 Min Read</span>
+                                    <span className="cursor-pointer hover:underline" onClick={() => navigate('/register')}>Read Framework →</span>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Blog Card 2 */}
+                        <motion.div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}>
+                            <div className="bg-emerald-600 text-white py-4 px-6 font-bold text-xs uppercase tracking-widest">
+                                Compliance & Funding
+                            </div>
+                            <div className="p-6 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-3">CAC Registration & TIN Guide: Step-by-Step for MSMEs</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                        Stop paying legal consultants fortunes. Learn the exact requirements for limited liability registration and obtaining your Tax Identification Number directly.
+                                    </p>
+                                </div>
+                                <div className="border-t border-slate-100 pt-4 flex justify-between items-center text-xs font-bold text-emerald-600">
+                                    <span>7 Min Read</span>
+                                    <span className="cursor-pointer hover:underline" onClick={() => navigate('/register')}>Read Checklist →</span>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Blog Card 3 */}
+                        <motion.div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
+                            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
+                            <div className="bg-purple-600 text-white py-4 px-6 font-bold text-xs uppercase tracking-widest">
+                                Business Expansion
+                            </div>
+                            <div className="p-6 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-3">Pitching to Partners: Crafting the perfect proposal outline</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                                        A practical template outlining corporate outreach strategies to hub coordinators, NGO directors, and corporate partners to land sponsorships.
+                                    </p>
+                                </div>
+                                <div className="border-t border-slate-100 pt-4 flex justify-between items-center text-xs font-bold text-purple-600">
+                                    <span>4 Min Read</span>
+                                    <span className="cursor-pointer hover:underline" onClick={() => navigate('/register')}>Read Blueprint →</span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                </div>
             </section>
 
             {/* ───────── FOOTER ───────── */}
@@ -460,14 +531,27 @@ const LandingPage: React.FC = () => {
                                 <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-white font-extrabold shadow-lg">S</div>
                                 <span className="font-bold text-xl text-white font-heading">SmartBiz Coach</span>
                             </div>
-                            <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
+                            <p className="text-slate-400 text-sm leading-relaxed max-w-xs mb-6">
                                 The most comprehensive AI business management platform built specifically for Nigerian SMEs. Brand, manage, and grow — all in one place.
                             </p>
-                            <div className="flex items-center gap-3 mt-4">
-                                <a href="#" className="w-9 h-9 bg-slate-800 hover:bg-green-600 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm">X</a>
-                                <a href="#" className="w-9 h-9 bg-slate-800 hover:bg-blue-600 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm">in</a>
-                                <a href="#" className="w-9 h-9 bg-slate-800 hover:bg-pink-600 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm">ig</a>
-                                <a href="https://wa.me/" className="w-9 h-9 bg-slate-800 hover:bg-green-500 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-all text-sm">wa</a>
+                            
+                            {/* Verified Social Handles & Links */}
+                            <div className="flex flex-wrap items-center gap-3">
+                                <a href="https://www.facebook.com/profile.php?id=61580131486753" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-850 hover:bg-blue-600 rounded-lg text-slate-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 border border-slate-800">
+                                    <span>📘</span> SmartBiz Facebook Page
+                                </a>
+                                <a href="https://www.facebook.com/zacharia.meshach/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-850 hover:bg-blue-700 rounded-lg text-slate-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 border border-slate-800">
+                                    <span>👤</span> Founder FB
+                                </a>
+                                <a href="https://www.instagram.com/smartbizcoach1/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-850 hover:bg-pink-600 rounded-lg text-slate-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 border border-slate-800">
+                                    <span>📸</span> Instagram
+                                </a>
+                                <a href="https://www.linkedin.com/in/meshach-zachariah-5a578912a/" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-850 hover:bg-blue-800 rounded-lg text-slate-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 border border-slate-800">
+                                    <span>💼</span> LinkedIn
+                                </a>
+                                <a href="https://wa.me/2349064556107" target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-slate-850 hover:bg-green-500 rounded-lg text-slate-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 border border-slate-800">
+                                    <span>💬</span> WhatsApp Live
+                                </a>
                             </div>
                         </div>
 
@@ -483,7 +567,8 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Resources</h4>
                             <ul className="space-y-3">
-                                {['Blog', 'Help Center', 'Grants Guide', 'CAC Checklist'].map(l => (
+                                <li><a href="#blog" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Blog Outline</a></li>
+                                {['Help Center', 'Grants Guide', 'CAC Checklist'].map(l => (
                                     <li key={l}><a href="#" className="text-sm text-slate-400 hover:text-green-400 transition-colors">{l}</a></li>
                                 ))}
                             </ul>
