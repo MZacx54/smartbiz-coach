@@ -504,18 +504,18 @@ const LandingPage: React.FC = () => {
                         <motion.div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
                             initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
                             <div className="bg-purple-600 text-white py-4 px-6 font-bold text-xs uppercase tracking-widest">
-                                iDICE Funding
+                                SME Operations
                             </div>
                             <div className="p-6 flex-1 flex flex-col justify-between">
                                 <div>
-                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-3">iDICE Funding Readiness: Get Your Business Ready for Federal Grants</h3>
+                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-3">AI Business Planning: Drive Daily Sales & Boost Your Business ROI</h3>
                                     <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                                        Learn how to use SmartBiz Coach to prepare required documents, generate investor-ready business plans, verify CAC compliance, and secure funding under the Federal Government iDICE program.
+                                        Learn how to leverage our Brand Builder, AI Content Studio, and automated WhatsApp payment reminders to streamline invoicing, attract local customers, and maximize your weekly profits.
                                     </p>
                                 </div>
                                 <div className="border-t border-slate-100 pt-4 flex justify-between items-center text-xs font-bold text-purple-600">
                                     <span>4 Min Read</span>
-                                    <span className="cursor-pointer hover:underline" onClick={() => navigate('/register')}>Get Funding Ready →</span>
+                                    <span className="cursor-pointer hover:underline" onClick={() => navigate('/register')}>Boost Your ROI →</span>
                                 </div>
                             </div>
                         </motion.div>

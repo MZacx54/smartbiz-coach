@@ -27,7 +27,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
     privacy: { title: "Privacy Policy | SmartBiz Coach", desc: "Learn how we protect your personal and business data safely." },
     terms: { title: "Terms of Service | SmartBiz Coach", desc: "Read our terms of service, credit usage policy, and billing rules." },
     help: { title: "Help Center | SmartBiz Coach", desc: "Find tutorials, guides, and quick answers to how our platform works." },
-    grants: { title: "Grants & iDICE Funding Guide | SmartBiz Coach", desc: "A comprehensive guide to qualifying for BOI, TEF, and iDICE grants." },
+    grants: { title: "SME Grants & Funding Guide | SmartBiz Coach", desc: "A comprehensive guide to qualifying for bank loans, BOI, TEF, and other SME funding programs." },
     cac: { title: "CAC Registration Checklist | SmartBiz Coach", desc: "The official step-by-step checklist to register your business and get a TIN." },
   };
 
@@ -75,10 +75,16 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 To simplify the path to compliance and formalization for African founders. By leveraging next-generation generative AI technologies, we empower small business owners to generate bank-ready business plans, create CAC compliance checklists, match with international and local grants, and launch brand configurations within minutes.
               </p>
 
-              <h2 className="text-xl font-bold text-slate-900 mt-8 mb-4 font-heading">Alignment with the iDICE Program</h2>
+              <h2 className="text-xl font-bold text-slate-900 mt-8 mb-4 font-heading">How We Help Your Business Grow</h2>
               <p className="text-slate-600 leading-relaxed mb-6">
-                The Federal Government of Nigeria's **Investment in Digital and Creative Enterprises (iDICE)** program is a $618M initiative designed to support young creative and tech entrepreneurs. To qualify, your business must have a formal structure, a robust strategic plan, and clear brand identity. SmartBiz Coach is specifically designed to get your business iDICE-compliant by generating high-quality materials required for grant applications.
+                SmartBiz Coach provides a suite of integrated tools built to solve the daily struggles of SME operations:
               </p>
+              <ul className="list-disc list-inside space-y-2 text-slate-600 text-sm mb-6">
+                <li><strong>Brand Builder:</strong> Establish a premium visual identity with tailored logos, font guides, and custom business assets.</li>
+                <li><strong>AI Content Studio:</strong> Instantly draft engaging social posts, copy for flyers, and promotional WhatsApp updates to boost sales.</li>
+                <li><strong>Invoice & Debtor Book:</strong> Keep track of customer orders, generate invoices, and send friendly WhatsApp payment reminders.</li>
+                <li><strong>Business Plan Generator:</strong> Create structured, bank-compliant PDF business plans designed to secure capital.</li>
+              </ul>
 
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mt-8">
                 <h3 className="font-bold text-slate-950 mb-2">Want to qualify for grants?</h3>
@@ -259,15 +265,15 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
             <div>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center"><Award className="w-5 h-5" /></div>
-                <h1 className="text-3xl font-extrabold text-slate-900 font-heading">Grants & iDICE Funding Guide</h1>
+                <h1 className="text-3xl font-extrabold text-slate-900 font-heading">SME Grants & Funding Guide</h1>
               </div>
 
               <div className="space-y-6 text-sm text-slate-600 leading-relaxed">
                 <p>
-                  To successfully qualify for funding from federal initiatives like the **$618 Million Investment in Digital and Creative Enterprises (iDICE)** program, or Bank of Industry (BOI) loans, your business must be properly structured.
+                  To successfully qualify for funding from bank loans, federal grants, or private investments, your business must be properly structured and compliant.
                 </p>
 
-                <h3 className="font-bold text-slate-950 text-base mt-6 mb-2">🔑 Key Requirements to Secure iDICE & BOI Grants:</h3>
+                <h3 className="font-bold text-slate-950 text-base mt-6 mb-2">🔑 Key Requirements to Secure Grants & Funding:</h3>
                 <ol className="list-decimal list-inside space-y-3">
                   <li>
                     <strong>CAC Business Registration:</strong> Sole proprietorships are rarely funded. You need a Registered Business Name or a Limited Liability Company.
