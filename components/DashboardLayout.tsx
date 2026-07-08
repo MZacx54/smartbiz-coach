@@ -288,7 +288,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         </div>
                     </header>
 
-                    {user?.email?.endsWith('@smartbiz.demo') && (
+                    {user?.email?.startsWith('guest_') && (
                         <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm animate-pulse">
                             <div>
                                 <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wide">⚡ Guest Workspace Session</h4>
