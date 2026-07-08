@@ -117,7 +117,15 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
   // Business Health Score States
   const [healthScore, setHealthScore] = useState<any>(() => {
     const saved = localStorage.getItem('sb_health_score_data');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.score === 'number') {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return null;
   });
   const [isCalculatingHealth, setIsCalculatingHealth] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
@@ -151,9 +159,18 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           { id: 'tx-3', amount: 450000, description: 'Logistics Partnership Escrow Deposit', status: 'SUCCESS', provider: 'PAYSTACK', type: 'PURCHASE', created_at: new Date(Date.now() - 3600000 * 48).toISOString() } as any,
         ]);
         
-        // Populate mock health score if not already customized
+        // Populate mock health score if not already customized with valid score
         const saved = localStorage.getItem('sb_health_score_data');
-        if (!saved) {
+        let hasValidSaved = false;
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed.score === 'number') {
+              hasValidSaved = true;
+            }
+          } catch(e) {}
+        }
+        if (!hasValidSaved) {
           const mockScore = {
             score: 88,
             metrics: { financials: 92, brand: 85, compliance: 90, operations: 85 },
