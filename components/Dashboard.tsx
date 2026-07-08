@@ -111,6 +111,11 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
   const [ecosystemStats, setEcosystemStats] = useState<any>(null);
   const [complianceStatus, setComplianceStatus] = useState<any>(null);
 
+  const [savedBrand, setSavedBrand] = useState<any>(() => {
+    const saved = localStorage.getItem('sb_brand');
+    return saved ? JSON.parse(saved) : null;
+  });
+
   // Daily action plan checklist state
   const [completedTasks, setCompletedTasks] = useState<Record<number, boolean>>({});
 
@@ -358,60 +363,137 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
         </button>
       </div>
 
-      {/* Hero / Motivation Section */}
+      {/* Brand & Focus Row */}
       {motivation && (
-        <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group">
-          {/* Abstract Background Shapes */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/30 rounded-full mix-blend-multiply filter blur-3xl opacity-25"></div>
-          <div className="absolute -bottom-8 left-0 w-64 h-64 bg-teal-600/30 rounded-full mix-blend-multiply filter blur-3xl opacity-25"></div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Daily Focus Plan & Actions */}
+          <div className="lg:col-span-2 bg-slate-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group flex flex-col justify-between min-h-[220px]">
+            {/* Abstract Background Shapes */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/30 rounded-full mix-blend-multiply filter blur-3xl opacity-25"></div>
+            <div className="absolute -bottom-8 left-0 w-64 h-64 bg-teal-600/30 rounded-full mix-blend-multiply filter blur-3xl opacity-25"></div>
 
-          <div className="relative z-10 grid md:grid-cols-5 gap-6">
-            <div className="md:col-span-3 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">🎯</span>
-                  <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest font-heading">Daily Focus Plan</p>
+            <div className="relative z-10 grid md:grid-cols-5 gap-6 h-full">
+              <div className="md:col-span-3 flex flex-col justify-between h-full">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">🎯</span>
+                    <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest font-heading">Daily Focus Plan</p>
+                  </div>
+                  <h2 className="text-sm md:text-base font-bold font-heading leading-relaxed mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-200">
+                    "{motivation.quote?.trim() || "No food for lazy man. Go get that bag today!"}"
+                  </h2>
                 </div>
-                <h2 className="text-base md:text-lg font-bold font-heading leading-relaxed mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-200">
-                  "{motivation.quote?.trim() || "No food for lazy man. Go get that bag today!"}"
-                </h2>
+                <div className="flex justify-between items-end border-t border-slate-800/80 pt-3 mt-3">
+                  <p className="text-xs text-slate-400 font-medium">— {motivation.author || 'SmartBiz Coach'}</p>
+                  {seasonalAlert && (
+                    <div className="bg-orange-500/20 border border-orange-500/50 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-orange-300 animate-pulse">
+                       {seasonalAlert.season}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex justify-between items-end border-t border-slate-800/80 pt-3 mt-3">
-                <p className="text-xs text-slate-400 font-medium">— {motivation.author || 'SmartBiz Coach'}</p>
-                {seasonalAlert && (
-                  <div className="bg-orange-500/20 border border-orange-500/50 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-orange-300 animate-pulse">
-                     {seasonalAlert.season}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Daily Actions Checklist */}
-            <div className="md:col-span-2 bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 p-4 rounded-xl">
-              <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <CheckSquare className="w-3.5 h-3.5" />
-                <span>Today's Actions</span>
-              </h3>
-              <div className="space-y-3">
-                {(motivation.actions || [
-                  "Share one product today on WhatsApp status",
-                  "Review stock levels of popular items",
-                  "Send reminder for any outstanding debt"
-                ]).map((action, i) => (
-                  <div key={i} className="flex items-start gap-2.5 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={!!completedTasks[i]}
-                      onChange={() => toggleTask(i)}
-                      className="mt-0.5 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800 cursor-pointer"
-                    />
-                    <span className={`leading-relaxed cursor-pointer select-none transition-all ${completedTasks[i] ? 'text-emerald-400 line-through font-medium' : 'text-slate-200'}`} onClick={() => toggleTask(i)}>
-                      {action}
-                    </span>
+              {/* Daily Actions Checklist */}
+              <div className="md:col-span-2 bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 p-4 rounded-2xl h-full flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>Today's Actions</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {(motivation.actions || [
+                      "Share one product today on WhatsApp status",
+                      "Review stock levels of popular items",
+                      "Send reminder for any outstanding debt"
+                    ]).map((action, i) => (
+                      <div key={i} className="flex items-start gap-2.5 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={!!completedTasks[i]}
+                          onChange={() => toggleTask(i)}
+                          className="mt-0.5 rounded border-slate-600 bg-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-800 cursor-pointer"
+                        />
+                        <span className={`leading-relaxed cursor-pointer select-none transition-all ${completedTasks[i] ? 'text-emerald-400 line-through font-medium' : 'text-slate-200'}`} onClick={() => toggleTask(i)}>
+                          {action}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* Right: Brand Profile Card */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group min-h-[220px]">
+            {savedBrand ? (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-full">Active Brand Kit</span>
+                    <button 
+                      onClick={() => onNavigate(AppView.BRAND_BUILDER)} 
+                      className="text-slate-400 hover:text-slate-650 text-xs font-bold transition-colors"
+                    >
+                      Edit ⚙️
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    {savedBrand.logoUrl ? (
+                      <img 
+                        src={savedBrand.logoUrl} 
+                        alt="Logo" 
+                        className="w-12 h-12 rounded-xl object-cover shadow-sm border border-slate-100/50" 
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-650 text-white flex items-center justify-center font-black text-base shadow-sm">
+                        {savedBrand.businessName?.charAt(0) || 'B'}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-extrabold text-slate-850 text-sm leading-tight font-heading">{savedBrand.businessName}</h3>
+                      <p className="text-[10px] text-slate-450 font-bold mt-0.5">{savedBrand.niche}</p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500 italic leading-relaxed line-clamp-3 mt-2">
+                    "{savedBrand.elevatorPitch || savedBrand.socialBio || 'Your elevator pitch is generated here...'}"
+                  </p>
+                </div>
+
+                <div className="border-t border-slate-100 pt-3 mt-3 flex items-center justify-between gap-4">
+                  {/* Brand Color Indicators */}
+                  <div className="flex gap-1.5">
+                    <span className="w-3.5 h-3.5 rounded-full border border-slate-200 shadow-sm" style={{ backgroundColor: savedBrand.colors?.primary || '#10b981' }} title="Primary"></span>
+                    <span className="w-3.5 h-3.5 rounded-full border border-slate-200 shadow-sm" style={{ backgroundColor: savedBrand.colors?.secondary || '#6b7280' }} title="Secondary"></span>
+                    <span className="w-3.5 h-3.5 rounded-full border border-slate-200 shadow-sm" style={{ backgroundColor: savedBrand.colors?.accent || '#f59e0b' }} title="Accent"></span>
+                  </div>
+                  <button 
+                    onClick={() => onNavigate(AppView.BRAND_BUILDER)}
+                    className="text-xs font-bold text-slate-600 hover:text-emerald-600 transition-colors"
+                  >
+                    Manage Kit ➜
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col justify-between h-full space-y-4">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100/50 flex items-center justify-center text-lg">🎨</div>
+                  <h3 className="font-extrabold text-slate-850 text-sm leading-tight font-heading">Complete Brand Kit</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Generate custom logos, color palettes, slogans, and WhatsApp templates to stand out.
+                  </p>
+                </div>
+                <button
+                  onClick={() => onNavigate(AppView.BRAND_BUILDER)}
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all shadow-md active:scale-95"
+                >
+                  Setup Brand Identity
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
