@@ -410,7 +410,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
       {/* Box Mockup */}
       <div className="relative w-32 h-24 -ml-8 mt-24 transform rotate-[-5deg] z-20">
-        <div className="absolute inset-0 bg-white shadow-xl flex items-center justify-center border border-gray-200" style={{ borderTop: brand?.colors?.secondary ? `8px solid ${brand.colors.secondary}` : '8px solid #ccc' }}>
+        <div className="absolute inset-0 bg-white shadow-xl flex items-center justify-center border border-gray-200" style={{ borderTop: brand?.colors?.secondary ? `8px solid ${brand?.colors?.secondary}` : '8px solid #ccc' }}>
           <div className="text-center p-1 overflow-hidden">
             <p className="font-bold text-gray-800 text-[10px] line-clamp-2">{brand?.taglines?.[0] || 'Tagline Placeholder'}</p>
             <p className="text-[8px] text-gray-400 mt-1">{brand?.businessName ? brand.businessName.split(' ')[0] : 'business'}.com</p>
@@ -540,7 +540,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       </div>
       {/* Cover Area */}
       <div className="relative h-48 w-full overflow-hidden" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.secondary ? `repeating-linear-gradient(45deg, ${brand.colors.secondary} 0, ${brand.colors.secondary} 10px, transparent 0, transparent 50%)` : 'none' }}></div>
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.secondary ? `repeating-linear-gradient(45deg, ${brand?.colors?.secondary} 0, ${brand?.colors?.secondary} 10px, transparent 0, transparent 50%)` : 'none' }}></div>
         <div className="absolute bottom-4 right-6 text-right">
           <h1 className="text-white font-bold text-2xl shadow-sm">{brand?.businessName}</h1>
           <p className="text-white/90 text-sm">{brand?.taglines?.[0] || 'Tagline'}</p>
@@ -637,7 +637,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     <div className="w-full max-w-lg mx-auto bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       {/* LinkedIn Banner */}
       <div className="h-28 w-full relative flex items-center pl-8" style={{ backgroundColor: brand?.colors?.secondary || '#333' }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.primary ? `radial-gradient(${brand.colors.primary} 10%, transparent 10%)` : 'none', backgroundSize: '10px 10px' }}></div>
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.primary ? `radial-gradient(${brand?.colors?.primary} 10%, transparent 10%)` : 'none', backgroundSize: '10px 10px' }}></div>
         <div className="relative z-10">
           <h2 className="text-xl font-bold text-white uppercase tracking-wide">{brand?.businessName}</h2>
           <p className="text-xs text-white/90">{brand?.elevatorPitch}</p>
