@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppView, User, CartItem, UserStats, ActionCard } from '../types';
 import GlobalSearch from './GlobalSearch';
+import { toast } from 'react-hot-toast';
 
 interface DashboardLayoutProps {
     user: User;
@@ -10,6 +11,7 @@ interface DashboardLayoutProps {
     cartItems: CartItem[];
     currentView: AppView;
     onNavigate: (view: AppView) => void;
+    onUpdateUser?: (user: User) => void;
     children: React.ReactNode;
 }
 
@@ -20,11 +22,55 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     cartItems,
     currentView,
     onNavigate,
+    onUpdateUser,
     children
 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
     const [tractionMode, setTractionMode] = useState(() => localStorage.getItem('sb_idice_traction_mode') === 'true');
+
+    const [showClaimModal, setShowClaimModal] = useState(false);
+    const [claimEmail, setClaimEmail] = useState('');
+    const [claimPhone, setClaimPhone] = useState('');
+    const [claimPassword, setClaimPassword] = useState('');
+    const [claimBusinessName, setClaimBusinessName] = useState(user.businessName || '');
+    const [isClaiming, setIsClaiming] = useState(false);
+
+    const handleClaimAccount = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!claimEmail || !claimPassword || !claimPhone || !claimBusinessName) {
+            toast.error("Please fill in all fields to secure your workspace!");
+            return;
+        }
+        setIsClaiming(true);
+        try {
+            const { authService } = await import('../services/authService');
+            await authService.updateProfile({
+                email: claimEmail,
+                username: claimEmail,
+                password: claimPassword,
+                phone: claimPhone,
+                business_name: claimBusinessName
+            });
+            const updatedUser: User = {
+                ...user,
+                email: claimEmail,
+                phone: claimPhone,
+                businessName: claimBusinessName,
+                business_name: claimBusinessName
+            };
+            localStorage.setItem('sb_user', JSON.stringify(updatedUser));
+            if (onUpdateUser) {
+                onUpdateUser(updatedUser);
+            }
+            toast.success("Workspace secured successfully! Welcome to SmartBiz Coach.");
+            setShowClaimModal(false);
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to secure workspace. Please try again.");
+        } finally {
+            setIsClaiming(false);
+        }
+    };
 
     const toggleTraction = () => {
         const newVal = !tractionMode;
@@ -242,9 +288,100 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         </div>
                     </header>
 
+                    {user?.email?.endsWith('@smartbiz.demo') && (
+                        <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm animate-pulse">
+                            <div>
+                                <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wide">⚡ Guest Workspace Session</h4>
+                                <p className="text-xs text-slate-650 mt-1 font-semibold">Your business plan, inventory, and generated posts are saved locally. Save them to a permanent account now.</p>
+                            </div>
+                            <button
+                                onClick={() => setShowClaimModal(true)}
+                                className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md shadow-amber-500/10 whitespace-nowrap"
+                            >
+                                💾 Save & Claim Account
+                            </button>
+                        </div>
+                    )}
+
                     {children}
                 </div>
             </main>
+
+            {/* Claim Account Modal */}
+            {showClaimModal && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="font-extrabold text-slate-900 font-heading text-lg">💾 Save Guest Workspace</h3>
+                                <p className="text-xs text-slate-500 mt-1">Convert your temporary session into a permanent account.</p>
+                            </div>
+                            <button onClick={() => setShowClaimModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+                        </div>
+
+                        <form onSubmit={handleClaimAccount} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase mb-2">Business Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-550 focus:border-transparent outline-none transition-all text-sm"
+                                    value={claimBusinessName}
+                                    onChange={(e) => setClaimBusinessName(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase mb-2">Email Address</label>
+                                <input
+                                    type="email"
+                                    placeholder="e.g. name@example.com"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-550 focus:border-transparent outline-none transition-all text-sm"
+                                    value={claimEmail}
+                                    onChange={(e) => setClaimEmail(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase mb-2">Phone Number</label>
+                                <input
+                                    type="tel"
+                                    placeholder="e.g. 09064556107"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-550 focus:border-transparent outline-none transition-all text-sm"
+                                    value={claimPhone}
+                                    onChange={(e) => setClaimPhone(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 uppercase mb-2">Create Password</label>
+                                <input
+                                    type="password"
+                                    placeholder="••••••••"
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-550 focus:border-transparent outline-none transition-all text-sm"
+                                    value={claimPassword}
+                                    onChange={(e) => setClaimPassword(e.target.value)}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isClaiming}
+                                className="w-full py-3.5 bg-green-600 text-white font-extrabold rounded-xl hover:bg-green-550 transition-all shadow-lg shadow-green-550/20 flex justify-center items-center text-sm tracking-wide mt-2"
+                            >
+                                {isClaiming ? (
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    'Secure Workspace & Save Progress'
+                                )}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* Overlay for mobile menu */}
             {isMenuOpen && (

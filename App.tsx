@@ -532,6 +532,7 @@ const App: React.FC = () => {
                 cartItems={cartItems}
                 currentView={currentView}
                 onNavigate={handleNavigate}
+                onUpdateUser={setUser}
               >
               <Suspense
                 fallback={
