@@ -310,7 +310,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {/* Claim Account Modal */}
             {showClaimModal && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95">
+                    <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl animate-in zoom-in-95">
                         <div className="flex justify-between items-start mb-6">
                             <div>
                                 <h3 className="font-extrabold text-slate-900 font-heading text-lg">💾 Save Guest Workspace</h3>
