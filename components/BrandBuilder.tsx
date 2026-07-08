@@ -229,7 +229,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <p><strong>Target Audience:</strong> ${localBrandData.targetAudience}</p>
             <div style="margin-top: 20px;">
               <strong>Key Taglines:</strong>
-              ${localBrandData.taglines.map(t => `<div class="tagline">${t}</div>`).join('')}
+              ${(localBrandData?.taglines || []).map(t => `<div class="tagline">${t}</div>`).join('')}
             </div>
           </div>
           
@@ -845,7 +845,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
               <div className="mt-8">
                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Taglines</h3>
                 <div className="space-y-2">
-                  {localBrandData.taglines.map((tag, i) => (
+                  {(localBrandData?.taglines || []).map((tag, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
                       <span className="text-green-500 font-bold">✓</span>
                       <span className="text-gray-700 italic">"{tag}"</span>
@@ -975,7 +975,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <div className="bg-green-50 border border-green-200 p-6 rounded-xl">
               <h3 className="font-bold text-green-900 mb-4">WhatsApp Status Templates</h3>
               <div className="grid md:grid-cols-3 gap-4">
-                {localBrandData.whatsappContent.statusTemplates.map((tpl, i) => (
+                {(localBrandData?.whatsappContent?.statusTemplates || []).map((tpl, i) => (
                   <div key={i} className="bg-white p-4 rounded-lg shadow-sm border border-green-100 relative">
                     <p className="text-sm text-gray-800">{tpl}</p>
                     <button
@@ -993,7 +993,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <div className="bg-white border border-gray-200 p-6 rounded-xl">
               <h3 className="font-bold text-gray-800 mb-4">Sticker Pack Ideas</h3>
               <div className="space-y-3">
-                {localBrandData.whatsappContent.stickerIdeas.map((idea, i) => (
+                {(localBrandData?.whatsappContent?.stickerIdeas || []).map((idea, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-500">{i + 1}</div>
                     <p className="text-gray-700 text-sm">{idea}</p>
