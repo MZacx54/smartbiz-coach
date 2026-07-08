@@ -50,26 +50,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     }) => (
         <button
             onClick={() => handleNavigate(view)}
-            className={`flex items-center space-x-3 w-full p-3 rounded-lg transition-colors ${currentView === view
-                ? "bg-green-50 text-green-700 font-medium"
-                : "text-gray-600 hover:bg-gray-50"
+            className={`flex items-center space-x-3 w-full p-2.5 rounded-xl transition-all duration-200 ${currentView === view
+                ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
+                : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
                 }`}
         >
-            <span>{icon}</span>
-            <span>{label}</span>
+            <span className="text-base">{icon}</span>
+            <span className="text-sm">{label}</span>
         </button>
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans selection:bg-green-200">
+        <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row font-sans selection:bg-green-200">
 
             {/* Mobile Header */}
-            <div className="md:hidden bg-white border-b border-gray-200 p-4 flex justify-between items-center sticky top-0 z-20">
+            <div className="md:hidden bg-slate-950 border-b border-emerald-950/45 p-4 flex justify-between items-center sticky top-0 z-20 text-white">
                 <div
-                    className="flex items-center cursor-pointer"
+                    className="flex items-center gap-2 cursor-pointer"
                     onClick={() => handleNavigate(AppView.DASHBOARD)}
                 >
-                    <img src="/logo-horizontal.png" alt="SmartBiz Coach" className="h-8 w-auto object-contain" />
+                    <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-white font-extrabold text-sm shadow-md">S</div>
+                    <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
                 </div>
                 <div className="flex items-center gap-4">
                     {user?.email === 'meshachzax@gmail.com' && (
@@ -78,7 +79,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             className={`text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
                                 tractionMode
                                     ? 'bg-emerald-500 text-white border-emerald-450'
-                                    : 'bg-slate-100 text-slate-500 border-slate-200'
+                                    : 'bg-slate-800 text-slate-400 border-slate-700'
                             }`}
                         >
                             📈 {tractionMode ? 'ON' : 'OFF'}
@@ -87,7 +88,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     {cartItems.length > 0 && (
                         <button
                             onClick={() => handleNavigate(AppView.CART)}
-                            className="relative text-xl"
+                            className="relative text-lg"
                         >
                             🛒
                             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
@@ -97,7 +98,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     )}
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="text-gray-600 focus:outline-none text-2xl"
+                        className="text-slate-300 focus:outline-none text-xl"
                     >
                         {isMenuOpen ? "✕" : "☰"}
                     </button>
@@ -107,25 +108,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {/* Sidebar Navigation */}
             <div
                 className={`
-          fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
-                    }
+          fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}
           md:relative md:translate-x-0 transition-transform duration-300 ease-in-out
-          w-64 bg-white border-r border-gray-200 z-30 flex flex-col h-screen
+          w-64 bg-slate-950 border-r border-emerald-950/20 z-30 flex flex-col h-screen text-slate-100
         `}
             >
                 <div
-                    className="p-6 border-b border-gray-100 hidden md:flex items-center cursor-pointer"
+                    className="p-6 border-b border-emerald-950/60 hidden md:flex items-center gap-2 cursor-pointer"
                     onClick={() => handleNavigate(AppView.DASHBOARD)}
                 >
-                    <img src="/logo-horizontal.png" alt="SmartBiz Coach" className="h-8 w-auto object-contain" />
+                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-extrabold shadow-md">S</div>
+                    <span className="font-extrabold text-lg text-white font-heading">SmartBiz Coach</span>
                 </div>
 
                 {/* User Mini Profile */}
                 <div className="px-6 pt-6 pb-2">
-                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                    <p className="text-[10px] font-black text-emerald-550 uppercase tracking-widest">
                         Business
                     </p>
-                    <p className="font-bold text-gray-800 truncate">
+                    <p className="font-bold text-white truncate mt-1 text-sm">
                         {user.businessName}
                     </p>
                 </div>
@@ -139,8 +140,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory" icon="📦" />
                     <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
 
-                    <div className="pt-4 pb-2">
-                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
+                    <div className="pt-4 pb-1 px-3">
+                        <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
                             Marketplace Ecosystem
                         </p>
                     </div>
@@ -153,14 +154,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     {cartItems.length > 0 && (
                         <button
                             onClick={() => handleNavigate(AppView.CART)}
-                            className={`flex items-center justify-between w-full p-3 rounded-lg transition-colors ${currentView === AppView.CART
-                                ? "bg-green-50 text-green-700 font-medium"
-                                : "text-gray-600 hover:bg-gray-50"
+                            className={`flex items-center justify-between w-full p-2.5 rounded-xl transition-all ${currentView === AppView.CART
+                                ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
+                                : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
                                 }`}
                         >
                             <div className="flex items-center gap-3">
                                 <span>🛍️</span>
-                                <span>Cart</span>
+                                <span className="text-sm">Cart</span>
                             </div>
                             <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
                                 {cartItems.length}
@@ -173,8 +174,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
                     <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
 
-                    <div className="pt-4 pb-2">
-                        <p className="px-3 text-xs font-semibold text-gray-400 uppercase">
+                    <div className="pt-4 pb-1 px-3">
+                        <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
                             Help
                         </p>
                     </div>
@@ -183,10 +184,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
                 </nav>
 
-                <div className="p-4 border-t border-gray-100">
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-4 rounded-lg text-white text-center shadow-lg relative overflow-hidden">
+                <div className="p-4 border-t border-emerald-950/60">
+                    <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 rounded-2xl text-white text-center shadow-lg relative overflow-hidden border border-emerald-900/40">
                         <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
                             Available Credits
                         </p>
                         <p className="text-3xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
@@ -194,7 +195,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         </p>
                         <button
                             onClick={() => handleNavigate(AppView.SETTINGS)}
-                            className="w-full bg-green-500 hover:bg-green-400 text-slate-900 font-bold text-xs py-2 rounded transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+                            className="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
                         >
                             ⚡ Top Up Balance
                         </button>
@@ -235,7 +236,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged in as</p>
                                 <p className="text-xs font-bold text-slate-800">{user.businessName}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-indigo-100">
+                            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-emerald-100">
                                 {user.businessName?.charAt(0) || 'B'}
                             </div>
                         </div>
