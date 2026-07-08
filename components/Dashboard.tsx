@@ -143,27 +143,6 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           has_tin: true,
           tax_compliance: 'COMPLIANT'
         });
-        setMotivation({
-          quote: "Success in the Nigerian market is built on local relationships, relentless branding, and flawless credit management.",
-          author: "SmartBiz AI",
-          theme: "General",
-          actions: [
-            "Review low stock levels and generate purchase orders to Dangote Group supplier.",
-            "Send polite WhatsApp debt reminders to Meshach (₦25,000 pending).",
-            "Update your WhatsApp Status catalog with the new premium Ankara textiles."
-          ]
-        });
-        setSeasonalAlert({
-          title: "Q3 Business Expansion Opportunity",
-          description: "Lenders and NGO grants like IDICE are opening this quarter. Prepare your updated business plan and inventory valuation reports now.",
-          actionItem: "Get Ready",
-          season: "Q3"
-        });
-        setTrendingTopics([
-          { id: "t1", title: "IDICE Growth Lab 2026", category: "Grants", volume: "250K SME signups" },
-          { id: "t2", title: "Naira Stabilization Strategies", category: "Finance", volume: "180K Posts" },
-          { id: "t3", title: "AI-Powered SME Audits", category: "Tech", volume: "95K Posts" }
-        ]);
         setTotalDebt(45200);
         setStockValue(8450000);
         setRecentTransactions([
@@ -187,26 +166,41 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           setHealthScore(mockScore);
           localStorage.setItem('sb_health_score_data', JSON.stringify(mockScore));
         }
-        return;
+      } else {
+        // Ecosystem Analytics
+        try {
+          const response = await api.get('/api/marketplace/analytics/');
+          setEcosystemStats(response.data);
+        } catch (e) {
+          console.error("Failed to load ecosystem analytics", e);
+        }
+
+        // Compliance
+        try {
+          const compResponse = await api.get('/api/users/compliance/');
+          setComplianceStatus(compResponse.data);
+        } catch (e) {
+          console.error("Failed to load compliance status", e);
+        }
+
+        // Business Data (From LocalStorage for Dashboard View)
+        try {
+          const savedDebtors: Debtor[] = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
+          const unpaid = savedDebtors.filter(d => d.status !== 'PAID').reduce((acc, curr) => acc + curr.amount, 0);
+          setTotalDebt(unpaid);
+
+          const savedInventory: InventoryItem[] = JSON.parse(localStorage.getItem('sb_inventory') || '[]');
+          const stockVal = savedInventory.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+          setStockValue(stockVal);
+
+          const savedTx: Transaction[] = JSON.parse(localStorage.getItem('sb_transactions') || '[]');
+          setRecentTransactions(savedTx.slice(0, 3)); // Get last 3
+        } catch (e) {
+          console.error("Error loading dashboard data", e);
+        }
       }
 
-      // Ecosystem Analytics
-      try {
-        const response = await api.get('/api/marketplace/analytics/');
-        setEcosystemStats(response.data);
-      } catch (e) {
-        console.error("Failed to load ecosystem analytics", e);
-      }
-
-      // Compliance
-      try {
-        const compResponse = await api.get('/api/users/compliance/');
-        setComplianceStatus(compResponse.data);
-      } catch (e) {
-        console.error("Failed to load compliance status", e);
-      }
-
-      // AI Data
+      // Load AI daily motivation, seasonal tips, and trends dynamically in both modes
       try {
         const m = await generateDailyMotivation("Entrepreneur");
         setMotivation(m);
@@ -231,26 +225,10 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
       } catch (e) {
         console.error("Failed to load trends, using fallbacks", e);
         setTrendingTopics([
-            { id: "t1", title: "Detty December Strategy", category: "Seasonal", volume: "150K Posts" },
-            { id: "t2", title: "Naira Exchange Adjustments", category: "Economy", volume: "80K Posts" },
-            { id: "t3", title: "AI For Small Business", category: "Tech", volume: "45K Posts" }
+            { id: "t1", title: "Fuel Prices & transport hacks", category: "Economy", volume: "140K Posts" },
+            { id: "t2", title: "New Nollywood blockbusters", category: "Entertainment", volume: "95K TikToks" },
+            { id: "t3", title: "Naira Exchange Adjustments", category: "Finance", volume: "85K Posts" }
         ]);
-      }
-
-      // Business Data (From LocalStorage for Dashboard View)
-      try {
-        const savedDebtors: Debtor[] = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
-        const unpaid = savedDebtors.filter(d => d.status !== 'PAID').reduce((acc, curr) => acc + curr.amount, 0);
-        setTotalDebt(unpaid);
-
-        const savedInventory: InventoryItem[] = JSON.parse(localStorage.getItem('sb_inventory') || '[]');
-        const stockVal = savedInventory.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
-        setStockValue(stockVal);
-
-        const savedTx: Transaction[] = JSON.parse(localStorage.getItem('sb_transactions') || '[]');
-        setRecentTransactions(savedTx.slice(0, 3)); // Get last 3
-      } catch (e) {
-        console.error("Error loading dashboard data", e);
       }
 
       // Daily task checklist loader

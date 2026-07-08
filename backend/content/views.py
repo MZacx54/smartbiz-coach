@@ -257,24 +257,132 @@ class GenerateDailyMotivationView(views.APIView):
         
         try:
             content = gemini_utils.generate_json_content(prompt)
-            # Ensure actions is a list of strings if the AI returned it empty
-            if not content.get('actions') or not isinstance(content.get('actions'), list):
-                content['actions'] = [
-                    "Promote one key product on your WhatsApp Status today.",
-                    "Review your stock levels to see what needs restocking.",
-                    "Check your outstanding invoices and follow up on pending payments."
-                ]
+            # Ensure actions is a list of strings if the AI returned it empty or failed
+            if not content or not content.get('actions') or not isinstance(content.get('actions'), list) or 'error' in content:
+                raise Exception("Gemini JSON invalid or contains error")
             return Response(content)
         except Exception as e:
-            return Response({
-                "quote": "No food for lazy man. Go get that bag today!",
-                "author": "SmartBiz Coach",
-                "theme": "HUSTLE",
-                "actions": [
-                    "Promote one key product on your WhatsApp Status today.",
-                    "Review your stock levels to see what needs restocking.",
-                    "Check your outstanding invoices and follow up on pending payments."
+            # Dynamic Fallback Engine (Personalized, Naija-focused, Changes Daily)
+            import random
+            from datetime import datetime
+            
+            # Determine niche
+            niche_key = "general"
+            try:
+                brand = BrandIdentity.objects.get(user=request.user)
+                niche_lower = brand.niche.lower()
+                if any(x in niche_lower for x in ["retail", "shop", "boutique", "store", "physical", "sale", "wear", "fabric", "shoe"]):
+                    niche_key = "retail"
+                elif any(x in niche_lower for x in ["property", "real estate", "land", "agent", "house", "rent"]):
+                    niche_key = "property"
+                elif any(x in niche_lower for x in ["service", "consult", "agency", "freelance", "class", "teach", "salon", "barber"]):
+                    niche_key = "service"
+            except:
+                pass
+                
+            fallback_pool = {
+                "retail": [
+                    {
+                        "quote": "Abeg, customer relationship no be by mouth, na by follow-up. Make sure you check up on those who asked for prices yesterday!",
+                        "actions": [
+                            "Post 3 of your fast-selling inventory items on WhatsApp Status with clear prices.",
+                            "Review your stock records in inventory manager and mark items below 5 units as low stock.",
+                            "Send a gentle follow-up text to the client who promised payment today using Invoice module."
+                        ]
+                    },
+                    {
+                        "quote": "Market no dey wait for person. If you no put your products out there, another person go sell to your customers today.",
+                        "actions": [
+                            "Update your Public Storefront catalog with new product photos.",
+                            "Calculate your gross margin for your top 3 selling items in inventory manager.",
+                            "Send a quick 'Thank you' discount code to your top customer from last week."
+                        ]
+                    },
+                    {
+                        "quote": "Better soup na money make am. Invest time in writing clear, attractive product descriptions today.",
+                        "actions": [
+                            "Generate product captions using Content Studio for your WhatsApp Status catalog.",
+                            "Do a quick audit of unpaid customer invoices in Gbege Book.",
+                            "Run a discount alert on WhatsApp for items that have spent over 30 days in stock."
+                        ]
+                    }
+                ],
+                "property": [
+                    {
+                        "quote": "Land no dey rot. Every listing you promote today is seed sown for a major commission tomorrow. Keep pushing, boss!",
+                        "actions": [
+                            "Record a 60-second video walkthrough of your active listing for TikTok/Instagram.",
+                            "Update your property status in your catalog (Available/Sold).",
+                            "Follow up with the lead who did inspection last weekend."
+                        ]
+                    },
+                    {
+                        "quote": "Trust na key for real estate. Ensure your public agent catalog looks premium and verified.",
+                        "actions": [
+                            "Post high-res neighborhood details on your WhatsApp status.",
+                            "Reach out to 2 local agency partners for co-listing updates.",
+                            "Check active property leads in your Lead Inbox."
+                        ]
+                    }
+                ],
+                "service": [
+                    {
+                        "quote": "Your expertise is your market value. Don't sell yourself cheap, but deliver double value to retain your clients.",
+                        "actions": [
+                            "Share a helpful tip/tutorial related to your industry on social media.",
+                            "Review client feedback and optimize your service delivery roadmap.",
+                            "Follow up with clients who have pending retainer invoices."
+                        ]
+                    },
+                    {
+                        "quote": "A single satisfied client can refer you to ten others. Service quality is your best advertisement in Naija.",
+                        "actions": [
+                            "Draft a short testimonial request message to send to your last client.",
+                            "Review your weekly available slots and post them on WhatsApp status.",
+                            "Organize your client communication template using Sales Closer."
+                        ]
+                    }
+                ],
+                "general": [
+                    {
+                        "quote": "No food for lazy man, but wisdom na the key. Work smart today by letting AI handle your copy while you focus on sales!",
+                        "actions": [
+                            "Post today's top product/service on WhatsApp status with a strong hook.",
+                            "Review your cash inflow and outflow for the past 7 days.",
+                            "Resolve at least 1 pending customer query in your Lead Inbox."
+                        ]
+                    },
+                    {
+                        "quote": "Small steps every day na lead to big success. Don't look at where you dey, look at where you dey go.",
+                        "actions": [
+                            "Generate a fresh marketing script in the Content Studio.",
+                            "Update your business details and profile logo.",
+                            "Check for active SME grant opportunities on the Find Funding board."
+                        ]
+                    },
+                    {
+                        "quote": "Business na exchange of value. Make sure your customers feel the premium touch in your delivery today.",
+                        "actions": [
+                            "Send a personalized feedback request to a recent buyer.",
+                            "Audit your inventory and clear out zero-demand items.",
+                            "Follow up on invoices that have exceeded their due dates."
+                        ]
+                    }
                 ]
+            }
+            
+            # Seed based on date + user ID so it changes daily per user
+            seed_val = datetime.now().date().toordinal() + request.user.id
+            random.seed(seed_val)
+            
+            niche_list = fallback_pool.get(niche_key, fallback_pool["general"])
+            selected = random.choice(niche_list)
+            
+            return Response({
+                "quote": selected["quote"],
+                "author": "SmartBiz Coach",
+                "theme": "DYNAMIC_ACTION_PLAN",
+                "actions": selected["actions"]
             })
 
 class GenerateSeasonalTipsView(views.APIView):
@@ -499,18 +607,49 @@ class GetTrendingTopicsView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        trends_pool = [
-            {"id": "t1", "title": "Fuel Scarcity Survival", "category": "News/Culture", "volume": "120K Tweets"},
-            {"id": "t2", "title": "New Afrobeats Dance Challenge", "category": "Entertainment", "volume": "85K TikToks"},
-            {"id": "t3", "title": "Naira Exchange Rate Humour", "category": "Economy", "volume": "50K Posts"},
-            {"id": "t4", "title": "Lagos Traffic Chronicles", "category": "Lifestyle", "volume": "40K Posts"},
-            {"id": "t5", "title": "Detty December Prep", "category": "Seasonal", "volume": "200K Posts"},
-            {"id": "t6", "title": "Odogwu Bitters Meme", "category": "Pop Culture", "volume": "75K Posts"},
-            {"id": "t7", "title": "ASUU Strike Updates", "category": "News", "volume": "90K Posts"}
-        ]
-        # Return 3 random trends
-        daily_trends = random.sample(trends_pool, 3)
-        return Response(daily_trends)
+        prompt = """
+        Generate 3 current trending topics, challenges, pop culture memes, or events that are popular in Nigeria right now (Naija-focused).
+        For each topic, provide:
+        1. A catchy title (e.g. "Fuel Scarcity Survival hacks", "New Afrobeats Trend", "Naira Exchange Rate humour").
+        2. A category (e.g. Pop Culture, Economy, Seasonal, News, Entertainment).
+        3. An estimated volume of posts/tweets (e.g. "120K Posts", "85K TikToks").
+        
+        Return JSON list of 3 objects with keys: id (e.g. t1, t2, t3), title, category, volume.
+        """
+        try:
+            content = gemini_utils.generate_json_content(prompt)
+            if isinstance(content, list) and len(content) > 0 and 'error' not in content:
+                for idx, item in enumerate(content):
+                    if 'id' not in item:
+                        item['id'] = f"t{idx+1}"
+                return Response(content[:3])
+            raise Exception("Gemini JSON invalid or contains error")
+        except Exception as e:
+            # Fallback to rich, daily-seeded Naija topics
+            import random
+            from datetime import datetime
+            seed_val = datetime.now().date().toordinal()
+            random.seed(seed_val)
+            
+            trends_pool = [
+                {"id": "t1", "title": "Fuel Prices & transport hacks", "category": "Economy", "volume": "140K Posts"},
+                {"id": "t2", "title": "New Afrobeats Dance Challenge", "category": "Entertainment", "volume": "95K TikToks"},
+                {"id": "t3", "title": "Naira Exchange Adjustments", "category": "Finance", "volume": "85K Posts"},
+                {"id": "t4", "title": "Detty December & Holiday Prep", "category": "Seasonal", "volume": "220K Posts"},
+                {"id": "t5", "title": "Lagos Traffic Chronicles", "category": "Pop Culture", "volume": "60K Posts"},
+                {"id": "t6", "title": "CAC Registration updates for MSMEs", "category": "Business", "volume": "45K Search"},
+                {"id": "t7", "title": "Odogwu Bitters memes & trends", "category": "Pop Culture", "volume": "110K Posts"},
+                {"id": "t8", "title": "ASUU & Education Calendar", "category": "News", "volume": "80K Posts"},
+                {"id": "t9", "title": "FinTech funding in Lagos", "category": "Tech", "volume": "30K Posts"},
+                {"id": "t10", "title": "WhatsApp catalog features", "category": "Business/Tech", "volume": "55K volume"},
+                {"id": "t11", "title": "Solar Energy & power alternatives", "category": "Infrastructure", "volume": "115K Posts"},
+                {"id": "t12", "title": "Japa wave & talent search", "category": "Culture", "volume": "90K Posts"},
+                {"id": "t13", "title": "Ankara local fashion showcase", "category": "Fashion", "volume": "70K Posts"},
+                {"id": "t14", "title": "Delivery Logistics price changes", "category": "Logistics", "volume": "40K Posts"},
+                {"id": "t15", "title": "Nigerian Food Inflation hacks", "category": "Lifestyle", "volume": "130K Posts"}
+            ]
+            daily_trends = random.sample(trends_pool, 3)
+            return Response(daily_trends)
 
 
 class GenerateSalesScriptView(views.APIView):
