@@ -36,6 +36,7 @@ const ProductManager = lazy(() => import("./components/ProductManager"));
 const LeadManager = lazy(() => import("./components/LeadManager"));
 const PricingAssistant = lazy(() => import("./components/PricingAssistant"));
 const PublicAuditReport = lazy(() => import("./components/PublicAuditReport"));
+const StaticPage = lazy(() => import("./components/StaticPage"));
 
 import {
   AppView,
@@ -434,6 +435,44 @@ const App: React.FC = () => {
 
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        
+        {/* Static Pages Routes */}
+        <Route path="/about" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="about" />
+          </Suspense>
+        } />
+        <Route path="/contact" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="contact" />
+          </Suspense>
+        } />
+        <Route path="/privacy" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="privacy" />
+          </Suspense>
+        } />
+        <Route path="/terms" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="terms" />
+          </Suspense>
+        } />
+        <Route path="/help" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="help" />
+          </Suspense>
+        } />
+        <Route path="/grants-guide" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="grants" />
+          </Suspense>
+        } />
+        <Route path="/cac-checklist" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="cac" />
+          </Suspense>
+        } />
+
         <Route path="/u/:slug" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-650 border-t-transparent rounded-full animate-spin" /></div>}>
             <PublicStorefront />

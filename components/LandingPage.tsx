@@ -504,18 +504,18 @@ const LandingPage: React.FC = () => {
                         <motion.div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col"
                             initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
                             <div className="bg-purple-600 text-white py-4 px-6 font-bold text-xs uppercase tracking-widest">
-                                Business Expansion
+                                iDICE Funding
                             </div>
                             <div className="p-6 flex-1 flex flex-col justify-between">
                                 <div>
-                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-3">Pitching to Partners: Crafting the perfect proposal outline</h3>
+                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-3">iDICE Funding Readiness: Get Your Business Ready for Federal Grants</h3>
                                     <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                                        A practical template outlining corporate outreach strategies to hub coordinators, NGO directors, and corporate partners to land sponsorships.
+                                        Learn how to use SmartBiz Coach to prepare required documents, generate investor-ready business plans, verify CAC compliance, and secure funding under the Federal Government iDICE program.
                                     </p>
                                 </div>
                                 <div className="border-t border-slate-100 pt-4 flex justify-between items-center text-xs font-bold text-purple-600">
                                     <span>4 Min Read</span>
-                                    <span className="cursor-pointer hover:underline" onClick={() => navigate('/register')}>Read Blueprint →</span>
+                                    <span className="cursor-pointer hover:underline" onClick={() => navigate('/register')}>Get Funding Ready →</span>
                                 </div>
                             </div>
                         </motion.div>
@@ -569,18 +569,19 @@ const LandingPage: React.FC = () => {
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Resources</h4>
                             <ul className="space-y-3">
                                 <li><a href="#blog" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Blog Outline</a></li>
-                                {['Help Center', 'Grants Guide', 'CAC Checklist'].map(l => (
-                                    <li key={l}><a href="#" className="text-sm text-slate-400 hover:text-green-400 transition-colors">{l}</a></li>
-                                ))}
+                                <li><span onClick={() => navigate('/help')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Help Center</span></li>
+                                <li><span onClick={() => navigate('/grants-guide')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Grants Guide</span></li>
+                                <li><span onClick={() => navigate('/cac-checklist')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">CAC Checklist</span></li>
                             </ul>
                         </div>
 
                         <div>
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Company</h4>
                             <ul className="space-y-3">
-                                {['About Us', 'Contact', 'Privacy Policy', 'Terms of Service'].map(l => (
-                                    <li key={l}><a href="#" className="text-sm text-slate-400 hover:text-green-400 transition-colors">{l}</a></li>
-                                ))}
+                                <li><span onClick={() => navigate('/about')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">About Us</span></li>
+                                <li><span onClick={() => navigate('/contact')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Contact</span></li>
+                                <li><span onClick={() => navigate('/privacy')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Privacy Policy</span></li>
+                                <li><span onClick={() => navigate('/terms')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Terms of Service</span></li>
                             </ul>
                         </div>
                     </div>
