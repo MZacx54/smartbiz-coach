@@ -4,8 +4,8 @@ from django.conf import settings
 class BrandIdentity(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='brand_identity')
     business_name = models.CharField(max_length=255)
-    niche = models.CharField(max_length=100)
-    vibe = models.CharField(max_length=100)
+    niche = models.CharField(max_length=100, blank=True, default='')
+    vibe = models.CharField(max_length=100, blank=True, default='')
     slug = models.SlugField(unique=True, blank=True, null=True)
     
     # JSON Fields for structured data
