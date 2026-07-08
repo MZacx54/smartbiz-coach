@@ -1,152 +1,263 @@
-
 import React, { useState } from 'react';
-import { Course } from '../types';
+import { AppView } from '../types';
+import { BookOpen, Award, CheckCircle, ArrowRight, Play, Compass, ExternalLink } from 'lucide-react';
 
-const LearningHub: React.FC = () => {
-  const [activeCourse, setActiveCourse] = useState<Course | null>(null);
+interface Lesson {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  icon: string;
+  color: string;
+  targetView: AppView;
+  actionText: string;
+  takeaways: string[];
+  content: string[];
+}
 
-  const courses: Course[] = [
+interface LearningHubProps {
+  onNavigate: (view: AppView) => void;
+}
+
+const LearningHub: React.FC<LearningHubProps> = ({ onNavigate }) => {
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+
+  const lessons: Lesson[] = [
     {
-      id: '1',
-      title: 'Intro to Branding for MSMEs',
-      description: 'Learn how to choose colors, fonts, and a voice that sells.',
-      duration: '12 mins',
-      thumbnailColor: '#4F46E5', // Indigo
-      isLocked: false,
-      progress: 0
+      id: 'brand',
+      title: 'Crafting a Selling Brand Voice',
+      description: 'Learn how to generate a cohesive brand identity and custom logo settings that turn viewers into fans.',
+      duration: '8 mins read',
+      icon: '✨',
+      color: 'from-emerald-500 to-teal-600',
+      targetView: AppView.BRAND_BUILDER,
+      actionText: 'Build Brand Now',
+      takeaways: [
+        'How to identify your specific target niche in the Nigerian market.',
+        'Choosing colors and font styles that project trust.',
+        'Structuring a compelling elevator pitch and slogan.'
+      ],
+      content: [
+        'Your brand is the face of your business. In Nigeria’s busy digital market, trust is the number one currency. A generic business name with zero voice will struggle to gain traction.',
+        'First, head to the Brand Builder tool. Input your business niche, target audience, and style preferences. The AI will output a consistent color palette, slogan, and description.',
+        'Once generated, use this voice consistently across your WhatsApp Status, TikTok bio, and invoice headers to establish a premium presence.'
+      ]
     },
     {
-      id: '2',
-      title: 'WhatsApp Marketing Basics',
-      description: 'Convert status viewers into paying customers.',
-      duration: '18 mins',
-      thumbnailColor: '#16A34A', // Green
-      isLocked: false,
-      progress: 0
+      id: 'content',
+      title: 'Viral Social Media Copywriting',
+      description: 'How to write engaging WhatsApp updates and TikTok captions that get customers asking "How much?"',
+      duration: '10 mins read',
+      icon: '✍️',
+      color: 'from-green-500 to-emerald-600',
+      targetView: AppView.CONTENT_GENERATOR,
+      actionText: 'Open Content Studio',
+      takeaways: [
+        'Structuring WhatsApp posts with strong hooks.',
+        'Utilizing trending Nigerian keywords to build trust.',
+        'Adding clear call-to-actions that drive direct orders.'
+      ],
+      content: [
+        'Many MSMEs make the mistake of just pasting pictures on their WhatsApp status without captions. Captions are where sales happen.',
+        'Open the Content Studio and select your target platform. Pick a style—such as "Energetic" or "Problem-Solving"—and let the AI generate engaging text.',
+        'Always include a direct order link or WhatsApp contact at the bottom of your post to minimize the friction for buyer inquiries.'
+      ]
     },
     {
-      id: '3',
-      title: 'CAC Registration Step-by-Step',
-      description: 'Navigate the Corporate Affairs Commission portal without errors.',
-      duration: '25 mins',
-      thumbnailColor: '#EA580C', // Orange
-      isLocked: false,
-      progress: 0
+      id: 'invoices',
+      title: 'Managing Debts & Professional Invoicing',
+      description: 'Professionalize your customer interactions. Issue invoices instantly and track debtors without tension.',
+      duration: '12 mins read',
+      icon: '🧾',
+      color: 'from-emerald-600 to-teal-700',
+      targetView: AppView.INVOICE_GENERATOR,
+      actionText: 'Issue an Invoice',
+      takeaways: [
+        'How professional receipts discourage customer defaults.',
+        'Keeping accurate digital records of customer credit.',
+        'Sending automated polite WhatsApp debt reminders.'
+      ],
+      content: [
+        'Loose verbal agreements are the primary source of cash flow problems for small businesses. Always document every transaction with a digital invoice.',
+        'Use the Invoice Generator to quickly key in product lists and prices. You can immediately download the receipt as a PDF or share the direct link with the customer.',
+        'If a customer owes you money, log it in the Gbege Book (Debtor Book). This helps you keep a visual calendar of pending payments and draft friendly reminders with one tap.'
+      ]
     },
     {
-      id: '4',
-      title: 'Financial Literacy: Keeping Records',
-      description: 'Separate business money from personal money.',
-      duration: '15 mins',
-      thumbnailColor: '#0891B2', // Cyan
-      isLocked: true,
-      progress: 0
+      id: 'storefront',
+      title: 'Launching Your Public Web Catalog',
+      description: 'Set up a digital storefront so customers can browse your products and make orders 24/7.',
+      duration: '15 mins read',
+      icon: '🔗',
+      color: 'from-teal-600 to-emerald-800',
+      targetView: AppView.PRODUCT_MANAGER,
+      actionText: 'Manage Catalog',
+      takeaways: [
+        'Setting up products with high-quality descriptions.',
+        'Linking your catalog directly to your WhatsApp bio.',
+        'Automating order generation via customer links.'
+      ],
+      content: [
+        'Answering the question "How much is this?" fifty times a day is exhausting. The solution is a public storefront.',
+        'Go to your Product Manager and upload your current stock items, prices, and images. SmartBiz instantly compiles this into a beautiful mobile-responsive public storefront.',
+        'Share your Public Store link on your social media profiles. When customers select items and checkout, an order is generated and directly synced to your Lead Inbox.'
+      ]
     },
     {
-      id: '5',
-      title: 'Advanced Facebook Ads',
-      description: 'Targeting the right audience in Nigeria.',
-      duration: '30 mins',
-      thumbnailColor: '#9333EA', // Purple
-      isLocked: true,
-      progress: 0
+      id: 'grants',
+      title: 'Securing Funding & Grant Writing',
+      description: 'How to structure your business plan and pitch to match requirements for grants like iDICE.',
+      duration: '18 mins read',
+      icon: '💰',
+      color: 'from-emerald-705 to-teal-850',
+      targetView: AppView.GRANT_MATCHER,
+      actionText: 'Find Funding',
+      takeaways: [
+        'Understanding what Nigerian loan and grant programs look for.',
+        'Structuring an executive summary that stands out.',
+        'Matching your business profile to active grants.'
+      ],
+      content: [
+        'Applying for startup support requires a solid structure. Investors and grant organizations (like the iDICE program) want to see detailed records of traction, inventory, and long-term plans.',
+        'Use the Business Plan Generator to draft a comprehensive plan. It organizes your market opportunities, financial estimates, and target strategy into a standard document.',
+        'Once complete, check the Find Funding board to review active government programs, micro-loans, and incubation cohorts matching your business category.'
+      ]
     }
   ];
 
-  const renderPlayer = (course: Course) => (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <button 
-        onClick={() => setActiveCourse(null)}
-        className="mb-4 text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1"
-      >
-        <span>←</span> Back to Courses
-      </button>
+  if (activeLesson) {
+    return (
+      <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300 pb-20">
+        <button 
+          onClick={() => setActiveLesson(null)}
+          className="mb-6 px-4 py-2 border border-slate-200 text-slate-600 font-bold rounded-xl text-xs hover:bg-slate-50 transition-all flex items-center gap-1.5"
+        >
+          <span>&larr;</span> Back to Academy
+        </button>
 
-      <div className="bg-black rounded-xl aspect-video w-full flex items-center justify-center relative overflow-hidden group">
-         <div className="absolute inset-0 opacity-20" style={{ backgroundColor: course.thumbnailColor }}></div>
-         <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform group-hover:bg-white/30">
-            <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-white border-b-[10px] border-b-transparent ml-1"></div>
-         </div>
-         <p className="absolute bottom-4 left-4 text-white font-medium">Preview Mode</p>
-      </div>
+        <div className={`p-8 rounded-[32px] bg-gradient-to-br ${activeLesson.color} text-white shadow-xl mb-8 relative overflow-hidden`}>
+          <div className="absolute right-6 top-6 text-7xl opacity-15">{activeLesson.icon}</div>
+          <span className="bg-white/20 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+            {activeLesson.duration}
+          </span>
+          <h2 className="text-2xl md:text-3xl font-black mt-4 leading-tight">{activeLesson.title}</h2>
+          <p className="text-white/80 text-sm mt-2 max-w-xl">{activeLesson.description}</p>
+        </div>
 
-      <div className="mt-6">
-        <h2 className="text-2xl font-bold text-gray-900">{course.title}</h2>
-        <p className="text-gray-600 mt-2">{course.description}</p>
-        
-        <div className="mt-6 border-t border-gray-100 pt-6">
-          <h3 className="font-bold text-gray-800 mb-4">Key Takeaways</h3>
-          <ul className="space-y-3">
-            {[1, 2, 3].map((_, i) => (
-              <li key={i} className="flex gap-3 text-gray-600 text-sm">
-                <span className="text-green-500 font-bold">✓</span>
-                <span>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Understanding the core concept.</span>
-              </li>
+        <div className="bg-white border border-slate-200 rounded-[28px] p-6 md:p-8 space-y-6 shadow-sm">
+          {/* Main Content paragraphs */}
+          <div className="space-y-4">
+            {activeLesson.content.map((paragraph, idx) => (
+              <p key={idx} className="text-slate-700 text-sm leading-relaxed font-medium">
+                {paragraph}
+              </p>
             ))}
-          </ul>
+          </div>
+
+          {/* Key Takeaways */}
+          <div className="bg-emerald-50/50 border border-emerald-100/60 p-5 rounded-2xl">
+            <h3 className="font-extrabold text-emerald-900 text-sm mb-3 flex items-center gap-2">
+              <Award className="w-4.5 h-4.5 text-emerald-600" />
+              <span>Key Practical Rules</span>
+            </h3>
+            <ul className="space-y-2.5">
+              {activeLesson.takeaways.map((takeaway, idx) => (
+                <li key={idx} className="text-xs text-emerald-800 flex items-start gap-2 leading-relaxed">
+                  <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <span>{takeaway}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Call to Action to Launch Tool */}
+          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ready to practice?</p>
+              <p className="text-xs text-slate-650 mt-1 font-medium">Launch the built-in AI tool to complete this step.</p>
+            </div>
+            <button
+              onClick={() => onNavigate(activeLesson.targetView)}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-5 py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/10 flex items-center gap-2 active:scale-95"
+            >
+              <span>{activeLesson.actionText}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
-
-  if (activeCourse) {
-    return renderPlayer(activeCourse);
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Learning Hub 🎓</h2>
-        <p className="text-gray-600 text-sm mt-2">Master the skills to grow your business.</p>
+    <div className="max-w-4xl mx-auto space-y-8 pb-20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+            <span>SmartBiz Academy</span>
+            <span className="text-lg">🎓</span>
+          </h2>
+          <p className="text-slate-500 text-sm mt-1">Short practical guides to master our tools and scale your business.</p>
+        </div>
+        <div className="bg-white/80 border border-slate-200 px-4 py-2 rounded-full shadow-sm flex items-center gap-2 shrink-0">
+          <BookOpen className="w-4 h-4 text-emerald-600" />
+          <span className="text-xs font-bold text-slate-700">{lessons.length} Modules Available</span>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {courses.map(course => (
+        {lessons.map(lesson => (
           <div 
-            key={course.id}
-            onClick={() => !course.isLocked && setActiveCourse(course)}
-            className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-all group ${course.isLocked ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'}`}
+            key={lesson.id}
+            onClick={() => setActiveLesson(lesson)}
+            className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all group cursor-pointer flex flex-col justify-between"
           >
-            <div className="h-32 relative flex items-center justify-center" style={{ backgroundColor: course.thumbnailColor }}>
-               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  {course.isLocked ? (
-                    <span className="text-xl">🔒</span>
-                  ) : (
-                    <div className="w-0 h-0 border-t-[6px] border-t-transparent border-l-[10px] border-l-white border-b-[6px] border-b-transparent ml-1"></div>
-                  )}
-               </div>
-               <span className="absolute bottom-2 right-2 bg-black/50 text-white text-[10px] px-2 py-1 rounded font-medium">
-                 {course.duration}
-               </span>
+            <div>
+              <div className={`h-32 bg-gradient-to-br ${lesson.color} relative flex items-center justify-center`}>
+                <span className="text-5xl group-hover:scale-110 transition-transform duration-300">{lesson.icon}</span>
+                <span className="absolute bottom-3 right-3 bg-black/40 backdrop-blur-sm text-white text-[9px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider">
+                  {lesson.duration}
+                </span>
+              </div>
+              
+              <div className="p-5">
+                <h3 className="font-extrabold text-slate-900 leading-tight text-sm group-hover:text-emerald-600 transition-colors">
+                  {lesson.title}
+                </h3>
+                <p className="text-xs text-slate-500 mt-2 line-clamp-3 leading-relaxed">
+                  {lesson.description}
+                </p>
+              </div>
             </div>
             
-            <div className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-gray-900 leading-tight">{course.title}</h3>
+            <div className="p-5 pt-0">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-650 group-hover:gap-2.5 transition-all">
+                <span>Start Learning</span>
+                <span>&rarr;</span>
               </div>
-              <p className="text-xs text-gray-500 line-clamp-2 mb-4">{course.description}</p>
-              
-              {course.isLocked ? (
-                 <div className="w-full py-2 bg-gray-100 text-gray-500 text-xs font-bold rounded text-center">
-                   Upgrade to Unlock
-                 </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs font-medium text-indigo-600 group-hover:underline">
-                  Start Learning →
-                </div>
-              )}
             </div>
           </div>
         ))}
       </div>
       
-      <div className="mt-8 p-6 bg-indigo-50 rounded-xl border border-indigo-100 flex items-center justify-between gap-4">
-        <div>
-          <h3 className="font-bold text-indigo-900">Want to master Digital Marketing?</h3>
-          <p className="text-sm text-indigo-700">Get the full 20+ course library with Smart Access.</p>
+      {/* Academy Premium Banner */}
+      <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-6 rounded-[28px] border border-emerald-900/30 text-white flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-lg">
+        <div className="absolute -right-10 -bottom-10 text-9xl opacity-5 pointer-events-none">🎓</div>
+        <div className="space-y-1">
+          <h3 className="font-extrabold text-base flex items-center gap-2">
+            <Compass className="w-5 h-5 text-emerald-400" />
+            <span>Need personalized business mentoring?</span>
+          </h3>
+          <p className="text-xs text-slate-300 leading-relaxed font-medium">
+            Connect directly with meshach and get advanced coaching to scale your platform pilot today.
+          </p>
         </div>
-        <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 whitespace-nowrap">
-          View Plans
+        <button 
+          onClick={() => window.open('https://wa.me/2349064556107', '_blank')}
+          className="bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs px-5 py-3 rounded-xl transition-all shadow-md shadow-green-600/10 flex items-center gap-1.5 whitespace-nowrap active:scale-95"
+        >
+          <span>Connect via WhatsApp</span>
+          <ExternalLink className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

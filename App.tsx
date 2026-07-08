@@ -547,7 +547,7 @@ const App: React.FC = () => {
                   <Route path="content" element={<ContentStudio brand={savedBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="grants" element={<GrantMatcher businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="learning" element={<LearningHub />} />
+                  <Route path="learning" element={<LearningHub onNavigate={handleNavigate} />} />
                   <Route path="inventory" element={<ProductManager />} />
                   <Route path="debtor" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
@@ -556,7 +556,7 @@ const App: React.FC = () => {
                   <Route path="hub" element={<Marketplace onAddToCart={handleAddToCart} initialType="B2B" />} />
                   <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
                   <Route path="compliance" element={<Compliance brand={savedBrand} user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="roadmap" element={<DigitalRoadmap />} />
+                  <Route path="roadmap" element={<DigitalRoadmap onNavigate={handleNavigate} />} />
                   <Route path="support" element={<WhatsAppSupport credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="sales-assistant" element={<SalesAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onTopUpSuccess={handleUpdateCredits} />} />
