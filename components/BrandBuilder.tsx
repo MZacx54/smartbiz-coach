@@ -215,8 +215,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           <div class="grid">
             <div class="section">
               <div class="section-title">Typography</div>
-              <p style="font-size: 24px; font-weight: bold;">${localBrandData.fonts.primary} (Headings)</p>
-              <p style="font-size: 16px;">${localBrandData.fonts.secondary} (Body Text)</p>
+              <p style="font-size: 24px; font-weight: bold;">${localBrandData?.fonts?.primary || 'sans-serif'} (Headings)</p>
+              <p style="font-size: 16px;">${localBrandData?.fonts?.secondary || 'sans-serif'} (Body Text)</p>
             </div>
             <div class="section">
               <div class="section-title">Brand Voice</div>
@@ -832,11 +832,11 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                   <div className="space-y-2">
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <span className="text-xs text-gray-400 block mb-1">Headlines</span>
-                      <span className="text-xl font-bold text-gray-800">{localBrandData.fonts.primary}</span>
+                      <span className="text-xl font-bold text-gray-800">{localBrandData?.fonts?.primary || 'sans-serif'}</span>
                     </div>
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <span className="text-xs text-gray-400 block mb-1">Body Text</span>
-                      <span className="text-base text-gray-600">{localBrandData.fonts.secondary}</span>
+                      <span className="text-base text-gray-600">{localBrandData?.fonts?.secondary || 'sans-serif'}</span>
                     </div>
                   </div>
                 </div>
