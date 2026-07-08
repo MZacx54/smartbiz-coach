@@ -8,12 +8,30 @@ const LandingPage: React.FC = () => {
     const [scrolled, setScrolled] = useState(false);
     const [activeFaq, setActiveFaq] = useState<number | null>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    
+    // Partnership Form States
+    const [partnerSubmitted, setPartnerSubmitted] = useState(false);
+    const [partnerLoading, setPartnerLoading] = useState(false);
+    const [partnerName, setPartnerName] = useState('');
+    const [partnerEmail, setPartnerEmail] = useState('');
+    const [partnerOrg, setPartnerOrg] = useState('');
+    const [partnerType, setPartnerType] = useState('Equity Investment');
+    const [partnerMessage, setPartnerMessage] = useState('');
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    const handlePartnerSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setPartnerLoading(true);
+        setTimeout(() => {
+            setPartnerLoading(false);
+            setPartnerSubmitted(true);
+        }, 1200);
+    };
 
     const features = [
         { icon: '✨', title: 'AI Brand Builder', desc: 'Generate logos, brand colors, taglines, and a full visual identity tailored to your Nigerian audience in seconds.', color: 'from-violet-500 to-purple-600', bgHover: 'hover:bg-violet-50 hover:border-violet-200' },
@@ -422,6 +440,117 @@ const LandingPage: React.FC = () => {
                                 </AnimatePresence>
                             </motion.div>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ───────── PARTNERSHIP & INVESTOR RELATIONS ───────── */}
+            <section id="partnership" className="py-24 bg-white border-t border-slate-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                        {/* Information / Traction Column */}
+                        <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+                            <span className="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-bold tracking-wider uppercase mb-4 border border-green-200">Partnership & Growth</span>
+                            <h2 className="text-4xl font-extrabold text-slate-900 font-heading mb-6 leading-tight">
+                                Invest in the Future of African MSMEs
+                            </h2>
+                            <p className="text-lg text-slate-600 mb-8 leading-relaxed">
+                                SmartBiz Coach is scaling rapidly across Nigeria, enabling micro-entrepreneurs to utilize custom AI tools to grow profits. We invite venture capital firms, angel investors, creative hub directors, and enterprise partners to build this digital operating system with us.
+                            </p>
+
+                            <div className="space-y-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center font-extrabold flex-shrink-0 shadow-sm">📈</div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-900 text-base">Rapid User Adoption</h4>
+                                        <p className="text-sm text-slate-500 mt-1">Over 10,000 active business owners building digital profiles, branding layouts, and generating financial blueprints.</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-extrabold flex-shrink-0 shadow-sm">⚡</div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-900 text-base">Next-Gen AI Core</h4>
+                                        <p className="text-sm text-slate-500 mt-1">Deep integration with Google Gemini AI to automate brand creation, business plans, and smart invoicing.</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-4">
+                                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-extrabold flex-shrink-0 shadow-sm">💳</div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-900 text-base">Proven Monetization</h4>
+                                        <p className="text-sm text-slate-500 mt-1">A scalable pay-as-you-go credit token ecosystem powered by secure Paystack local transaction processing.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+
+                        {/* Interactive Partnership Form */}
+                        <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+                            className="bg-slate-50 border border-slate-200 rounded-3xl p-8 sm:p-10 shadow-lg relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-2xl pointer-events-none"></div>
+
+                            {partnerSubmitted ? (
+                                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-10">
+                                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-md">✓</div>
+                                    <h3 className="text-2xl font-bold text-slate-900 font-heading mb-3">Proposal Submitted!</h3>
+                                    <p className="text-slate-600 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
+                                        Thank you, <strong>{partnerName}</strong>. We have received your interest in a <strong>{partnerType}</strong>. We will reach out to you via <strong>{partnerEmail}</strong> shortly.
+                                    </p>
+                                    <a href={`https://wa.me/2349064556107?text=Hello%20Meshach,%20I%20just%20submitted%20a%20partnership%20proposal%20for%20SmartBiz%20Coach%20as%20a%20${encodeURIComponent(partnerType)}.`}
+                                       target="_blank" rel="noopener noreferrer" 
+                                       className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-extrabold px-6 py-3 rounded-xl text-sm transition-all shadow-md">
+                                        Discuss on WhatsApp Live →
+                                    </a>
+                                </motion.div>
+                            ) : (
+                                <form onSubmit={handlePartnerSubmit} className="space-y-5">
+                                    <h3 className="text-xl font-bold text-slate-900 font-heading mb-1">Partnership Inquiry</h3>
+                                    <p className="text-xs text-slate-500 mb-6">Let's discuss how we can work together to scale SmartBiz Coach.</p>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Name</label>
+                                            <input type="text" required value={partnerName} onChange={(e) => setPartnerName(e.target.value)} 
+                                                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:border-green-500 transition-colors" placeholder="Full Name" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email</label>
+                                            <input type="email" required value={partnerEmail} onChange={(e) => setPartnerEmail(e.target.value)}
+                                                   className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:border-green-500 transition-colors" placeholder="email@firm.com" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Organization / Firm</label>
+                                        <input type="text" required value={partnerOrg} onChange={(e) => setPartnerOrg(e.target.value)}
+                                               className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:border-green-500 transition-colors" placeholder="Company or Hub Name" />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Partnership Type</label>
+                                        <select value={partnerType} onChange={(e) => setPartnerType(e.target.value)}
+                                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:border-green-500 transition-colors">
+                                            <option value="Equity Investment">Equity Investment / VC Funding</option>
+                                            <option value="Creative Hub Integration">Creative Hub / NGO Integration</option>
+                                            <option value="Corporate Sponsorship">Corporate Sponsorship</option>
+                                            <option value="Other">Other Strategic Partnership</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Message / Collaboration Proposal</label>
+                                        <textarea required rows={4} value={partnerMessage} onChange={(e) => setPartnerMessage(e.target.value)}
+                                                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-sm focus:outline-none focus:border-green-500 transition-colors" placeholder="Outline your investment thesis or integration ideas..."></textarea>
+                                    </div>
+
+                                    <button type="submit" disabled={partnerLoading} 
+                                            className="w-full py-3 bg-green-600 hover:bg-green-500 disabled:bg-slate-300 text-white font-extrabold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2">
+                                        {partnerLoading ? "Submitting..." : "Send Proposal →"}
+                                    </button>
+                                </form>
+                            )}
+                        </motion.div>
                     </div>
                 </div>
             </section>
