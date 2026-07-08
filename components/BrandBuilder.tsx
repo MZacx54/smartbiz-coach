@@ -29,6 +29,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [customShareText, setCustomShareText] = useState('');
+  const [customNiche, setCustomNiche] = useState('');
 
   // WhatsApp Link Generator State
   const [waLinkPhone, setWaLinkPhone] = useState('');
@@ -66,7 +67,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.niche || !formData.vibe) return;
+    const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
+    if (!formData.name || !finalNiche || !formData.vibe) return;
 
     const usage = usageLimiter.checkUsage('brand_builder', credits);
     if (!usage.allowed) {
@@ -90,7 +92,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           const billingResponse = await billingService.deductCredits(usage.cost, "AI Brand Identity Builder");
           onUpdateCredits(billingResponse.credits);
 
-          const result = await generateBrandIdentity(formData.name, formData.niche, formData.vibe, token, formData.description, formData.tone);
+          const result = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone);
           setLocalBrandData(result);
           onSave(result);
           setStep('RESULT');
@@ -115,7 +117,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       return;
     }
     try {
-      const result = await generateBrandIdentity(formData.name, formData.niche, formData.vibe, token, formData.description, formData.tone);
+      const result = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone);
       usageLimiter.incrementUsage('brand_builder');
       setLocalBrandData(result);
       onSave(result);
@@ -167,16 +169,16 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           <title>${localBrandData.businessName} - Brand Kit</title>
           <style>
             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; -webkit-print-color-adjust: exact; }
-            h1 { font-size: 36px; margin-bottom: 5px; color: #111; border-bottom: 4px solid ${localBrandData.colors.primary}; padding-bottom: 20px; }
+            h1 { font-size: 36px; margin-bottom: 5px; color: #111; border-bottom: 4px solid ${localBrandData?.colors?.primary || '#333'}; padding-bottom: 20px; }
             h2 { font-size: 14px; text-transform: uppercase; color: #666; letter-spacing: 2px; margin-top: 0; }
             .section { margin-bottom: 40px; page-break-inside: avoid; }
-            .section-title { font-size: 18px; font-weight: bold; color: ${localBrandData.colors.primary}; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 15px; }
+            .section-title { font-size: 18px; font-weight: bold; color: ${localBrandData?.colors?.primary || '#333'}; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 15px; }
             .color-container { display: flex; gap: 20px; }
             .color-box { width: 100px; height: 100px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #ddd; }
             .color-info { font-size: 14px; font-weight: bold; font-family: monospace; }
             .logo { width: 150px; height: 150px; border-radius: 20px; object-fit: cover; margin-bottom: 20px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
             .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-            .tagline { font-style: italic; background: #f9f9f9; padding: 15px; border-left: 4px solid ${localBrandData.colors.secondary}; margin-bottom: 10px; border-radius: 0 8px 8px 0; }
+            .tagline { font-style: italic; background: #f9f9f9; padding: 15px; border-left: 4px solid ${localBrandData?.colors?.secondary || '#666'}; margin-bottom: 10px; border-radius: 0 8px 8px 0; }
             .policy-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; font-size: 12px; margin-bottom: 10px; }
             @media print {
               body { padding: 0; }
@@ -196,16 +198,16 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <div class="section-title">Brand Palette</div>
             <div class="color-container">
               <div>
-                <div class="color-box" style="background: ${localBrandData.colors.primary}"></div>
-                <div class="color-info">Primary<br>${localBrandData.colors.primary}</div>
+                <div class="color-box" style="background: ${localBrandData?.colors?.primary || '#333'}"></div>
+                <div class="color-info">Primary<br>${localBrandData?.colors?.primary || '#333'}</div>
               </div>
               <div>
-                <div class="color-box" style="background: ${localBrandData.colors.secondary}"></div>
-                <div class="color-info">Secondary<br>${localBrandData.colors.secondary}</div>
+                <div class="color-box" style="background: ${localBrandData?.colors?.secondary || '#666'}"></div>
+                <div class="color-info">Secondary<br>${localBrandData?.colors?.secondary || '#666'}</div>
               </div>
               <div>
-                <div class="color-box" style="background: ${localBrandData.colors.accent}"></div>
-                <div class="color-info">Accent<br>${localBrandData.colors.accent}</div>
+                <div class="color-box" style="background: ${localBrandData?.colors?.accent || '#999'}"></div>
+                <div class="color-info">Accent<br>${localBrandData?.colors?.accent || '#999'}</div>
               </div>
             </div>
           </div>
@@ -385,7 +387,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const PackagingPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-sm mx-auto flex items-center justify-center p-10 perspective-1000 min-h-[300px]">
       {/* Shopping Bag Mockup */}
-      <div className="relative w-40 h-56 bg-white shadow-2xl transform rotate-y-12 transition-transform hover:rotate-y-0" style={{ backgroundColor: brand.colors.primary }}>
+      <div className="relative w-40 h-56 bg-white shadow-2xl transform rotate-y-12 transition-transform hover:rotate-y-0" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
         {/* Bag Handle */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-16 h-12 border-4 border-gray-800 rounded-t-full"></div>
 
@@ -809,9 +811,9 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                   <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Color Palette</h3>
                   <div className="flex gap-4">
                     {[
-                      { label: 'Primary', color: localBrandData.colors.primary },
-                      { label: 'Secondary', color: localBrandData.colors.secondary },
-                      { label: 'Accent', color: localBrandData.colors.accent }
+                      { label: 'Primary', color: localBrandData?.colors?.primary || '#333' },
+                      { label: 'Secondary', color: localBrandData?.colors?.secondary || '#666' },
+                      { label: 'Accent', color: localBrandData?.colors?.accent || '#999' }
                     ].map((c) => (
                       <div key={c.label} className="group cursor-pointer">
                         <div
@@ -1195,6 +1197,19 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <option value="Phone & Laptop Repair">Phone & Laptop Repair</option>
             <option value="Other">Other</option>
           </select>
+          {formData.niche === 'Other' && (
+            <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Specify Your Custom Category</label>
+              <input
+                type="text"
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all"
+                placeholder="e.g. Ice Cream Shop, Cement Block Industry"
+                value={customNiche}
+                onChange={(e) => setCustomNiche(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         <div>

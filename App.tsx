@@ -311,18 +311,30 @@ const App: React.FC = () => {
   };
 
   const handleSaveBrand = async (brand: BrandIdentity) => {
-    setSavedBrand(brand);
     try {
-      if (savedBrand && savedBrand.id) {
-        const updated = await brandService.updateBrand(Number(savedBrand.id), brand);
+      if (brand && brand.id) {
+        const updated = await brandService.updateBrand(Number(brand.id), brand);
         setSavedBrand(updated);
       } else {
-        const saved = await brandService.createBrand(brand);
-        setSavedBrand(saved);
+        // Query backend brand list first to prevent OneToOne 400 validation violations
+        let existingBrand = null;
+        try {
+          existingBrand = await brandService.getBrand();
+        } catch (e) {}
+
+        if (existingBrand && existingBrand.id) {
+          const updated = await brandService.updateBrand(Number(existingBrand.id), brand);
+          setSavedBrand(updated);
+        } else {
+          const saved = await brandService.createBrand(brand);
+          setSavedBrand(saved);
+        }
       }
       toast.success("Brand identity synchronized with database!");
     } catch (error) {
       console.error("Failed to sync brand with backend:", error);
+      // Ensure local state is updated even if network synchronization fails
+      setSavedBrand(brand);
       toast.error("Saved locally (Offline mode)");
     }
   };
