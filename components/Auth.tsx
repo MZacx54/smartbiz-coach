@@ -14,6 +14,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     routerLocation.pathname.includes('register') ? 'register' : 'login'
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
 
   // Sync state if route changes between /login and /register while mounted
   useEffect(() => {
@@ -36,6 +37,40 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   // Password Recovery State
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
+
+  const handleSkip = async () => {
+    setIsSkipping(true);
+    const guestId = Math.floor(Math.random() * 10000000);
+    const guestEmail = `guest_${guestId}@smartbizcoach.com.ng`;
+    const guestPassword = `guestpwd_${guestId}`;
+    
+    try {
+      const response = await authService.register({
+        username: guestEmail,
+        email: guestEmail,
+        password: guestPassword,
+        first_name: 'Guest Partner',
+        business_name: 'Demo Venture',
+        phone: '08000000000',
+        location: 'Lagos',
+        currency: 'NGN',
+        has_onboarded: true
+      });
+
+      if (response.token) {
+        localStorage.setItem('sb_auth_token', response.token);
+        onLogin(response.user);
+      } else {
+        const loginResponse = await authService.login({ username: guestEmail, password: guestPassword });
+        onLogin(loginResponse.user);
+      }
+    } catch (error) {
+      console.error("Skip Registration failed", error);
+      alert("Unable to bypass registration right now. Please register manually.");
+    } finally {
+      setIsSkipping(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +105,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         let alertMessage = "A 6-digit reset code has been sent to your email.";
         if (response.debug_code) {
           alertMessage += ` (Debug Code: ${response.debug_code})`;
-          setCode(response.debug_code); // Pre-fill debug code for easy local testing
+          setCode(response.debug_code);
         }
         alert(alertMessage);
         setAuthMode('reset_password_code');
@@ -106,36 +141,35 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
-      <div className="w-full max-w-5xl bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-200">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4 font-sans selection:bg-green-200">
+      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-200">
 
-        {/* Left Side - Visual (Formal) */}
-        <div className="hidden md:flex flex-col justify-center items-center bg-slate-900 text-white p-12 w-1/2 relative overflow-hidden">
-          {/* Formal Pattern */}
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-800/50 to-slate-900/90"></div>
+        {/* Left Side - Visual (Emerald Green Gradient Theme) */}
+        <div className="hidden md:flex flex-col justify-center items-center bg-gradient-to-br from-emerald-800 via-emerald-950 to-slate-950 text-white p-12 w-1/2 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-green-500/20 via-transparent to-transparent pointer-events-none"></div>
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
 
           <div className="relative z-10 text-center max-w-md">
-            <div className="w-16 h-16 bg-white rounded-lg mx-auto flex items-center justify-center text-slate-900 text-3xl font-bold shadow-lg mb-8">
+            <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center text-emerald-800 text-3xl font-extrabold shadow-2xl mb-8">
               S
             </div>
-            <h2 className="text-3xl font-heading font-bold mb-4 tracking-tight">SmartBiz Coach</h2>
-            <p className="text-slate-300 leading-relaxed text-lg font-light">
-              The professional operating system for Nigerian businesses. Brand, Market, and Manage with confidence.
+            <h2 className="text-3xl font-heading font-extrabold mb-4 tracking-tight">SmartBiz Coach</h2>
+            <p className="text-emerald-100 leading-relaxed text-base font-light">
+              The professional AI-powered operating system for Nigerian entrepreneurs. Manage invoices, plan strategies, match grants, and close sales with confidence.
             </p>
 
-            <div className="mt-12 grid grid-cols-3 gap-6 text-center border-t border-slate-700 pt-8">
+            <div className="mt-12 grid grid-cols-3 gap-6 text-center border-t border-emerald-800/40 pt-8">
               <div>
-                <p className="text-2xl font-bold">50k+</p>
-                <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Users</p>
+                <p className="text-2xl font-black text-green-400">10k+</p>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Users</p>
               </div>
               <div>
-                <p className="text-2xl font-bold">99%</p>
-                <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Uptime</p>
+                <p className="text-2xl font-black text-green-400">99.9%</p>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Uptime</p>
               </div>
               <div>
-                <p className="text-2xl font-bold">24/7</p>
-                <p className="text-xs text-slate-400 uppercase tracking-widest mt-1">Support</p>
+                <p className="text-2xl font-black text-green-400">24/7</p>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Support</p>
               </div>
             </div>
           </div>
@@ -158,7 +192,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {authMode === 'register' && (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -167,7 +201,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <input
                       type="text"
                       required
-                      className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                       placeholder="John Doe"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -178,7 +212,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <input
                       type="text"
                       required
-                      className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                       placeholder="Lagos Ventures"
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
@@ -191,7 +225,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Phone</label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                       placeholder="080..."
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -201,7 +235,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Location</label>
                     <input
                       type="text"
-                      className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                       placeholder="Lagos"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
@@ -215,14 +249,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <button
                       type="button"
                       onClick={() => setCurrency('NGN')}
-                      className={`flex-1 py-2 border rounded-md text-sm font-bold transition-colors ${currency === 'NGN' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                      className={`flex-1 py-2.5 border rounded-xl text-sm font-bold transition-all ${currency === 'NGN' ? 'bg-green-600 text-white border-green-600 shadow-md shadow-green-500/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-green-50/50 hover:border-green-300'}`}
                     >
                       ₦ Naira
                     </button>
                     <button
                       type="button"
                       onClick={() => setCurrency('USD')}
-                      className={`flex-1 py-2 border rounded-md text-sm font-bold transition-colors ${currency === 'USD' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                      className={`flex-1 py-2.5 border rounded-xl text-sm font-bold transition-all ${currency === 'USD' ? 'bg-green-600 text-white border-green-600 shadow-md shadow-green-500/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-green-50/50 hover:border-green-300'}`}
                     >
                       $ Dollar
                     </button>
@@ -237,7 +271,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 <input
                   type="email"
                   required
-                  className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                   placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -246,7 +280,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             ) : (
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Verifying Email</label>
-                <div className="w-full px-4 py-3 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-sm font-medium">
+                <div className="w-full px-4 py-3 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-sm font-medium">
                   {email}
                 </div>
               </div>
@@ -258,7 +292,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 <input
                   type="password"
                   required
-                  className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -271,7 +305,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setAuthMode('forgot_password')}
-                  className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                  className="text-xs font-bold text-slate-500 hover:text-green-600 transition-colors"
                 >
                   Forgot Password?
                 </button>
@@ -286,7 +320,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     type="text"
                     required
                     maxLength={6}
-                    className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm text-center font-bold tracking-widest text-slate-850"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm text-center font-bold tracking-widest text-slate-850"
                     placeholder="000000"
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
@@ -298,7 +332,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   <input
                     type="password"
                     required
-                    className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-800 focus:border-transparent outline-none transition-all text-sm"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
                     placeholder="••••••••"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -307,22 +341,44 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               </>
             )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-md hover:bg-slate-800 transition-all shadow-md mt-2 flex justify-center items-center text-sm tracking-wide"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  {authMode === 'login' && 'Sign In'}
-                  {authMode === 'register' && 'Create Account'}
-                  {authMode === 'forgot_password' && 'Send Reset Code'}
-                  {authMode === 'reset_password_code' && 'Reset Password'}
-                </>
+            {/* Buttons Group */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isLoading || isSkipping}
+                className="w-full py-3.5 bg-green-600 text-white font-extrabold rounded-xl hover:bg-green-500 transition-all shadow-lg shadow-green-550/20 flex justify-center items-center text-sm tracking-wide"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    {authMode === 'login' && 'Sign In'}
+                    {authMode === 'register' && 'Create Account'}
+                    {authMode === 'forgot_password' && 'Send Reset Code'}
+                    {authMode === 'reset_password_code' && 'Reset Password'}
+                  </>
+                )}
+              </button>
+
+              {/* Enhanced SKIP option for instant access */}
+              {authMode === 'register' && (
+                <button
+                  type="button"
+                  disabled={isLoading || isSkipping}
+                  onClick={handleSkip}
+                  className="w-full py-3.5 mt-3 border-2 border-green-600 hover:bg-green-50 text-green-700 font-extrabold rounded-xl transition-all shadow-sm flex justify-center items-center text-sm"
+                >
+                  {isSkipping ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-green-700 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Initializing Demo Workspace...</span>
+                    </div>
+                  ) : (
+                    '⚡ Skip & Explore Platform as Guest'
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           </form>
 
           <div className="mt-8 text-center text-sm border-t border-slate-100 pt-6">
@@ -332,7 +388,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setAuthMode('register')}
-                  className="text-slate-900 font-bold hover:underline"
+                  className="text-green-600 font-bold hover:underline"
                 >
                   Create Account
                 </button>
@@ -344,7 +400,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setAuthMode('login')}
-                  className="text-slate-900 font-bold hover:underline"
+                  className="text-green-600 font-bold hover:underline"
                 >
                   Sign In
                 </button>
@@ -354,7 +410,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               <button
                 type="button"
                 onClick={() => setAuthMode('login')}
-                className="text-slate-900 font-bold hover:underline flex items-center justify-center mx-auto gap-2"
+                className="text-green-650 font-bold hover:underline flex items-center justify-center mx-auto gap-2"
               >
                 &larr; Back to Sign In
               </button>
