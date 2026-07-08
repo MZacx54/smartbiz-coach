@@ -449,6 +449,7 @@ const LandingPage: React.FC = () => {
                         </div>
                     </motion.div>
                 </div>
+            </section>
             {/* ───────── BLOG OUTLINE & SOCIAL STRATEGY SECTION ───────── */}
             <section id="blog" className="py-24 bg-slate-50 border-t border-slate-200">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
