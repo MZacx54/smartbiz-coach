@@ -2,10 +2,25 @@ import os
 import json
 import urllib.request
 import urllib.error
+import time
+import hashlib
 
 # Google Gemini defaults
 DEFAULT_TEXT_MODEL = "gemini-2.5-flash"
 DEFAULT_VISION_MODEL = "gemini-2.5-flash"
+
+# In-memory prompt cache for free-tier optimization
+PROMPT_CACHE = {}
+CACHE_TTL = 86400  # 24 hours
+
+def get_cache_key(messages, model, response_format, system_instruction):
+    key_data = json.dumps({
+        "messages": messages,
+        "model": model,
+        "response_format": response_format,
+        "system_instruction": system_instruction
+    }, sort_keys=True)
+    return hashlib.sha256(key_data.encode('utf-8')).hexdigest()
 
 def get_gemini_api_key():
     return os.environ.get("GEMINI_API_KEY")
@@ -14,6 +29,15 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     api_key = get_gemini_api_key()
     if not api_key:
         raise Exception("Configuration Error: GEMINI_API_KEY not found in environment.")
+
+    # 1. In-memory cache lookup
+    cache_key = get_cache_key(messages, model, response_format, system_instruction)
+    now = time.time()
+    if cache_key in PROMPT_CACHE:
+        timestamp, cached_response = PROMPT_CACHE[cache_key]
+        if now - timestamp < CACHE_TTL:
+            print("Returning cached Gemini response!")
+            return cached_response
 
     # Translate messages array from OpenAI format to Gemini REST format
     contents = []
@@ -100,21 +124,40 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         method='POST'
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=30) as response:
-            result = json.loads(response.read().decode())
-            # Parse out text from response candidate
-            try:
-                candidate = result['candidates'][0]
-                text_response = candidate['content']['parts'][0]['text']
-                return text_response
-            except (KeyError, IndexError) as parse_err:
-                print(f"Gemini response structure unexpected: {result}")
-                raise Exception(f"Gemini API parse error: {parse_err}")
-    except urllib.error.HTTPError as e:
-        error_msg = e.read().decode()
-        print(f"Gemini API Error: {e.code} - {error_msg}")
-        raise Exception(f"AI Provider Error: {e.code} - {error_msg}")
+    max_retries = 5
+    backoff_delay = 2.0
+
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                result = json.loads(response.read().decode())
+                try:
+                    candidate = result['candidates'][0]
+                    text_response = candidate['content']['parts'][0]['text']
+                    
+                    # Cache successful response
+                    PROMPT_CACHE[cache_key] = (time.time(), text_response)
+                    return text_response
+                except (KeyError, IndexError) as parse_err:
+                    print(f"Gemini response structure unexpected: {result}")
+                    raise Exception(f"Gemini API parse error: {parse_err}")
+        except urllib.error.HTTPError as e:
+            error_msg = e.read().decode()
+            if e.code == 429:
+                if attempt < max_retries - 1:
+                    print(f"Gemini API 429 Quota Exceeded. Retrying in {backoff_delay}s... (Attempt {attempt+1}/{max_retries})")
+                    time.sleep(backoff_delay)
+                    backoff_delay *= 2
+                    continue
+            print(f"Gemini API Error: {e.code} - {error_msg}")
+            raise Exception(f"AI Provider Error: {e.code} - {error_msg}")
+        except Exception as exc:
+            if attempt < max_retries - 1:
+                print(f"Gemini request failed: {exc}. Retrying in {backoff_delay}s... (Attempt {attempt+1}/{max_retries})")
+                time.sleep(backoff_delay)
+                backoff_delay *= 2
+                continue
+            raise exc
 
 
 

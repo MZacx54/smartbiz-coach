@@ -221,6 +221,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
 
                     <div className="pt-4 pb-1 px-3">
+                        <p className="text-[9px] font-black text-pink-500/70 uppercase tracking-widest">
+                            Marketing
+                        </p>
+                    </div>
+                    <NavItem view={AppView.MARKETING_AGENT} label="Broadcast HQ" icon="📣" />
+
+                    <div className="pt-4 pb-1 px-3">
                         <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
                             Help
                         </p>

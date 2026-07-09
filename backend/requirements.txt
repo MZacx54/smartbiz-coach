@@ -11,3 +11,5 @@ requests
 Pillow
 sentry-sdk[django]
 gTTS
+celery
+redis

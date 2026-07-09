@@ -136,3 +136,11 @@ class DeductCreditsView(APIView):
             "message": "Credits deducted successfully",
             "credits": user.credits
         }, status=status.HTTP_200_OK)
+
+class PaystackConfigView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        return Response({
+            "publicKey": getattr(settings, 'PAYSTACK_PUBLIC_KEY', '') or ''
+        })

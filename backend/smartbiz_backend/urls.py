@@ -38,6 +38,7 @@ urlpatterns = [
     path('api/content/', include('content.urls')),
     path('api/business/', include('business.urls')),
     path('api/marketplace/', include('marketplace.urls')),
+    path('api/marketing/', include('marketing.urls')),
     
     # Also support non-api prefixed calls if frontend is inconsistent, or just redirect
     path('users/', include('users.urls')), 

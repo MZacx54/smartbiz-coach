@@ -37,6 +37,7 @@ const LeadManager = lazy(() => import("./components/LeadManager"));
 const PricingAssistant = lazy(() => import("./components/PricingAssistant"));
 const PublicAuditReport = lazy(() => import("./components/PublicAuditReport"));
 const StaticPage = lazy(() => import("./components/StaticPage"));
+const MarketingAgent = lazy(() => import("./components/MarketingAgent"));
 
 import {
   AppView,
@@ -113,6 +114,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else if (path.includes('/dashboard/product-magic')) setCurrentView(AppView.PRODUCT_MAGIC);
+    else if (path.includes('/dashboard/marketing')) setCurrentView(AppView.MARKETING_AGENT);
     else setCurrentView(AppView.DASHBOARD);
   }, [location]);
 
@@ -142,6 +144,7 @@ const App: React.FC = () => {
       case AppView.HUB: return 'SmartBiz Hub';
       case AppView.PRODUCT_MAGIC: return 'Product Magic - AI Photo Enhancement';
       case AppView.LEAD_MANAGER: return 'Lead Manager';
+      case AppView.MARKETING_AGENT: return 'Marketing Agent — Broadcast HQ';
       default: return 'SmartBiz Coach';
     }
   };
@@ -291,6 +294,7 @@ const App: React.FC = () => {
       case AppView.HUB: navigate('/dashboard/hub'); break;
       case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
       case AppView.PRICING_ASSISTANT: navigate('/dashboard/pricing-assistant'); break;
+      case AppView.MARKETING_AGENT: navigate('/dashboard/marketing'); break;
       default: navigate('/dashboard');
     }
   };
@@ -578,6 +582,7 @@ const App: React.FC = () => {
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="marketing" element={<MarketingAgent user={user} />} />
                   <Route path="audit" element={<PublicAuditReport />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>

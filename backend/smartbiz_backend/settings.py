@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'content',
     'business',
     'marketplace',
+    'marketing',
 ]
 
 MIDDLEWARE = [

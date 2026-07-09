@@ -49,4 +49,9 @@ export const billingService = {
     });
     return response.data;
   },
+
+  getPaystackConfig: async (): Promise<{ publicKey: string }> => {
+    const response = await api.get("billing/config/");
+    return response.data;
+  },
 };

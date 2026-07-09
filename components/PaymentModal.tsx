@@ -1,8 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePaystackPayment } from "react-paystack";
-
-const PAYSTACK_PUBLIC_KEY =
-  import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
+import { billingService } from "../services/billingService";
 
 interface PaymentModalProps {
   amount: number;
@@ -12,36 +10,37 @@ interface PaymentModalProps {
   onSuccess: (reference: string) => void;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({
+interface PaystackButtonProps {
+  publicKey: string;
+  amount: number;
+  email: string;
+  onSuccess: (reference: string) => void;
+  onClose: () => void;
+  setProcessing: (proc: boolean) => void;
+  processing: boolean;
+}
+
+const PaystackButtonInner: React.FC<PaystackButtonProps> = ({
+  publicKey,
   amount,
-  description,
-  email = "guest@smartbizcoach.com.ng",
-  onClose,
+  email,
   onSuccess,
+  onClose,
+  setProcessing,
+  processing,
 }) => {
-  const [processing, setProcessing] = useState(false);
-
-  const isKeyPlaceholder = (key: string) => 
-    !key || key.includes("placeholder") || key === "undefined";
-
   const config = {
     reference: new Date().getTime().toString(),
     email: email,
     amount: amount * 100, // Paystack expects Kobo
-    publicKey: PAYSTACK_PUBLIC_KEY,
+    publicKey: publicKey,
     currency: "NGN",
   };
 
   const initializePaystack = usePaystackPayment(config);
 
-  const handlePaystackPay = () => {
+  const handleClick = () => {
     setProcessing(true);
-    if (isKeyPlaceholder(PAYSTACK_PUBLIC_KEY)) {
-      alert("Paystack Public Key is not configured correctly. Please check your VITE_PAYSTACK_PUBLIC_KEY environment variable.");
-      setProcessing(false);
-      return;
-    }
-
     initializePaystack({
       onSuccess: (response: any) => {
         onSuccess(response.reference);
@@ -52,6 +51,54 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       },
     });
   };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={processing}
+      className="w-full py-4 rounded-xl text-white font-bold bg-green-600 hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95"
+    >
+      {processing ? (
+        <>
+          <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+          </svg>
+          Processing...
+        </>
+      ) : (
+        `Pay ₦${amount.toLocaleString()}`
+      )}
+    </button>
+  );
+};
+
+const PaymentModal: React.FC<PaymentModalProps> = ({
+  amount,
+  description,
+  email = "guest@smartbizcoach.com.ng",
+  onClose,
+  onSuccess,
+}) => {
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const config = await billingService.getPaystackConfig();
+        if (config.publicKey) {
+          setPublicKey(config.publicKey);
+        } else {
+          setError("Paystack is not configured on the backend server.");
+        }
+      } catch (err) {
+        setError("Failed to fetch payment configuration from the server.");
+      }
+    };
+    fetchConfig();
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in">
@@ -89,23 +136,30 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={handlePaystackPay}
-            disabled={processing}
-            className="w-full py-4 rounded-xl text-white font-bold bg-green-600 hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95"
-          >
-            {processing ? (
-              <>
-                <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
-                Processing...
-              </>
-            ) : (
-              `Pay ₦${amount.toLocaleString()}`
-            )}
-          </button>
+          {error ? (
+            <div className="p-4 mb-4 text-xs text-red-800 rounded-lg bg-red-50 border border-red-100">
+              <p className="font-semibold">Configuration Error:</p>
+              <p className="mt-1">{error}</p>
+            </div>
+          ) : publicKey ? (
+            <PaystackButtonInner
+              publicKey={publicKey}
+              amount={amount}
+              email={email}
+              onSuccess={onSuccess}
+              onClose={onClose}
+              setProcessing={setProcessing}
+              processing={processing}
+            />
+          ) : (
+            <div className="w-full py-4 flex items-center justify-center gap-2 text-gray-500 text-sm">
+              <svg className="animate-spin w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              Setting up secure payment...
+            </div>
+          )}
 
           <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-400">
             <span>🔒 Secured by Paystack</span>
