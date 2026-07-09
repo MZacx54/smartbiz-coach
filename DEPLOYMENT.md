@@ -1,360 +1,129 @@
 # SmartBiz Coach - Deployment Guide
 
-## Prerequisites
+This guide details how to deploy the SmartBiz Coach platform using **Vercel (Frontend)**, **Render (Backend)**, **Supabase (PostgreSQL Database)**, and **GitHub (Version Control & CI/CD)**.
+
+---
+
+## 🛠️ Infrastructure Overview
+
+```mermaid
+graph TD
+    User([User's Browser]) -->|UI / Static Asset requests| Vercel[Vercel Frontend]
+    User -->|API / Data requests| Render[Render Web Service]
+    Render -->|PostgreSQL connection| Supabase[Supabase Database]
+    GitHub[GitHub Repo] -->|Auto-deploy on Push| Vercel
+    GitHub -->|Auto-deploy on Push| Render
+```
+
+---
+
+## 📁 Prerequisites
 
 Before deploying, ensure you have:
-- [ ] Google Gemini API key
-- [ ] GitHub repository (for automatic deployments)
-- [ ] Custom domain (optional)
-- [ ] Payment gateway accounts (Paystack/Flutterwave)
+1. A **GitHub** account and your code pushed to a repository.
+2. A **Supabase** account (Free tier is perfect).
+3. A **Render** account (Free or Starter tier web service).
+4. A **Vercel** account (Free Hobby tier).
+5. A **Google Gemini API Key** (for business plans and brand helper generation).
+6. A **Termii API Key** (optional, for SMS broadcasting functionality).
 
 ---
 
-## Option 1: Deploy to Vercel (Frontend) + Railway (Backend)
+## 🚀 Step 1: Database Setup (Supabase)
 
-### Frontend (Vercel)
-
-**Step 1: Prepare Repository**
-```bash
-git add .
-git commit -m "Ready for deployment"
-git push origin main
-```
-
-**Step 2: Deploy on Vercel**
-1. Go to [vercel.com](https://vercel.com)
-2. Click "Import Project"
-3. Select your GitHub repository
-4. Configure:
-   - Framework Preset: **Vite**
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-5. Deploy!
-
-**Step 3: Environment Variables** (Optional)
-- No frontend environment variables needed (API is backend)
+1. Sign in to [Supabase](https://supabase.com/).
+2. Create a **New Project**.
+3. Name your project (e.g. `smartbiz-db`) and set a strong database password.
+4. Once the database is provisioned:
+   - Go to **Project Settings** → **Database**.
+   - Copy the **Connection String** under **URI** (looks like `postgres://postgres.xxxx:[PASSWORD]@xxxx.supabase.co:5432/postgres`).
+   - Replace `[PASSWORD]` with your actual database password.
+   - Keep this connection string safe — you will need it for Render.
 
 ---
 
-### Backend (Railway)
+## 🚀 Step 2: Backend Deployment (Render)
 
-**Step 1: Create Railway Project**
-1. Go to [railway.app](https://railway.app)
-2. Click "New Project"
-3. Select "Deploy from GitHub repo"
-4. Choose your repository
-5. Select the `backend` directory as root
+Render uses the `render.yaml` file in the root of the repository to deploy automatically.
 
-**Step 2: Add Environment Variables**
-In Railway dashboard, add:
-```
-DEBUG=False
-SECRET_KEY=<generate-strong-key-here>
-ALLOWED_HOSTS=your-railway-domain.up.railway.app
-CORS_ALLOWED_ORIGINS=https://your-vercel-app.vercel.app
-GEMINI_API_KEY=<your-gemini-key>
-DATABASE_URL=<automatically-provided-by-railway>
-```
+### Option A: One-Click Web Service Setup (Recommended)
+1. Sign in to [Render](https://render.com/).
+2. Click **New** → **Blueprint**.
+3. Connect your GitHub repository.
+4. Render will read the `render.yaml` file and prompt you to fill in variables:
+   - **DATABASE_URL**: Paste your **Supabase Connection URI** here.
+   - **GEMINI_API_KEY**: Paste your Google Gemini API key.
+   - **TERMII_API_KEY**: Paste your Termii API key (or leave empty if you aren't using SMS).
+5. Click **Approve**. Render will automatically provision the service, install dependencies, run migrations, and spin up the backend!
 
-**Step 3: Configure Build**
-Railway should detect Django automatically, but verify:
-- **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `gunicorn smartbiz_backend.wsgi`
-
-**Step 4: Add PostgreSQL Database**
-1. In Railway project, click "New"
-2. Select "PostgreSQL"
-3. Railway auto-configures `DATABASE_URL`
-
-**Step 5: Run Migrations**
-In Railway terminal:
-```bash
-python manage.py migrate
-python manage.py createsuperuser
-```
+### Option B: Manual Web Service Setup
+1. Click **New** → **Web Service**.
+2. Connect your GitHub repository.
+3. Configure settings:
+   - **Name**: `smartbiz-backend`
+   - **Environment**: `Python`
+   - **Build Command**: `pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput && python backend/manage.py migrate`
+   - **Start Command**: `gunicorn --chdir backend smartbiz_backend.wsgi`
+4. Go to the **Environment** tab and add the following variables:
+   - `DEBUG` = `False`
+   - `DATABASE_URL` = `(Your Supabase Connection URI)`
+   - `GEMINI_API_KEY` = `(Your Gemini Key)`
+   - `TERMII_API_KEY` = `(Your Termii Key)`
+   - `ALLOWED_HOSTS` = `*`
+   - `CORS_ALLOWED_ORIGINS` = `*` (or your Vercel URL once created)
+   - `SECRET_KEY` = `(Create a long random string of characters)`
+5. Click **Deploy Web Service**.
 
 ---
 
-## Option 2: Deploy to Railway (Full Stack)
+## 🚀 Step 3: Frontend Deployment (Vercel)
 
-**Step 1: Create Railway Project** (same as above)
-
-**Step 2: Add Services**
-1. Add Django backend service
-2. Add PostgreSQL database
-3. Add Redis (optional, for caching)
-
-**Step 3: Static Files**
-Configure WhiteNoise in `settings.py`:
-```python
-MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add this
-    ...
-]
-
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-```
-
-Build frontend and serve via Django:
-```bash
-cd ../  # Go to frontend directory
-npm run build
-cp -r dist/* backend/staticfiles/
-```
+1. Sign in to [Vercel](https://vercel.com/).
+2. Click **Add New** → **Project**.
+3. Import your GitHub repository.
+4. Configure the Vite setup:
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+5. In the **Environment Variables** section, add:
+   - `VITE_API_URL` = `(Your Render backend URL, e.g., https://smartbiz-backend.onrender.com/api/)`
+   - *Note: Ensure it ends with `/api/` and matches your Render URL.*
+6. Click **Deploy**. Vercel will build the frontend and provide a public `.vercel.app` URL.
 
 ---
 
-## Option 3: Traditional VPS (DigitalOcean/AWS)
+## 🔄 Step 4: Configure CORS (Security)
 
-### Server Setup
-
-**1. Provision Ubuntu Server**
-```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install dependencies
-sudo apt install python3-pip python3-venv nginx postgresql postgresql-contrib
-sudo apt install nodejs npm
-```
-
-**2. Clone Repository**
-```bash
-cd /var/www
-git clone https://github.com/your-username/smartbiz-coach.git
-cd smartbiz-coach
-```
-
-**3. Backend Setup**
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Create .env file
-cp .env.example .env
-nano .env  # Add your keys
-```
-
-**4. Frontend Setup**
-```bash
-cd ../
-npm install
-npm run build
-```
-
-**5. PostgreSQL Database**
-```bash
-sudo -u postgres psql
-CREATE DATABASE smartbiz;
-CREATE USER smartbizuser WITH PASSWORD 'strong-password';
-GRANT ALL PRIVILEGES ON DATABASE smartbiz TO smartbizuser;
-\q
-```
-
-**6. Django Migrations**
-```bash
-cd backend
-python manage.py migrate
-python manage.py collectstatic --noinput
-python manage.py createsuperuser
-```
-
-**7. Gunicorn Systemd Service**
-Create `/etc/systemd/system/smartbiz.service`:
-```ini
-[Unit]
-Description=SmartBiz Coach
-After=network.target
-
-[Service]
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/smartbiz-coach/backend
-Environment="PATH=/var/www/smartbiz-coach/backend/venv/bin"
-ExecStart=/var/www/smartbiz-coach/backend/venv/bin/gunicorn \
-          --workers 3 \
-          --bind unix:/run/smartbiz.sock \
-          smartbiz_backend.wsgi:application
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Start service:
-```bash
-sudo systemctl start smartbiz
-sudo systemctl enable smartbiz
-```
-
-**8. Nginx Configuration**
-Create `/etc/nginx/sites-available/smartbiz`:
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    
-    location /static/ {
-        alias /var/www/smartbiz-coach/backend/staticfiles/;
-    }
-    
-    location /media/ {
-        alias /var/www/smartbiz-coach/backend/media/;
-    }
-    
-    location /api/ {
-        proxy_pass http://unix:/run/smartbiz.sock;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    location / {
-        root /var/www/smartbiz-coach/dist;
-        try_files $uri /index.html;
-    }
-}
-```
-
-Enable site:
-```bash
-sudo ln -s /etc/nginx/sites-available/smartbiz /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-**9. SSL with Let's Encrypt**
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d your-domain.com
-```
+Once your frontend is live on Vercel, secure your backend by restricting API requests to only come from your frontend:
+1. Go to your **Render** dashboard → **Environment**.
+2. Update `CORS_ALLOWED_ORIGINS` to your Vercel production URL (e.g. `https://smartbiz-coach.vercel.app`).
+3. Save changes. Render will automatically redeploy.
 
 ---
 
-## Post-Deployment Checklist
+## 🛡️ Administrative Tasks (Creating an Admin Account)
 
-- [ ] Test signup flow
-- [ ] Test brand generation
-- [ ] Test content creation
-- [ ] Verify CORS settings
-- [ ] Check SSL certificate
-- [ ] Monitor error logs
-- [ ] Set up backups
-- [ ] Configure monitoring (Sentry)
-- [ ] Test payment integration
+To make yourself an admin so you bypass all contact and batch limits:
+1. Register a normal account on the frontend using your email: **`meshachzax@gmail.com`**.
+2. Because this email is hardcoded as the owner/admin, the system automatically gives this account:
+   - Unlimited contact uploads.
+   - Unlimited campaigns.
+   - 500 contacts per daily WhatsApp batch queue.
+   - Free automated SMS (no credits deducted).
 
 ---
 
-## Environment Variables Reference
+## 📈 Pricing & Monetization Model (Fixed)
 
-### Backend (.env)
-```bash
-DEBUG=False
-SECRET_KEY=<50-char-random-string>
-ALLOWED_HOSTS=your-domain.com,www.your-domain.com
-CORS_ALLOWED_ORIGINS=https://your-domain.com
-GEMINI_API_KEY=<your-gemini-key>
-DATABASE_URL=postgresql://user:pass@host:5432/dbname
-```
+The backend now accurately reflects the credit allocation visible on the landing page:
 
-### Generate SECRET_KEY
-```python
-python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
-```
+| Package | Cost | Credits Credited | Cost/Credit | User SMS Cost (2 credits) | Termii Cost | Your Net Margin |
+|---|---|---|---|---|---|---|
+| **Starter** | ₦300 | **30 Credits** | ₦10.00 | ₦20.00 | ~₦4.00 | **₦16.00 (400%)** |
+| **Grower** | ₦1,000 | **120 Credits** | ₦8.33 | ₦16.67 | ~₦4.00 | **₦12.67 (317%)** |
+| **Pro** | ₦3,000 | **400 Credits** | ₦7.50 | ₦15.00 | ~₦4.00 | **₦11.00 (275%)** |
 
----
-
-## Monitoring & Maintenance
-
-### Check Logs (Railway)
-- View in Railway dashboard
-- Real-time logs available
-
-### Check Logs (VPS)
-```bash
-# Django logs
-sudo journalctl -u smartbiz -f
-
-# Nginx logs
-sudo tail -f /var/log/nginx/error.log
-sudo tail -f /var/log/nginx/access.log
-```
-
-### Database Backup (PostgreSQL)
-```bash
-pg_dump smartbiz > backup_$(date +%Y%m%d).sql
-```
-
-### Auto Backup Script
-Create `/var/backups/smartbiz_backup.sh`:
-```bash
-#!/bin/bash
-BACKUP_DIR="/var/backups/smartbiz"
-DATE=$(date +%Y%m%d_%H%M%S)
-pg_dump smartbiz | gzip > $BACKUP_DIR/db_$DATE.sql.gz
-find $BACKUP_DIR -name "*.sql.gz" -mtime +7 -delete
-```
-
-Schedule with cron:
-```bash
-0 2 * * * /var/backups/smartbiz_backup.sh
-```
-
----
-
-## Troubleshooting
-
-**Issue: 502 Bad Gateway**
-- Check if Gunicorn is running: `sudo systemctl status smartbiz`
-- Check socket file exists: `ls -la /run/smartbiz.sock`
-
-**Issue: Static files not loading**
-- Run `python manage.py collectstatic`
-- Check Nginx static file path
-
-**Issue: CORS errors**
-- Verify `CORS_ALLOWED_ORIGINS` includes frontend URL
-- Ensure no trailing slashes
-
-**Issue: Database connection failed**
-- Check `DATABASE_URL` format
-- Verify PostgreSQL is running
-
----
-
-## Performance Optimization
-
-1. **Enable Compression** (Nginx)
-```nginx
-gzip on;
-gzip_types text/css application/javascript application/json;
-```
-
-2. **Enable Caching**
-```nginx
-location /static/ {
-    expires 1y;
-    add_header Cache-Control "public, immutable";
-}
-```
-
-3. **Use CDN** (Cloudflare)
-- Point DNS to Cloudflare
-- Enable auto-minification
-- Enable Brotli compression
-
----
-
-## Support
-
-For deployment issues:
-- Check Django logs
-- Review Nginx/Gunicorn configs
-- Verify environment variables
-- Test API endpoints manually
-
-Good luck with your deployment! 🚀
+Free plan accounts are limited to:
+- Maximum **500 contacts** (uploads are cut off past 500).
+- Maximum **20 WhatsApp batch limit** per day.
+- Automated SMS tab is **locked** with an upgrade screen prompting them to top up credits.

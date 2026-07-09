@@ -12,6 +12,49 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Contact, Campaign, MessageLog
+from billing.models import CreditLedger  # For deducting credits on SMS sending
+
+def get_plan_limits(user):
+    """
+    Returns the limitations and rules for a user based on their subscription plan.
+    - Owner/Admin (meshachzax@gmail.com) gets absolute bypass.
+    - Pro Plan: Unlimited contacts, 200 daily WA limit, SMS enabled (2 credits/SMS).
+    - Free Plan: 500 contacts, 20 daily WA limit, 1 active campaign, SMS disabled.
+    """
+    if user.email == 'meshachzax@gmail.com':
+        return {
+            'plan_name': 'Admin/Owner',
+            'max_contacts': 999999,
+            'max_batch_size': 500,
+            'max_campaigns': 9999,
+            'can_send_sms': True,
+            'sms_credit_cost': 0,
+            'bypass_limits': True
+        }
+    
+    plan = getattr(user, 'plan', 'Free')
+    if plan == 'Pro':
+        return {
+            'plan_name': 'Pro Plan',
+            'max_contacts': 999999,
+            'max_batch_size': 200,
+            'max_campaigns': 9999,
+            'can_send_sms': True,
+            'sms_credit_cost': 2,
+            'bypass_limits': False
+        }
+    
+    # Default: Free Plan
+    return {
+        'plan_name': 'Free Plan',
+        'max_contacts': 500,
+        'max_batch_size': 20,
+        'max_campaigns': 1,
+        'can_send_sms': False,
+        'sms_credit_cost': 2,
+        'bypass_limits': False
+    }
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -58,9 +101,20 @@ def contacts_list(request):
     if not phone:
         return Response({'error': 'Phone number is required'}, status=400)
 
+    normalized = normalize_phone(phone)
+    limits = get_plan_limits(request.user)
+    
+    # Check limit if creating a new contact
+    if not Contact.objects.filter(user=request.user, phone=normalized).exists():
+        current_count = Contact.objects.filter(user=request.user).count()
+        if current_count >= limits['max_contacts']:
+            return Response({
+                'error': f"Contact limit of {limits['max_contacts']} reached for your {limits['plan_name']}. Please upgrade to add more."
+            }, status=400)
+
     contact, created = Contact.objects.get_or_create(
         user=request.user,
-        phone=phone,
+        phone=normalized,
         defaults={'name': data.get('name', ''), 'tags': data.get('tags', '')}
     )
     return Response({
@@ -105,6 +159,10 @@ def upload_contacts_csv(request):
     duplicates = 0
     errors = []
 
+    limits = get_plan_limits(request.user)
+    current_count = Contact.objects.filter(user=request.user).count()
+    limit_reached = False
+
     for i, row in enumerate(reader):
         phone = (row.get('phone') or row.get('Phone') or row.get('PHONE') or '').strip()
         name = (row.get('name') or row.get('Name') or row.get('NAME') or '').strip()
@@ -117,6 +175,13 @@ def upload_contacts_csv(request):
         # Normalize Nigerian numbers
         phone = normalize_phone(phone)
 
+        # Check limit before trying to get_or_create
+        if not Contact.objects.filter(user=request.user, phone=phone).exists():
+            if current_count >= limits['max_contacts']:
+                limit_reached = True
+                errors.append(f"Upload halted: Contact limit of {limits['max_contacts']} reached for your {limits['plan_name']}.")
+                break
+
         try:
             _, created = Contact.objects.get_or_create(
                 user=request.user,
@@ -125,6 +190,7 @@ def upload_contacts_csv(request):
             )
             if created:
                 imported += 1
+                current_count += 1
             else:
                 duplicates += 1
         except Exception as e:
@@ -178,6 +244,13 @@ def campaigns_list(request):
         ])
 
     # POST — create campaign
+    limits = get_plan_limits(request.user)
+    current_campaigns = Campaign.objects.filter(user=request.user).count()
+    if current_campaigns >= limits['max_campaigns']:
+        return Response({
+            'error': f"Campaign limit of {limits['max_campaigns']} reached for your {limits['plan_name']}. Please upgrade to create more campaigns."
+        }, status=400)
+
     data = request.data
     campaign = Campaign.objects.create(
         user=request.user,
@@ -250,7 +323,9 @@ def generate_whatsapp_batch(request):
     This avoids WhatsApp TOS violations while enabling personal outreach.
     """
     campaign_id = request.data.get('campaign_id')
-    batch_size = min(int(request.data.get('batch_size', 100)), 200)  # Max 200/day
+    limits = get_plan_limits(request.user)
+    requested_batch_size = int(request.data.get('batch_size', 100))
+    batch_size = min(requested_batch_size, limits['max_batch_size'])
 
     try:
         campaign = Campaign.objects.get(id=campaign_id, user=request.user)
@@ -359,6 +434,12 @@ def send_sms_batch(request):
     batch_size = min(int(request.data.get('batch_size', 50)), 100)
     sender_id = request.data.get('sender_id', 'SmartBiz')
 
+    limits = get_plan_limits(request.user)
+    if not limits['can_send_sms']:
+        return Response({
+            'error': f"SMS sending is disabled on your {limits['plan_name']}. Please upgrade to a Pro plan to send SMS."
+        }, status=400)
+
     termii_key = get_termii_key()
     if not termii_key:
         return Response({
@@ -382,6 +463,14 @@ def send_sms_batch(request):
 
     if not contacts:
         return Response({'message': 'No more contacts to message in this campaign.', 'sent': 0})
+
+    # Check credit balance before sending
+    num_contacts = len(contacts)
+    credit_cost = num_contacts * limits['sms_credit_cost']
+    if request.user.credits < credit_cost:
+        return Response({
+            'error': f"Insufficient credits. This batch of {num_contacts} SMS requires {credit_cost} credits, but you only have {request.user.credits} credits. Please top up."
+        }, status=400)
 
     results = []
     sent_count = 0
@@ -439,6 +528,18 @@ def send_sms_batch(request):
     campaign.failed_count += failed_count
     campaign.save()
 
+    # Deduct user credits if sent_count > 0 and credits cost is active
+    if sent_count > 0 and limits['sms_credit_cost'] > 0:
+        actual_cost = sent_count * limits['sms_credit_cost']
+        request.user.credits = max(0, request.user.credits - actual_cost)
+        request.user.save()
+        
+        CreditLedger.objects.create(
+            user=request.user,
+            amount=-actual_cost,
+            activity=f"Sent {sent_count} SMS via campaign '{campaign.name}'"
+        )
+
     return Response({
         'sent': sent_count,
         'failed': failed_count,
@@ -484,6 +585,7 @@ def marketing_stats(request):
         campaign__user=request.user, status='SENT'
     ).count()
 
+    limits = get_plan_limits(request.user)
     return Response({
         'total_contacts': total_contacts,
         'active_contacts': total_contacts - opted_out,
@@ -491,4 +593,11 @@ def marketing_stats(request):
         'total_campaigns': total_campaigns,
         'total_messages_sent': total_sent,
         'termii_configured': bool(get_termii_key()),
+        'plan': limits['plan_name'],
+        'max_contacts': limits['max_contacts'],
+        'max_batch_size': limits['max_batch_size'],
+        'max_campaigns': limits['max_campaigns'],
+        'can_send_sms': limits['can_send_sms'],
+        'sms_credit_cost': limits['sms_credit_cost'],
+        'bypass_limits': limits['bypass_limits'],
     })

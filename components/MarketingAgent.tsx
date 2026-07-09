@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { User } from '../types';
@@ -45,6 +46,13 @@ interface MarketingStats {
   total_campaigns: number;
   total_messages_sent: number;
   termii_configured: boolean;
+  plan?: string;
+  max_contacts?: number;
+  max_batch_size?: number;
+  max_campaigns?: number;
+  can_send_sms?: boolean;
+  sms_credit_cost?: number;
+  bypass_limits?: boolean;
 }
 
 interface Props {
@@ -79,6 +87,7 @@ const MESSAGE_TEMPLATES = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MarketingAgent: React.FC<Props> = ({ user }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'contacts' | 'whatsapp' | 'sms' | 'campaigns'>('overview');
   const [stats, setStats] = useState<MarketingStats | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -348,12 +357,19 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20" />
         <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full -ml-10 -mb-10" />
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-3xl">📣</span>
-            <div>
-              <h1 className="text-2xl font-extrabold">Broadcast HQ</h1>
-              <p className="text-pink-200 text-sm">WhatsApp + SMS Marketing Agent</p>
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">📣</span>
+              <div>
+                <h1 className="text-2xl font-extrabold">Broadcast HQ</h1>
+                <p className="text-pink-200 text-sm">WhatsApp + SMS Marketing Agent</p>
+              </div>
             </div>
+            {stats?.plan && (
+              <span className="bg-white/20 backdrop-blur-md text-white font-bold text-xs px-3.5 py-1.5 rounded-full border border-white/25 shadow-sm uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+                {stats.plan.includes('Admin') ? '👑' : '⚡'} {stats.plan}
+              </span>
+            )}
           </div>
           {stats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
@@ -402,6 +418,24 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
           {/* ══════════════════════════════════════════════════════ OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="grid gap-6">
+              {/* Premium upgrade promo if Free */}
+              {stats?.plan === 'Free Plan' && (
+                <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 border border-purple-800/40 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="absolute right-0 top-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl" />
+                  <div className="space-y-1 relative z-10">
+                    <h3 className="text-lg font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-200">🚀 Upgrade to Pro Plan</h3>
+                    <p className="text-slate-300 text-sm max-w-xl">
+                      Unlock unlimited contacts import, send automated SMS messages to your audience, and get larger daily WhatsApp batch queues (200 contacts/day instead of 20).
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/dashboard/settings')}
+                    className="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-350 hover:to-amber-400 text-slate-950 font-black text-xs px-6 py-3 rounded-2xl shadow-lg transition-transform hover:scale-105 flex-shrink-0"
+                  >
+                    ⚡ Buy Credits / Go Pro
+                  </button>
+                </div>
+              )}
               {/* Termii Setup Guide */}
               {stats && !stats.termii_configured && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
@@ -551,10 +585,33 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
 
               {/* Contact List */}
               <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                  <h3 className="font-bold text-slate-700">
-                    Contacts ({contactsTotal.toLocaleString()} total)
-                  </h3>
+                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                  <div>
+                    <h3 className="font-bold text-slate-700">
+                      Contacts ({contactsTotal.toLocaleString()} total)
+                    </h3>
+                    {stats && stats.max_contacts && stats.max_contacts < 999999 && (
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="w-32 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-pink-500 h-full rounded-full" 
+                            style={{ width: `${Math.min(100, (contactsTotal / stats.max_contacts) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-400">
+                          {contactsTotal} / {stats.max_contacts.toLocaleString()} limit
+                        </span>
+                        {contactsTotal >= stats.max_contacts && (
+                          <button 
+                            onClick={() => navigate('/dashboard/settings')} 
+                            className="text-[10px] font-extrabold text-pink-600 hover:text-pink-700 underline"
+                          >
+                            Upgrade
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <input
                     type="text"
                     placeholder="Search contacts..."
@@ -799,17 +856,23 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">
-                      Today's Batch Size ({waBatchSize} contacts)
+                      Today's Batch Size ({waBatchSize} contacts) {stats?.max_batch_size && stats.max_batch_size < 200 && (
+                        <span className="text-pink-600">({stats.plan} Limit: {stats.max_batch_size}/day)</span>
+                      )}
                     </label>
                     <input
                       type="range"
-                      min={10} max={200} step={10}
-                      value={waBatchSize}
+                      min={10} max={stats?.max_batch_size || 200} step={10}
+                      value={waBatchSize > (stats?.max_batch_size || 200) ? (stats?.max_batch_size || 200) : waBatchSize}
                       onChange={e => setWaBatchSize(Number(e.target.value))}
                       className="w-full accent-green-600 mt-2"
                     />
                     <div className="flex justify-between text-xs text-slate-400 mt-1">
-                      <span>10</span><span>200 (recommended max)</span>
+                      <span>10</span>
+                      {stats?.plan === 'Free Plan' && (
+                        <button onClick={() => navigate('/dashboard/settings')} className="text-pink-600 underline font-bold">Upgrade for 200/day</button>
+                      )}
+                      <span>{stats?.max_batch_size || 200}</span>
                     </div>
                   </div>
                 </div>
@@ -910,156 +973,173 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
           {/* ══════════════════════════════════════════════════════ SMS */}
           {activeTab === 'sms' && (
             <div className="space-y-5">
-              {/* Termii Notice */}
-              <div className="bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-5">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">📩</span>
-                  <div>
-                    <h3 className="font-bold text-pink-800 mb-1">SMS via Termii (Recommended for Nigeria)</h3>
-                    <p className="text-pink-700 text-sm">
-                      Termii is Nigeria's most affordable SMS provider (~₦2–4 per SMS). 
-                      New accounts get free ₦200 credits (~50–100 free messages to test).
-                    </p>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <a
-                        href="https://termii.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-pink-600 text-white font-bold text-xs px-4 py-2 rounded-lg hover:bg-pink-500 transition-colors"
-                      >
-                        🔗 Sign up at Termii.com
-                      </a>
-                      {stats && !stats.termii_configured && (
-                        <span className="bg-amber-100 text-amber-700 font-bold text-xs px-4 py-2 rounded-lg">
-                          ⚠️ API key not yet configured
-                        </span>
-                      )}
-                      {stats?.termii_configured && (
-                        <span className="bg-green-100 text-green-700 font-bold text-xs px-4 py-2 rounded-lg">
-                          ✅ Termii configured & ready
-                        </span>
-                      )}
-                    </div>
-                  </div>
+              {stats?.plan === 'Free Plan' ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center max-w-lg mx-auto shadow-sm my-6">
+                  <div className="text-5xl mb-4">🔒</div>
+                  <h3 className="font-extrabold text-slate-800 text-lg mb-2">Automated SMS is a Pro Feature</h3>
+                  <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                    Automated SMS sending requires a Pro Plan or active AI credits. With Pro, you can send broadcast messages directly to your contacts for only <strong>2 credits per SMS</strong>.
+                  </p>
+                  <button
+                    onClick={() => navigate('/dashboard/settings')}
+                    className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-pink-600/25"
+                  >
+                    ⚡ Buy Credits / Go Pro
+                  </button>
                 </div>
-              </div>
-
-              {/* SMS Batch Sender */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-6">
-                <h3 className="font-bold text-slate-800 mb-4">Send SMS Batch</h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Select SMS Campaign</label>
-                    <select
-                      value={smsCampaign?.id || ''}
-                      onChange={e => {
-                        const c = campaigns.find(c => c.id === Number(e.target.value));
-                        setSmsCampaign(c || null);
-                        setSmsResult(null);
-                      }}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
-                    >
-                      <option value="">— Choose an SMS campaign —</option>
-                      {campaigns.filter(c => c.channel === 'SMS').map(c => (
-                        <option key={c.id} value={c.id}>{c.name} ({c.sent_count}/{c.total_contacts} sent)</option>
-                      ))}
-                    </select>
-                    {campaigns.filter(c => c.channel === 'SMS').length === 0 && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        No SMS campaigns. <button onClick={() => setActiveTab('campaigns')} className="text-pink-600 underline">Create one →</button>
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">
-                      Batch Size ({smsBatchSize} SMS)
-                    </label>
-                    <input
-                      type="range"
-                      min={10} max={100} step={10}
-                      value={smsBatchSize}
-                      onChange={e => setSmsBatchSize(Number(e.target.value))}
-                      className="w-full accent-pink-600 mt-2"
-                    />
-                    <div className="flex justify-between text-xs text-slate-400 mt-1">
-                      <span>10</span>
-                      <span>~₦{(smsBatchSize * 3).toLocaleString()} est. cost</span>
-                      <span>100</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleSendSMSBatch}
-                  disabled={!smsCampaign || smsSending}
-                  className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-pink-600/20"
-                >
-                  {smsSending ? '📡 Sending SMS messages...' : `📩 Send ${smsBatchSize} SMS Now`}
-                </button>
-
-                {/* SMS Result */}
-                {smsResult && (
-                  <div className={`mt-4 p-4 rounded-xl ${smsResult.sent > 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                    {smsResult.sent !== undefined ? (
-                      <>
-                        <p className="font-bold text-green-700 mb-1">✅ SMS Batch Complete!</p>
-                        <div className="grid grid-cols-3 gap-3 text-center mt-2">
-                          <div className="bg-white rounded-lg p-2">
-                            <div className="text-lg font-black text-green-600">{smsResult.sent}</div>
-                            <div className="text-xs text-slate-500">Sent</div>
-                          </div>
-                          <div className="bg-white rounded-lg p-2">
-                            <div className="text-lg font-black text-red-500">{smsResult.failed}</div>
-                            <div className="text-xs text-slate-500">Failed</div>
-                          </div>
-                          <div className="bg-white rounded-lg p-2">
-                            <div className="text-lg font-black text-blue-600">{smsResult.total_sent_in_campaign}</div>
-                            <div className="text-xs text-slate-500">Total in Campaign</div>
-                          </div>
+              ) : (
+                <>
+                  {/* Termii Notice */}
+                  <div className="bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-5">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📩</span>
+                      <div>
+                        <h3 className="font-bold text-pink-800 mb-1">SMS via Termii (Recommended for Nigeria)</h3>
+                        <p className="text-pink-700 text-sm">
+                          Termii is Nigeria's most affordable SMS provider (~₦2–4 per SMS). 
+                          New accounts get free ₦200 credits (~50–100 free messages to test).
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          <a
+                            href="https://termii.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-pink-600 text-white font-bold text-xs px-4 py-2 rounded-lg hover:bg-pink-500 transition-colors"
+                          >
+                            🔗 Sign up at Termii.com
+                          </a>
+                          {stats && !stats.termii_configured && (
+                            <span className="bg-amber-100 text-amber-700 font-bold text-xs px-4 py-2 rounded-lg">
+                              ⚠️ API key not yet configured
+                            </span>
+                          )}
+                          {stats?.termii_configured && (
+                            <span className="bg-green-100 text-green-700 font-bold text-xs px-4 py-2 rounded-lg">
+                              ✅ Termii configured & ready
+                            </span>
+                          )}
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-bold text-red-700 mb-1">⚠️ Configuration Required</p>
-                        <p className="text-red-600 text-sm">{smsResult.error}</p>
-                        {smsResult.setup_guide && (
-                          <p className="text-sm text-slate-600 mt-2">{smsResult.setup_guide}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SMS Batch Sender */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6">
+                    <h3 className="font-bold text-slate-800 mb-4">Send SMS Batch</h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Select SMS Campaign</label>
+                        <select
+                          value={smsCampaign?.id || ''}
+                          onChange={e => {
+                            const c = campaigns.find(c => c.id === Number(e.target.value));
+                            setSmsCampaign(c || null);
+                            setSmsResult(null);
+                          }}
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                        >
+                          <option value="">— Choose an SMS campaign —</option>
+                          {campaigns.filter(c => c.channel === 'SMS').map(c => (
+                            <option key={c.id} value={c.id}>{c.name} ({c.sent_count}/{c.total_contacts} sent)</option>
+                          ))}
+                        </select>
+                        {campaigns.filter(c => c.channel === 'SMS').length === 0 && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            No SMS campaigns. <button onClick={() => setActiveTab('campaigns')} className="text-pink-600 underline">Create one →</button>
+                          </p>
                         )}
-                      </>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">
+                          Batch Size ({smsBatchSize} SMS)
+                        </label>
+                        <input
+                          type="range"
+                          min={10} max={100} step={10}
+                          value={smsBatchSize}
+                          onChange={e => setSmsBatchSize(Number(e.target.value))}
+                          className="w-full accent-pink-600 mt-2"
+                        />
+                        <div className="flex justify-between text-xs text-slate-400 mt-1">
+                          <span>10</span>
+                          <span>Est. Cost: {smsBatchSize * (stats?.sms_credit_cost || 2)} AI Credits</span>
+                          <span>100</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleSendSMSBatch}
+                      disabled={!smsCampaign || smsSending}
+                      className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-pink-600/20"
+                    >
+                      {smsSending ? '📡 Sending SMS messages...' : `📩 Send ${smsBatchSize} SMS Now`}
+                    </button>
+
+                    {/* SMS Result */}
+                    {smsResult && (
+                      <div className={`mt-4 p-4 rounded-xl ${smsResult.sent > 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                        {smsResult.sent !== undefined ? (
+                          <>
+                            <p className="font-bold text-green-700 mb-1">✅ SMS Batch Complete!</p>
+                            <div className="grid grid-cols-3 gap-3 text-center mt-2">
+                              <div className="bg-white rounded-lg p-2">
+                                <div className="text-lg font-black text-green-600">{smsResult.sent}</div>
+                                <div className="text-xs text-slate-500">Sent</div>
+                              </div>
+                              <div className="bg-white rounded-lg p-2">
+                                <div className="text-lg font-black text-red-500">{smsResult.failed}</div>
+                                <div className="text-xs text-slate-500">Failed</div>
+                              </div>
+                              <div className="bg-white rounded-lg p-2">
+                                <div className="text-lg font-black text-blue-600">{smsResult.total_sent_in_campaign}</div>
+                                <div className="text-xs text-slate-500">Total in Campaign</div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-bold text-red-700 mb-1">⚠️ Configuration Required</p>
+                            <p className="text-red-600 text-sm">{smsResult.error}</p>
+                            {smsResult.setup_guide && (
+                              <p className="text-sm text-slate-600 mt-2">{smsResult.setup_guide}</p>
+                            )}
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Cost Calculator */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
-                <h3 className="font-bold text-slate-700 mb-3">💰 SMS Cost Estimator (Termii)</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left border-b border-slate-200">
-                        <th className="pb-2 font-bold text-slate-500 text-xs">Contacts</th>
-                        <th className="pb-2 font-bold text-slate-500 text-xs">Days (100/day)</th>
-                        <th className="pb-2 font-bold text-slate-500 text-xs">Est. Cost (₦3/SMS)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {[[100, 1, 300], [1000, 10, 3000], [5000, 50, 15000], [30000, 300, 90000]].map(([contacts, days, cost]) => (
-                        <tr key={contacts}>
-                          <td className="py-2 font-semibold text-slate-700">{contacts.toLocaleString()}</td>
-                          <td className="py-2 text-slate-500">{days} days</td>
-                          <td className="py-2 font-bold text-pink-600">₦{cost.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-slate-400 mt-3">
-                  💡 To message all 30,000 contacts via SMS would cost ~₦90,000 total (at ₦3/msg). 
-                  WhatsApp is FREE and recommended for personal outreach.
-                </p>
-              </div>
+                  {/* Cost Calculator */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                    <h3 className="font-bold text-slate-700 mb-3">💰 SMS Credit Cost Estimator</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left border-b border-slate-200">
+                            <th className="pb-2 font-bold text-slate-500 text-xs">Contacts</th>
+                            <th className="pb-2 font-bold text-slate-500 text-xs">SMS Count</th>
+                            <th className="pb-2 font-bold text-slate-500 text-xs">Credit Cost ({stats?.sms_credit_cost || 2} Credits/SMS)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {[[100, 100, 100 * (stats?.sms_credit_cost || 2)], [1000, 1000, 1000 * (stats?.sms_credit_cost || 2)], [5000, 5000, 5000 * (stats?.sms_credit_cost || 2)]].map(([contacts, sms, credits]) => (
+                            <tr key={contacts}>
+                              <td className="py-2 font-semibold text-slate-700">{contacts.toLocaleString()}</td>
+                              <td className="py-2 text-slate-500">{sms.toLocaleString()} messages</td>
+                              <td className="py-2 font-bold text-pink-600">{credits.toLocaleString()} Credits</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-3">
+                      💡 Automated SMS is premium. You can broadcast to your WhatsApp contacts for FREE using the WhatsApp batch generator tab.
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </motion.div>
