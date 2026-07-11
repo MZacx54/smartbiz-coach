@@ -69,7 +69,10 @@ const App: React.FC = () => {
   });
 
   // Data Persistence (Lifted State)
-  const [savedBrand, setSavedBrand] = useState<BrandIdentity | null>(null);
+  const [savedBrand, setSavedBrand] = useState<BrandIdentity | null>(() => {
+    const saved = localStorage.getItem("sb_brand");
+    return saved ? JSON.parse(saved) : null;
+  });
 
   const [contentHistory, setContentHistory] = useState<GeneratedContent[]>(
     () => {
@@ -340,7 +343,9 @@ const App: React.FC = () => {
       console.error("Failed to sync brand with backend:", error);
       // Ensure local state is updated even if network synchronization fails
       setSavedBrand(brand);
-      toast.error("Saved locally (Offline mode)");
+      // Also persist to local storage so the brand kit is always accessible
+      try { localStorage.setItem("sb_brand", JSON.stringify(brand)); } catch (e) {}
+      toast.success("✅ Brand saved to your device! Use the '⬇️ Download Kit' button on the Brand Builder page to get a permanent copy.", { duration: 6000 });
     }
   };
 

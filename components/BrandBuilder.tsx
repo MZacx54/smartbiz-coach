@@ -5,6 +5,7 @@ import ShareActions from './ShareActions';
 import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
+import { toast } from 'react-hot-toast';
 
 interface BrandBuilderProps {
   savedBrand: BrandIdentity | null;
@@ -149,6 +150,22 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     setStep('INPUT');
     setLocalBrandData(null);
     setFormData({ name: '', niche: '', vibe: '', description: '', tone: 'Corporate' });
+  };
+
+  // Download the brand kit as a JSON backup file so user can always access it locally
+  const handleDownloadKit = () => {
+    if (!localBrandData) return;
+    const kitData = JSON.stringify(localBrandData, null, 2);
+    const blob = new Blob([kitData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${localBrandData.businessName.replace(/\s+/g, '_')}_BrandKit.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Brand Kit downloaded! Open the file anytime to view your brand data.');
   };
 
   const generateWhatsAppLink = () => {
@@ -721,8 +738,15 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <h2 className="text-2xl font-bold text-gray-900">Brand Studio</h2>
             <p className="text-gray-500 text-sm">Your Identity, Strategy, and Assets.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button onClick={handleCreateNew} className="text-sm bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium text-gray-600">New Brand</button>
+            <button
+              onClick={handleDownloadKit}
+              className="text-sm bg-amber-100 hover:bg-amber-200 text-amber-800 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+              title="Download your brand kit as a backup file"
+            >
+              <span>⬇️</span> Download Kit
+            </button>
             <button
               onClick={() => { setCustomShareText(''); setShowShareModal(true); }}
               className="text-sm bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
@@ -1173,29 +1197,37 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
           >
             <option value="">Select a Niche</option>
-            <option value="Food & Catering">Food & Catering</option>
-            <option value="Fashion & Tailoring">Fashion & Tailoring</option>
-            <option value="Beauty & Skincare">Beauty & Skincare</option>
-            <option value="Tech & Gadgets">Tech & Gadgets</option>
-            <option value="Real Estate">Real Estate</option>
-            <option value="Consulting">Consulting</option>
-            <option value="Logistics">Logistics & Delivery</option>
-            <option value="Agriculture & Farming">Agriculture & Farming</option>
-            <option value="Education & Training">Education & Training</option>
-            <option value="Health & Wellness">Health & Wellness</option>
-            <option value="Event Planning">Event Planning</option>
-            <option value="Artisan & Crafts">Artisan & Crafts</option>
-            <option value="Financial Services">Financial Services</option>
-            <option value="Entertainment">Entertainment</option>
-            <option value="Cleaning Services">Cleaning Services</option>
-            <option value="Automotive">Automotive</option>
-            <option value="Solar & Energy">Solar & Energy</option>
-            <option value="POS & Agency Banking">POS & Agency Banking</option>
-            <option value="Mini-Importation">Mini-Importation</option>
-            <option value="Gym & Fitness">Gym & Fitness</option>
-            <option value="Pharmacy & Chemist">Pharmacy & Chemist</option>
-            <option value="Phone & Laptop Repair">Phone & Laptop Repair</option>
-            <option value="Other">Other</option>
+            <option value="Food & Catering">🍳 Food & Catering (Mama Put, Restaurant)</option>
+            <option value="Fashion & Tailoring">✂️ Fashion & Tailoring (Designer, Seamstress)</option>
+            <option value="Beauty & Skincare">💅 Beauty, Cosmetics & Skincare</option>
+            <option value="Barbing Salon & Hairdressing">💈 Barbing Salon & Hairdressing</option>
+            <option value="Freelancing & Digital Services">💻 Freelancing & Digital Services (Design, Writing)</option>
+            <option value="Dry Cleaning & Laundry">🧺 Dry Cleaning & Laundry</option>
+            <option value="POS & Agency Banking">💳 POS & Agency Banking</option>
+            <option value="Supermarket & Provision Store">🛒 Supermarket & Provision Store</option>
+            <option value="Mini-Importation">📦 Mini-Importation & E-commerce</option>
+            <option value="Phone & Laptop Repair">🔧 Phone, Gadget & Laptop Repair</option>
+            <option value="Carpentry & Woodwork">🪚 Carpentry, Woodwork & Furniture</option>
+            <option value="Welding & Metal Fabrication">⚙️ Welding & Metal Fabrication</option>
+            <option value="Plumbing & Electrical">🚰 Plumbing & Electrical Installation</option>
+            <option value="Brickmaking & Cement block production">🧱 Brickmaking & Cement Block Industry</option>
+            <option value="Transportation & Bolt/Uber driver">🚗 Transportation (Logistics, Bolt/Uber)</option>
+            <option value="Agriculture & Farming">🌱 Agriculture, Poultry & Fish Farming</option>
+            <option value="Solar & Energy">☀️ Solar Panel & Energy Installation</option>
+            <option value="Education & Training">🏫 Education, Creche & Lessons</option>
+            <option value="Pharmacy & Chemist">💊 Pharmacy & Local Chemist</option>
+            <option value="Gym & Fitness">🏋️ Gym, Sports & Fitness</option>
+            <option value="Event Planning">🎉 Event Planning & Decoration</option>
+            <option value="Artisan & Crafts">🎨 Artisan, Painting & Crafts</option>
+            <option value="Real Estate">🏠 Real Estate & House Agent</option>
+            <option value="Consulting">📊 Professional Consulting</option>
+            <option value="Logistics">🚚 Logistics & Dispatch Delivery</option>
+            <option value="Health & Wellness">❤️ Health & General Wellness</option>
+            <option value="Financial Services">💰 Financial Services & Bookkeeping</option>
+            <option value="Entertainment">🎵 Music, Video & Entertainment</option>
+            <option value="Cleaning Services">🧹 General & Industrial Cleaning</option>
+            <option value="Automotive">🚘 Automotive Mechanic & Spare Parts</option>
+            <option value="Other">✨ Other (Write your custom category)</option>
           </select>
           {formData.niche === 'Other' && (
             <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
