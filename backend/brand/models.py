@@ -20,7 +20,7 @@ class BrandIdentity(models.Model):
     brand_voice = models.CharField(max_length=100, blank=True)
     target_audience = models.TextField(blank=True)
     logo_prompt = models.TextField(blank=True)
-    logo_url = models.URLField(blank=True, null=True)
+    logo_url = models.TextField(blank=True, null=True)
     
     # Kits (JSON)
     policies = models.JSONField(default=dict)

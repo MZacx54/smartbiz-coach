@@ -189,23 +189,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           localStorage.setItem('sb_health_score_data', JSON.stringify(mockScore));
         }
       } else {
-        // Ecosystem Analytics
-        try {
-          const response = await api.get('/api/marketplace/analytics/');
-          setEcosystemStats(response.data);
-        } catch (e) {
-          console.error("Failed to load ecosystem analytics", e);
-        }
-
-        // Compliance
-        try {
-          const compResponse = await api.get('/api/users/compliance/');
-          setComplianceStatus(compResponse.data);
-        } catch (e) {
-          console.error("Failed to load compliance status", e);
-        }
-
-        // Business Data (From LocalStorage for Dashboard View)
+        // Business Data (From LocalStorage for Dashboard View - extremely fast, load synchronously)
         try {
           const savedDebtors: Debtor[] = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
           const unpaid = savedDebtors.filter(d => d.status !== 'PAID').reduce((acc, curr) => acc + curr.amount, 0);
@@ -222,36 +206,48 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
         }
       }
 
-      // Load AI daily motivation, seasonal tips, and trends dynamically in both modes
-      try {
-        const m = await generateDailyMotivation("Entrepreneur");
-        setMotivation(m);
-      } catch (e) {
-        console.error("Failed to load motivation", e);
+      // Load API stats, AI motivation, seasonal tips, and trends dynamically IN PARALLEL to optimize dashboard login speed
+      const promises: Promise<any>[] = [
+        generateDailyMotivation("Entrepreneur")
+          .then(m => setMotivation(m))
+          .catch(e => console.error("Failed to load motivation", e)),
+
+        generateSeasonalTips()
+          .then(s => setSeasonalAlert(s))
+          .catch(e => console.error("Failed to load seasonal tips", e)),
+
+        getTrendingTopics()
+          .then(trends => {
+            if (trends && trends.length > 0) {
+              setTrendingTopics(trends);
+            } else {
+              throw new Error("Empty trends array");
+            }
+          })
+          .catch(e => {
+            console.error("Failed to load trends, using fallbacks", e);
+            setTrendingTopics([
+              { id: "t1", title: "Fuel Prices & transport hacks", category: "Economy", volume: "140K Posts" },
+              { id: "t2", title: "New Nollywood blockbusters", category: "Entertainment", volume: "95K TikToks" },
+              { id: "t3", title: "Naira Exchange Adjustments", category: "Finance", volume: "85K Posts" }
+            ]);
+          })
+      ];
+
+      if (!isTractionMode) {
+        promises.push(
+          api.get('/api/marketplace/analytics/')
+            .then(r => setEcosystemStats(r.data))
+            .catch(e => console.error("Failed to load ecosystem analytics", e))
+        );
+        promises.push(
+          api.get('/api/users/compliance/')
+            .then(r => setComplianceStatus(r.data))
+            .catch(e => console.error("Failed to load compliance status", e))
+        );
       }
 
-      try {
-        const s = await generateSeasonalTips();
-        setSeasonalAlert(s);
-      } catch (e) {
-        console.error("Failed to load seasonal tips", e);
-      }
-
-      try {
-        const trends = await getTrendingTopics();
-        if (trends && trends.length > 0) {
-            setTrendingTopics(trends);
-        } else {
-            throw new Error("Empty trends array");
-        }
-      } catch (e) {
-        console.error("Failed to load trends, using fallbacks", e);
-        setTrendingTopics([
-            { id: "t1", title: "Fuel Prices & transport hacks", category: "Economy", volume: "140K Posts" },
-            { id: "t2", title: "New Nollywood blockbusters", category: "Entertainment", volume: "95K TikToks" },
-            { id: "t3", title: "Naira Exchange Adjustments", category: "Finance", volume: "85K Posts" }
-        ]);
-      }
+      await Promise.allSettled(promises);
 
       // Daily task checklist loader
       const savedTasks = localStorage.getItem('sb_completed_daily_tasks_data');
