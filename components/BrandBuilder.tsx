@@ -1309,6 +1309,32 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         <p className="text-gray-600 text-sm mt-2">Create a premium identity, logo, and strategy in seconds.</p>
       </div>
 
+      {savedBrand && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div>
+            <p className="text-sm font-bold text-amber-900">📦 Saved Brand Found</p>
+            <p className="text-xs text-amber-700 mt-0.5">"{savedBrand.businessName}" is saved locally on this device.</p>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => {
+                setLocalBrandData(savedBrand);
+                setStep('RESULT');
+              }}
+              className="flex-1 sm:flex-none text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
+            >
+              👁️ View Kit
+            </button>
+            <button
+              onClick={handleDownloadKit}
+              className="flex-1 sm:flex-none text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
+            >
+              ⬇️ Download Kit
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 text-center border border-red-100">
           {error}
