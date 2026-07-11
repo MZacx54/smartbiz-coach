@@ -295,6 +295,7 @@ const App: React.FC = () => {
       case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
       case AppView.PRICING_ASSISTANT: navigate('/dashboard/pricing-assistant'); break;
       case AppView.MARKETING_AGENT: navigate('/dashboard/marketing'); break;
+      case AppView.LEAD_MANAGER: navigate('/dashboard/leads'); break;
       default: navigate('/dashboard');
     }
   };

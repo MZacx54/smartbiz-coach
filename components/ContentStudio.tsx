@@ -10,7 +10,7 @@ import CreditPromptModal from './CreditPromptModal';
 import { toast } from 'react-hot-toast';
 
 // Types
-type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan' | 'Blog Writer' | 'Partnership Pitch';
+type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan' | 'Blog Writer' | 'Partnership Pitch' | 'Creations History';
 type Platform = 'Instagram' | 'Facebook' | 'Twitter' | 'LinkedIn' | 'TikTok';
 type Tone = 'Exciting' | 'Professional' | 'Funny' | 'Informative';
 type Format = 'Single Post' | 'Carousel' | 'Story' | 'Reel';
@@ -172,6 +172,22 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             }
 
             setGeneratedContent(result);
+            
+            // Save to local creations history catalog
+            try {
+                const historyItem = {
+                    id: Date.now(),
+                    tab: activeTab,
+                    topic: activeTab === 'Post Writer' ? postTopic : activeTab === 'Video Script' ? videoTopic : activeTab === 'Blog Writer' ? blogTopic : activeTab === 'Partnership Pitch' ? partnerName + " - " + pitchType : photoDesc || 'Visual Prompt',
+                    timestamp: new Date().toISOString(),
+                    content: result
+                };
+                const currentHistory = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
+                localStorage.setItem('sb_content_history', JSON.stringify([historyItem, ...currentHistory]));
+            } catch (historyErr) {
+                console.error("Failed to write to content history:", historyErr);
+            }
+
             toast.success('Content crafted successfully!');
         } catch (err: any) {
             console.error(err);
@@ -231,7 +247,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         { id: 'Video Script', icon: '🎬' },
         { id: 'Weekly Plan', icon: '📅' },
         { id: 'Partnership Pitch', icon: '🤝' },
-        { id: 'Photo Studio', icon: '📸' }
+        { id: 'Photo Studio', icon: '📸' },
+        { id: 'Creations History', icon: '📜' }
     ];
 
     return (
@@ -516,6 +533,79 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                             </motion.div>
                         )}
 
+                        {/* CREATIONS HISTORY */}
+                        {activeTab === 'Creations History' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-800 mb-2">Creations History</h3>
+                                    <p className="text-xs text-slate-500 mb-4">
+                                        All your AI-generated posts, scripts, blogs, and pitches are automatically saved to your browser history here.
+                                    </p>
+                                    
+                                    {/* History list */}
+                                    {(() => {
+                                        const history = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
+                                        if (history.length === 0) {
+                                            return (
+                                                <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200">
+                                                    <span className="text-3xl block mb-2">📭</span>
+                                                    <p className="text-sm font-semibold text-slate-600">No creations saved yet</p>
+                                                    <p className="text-xs text-slate-400 mt-1">Generate some posts or scripts to start building your history catalog!</p>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                                {history.map((item: any) => (
+                                                    <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-250 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-indigo-300 transition-colors">
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                                <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                                                                    {item.tab}
+                                                                </span>
+                                                                <span className="text-[10px] text-slate-400">
+                                                                    {new Date(item.timestamp).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                            <h4 className="text-sm font-bold text-slate-800 line-clamp-1">
+                                                                {item.topic}
+                                                            </h4>
+                                                            <p className="text-xs text-slate-550 mt-1 line-clamp-2 bg-white/50 p-2 rounded border border-slate-150">
+                                                                {item.content?.text || item.content?.caption || item.content?.body || item.content?.emailBody || item.content?.blogContent || "Generated Content"}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-2 w-full md:w-auto">
+                                                            <button
+                                                                onClick={() => {
+                                                                    const text = item.content?.text || item.content?.caption || item.content?.body || item.content?.emailBody || item.content?.blogContent || JSON.stringify(item.content, null, 2);
+                                                                    navigator.clipboard.writeText(text);
+                                                                    toast.success("Copied to clipboard!");
+                                                                }}
+                                                                className="flex-1 md:flex-none text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-lg border border-indigo-150 transition-colors flex items-center justify-center gap-1.5"
+                                                            >
+                                                                <Copy size={12} /> Copy
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setGeneratedContent(item.content);
+                                                                    setActiveTab(item.tab);
+                                                                    toast.success("Loaded back into workspace!");
+                                                                }}
+                                                                className="flex-1 md:flex-none text-xs bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-2 rounded-lg border border-slate-350 transition-colors flex items-center justify-center gap-1.5"
+                                                            >
+                                                                <Eye size={12} /> View
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </motion.div>
+                        )}
+
                         {/* RESULT DISPLAY */}
                         {(generatedContent || error) && (
                             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-10 pt-10 border-t border-slate-100">
@@ -526,8 +616,13 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 ) : (
                                     <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl">
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                                        <div className="flex justify-between items-center mb-6">
-                                            <h3 className="text-xl font-bold font-heading">AI Generated Result</h3>
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                            <div>
+                                                <h3 className="text-xl font-bold font-heading">AI Generated Result</h3>
+                                                <p className="text-[10px] text-indigo-300 mt-1 font-semibold flex items-center gap-1">
+                                                    <span>💾</span> Saved to your <span className="underline cursor-pointer" onClick={() => setActiveTab('Creations History')}>Creations History</span> tab
+                                                </p>
+                                            </div>
                                             <button
                                                 onClick={() => {
                                                     const text = JSON.stringify(generatedContent, null, 2);
