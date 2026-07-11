@@ -39,6 +39,49 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   // Mockup Ref for Printing
   const mockupRef = useRef<HTMLDivElement>(null);
 
+  // Inline editing state
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Helper to update top-level fields on localBrandData
+  const updateField = (field: string, value: any) => {
+    setLocalBrandData((prev: any) => prev ? { ...prev, [field]: value } : prev);
+  };
+
+  // Helper to update nested object fields (e.g. policies.payment, whatsappContent.stickerIdeas)
+  const updateNestedField = (parent: string, field: string, value: any) => {
+    setLocalBrandData((prev: any) => {
+      if (!prev) return prev;
+      return { ...prev, [parent]: { ...(prev[parent] || {}), [field]: value } };
+    });
+  };
+
+  // Inline editable text component
+  const EditableText = ({
+    value, onChange, multiline = false, className = ''
+  }: { value: string; onChange: (v: string) => void; multiline?: boolean; className?: string }) => {
+    if (!isEditing) {
+      return <span className={className}>{value || <span className="italic text-gray-400">(empty)</span>}</span>;
+    }
+    if (multiline) {
+      return (
+        <textarea
+          className={`w-full border border-blue-300 rounded px-2 py-1 text-sm bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none ${className}`}
+          value={value || ''}
+          rows={3}
+          onChange={e => onChange(e.target.value)}
+        />
+      );
+    }
+    return (
+      <input
+        type="text"
+        className={`w-full border border-blue-300 rounded px-2 py-1 text-sm bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-400 ${className}`}
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+      />
+    );
+  };
+
   // Brand Archetypes for Richer Input
   const brandArchetypes = [
     { id: 'Authority', label: 'The Authority', desc: 'Professional, Trustworthy, Expert', icon: '👔' },
@@ -741,6 +784,15 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           <div className="flex flex-wrap gap-2">
             <button onClick={handleCreateNew} className="text-sm bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium text-gray-600">New Brand</button>
             <button
+              onClick={() => {
+                if (isEditing && localBrandData) { onSave(localBrandData); toast.success('Changes saved!'); }
+                setIsEditing(e => !e);
+              }}
+              className={`text-sm px-4 py-2 rounded-lg font-bold flex items-center gap-2 ${isEditing ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'}`}
+            >
+              <span>{isEditing ? '💾' : '✏️'}</span> {isEditing ? 'Save Edits' : 'Edit Kit'}
+            </button>
+            <button
               onClick={handleDownloadKit}
               className="text-sm bg-amber-100 hover:bg-amber-200 text-amber-800 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
               title="Download your brand kit as a backup file"
@@ -785,6 +837,11 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         {/* IDENTITY TAB */}
         {activeTab === 'IDENTITY' && (
           <div className="bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
+            {isEditing && (
+              <div className="bg-blue-50 border-b border-blue-200 px-6 py-3 text-sm text-blue-700 font-medium flex items-center gap-2">
+                ✏️ Editing Mode — Click any field to change it, then press <strong>Save Edits</strong> above.
+              </div>
+            )}
             {/* Logo Section */}
             <div className="p-8 border-b border-gray-100 bg-gray-50 text-center">
               {localBrandData.logoUrl ? (
@@ -825,8 +882,17 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
             <div className="p-6">
               <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold mb-2 text-gray-900">{localBrandData.businessName}</h1>
-                <p className="text-sm uppercase tracking-wider text-gray-500">{localBrandData.niche}</p>
+                <h1 className="text-4xl font-bold mb-2 text-gray-900">
+                  <EditableText value={localBrandData.businessName} onChange={v => updateField('businessName', v)} className="text-4xl font-bold" />
+                </h1>
+                <p className="text-sm uppercase tracking-wider text-gray-500">
+                  <EditableText value={localBrandData.niche} onChange={v => updateField('niche', v)} />
+                </p>
+                {localBrandData.elevatorPitch && (
+                  <p className="text-gray-600 italic mt-2 text-sm max-w-lg mx-auto">
+                    <EditableText value={localBrandData.elevatorPitch} onChange={v => updateField('elevatorPitch', v)} multiline className="text-sm" />
+                  </p>
+                )}
               </div>
 
               <div className="grid md:grid-cols-2 gap-8">
@@ -835,16 +901,26 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                   <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Color Palette</h3>
                   <div className="flex gap-4">
                     {[
-                      { label: 'Primary', color: localBrandData?.colors?.primary || '#333' },
-                      { label: 'Secondary', color: localBrandData?.colors?.secondary || '#666' },
-                      { label: 'Accent', color: localBrandData?.colors?.accent || '#999' }
+                      { label: 'Primary', color: localBrandData?.colors?.primary || '#10b981', key: 'primary' },
+                      { label: 'Secondary', color: localBrandData?.colors?.secondary || '#0f766e', key: 'secondary' },
+                      { label: 'Accent', color: localBrandData?.colors?.accent || '#f59e0b', key: 'accent' }
                     ].map((c) => (
                       <div key={c.label} className="group cursor-pointer">
                         <div
                           className="w-16 h-16 rounded-2xl shadow-md border border-gray-100 group-hover:scale-105 transition-transform"
                           style={{ backgroundColor: c.color }}
                         ></div>
-                        <p className="text-center text-xs mt-1 font-mono text-gray-600">{c.color}</p>
+                        {isEditing ? (
+                          <input
+                            type="color"
+                            className="mt-1 w-16 h-6 rounded cursor-pointer border-0"
+                            value={c.color}
+                            onChange={e => updateNestedField('colors', c.key, e.target.value)}
+                          />
+                        ) : (
+                          <p className="text-center text-xs mt-1 font-mono text-gray-600">{c.color}</p>
+                        )}
+                        <p className="text-center text-xs text-gray-400">{c.label}</p>
                       </div>
                     ))}
                   </div>
@@ -856,13 +932,42 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                   <div className="space-y-2">
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <span className="text-xs text-gray-400 block mb-1">Headlines</span>
-                      <span className="text-xl font-bold text-gray-800">{localBrandData?.fonts?.primary || 'sans-serif'}</span>
+                      <EditableText value={localBrandData?.fonts?.primary || 'Montserrat'} onChange={v => updateNestedField('fonts', 'primary', v)} className="text-xl font-bold text-gray-800" />
                     </div>
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                       <span className="text-xs text-gray-400 block mb-1">Body Text</span>
-                      <span className="text-base text-gray-600">{localBrandData?.fonts?.secondary || 'sans-serif'}</span>
+                      <EditableText value={localBrandData?.fonts?.secondary || 'Inter'} onChange={v => updateNestedField('fonts', 'secondary', v)} className="text-base text-gray-600" />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-8 grid md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Brand Voice</h3>
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <EditableText value={localBrandData?.brandVoice || ''} onChange={v => updateField('brandVoice', v)} multiline className="text-sm text-gray-700" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Target Audience</h3>
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <EditableText value={localBrandData?.targetAudience || ''} onChange={v => updateField('targetAudience', v)} multiline className="text-sm text-gray-700" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Social Bio</h3>
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <EditableText value={localBrandData?.socialBio || ''} onChange={v => updateField('socialBio', v)} multiline className="text-sm text-gray-700" />
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">WhatsApp Greeting</h3>
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <EditableText value={localBrandData?.whatsappGreeting || ''} onChange={v => updateField('whatsappGreeting', v)} multiline className="text-sm text-gray-700" />
                 </div>
               </div>
 
@@ -872,28 +977,48 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                   {(localBrandData?.taglines || []).map((tag, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
                       <span className="text-green-500 font-bold">✓</span>
-                      <span className="text-gray-700 italic">"{tag}"</span>
+                      {isEditing ? (
+                        <input
+                          className="flex-1 border border-blue-300 rounded px-2 py-1 text-sm bg-blue-50 focus:outline-none"
+                          value={tag}
+                          onChange={e => {
+                            const updated = [...(localBrandData.taglines || [])];
+                            updated[i] = e.target.value;
+                            updateField('taglines', updated);
+                          }}
+                        />
+                      ) : (
+                        <span className="text-gray-700 italic">"{tag}"</span>
+                      )}
                     </div>
                   ))}
+                  {(localBrandData?.taglines || []).length === 0 && (
+                    <p className="text-gray-400 text-sm italic">No taglines generated. Try regenerating your brand kit.</p>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* TRUST TAB (NEW) */}
-        {activeTab === 'TRUST' && localBrandData.policies && (
+        {/* TRUST TAB */}
+        {activeTab === 'TRUST' && (
           <div className="space-y-6 animate-in slide-in-from-right">
+            {isEditing && (
+              <div className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-lg text-sm text-blue-700 font-medium">
+                ✏️ Editing Mode — update any field then press <strong>Save Edits</strong> above.
+              </div>
+            )}
             <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-xl shadow-lg">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl">
                   🛡️
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-bold text-lg">Trust Badge</h3>
                   <p className="text-blue-100 text-sm">Use this text on your profile to build confidence.</p>
-                  <div className="mt-2 bg-white/20 px-4 py-2 rounded-lg font-mono font-bold inline-block border border-white/30">
-                    {localBrandData.trustBadgeText}
+                  <div className="mt-2 bg-white/20 px-4 py-2 rounded-lg font-mono font-bold inline-block border border-white/30 w-full">
+                    <EditableText value={localBrandData?.trustBadgeText || '100% Verified Quality & Nationwide Delivery'} onChange={v => updateField('trustBadgeText', v)} className="text-white font-bold" />
                   </div>
                 </div>
               </div>
@@ -905,30 +1030,36 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 <div className="space-y-4">
                   <div>
                     <span className="text-xs font-bold text-gray-500 uppercase">Payment Terms</span>
-                    <p className="text-gray-700 bg-gray-50 p-3 rounded mt-1 text-sm">{localBrandData.policies.payment}</p>
+                    <div className="text-gray-700 bg-gray-50 p-3 rounded mt-1 text-sm">
+                      <EditableText value={localBrandData?.policies?.payment || 'Full payment required before order processing.'} onChange={v => updateNestedField('policies', 'payment', v)} multiline />
+                    </div>
                   </div>
                   <div>
                     <span className="text-xs font-bold text-gray-500 uppercase">Delivery</span>
-                    <p className="text-gray-700 bg-gray-50 p-3 rounded mt-1 text-sm">{localBrandData.policies.delivery}</p>
+                    <div className="text-gray-700 bg-gray-50 p-3 rounded mt-1 text-sm">
+                      <EditableText value={localBrandData?.policies?.delivery || 'Nationwide delivery available. Lagos 24–48 hrs.'} onChange={v => updateNestedField('policies', 'delivery', v)} multiline />
+                    </div>
                   </div>
                   <div>
                     <span className="text-xs font-bold text-gray-500 uppercase">Returns & Refunds</span>
-                    <p className="text-gray-700 bg-gray-50 p-3 rounded mt-1 text-sm">{localBrandData.policies.refund}</p>
+                    <div className="text-gray-700 bg-gray-50 p-3 rounded mt-1 text-sm">
+                      <EditableText value={localBrandData?.policies?.refund || 'Returns allowed within 3 days if item is unused.'} onChange={v => updateNestedField('policies', 'refund', v)} multiline />
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">Customer Receipts</h3>
+                <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">Customer Receipt Preview</h3>
                 <div className="border border-dashed border-gray-300 p-4 rounded bg-gray-50 text-center">
-                  <p className="font-bold text-gray-900 mb-2">{localBrandData.businessName}</p>
+                  <p className="font-bold text-gray-900 mb-2">{localBrandData?.businessName}</p>
                   <p className="text-xs text-gray-500 mb-4">Official Receipt</p>
                   <div className="text-left text-xs space-y-1 mb-4">
                     <p>Date: [Date]</p>
                     <p>Item: [Product Name]</p>
                     <p>Amount: ₦[Amount]</p>
                   </div>
-                  <p className="text-xs italic text-gray-600">"{localBrandData.policies.payment}"</p>
+                  <p className="text-xs italic text-gray-600">"{localBrandData?.policies?.payment || ''}"</p>
                   <p className="text-xs text-gray-400 mt-2">Thanks for your patronage!</p>
                 </div>
                 <button onClick={() => alert("Receipt template copied!")} className="w-full mt-4 bg-gray-900 text-white text-xs font-bold py-2 rounded">Copy Template</button>
@@ -937,8 +1068,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           </div>
         )}
 
-        {/* WHATSAPP KIT TAB (UPDATED) */}
-        {activeTab === 'WHATSAPP' && localBrandData.whatsappContent && (
+        {/* WHATSAPP KIT TAB */}
+        {activeTab === 'WHATSAPP' && (
           <div className="space-y-6 animate-in slide-in-from-right">
             {/* Quick Actions Grid */}
             <div className="grid md:grid-cols-2 gap-6">
@@ -950,7 +1081,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 <p className="text-xs text-gray-500 mb-4">Set these as shortcuts in WhatsApp Business settings.</p>
 
                 <div className="space-y-3">
-                  {localBrandData.whatsappContent.quickReplies?.map((qr, i) => (
+                  {(localBrandData?.whatsappContent?.quickReplies || []).map((qr, i) => (
                     <div key={i} className="bg-gray-50 p-3 rounded-lg border border-gray-200 relative group">
                       <p className="font-mono text-xs text-indigo-600 font-bold mb-1">{qr.shortcut}</p>
                       <p className="text-sm text-gray-700 leading-snug">{qr.message}</p>
@@ -962,8 +1093,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                       </button>
                     </div>
                   ))}
-                  {(!localBrandData.whatsappContent.quickReplies || localBrandData.whatsappContent.quickReplies.length === 0) && (
-                    <p className="text-xs text-gray-400 italic">Generate a new brand kit to see quick replies.</p>
+                  {(localBrandData?.whatsappContent?.quickReplies || []).length === 0 && (
+                    <p className="text-xs text-gray-400 italic">No quick replies generated yet. Try regenerating your brand kit.</p>
                   )}
                 </div>
               </div>
@@ -976,7 +1107,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 <p className="text-xs text-gray-500 mb-4">Copy these to your Broadcast Lists (don't spam!).</p>
 
                 <div className="space-y-3">
-                  {localBrandData.whatsappContent.broadcastMessages?.map((bc, i) => (
+                  {(localBrandData?.whatsappContent?.broadcastMessages || []).map((bc, i) => (
                     <div key={i} className="bg-orange-50 p-3 rounded-lg border border-orange-100 relative group">
                       <p className="text-xs font-bold text-orange-800 mb-1 uppercase">{bc.title}</p>
                       <p className="text-sm text-gray-700 leading-snug">{bc.message}</p>
@@ -988,8 +1119,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                       </button>
                     </div>
                   ))}
-                  {(!localBrandData.whatsappContent.broadcastMessages || localBrandData.whatsappContent.broadcastMessages.length === 0) && (
-                    <p className="text-xs text-gray-400 italic">Generate a new brand kit to see broadcast scripts.</p>
+                  {(localBrandData?.whatsappContent?.broadcastMessages || []).length === 0 && (
+                    <p className="text-xs text-gray-400 italic">No broadcast scripts generated yet.</p>
                   )}
                 </div>
               </div>
@@ -1071,31 +1202,40 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           </div>
         )}
 
-        {/* PACKAGING TAB (NEW) */}
-        {activeTab === 'PACKAGING' && localBrandData.packaging && (
+        {/* PACKAGING TAB */}
+        {activeTab === 'PACKAGING' && (
           <div className="space-y-6 animate-in slide-in-from-right">
+            {isEditing && (
+              <div className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-lg text-sm text-blue-700 font-medium">
+                ✏️ Editing Mode
+              </div>
+            )}
             <div className="bg-pink-50 border border-pink-200 p-6 rounded-xl flex flex-col md:flex-row gap-6 items-center">
               <div className="flex-1">
                 <h3 className="font-bold text-pink-900 mb-2">Unboxing Experience</h3>
                 <p className="text-pink-800 text-sm mb-4">Make your customers say "Wow" when they open their package.</p>
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-pink-100">
                   <p className="text-sm font-bold text-gray-800">💡 Pro Tip:</p>
-                  <p className="text-sm text-gray-600 mt-1">{localBrandData.packaging.unboxingTip}</p>
+                  <div className="text-sm text-gray-600 mt-1">
+                    <EditableText value={localBrandData?.packaging?.unboxingTip || 'Tag us on Instagram when you unbox your order!'} onChange={v => updateNestedField('packaging', 'unboxingTip', v)} multiline />
+                  </div>
                 </div>
               </div>
               <div className="w-full md:w-64 bg-white p-6 rounded-xl shadow-lg transform rotate-2 border border-gray-200">
                 <p className="text-center font-serif text-gray-400 text-xs mb-4">Thank You Card</p>
                 <p className="text-center font-bold text-gray-800 mb-2 text-lg">Thank You!</p>
                 <p className="text-center text-sm text-gray-600 leading-relaxed italic">
-                  "{localBrandData.packaging.thankYouNote}"
+                  <EditableText value={localBrandData?.packaging?.thankYouNote || `Thank you for supporting ${localBrandData?.businessName}!`} onChange={v => updateNestedField('packaging', 'thankYouNote', v)} multiline />
                 </p>
                 <div className="mt-6 border-t pt-4 text-center">
-                  <p className="text-xs font-bold">{localBrandData.businessName}</p>
+                  <p className="text-xs font-bold">{localBrandData?.businessName}</p>
                 </div>
               </div>
             </div>
           </div>
         )}
+
+
 
         {/* MOCKUP TAB */}
         {activeTab === 'MOCKUP' && (
