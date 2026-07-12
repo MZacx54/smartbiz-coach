@@ -103,6 +103,11 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
   const [newCampaignDailyLimit, setNewCampaignDailyLimit] = useState(100);
   const [creatingCampaign, setCreatingCampaign] = useState(false);
 
+  // AI suggest states
+  const [aiPromptObjective, setAiPromptObjective] = useState('');
+  const [generatingSuggestion, setGeneratingSuggestion] = useState(false);
+  const [showAiSuggestModal, setShowAiSuggestModal] = useState(false);
+
   // WhatsApp batch
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [waBatch, setWaBatch] = useState<WhatsAppBatchItem[]>([]);
@@ -216,6 +221,34 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
       fetchStats();
     } catch {
       toast.error('Failed to delete contact');
+    }
+  };
+
+  const handleAISuggest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiPromptObjective.trim()) {
+      toast.error('Please enter a goal or topic for the campaign');
+      return;
+    }
+    setGeneratingSuggestion(true);
+    try {
+      const response = await api.post('marketing/ai-suggest/', {
+        topic: aiPromptObjective,
+        channel: newCampaignChannel
+      });
+      if (response.data.suggestion) {
+        setNewCampaignTemplate(response.data.suggestion);
+        toast.success('AI Message suggestion generated!');
+        setShowAiSuggestModal(false);
+        setAiPromptObjective('');
+      } else if (response.data.error) {
+        toast.error(response.data.error);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to generate message suggestion');
+    } finally {
+      setGeneratingSuggestion(false);
     }
   };
 
@@ -739,6 +772,13 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
                           {t.label}
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => setShowAiSuggestModal(true)}
+                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black px-3.5 py-1.5 rounded-lg transition-all shadow-md shadow-purple-600/15 flex items-center gap-1 hover:scale-105"
+                      >
+                        🤖 AI Suggest (Gemini)
+                      </button>
                     </div>
                     <textarea
                       rows={8}
@@ -1144,6 +1184,47 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
           )}
         </motion.div>
       </AnimatePresence>
+      {/* ── AI Suggest Message Modal ── */}
+      {showAiSuggestModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setShowAiSuggestModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              ✕
+            </button>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">🤖</span>
+              <h3 className="font-extrabold text-slate-800 text-lg">AI Message suggestion (Gemini)</h3>
+            </div>
+            <p className="text-slate-500 text-xs mb-4 leading-relaxed">
+              Gemini will write a customized marketing message tailored specifically for your target audience, niche, and brand voice (using the details from your Brand Identity profile).
+            </p>
+            <form onSubmit={handleAISuggest} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">
+                  Campaign Goal / Promotion Details
+                </label>
+                <textarea
+                  rows={4}
+                  value={aiPromptObjective}
+                  onChange={e => setAiPromptObjective(e.target.value)}
+                  placeholder="e.g. We are offering a 20% discount on all salon services this weekend only! Or: Inviting everyone to our new boutique launch at 12 Herbert Macaulay Way."
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-pink-400 outline-none resize-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={generatingSuggestion}
+                className="w-full bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-pink-600/30 disabled:opacity-50"
+              >
+                {generatingSuggestion ? '⏳ Gemini is writing...' : '✍️ Generate Message Suggestion'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

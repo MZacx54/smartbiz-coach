@@ -423,6 +423,16 @@ def get_termii_key():
     return os.environ.get('TERMII_API_KEY', '')
 
 
+def calculate_sms_segments(text):
+    """Calculate the number of SMS segments based on length."""
+    import math
+    length = len(text)
+    if length <= 160:
+        return 1
+    # 7-byte User Data Header leaves 153 chars per segment for GSM-7 encoding
+    return math.ceil(length / 153)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_sms_batch(request):
@@ -464,17 +474,20 @@ def send_sms_batch(request):
     if not contacts:
         return Response({'message': 'No more contacts to message in this campaign.', 'sent': 0})
 
-    # Check credit balance before sending
+    # Check credit balance before sending (by segment count)
     num_contacts = len(contacts)
-    credit_cost = num_contacts * limits['sms_credit_cost']
+    template_segments = calculate_sms_segments(campaign.message_template)
+    credit_cost = num_contacts * template_segments * limits['sms_credit_cost']
+    
     if request.user.credits < credit_cost:
         return Response({
-            'error': f"Insufficient credits. This batch of {num_contacts} SMS requires {credit_cost} credits, but you only have {request.user.credits} credits. Please top up."
+            'error': f"Insufficient credits. This batch of {num_contacts} SMS requires {credit_cost} credits ({template_segments} segments per message), but you only have {request.user.credits} credits. Please top up."
         }, status=400)
 
     results = []
     sent_count = 0
     failed_count = 0
+    total_segments_sent = 0
 
     for contact in contacts:
         name = contact.name or 'Friend'
@@ -509,6 +522,7 @@ def send_sms_batch(request):
                 log.sms_message_id = str(resp_data.get('message_id', ''))
                 log.sent_at = timezone.now()
                 sent_count += 1
+                total_segments_sent += calculate_sms_segments(message)
                 results.append({'phone': contact.phone, 'status': 'sent'})
             else:
                 log.status = 'FAILED'
@@ -528,16 +542,16 @@ def send_sms_batch(request):
     campaign.failed_count += failed_count
     campaign.save()
 
-    # Deduct user credits if sent_count > 0 and credits cost is active
+    # Deduct user credits based on exact segments sent
     if sent_count > 0 and limits['sms_credit_cost'] > 0:
-        actual_cost = sent_count * limits['sms_credit_cost']
+        actual_cost = total_segments_sent * limits['sms_credit_cost']
         request.user.credits = max(0, request.user.credits - actual_cost)
         request.user.save()
         
         CreditLedger.objects.create(
             user=request.user,
             amount=-actual_cost,
-            activity=f"Sent {sent_count} SMS via campaign '{campaign.name}'"
+            activity=f"Sent {sent_count} SMS ({total_segments_sent} segments) via campaign '{campaign.name}'"
         )
 
     return Response({
@@ -601,3 +615,72 @@ def marketing_stats(request):
         'sms_credit_cost': limits['sms_credit_cost'],
         'bypass_limits': limits['bypass_limits'],
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_suggest_message(request):
+    """
+    Generate an AI suggested marketing message based on user's BrandIdentity.
+    Body parameters:
+    - topic: (str) optional, e.g., "discount", "new arrival", "reminder"
+    - channel: (str) optional, "WHATSAPP" or "SMS"
+    """
+    from brand.models import BrandIdentity
+    from smartbiz_backend import gemini_utils
+
+    topic = request.data.get('topic', 'General Promotion').strip()
+    channel = request.data.get('channel', 'WHATSAPP').upper()
+
+    # Retrieve BrandIdentity
+    try:
+        brand = BrandIdentity.objects.get(user=request.user)
+        biz_name = brand.business_name
+        niche = brand.niche or "general retail/service"
+        voice = brand.brand_voice or "friendly and professional"
+        audience = brand.target_audience or "general public in Nigeria"
+        pitch = brand.elevator_pitch or ""
+    except BrandIdentity.DoesNotExist:
+        # Fallback if profile not created
+        biz_name = request.user.business_name or "our business"
+        niche = "general retail"
+        voice = "friendly and professional"
+        audience = "customers"
+        pitch = ""
+
+    prompt = f"""
+    You are an expert digital marketer for Nigerian SMEs. Write a personalized, high-converting marketing broadcast message for a business with the following profile:
+    - Business Name: {biz_name}
+    - Niche/Industry: {niche}
+    - Target Audience: {audience}
+    - Vibe/Brand Voice: {voice}
+    - Elevator Pitch: {pitch}
+
+    The objective of this message is: {topic}
+    The delivery channel is: {channel}
+
+    Requirements:
+    1. Start the message with a greeting that includes the placeholder '{{{{name}}}}' so the user can dynamically insert each contact's name (e.g. "Hi {{{name}}}! 👋" or "Hello {{{name}}},").
+    2. Write in a friendly, local, and engaging tone suited for Nigerian customers (you can use popular Nigerian terminology or pidgin phrases if the vibe is casual, e.g., "Quick one," "Trust your day is going well," etc.).
+    3. Keep it highly action-oriented (include a clear Call To Action).
+    4. Size constraints:
+       - If channel is 'SMS', make it very concise (strictly under 160 characters if possible, maximum 300 characters, no emojis).
+       - If channel is 'WHATSAPP', make it detailed but readable (under 800 characters, use emojis appropriately, and format with bullet points or bold text where helpful).
+    5. Return ONLY the drafted message content. Do not include any intro, outro, or explanations.
+    """
+
+    try:
+        suggestion = gemini_utils.generate_text_content(prompt)
+        # Clean up any potential markdown wraps
+        suggestion = suggestion.strip()
+        if suggestion.startswith("```"):
+            try:
+                # If wrapped as ``` or ```text, split it out
+                parts = suggestion.split("\n", 1)
+                if len(parts) > 1:
+                    suggestion = parts[1].rsplit("```", 1)[0].strip()
+            except Exception:
+                pass
+        return Response({'suggestion': suggestion})
+    except Exception as e:
+        return Response({'error': f"Failed to generate suggestion: {str(e)}"}, status=500)
