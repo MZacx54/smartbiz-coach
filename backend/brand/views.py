@@ -215,12 +215,16 @@ class GenerateBrandLogoView(views.APIView):
         
         from smartbiz_backend import gemini_utils
         try:
-            prompt_svg = f"Create a simple, modern SVG logo for {prompt}. Use clean shapes. Return ONLY the SVG code. No markdown or explanation."
+            prompt_svg = f"Create a simple, modern SVG logo for {prompt}. Use clean shapes. Return ONLY the SVG code. No markdown or explanation. Ensure standard namespaces are included."
             svg_code = gemini_utils.generate_text_content(prompt_svg)
             
-            # Clean markdown if present
-            svg_code = re.sub(r'```(svg)?\s*', '', svg_code)
-            svg_code = re.sub(r'```\s*', '', svg_code).strip()
+            # Clean conversational wrappers and extract strictly the SVG node
+            match = re.search(r'<svg.*?</svg>', svg_code, re.DOTALL | re.IGNORECASE)
+            if match:
+                svg_code = match.group(0)
+            else:
+                svg_code = re.sub(r'```(svg)?\s*', '', svg_code)
+                svg_code = re.sub(r'```\s*', '', svg_code).strip()
             
             import base64
             encoded_svg = base64.b64encode(svg_code.encode('utf-8')).decode('utf-8')

@@ -200,21 +200,267 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     setFormData({ name: '', niche: '', vibe: '', description: '', tone: 'Corporate' });
   };
 
-  // Download the brand kit as a JSON backup file so user can always access it locally
+  // Download the brand kit as a beautiful interactive HTML page so users can view it easily offline
   const handleDownloadKit = () => {
     if (!localBrandData) return;
-    const kitData = JSON.stringify(localBrandData, null, 2);
-    const blob = new Blob([kitData], { type: 'application/json' });
+    
+    const logoImg = getLogoUrl(localBrandData);
+    const primaryColor = localBrandData.colors?.primary || '#10b981';
+    const secondaryColor = localBrandData.colors?.secondary || '#0f766e';
+    const accentColor = localBrandData.colors?.accent || '#f59e0b';
+    const fontsPrimary = localBrandData.fonts?.primary || 'Montserrat';
+    const fontsSecondary = localBrandData.fonts?.secondary || 'Inter';
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${localBrandData.businessName} - Official Brand Kit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Montserrat:wght@700;900&family=Outfit:wght@600;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: ${primaryColor};
+      --secondary: ${secondaryColor};
+      --accent: ${accentColor};
+    }
+    body {
+      font-family: '${fontsSecondary}', 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+    header {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      text-align: center;
+      padding: 60px 20px;
+      position: relative;
+    }
+    .logo-container {
+      width: 120px;
+      height: 120px;
+      background: white;
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      overflow: hidden;
+      border: 3px solid white;
+    }
+    .logo-img {
+      width: 110px;
+      height: 110px;
+      object-fit: contain;
+    }
+    h1 {
+      font-family: '${fontsPrimary}', 'Montserrat', sans-serif;
+      font-size: 36px;
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+    .tagline-sub {
+      font-size: 18px;
+      opacity: 0.9;
+      margin: 10px 0 0;
+      font-style: italic;
+    }
+    .container {
+      max-width: 1000px;
+      margin: -40px auto 60px;
+      padding: 0 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      padding: 30px;
+      margin-bottom: 30px;
+      border: 1px solid #e2e8f0;
+    }
+    .card-title {
+      font-family: '${fontsPrimary}', 'Montserrat', sans-serif;
+      font-size: 20px;
+      color: #0f172a;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+      margin-top: 0;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    @media (min-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; gap: 30px; }
+    }
+    .color-swatch {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .swatch-circle {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    .swatch-label {
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .swatch-hex {
+      font-family: monospace;
+      color: #64748b;
+    }
+    .tagline-item {
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-left: 4px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 10px;
+      font-style: italic;
+    }
+    .policy-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .whatsapp-bubble {
+      background: #e7f8f2;
+      border: 1px solid #c2ecd9;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo-container">
+      <img src="${logoImg}" class="logo-img" alt="Logo" />
+    </div>
+    <h1>${localBrandData.businessName}</h1>
+    <p class="tagline-sub">${localBrandData.niche} • ${localBrandData.vibe}</p>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="card-title">🎨 Brand Assets & Palette</div>
+      <div class="grid-2">
+        <div>
+          <h3>Color Swatches</h3>
+          <div class="color-swatch">
+            <div class="swatch-circle" style="background-color: var(--primary)"></div>
+            <div>
+              <div class="swatch-label">Primary Color</div>
+              <div class="swatch-hex">${primaryColor}</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="swatch-circle" style="background-color: var(--secondary)"></div>
+            <div>
+              <div class="swatch-label">Secondary Color</div>
+              <div class="swatch-hex">${secondaryColor}</div>
+            </div>
+          </div>
+          <div class="color-swatch">
+            <div class="swatch-circle" style="background-color: var(--accent)"></div>
+            <div>
+              <div class="swatch-label">Accent Color</div>
+              <div class="swatch-hex">${accentColor}</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h3>Typography & Strategy</h3>
+          <p><strong>Headlines Font:</strong> ${fontsPrimary}</p>
+          <p><strong>Body Text Font:</strong> ${fontsSecondary}</p>
+          <p><strong>Brand Voice:</strong> ${localBrandData.brandVoice || ''}</p>
+          <p><strong>Elevator Pitch:</strong><br><span style="color:#475569; font-style:italic;">"${localBrandData.elevatorPitch || ''}"</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📢 Strategic Messaging & Taglines</div>
+      <div>
+        <h3>Key Taglines</h3>
+        ${(localBrandData.taglines || []).map(t => `<div class="tagline-item">"${t}"</div>`).join('')}
+      </div>
+      <div style="margin-top: 20px;">
+        <h3>Social Media Bio</h3>
+        <p style="background: #f8fafc; padding: 15px; border-radius: 8px; color: #475569; white-space: pre-line;">${localBrandData.socialBio || ''}</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🛡️ Trust & Policies</div>
+      <div class="policy-box">
+        <strong>💳 Payment Policy:</strong><br>${localBrandData.policies?.payment || ''}
+      </div>
+      <div class="policy-box" style="background: #f0f9ff; border-color: #bae6fd;">
+        <strong>🚚 Delivery Terms:</strong><br>${localBrandData.policies?.delivery || ''}
+      </div>
+      <div class="policy-box" style="background: #fef2f2; border-color: #fecaca;">
+        <strong>🔄 Refund/Return Policy:</strong><br>${localBrandData.policies?.refund || ''}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💬 WhatsApp Business Templates</div>
+      <h3>Auto Greeting</h3>
+      <div class="whatsapp-bubble">
+        ${localBrandData.whatsappGreeting || ''}
+      </div>
+      
+      ${localBrandData.whatsappContent?.broadcastMessages?.length ? `
+        <h3>Broadcast Message</h3>
+        <div class="whatsapp-bubble" style="background: #fffbeb; border-color: #fde68a;">
+          <strong>${localBrandData.whatsappContent.broadcastMessages[0].title}:</strong><br>
+          ${localBrandData.whatsappContent.broadcastMessages[0].message}
+        </div>
+      ` : ''}
+    </div>
+  </div>
+
+  <footer>
+    <p>Generated by SmartBiz Coach AI. Double-click this file anytime to view your Brand Kit.</p>
+  </footer>
+</body>
+</html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     const businessName = localBrandData.businessName || 'MyBrand';
-    a.download = `${businessName.replace(/\s+/g, '_')}_BrandKit.json`;
+    a.download = `${businessName.replace(/\s+/g, '_')}_BrandKit.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Brand Kit downloaded! Open the file anytime to view your brand data.');
+    toast.success('Interactive HTML Brand Kit downloaded!');
   };
 
   const generateWhatsAppLink = () => {
@@ -227,6 +473,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
   const handleExport = () => {
     if (!localBrandData) return;
+
+    const logoImg = getLogoUrl(localBrandData);
 
     // Robust Export Function
     const printContent = `
@@ -242,7 +490,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             .color-container { display: flex; gap: 20px; }
             .color-box { width: 100px; height: 100px; border-radius: 12px; margin-bottom: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #ddd; }
             .color-info { font-size: 14px; font-weight: bold; font-family: monospace; }
-            .logo { width: 150px; height: 150px; border-radius: 20px; object-fit: cover; margin-bottom: 20px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+            .logo { width: 150px; height: 150px; border-radius: 20px; object-fit: contain; margin-bottom: 20px; border: 1px solid #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: white; }
             .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
             .tagline { font-style: italic; background: #f9f9f9; padding: 15px; border-left: 4px solid ${localBrandData?.colors?.secondary || '#666'}; margin-bottom: 10px; border-radius: 0 8px 8px 0; }
             .policy-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; font-size: 12px; margin-bottom: 10px; }
@@ -254,7 +502,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         </head>
         <body>
           <div style="text-align: center; margin-bottom: 50px;">
-            ${localBrandData.logoUrl ? `<img src="${localBrandData.logoUrl}" class="logo" />` : ''}
+            <img src="${logoImg}" class="logo" alt="Logo" />
             <h1>${localBrandData.businessName}</h1>
             <h2>${localBrandData.niche}</h2>
             <p style="font-size: 20px; color: #555; font-style: italic; margin-top: 10px;">"${localBrandData.elevatorPitch}"</p>
@@ -382,6 +630,58 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     return `Check out my new brand identity generated by SmartBiz Coach! 🚀\n\nBusiness Name: ${localBrandData.businessName || ''}\nNiche: ${localBrandData.niche || ''}\nTagline: ${localBrandData?.taglines?.[0] || ''}\n\nCreate yours now!`;
   };
 
+  const getNicheImage = (niche: string) => {
+    const n = (niche || '').toLowerCase();
+    if (n.includes('food') || n.includes('catering') || n.includes('restaurant') || n.includes('mama put')) {
+      return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('fashion') || n.includes('tailor') || n.includes('boutique') || n.includes('clothing')) {
+      return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('beauty') || n.includes('skincare') || n.includes('cosmetic') || n.includes('salon')) {
+      return 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('barber') || n.includes('hair')) {
+      return 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('laundry') || n.includes('dryclean')) {
+      return 'https://images.unsplash.com/photo-1545173168-9f1947e80154?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('tech') || n.includes('computer') || n.includes('repair') || n.includes('phone')) {
+      return 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('agriculture') || n.includes('farm') || n.includes('poultry')) {
+      return 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('carpenter') || n.includes('wood') || n.includes('furniture')) {
+      return 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=800&q=80';
+    }
+    return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80';
+  };
+
+  const getLogoUrl = (brand: BrandIdentity) => {
+    if (brand.logoUrl) return brand.logoUrl;
+    const firstLetter = (brand.businessName || '?').charAt(0).toUpperCase();
+    const primaryColor = brand.colors?.primary || '#10b981';
+    const secondaryColor = brand.colors?.secondary || '#0f766e';
+    const accentColor = brand.colors?.accent || '#f59e0b';
+    const svg = `
+      <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${primaryColor}" />
+            <stop offset="100%" stop-color="${secondaryColor}" />
+          </linearGradient>
+        </defs>
+        <circle cx="100" cy="100" r="85" fill="url(#logo-grad)" />
+        <circle cx="100" cy="100" r="72" fill="none" stroke="${accentColor}" stroke-width="4" stroke-dasharray="8 6" opacity="0.8" />
+        <text x="50%" y="54%" font-family="'Montserrat', 'Outfit', sans-serif" font-weight="900" font-size="76" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${firstLetter}</text>
+      </svg>
+    `;
+    const base64 = btoa(unescape(encodeURIComponent(svg)));
+    return `data:image/svg+xml;base64,${base64}`;
+  };
+
   // --- Mockup Components ---
 
   const ReceiptPreview = ({ brand }: { brand: BrandIdentity }) => (
@@ -390,11 +690,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       <div className="absolute -bottom-2 left-0 right-0 h-4 bg-transparent bg-[radial-gradient(circle,transparent_50%,#fff_50%)] bg-[length:10px_10px] rotate-180"></div>
 
       <div className="text-center mb-4 border-b-2 border-dashed border-gray-300 pb-4">
-        {brand?.logoUrl ? (
-          <img src={brand.logoUrl} className="w-12 h-12 mx-auto mb-2 grayscale object-cover rounded-full" />
-        ) : (
-          <div className="text-xl font-bold uppercase mb-1">{brand?.businessName || ''}</div>
-        )}
+        <img src={getLogoUrl(brand)} className="w-12 h-12 mx-auto mb-2 object-contain rounded-full" alt="Logo" />
         <div className="uppercase font-bold text-lg leading-none mb-1">{brand?.businessName || ''}</div>
         <p className="text-[10px] text-gray-500">{(brand?.elevatorPitch || '').substring(0, 50)}...</p>
         <p className="text-[10px] text-gray-500 mt-1">Tel: +234 906 455 6107</p>
@@ -461,11 +757,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         <div className="h-full flex flex-col items-center justify-center p-4 text-center text-white relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle,rgba(255,255,255,0.8)_2px,transparent_2px)] bg-[length:15px_15px]"></div>
 
-          {brand?.logoUrl ? (
-            <img src={brand.logoUrl} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-cover relative z-10" />
-          ) : (
-            <div className="text-4xl font-bold mb-2 border-4 border-white p-2 z-10">{brand?.businessName?.charAt(0) || '?'}</div>
-          )}
+          <img src={getLogoUrl(brand)} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-contain relative z-10 bg-white" />
           <h3 className="text-lg font-bold uppercase tracking-wider z-10 leading-tight">{brand?.businessName}</h3>
           <p className="text-[10px] mt-2 opacity-90 z-10">{brand?.niche}</p>
         </div>
@@ -493,13 +785,16 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const FlyerPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-xs mx-auto aspect-[4/5] bg-white shadow-xl relative overflow-hidden flex flex-col border border-gray-200">
       {/* Header Image Area */}
-      <div className="h-1/2 bg-gray-200 relative">
-        {brand?.logoUrl && <img src={brand.logoUrl} className="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm" />}
+      <div className="h-1/2 bg-gray-200 relative overflow-hidden">
+        <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
         <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black opacity-60"></div>
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center z-10">
           <h2 className="text-white text-3xl font-black uppercase text-center px-4 leading-none drop-shadow-md transform -rotate-2">
             Grand<br /><span className="text-yellow-400">Opening</span><br />Sale
           </h2>
+        </div>
+        <div className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full overflow-hidden bg-white shadow p-0.5">
+          <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Logo" />
         </div>
         <div className="absolute bottom-0 left-0 w-full h-8 bg-white transform -skew-y-3 origin-bottom-left scale-110"></div>
       </div>
@@ -544,13 +839,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-tr-full opacity-20" style={{ backgroundColor: brand?.colors?.accent || '#eee' }}></div>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10">
-          {brand?.logoUrl ? (
-            <img src={brand.logoUrl} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-cover" />
-          ) : (
-            <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white mb-2 shadow-md" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
-              {brand?.businessName?.charAt(0) || '?'}
-            </div>
-          )}
+          <img src={getLogoUrl(brand)} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-contain bg-white p-0.5" />
           <h3 className="font-bold text-xl text-gray-900" style={{ fontFamily: 'serif' }}>{brand?.businessName}</h3>
           <p className="text-xs uppercase tracking-widest mt-1 text-gray-500">{brand?.niche}</p>
         </div>
@@ -574,15 +863,19 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const InstagramPostPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-sm mx-auto bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <div className="p-3 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-          {brand?.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : brand?.businessName?.charAt(0) || '?'}
+        <div className="w-8 h-8 rounded-full bg-white border flex items-center justify-center overflow-hidden">
+          <img src={getLogoUrl(brand)} className="w-full h-full object-contain" alt="Avatar" />
         </div>
         <span className="text-xs font-bold text-gray-900">{brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}</span>
       </div>
       <div className="aspect-square bg-gray-100 flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-50" style={{ backgroundColor: brand?.colors?.secondary || '#ccc' }}></div>
-        <div className="relative z-10 bg-white p-6 shadow-lg rounded-lg max-w-[80%] text-center">
-          <p className="font-bold text-xl" style={{ color: brand?.colors?.primary || '#333' }}>"{brand?.taglines?.[0] || 'Tagline Placeholder'}"</p>
+        <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover" alt="Post Background" />
+        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="relative z-10 bg-white/95 backdrop-blur p-6 shadow-xl rounded-xl max-w-[85%] text-center border border-white/20">
+          <p className="font-bold text-lg leading-tight text-gray-900">"{brand?.taglines?.[0] || 'Tagline Placeholder'}"</p>
+          <div className="mt-4 w-10 h-10 rounded-full mx-auto bg-white p-0.5 shadow">
+            <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Mini Logo" />
+          </div>
         </div>
       </div>
       <div className="p-3">
@@ -605,23 +898,18 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         </div>
       </div>
       {/* Cover Area */}
-      <div className="relative h-48 w-full overflow-hidden" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.secondary ? `repeating-linear-gradient(45deg, ${brand?.colors?.secondary} 0, ${brand?.colors?.secondary} 10px, transparent 0, transparent 50%)` : 'none' }}></div>
-        <div className="absolute bottom-4 right-6 text-right">
-          <h1 className="text-white font-bold text-2xl shadow-sm">{brand?.businessName}</h1>
-          <p className="text-white/90 text-sm">{brand?.taglines?.[0] || 'Tagline'}</p>
+      <div className="relative h-48 w-full overflow-hidden">
+        <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+        <div className="absolute inset-0 bg-black/45"></div>
+        <div className="absolute bottom-4 right-6 text-right z-10">
+          <h1 className="text-white font-bold text-2xl drop-shadow-md">{brand?.businessName}</h1>
+          <p className="text-white/90 text-sm italic">{brand?.taglines?.[0] || 'Tagline'}</p>
         </div>
       </div>
       {/* Profile Section */}
       <div className="px-6 pb-4 relative">
-        <div className="absolute -top-12 left-6 w-24 h-24 rounded-full border-4 border-white bg-white shadow-md overflow-hidden flex items-center justify-center">
-          {brand?.logoUrl ? (
-            <img src={brand.logoUrl} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-3xl font-bold" style={{ backgroundColor: brand?.colors?.accent || '#ccc', color: '#fff' }}>
-              {brand?.businessName?.charAt(0) || '?'}
-            </div>
-          )}
+        <div className="absolute -top-12 left-6 w-24 h-24 rounded-full border-4 border-white bg-white shadow-md overflow-hidden flex items-center justify-center p-1">
+          <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Logo" />
         </div>
         <div className="pl-28 pt-2">
           <h2 className="font-bold text-lg text-gray-900">{brand?.businessName}</h2>
@@ -634,27 +922,24 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const TwitterHeaderPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-lg mx-auto bg-black border border-gray-800 rounded-xl shadow-sm overflow-hidden text-white">
       {/* Header */}
-      <div className="h-32 w-full relative overflow-hidden flex items-center justify-center" style={{ backgroundColor: brand?.colors?.secondary || '#333' }}>
-        <div className="absolute inset-0 opacity-30" style={{ backgroundColor: brand?.colors?.primary || '#000' }}></div>
-        <h2 className="relative z-10 font-bold text-2xl opacity-50 tracking-widest uppercase">{brand?.niche}</h2>
+      <div className="h-32 w-full relative overflow-hidden flex items-center justify-center">
+        <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+        <div className="absolute inset-0 bg-black/50"></div>
+        <h2 className="relative z-10 font-bold text-2xl opacity-70 tracking-widest uppercase">{brand?.niche}</h2>
       </div>
 
       {/* Profile Info */}
       <div className="px-4 pb-4 relative">
         <div className="flex justify-between items-start">
-          <div className="-mt-8 w-16 h-16 rounded-full border-2 border-black bg-gray-900 overflow-hidden flex items-center justify-center">
-            {brand?.logoUrl ? (
-              <img src={brand.logoUrl} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-xl font-bold">{brand?.businessName?.charAt(0) || '?'}</span>
-            )}
+          <div className="-mt-8 w-16 h-16 rounded-full border-2 border-black bg-white overflow-hidden flex items-center justify-center p-0.5 z-10">
+            <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Logo" />
           </div>
           <button className="mt-2 border border-gray-600 rounded-full px-4 py-1 text-sm font-bold hover:bg-gray-900">Follow</button>
         </div>
         <div className="mt-2">
           <h3 className="font-bold text-lg leading-tight">{brand?.businessName}</h3>
           <p className="text-gray-500 text-sm">@{brand?.businessName ? brand.businessName.replace(/\s+/g, '') : 'business'}</p>
-          <p className="mt-2 text-sm">{brand?.socialBio}</p>
+          <p className="mt-2 text-sm text-gray-300">{brand?.socialBio}</p>
           <div className="flex gap-4 mt-2 text-xs text-gray-500">
             <span>📍 Nigeria</span>
             <span>🔗 {brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}.com</span>
@@ -672,8 +957,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       </div>
 
       <div className="absolute top-4 left-4 flex items-center gap-2 z-20">
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-white/50">
-          {brand?.logoUrl ? <img src={brand.logoUrl} className="w-full h-full object-cover" /> : <div className="bg-green-500 w-full h-full"></div>}
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-white/50 bg-white p-0.5">
+          <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Logo" />
         </div>
         <div>
           <p className="text-white text-sm font-bold shadow-sm">{brand?.businessName}</p>
@@ -681,14 +966,15 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         </div>
       </div>
 
-      <div className="h-full w-full flex flex-col items-center justify-center text-center p-6" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
-        <h2 className="text-white font-bold text-3xl mb-4" style={{ fontFamily: brand?.fonts?.primary || 'sans-serif' }}>BIG SALES!</h2>
-        <div className="bg-white text-black p-4 rounded-lg shadow-lg rotate-2 mb-8">
+      <div className="h-full w-full flex flex-col items-center justify-center text-center p-6 relative overflow-hidden" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
+        <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover opacity-20" alt="Background" />
+        <h2 className="relative z-10 text-white font-bold text-3xl mb-4" style={{ fontFamily: brand?.fonts?.primary || 'sans-serif' }}>BIG SALES!</h2>
+        <div className="relative z-10 bg-white text-black p-4 rounded-lg shadow-lg rotate-2 mb-8">
           <p className="font-bold text-xl">{brand?.taglines?.[0] || 'Quality Products'}</p>
         </div>
-        <p className="text-white/90 text-sm">Don't miss out on our new arrivals.</p>
-        <div className="absolute bottom-20 animate-bounce">
-          <p className="text-white text-xs">Swipe up to chat</p>
+        <p className="relative z-10 text-white/90 text-sm">Don't miss out on our new arrivals.</p>
+        <div className="absolute bottom-20 animate-bounce z-10">
+          <p className="text-white text-xs font-bold">Swipe up to chat</p>
           <p className="text-white">^</p>
         </div>
       </div>
@@ -702,20 +988,17 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const LinkedInBannerPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-lg mx-auto bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       {/* LinkedIn Banner */}
-      <div className="h-28 w-full relative flex items-center pl-8" style={{ backgroundColor: brand?.colors?.secondary || '#333' }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: brand?.colors?.primary ? `radial-gradient(${brand?.colors?.primary} 10%, transparent 10%)` : 'none', backgroundSize: '10px 10px' }}></div>
+      <div className="h-28 w-full relative flex items-center pl-8 overflow-hidden">
+        <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+        <div className="absolute inset-0 bg-black/45"></div>
         <div className="relative z-10">
           <h2 className="text-xl font-bold text-white uppercase tracking-wide">{brand?.businessName}</h2>
           <p className="text-xs text-white/90">{brand?.elevatorPitch}</p>
         </div>
       </div>
       <div className="px-6 pb-6 relative">
-        <div className="absolute -top-10 left-6 w-20 h-20 rounded-full border-4 border-white bg-white shadow-md overflow-hidden flex items-center justify-center">
-          {brand?.logoUrl ? (
-            <img src={brand.logoUrl} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-2xl font-bold">{brand?.businessName?.charAt(0) || '?'}</div>
-          )}
+        <div className="absolute -top-10 left-6 w-20 h-20 rounded-full border-4 border-white bg-white shadow-md overflow-hidden flex items-center justify-center p-1">
+          <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Logo" />
         </div>
         <div className="pt-12">
           <h3 className="font-bold text-lg text-gray-900">{brand?.businessName}</h3>
@@ -852,7 +1135,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <div className="p-8 border-b border-gray-100 bg-gray-50 text-center">
               {localBrandData.logoUrl ? (
                 <div className="flex flex-col items-center animate-in zoom-in">
-                  <img src={localBrandData.logoUrl} alt="Generated Logo" className="w-32 h-32 rounded-full shadow-lg object-cover mb-4 border-4 border-white" />
+                  <img src={localBrandData.logoUrl} alt="Generated Logo" className="w-32 h-32 rounded-full shadow-lg object-contain mb-4 border-4 border-white bg-white" />
                   <p className="text-green-700 font-bold text-sm bg-green-100 px-3 py-1 rounded-full">AI Logo Generated</p>
                   <button
                     onClick={handleGenerateLogo}
@@ -864,9 +1147,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
-                  <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center mb-4 text-4xl text-gray-400 shadow-inner">
-                    ?
-                  </div>
+                  <img src={getLogoUrl(localBrandData)} alt="Dynamic Logo Placeholder" className="w-32 h-32 rounded-full shadow-lg object-contain mb-4 border-4 border-white bg-white" />
+                  <p className="text-amber-700 font-bold text-xs bg-amber-50 px-3 py-1 rounded-full mb-4">Auto-Generated Vector Logo Placeholder</p>
                   <button
                     onClick={handleGenerateLogo}
                     disabled={isGeneratingLogo}

@@ -150,6 +150,58 @@ const PublicStorefront: React.FC = () => {
   const accentColor = brand.colors?.accent || '#f59e0b';
   const headingFont = brand.fonts?.primary || 'Inter';
 
+  const getLogoUrl = () => {
+    if (brand.logoUrl) return brand.logoUrl;
+    const firstLetter = (brand.businessName || '?').charAt(0).toUpperCase();
+    const primaryC = brand.colors?.primary || '#10b981';
+    const secondaryC = brand.colors?.secondary || '#0f766e';
+    const accentC = brand.colors?.accent || '#f59e0b';
+    const svg = `
+      <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${primaryC}" stop-opacity="1" />
+            <stop offset="100%" stop-color="${secondaryC}" stop-opacity="1" />
+          </linearGradient>
+        </defs>
+        <circle cx="100" cy="100" r="85" fill="url(#logo-grad)" />
+        <circle cx="100" cy="100" r="72" fill="none" stroke="${accentC}" stroke-width="4" stroke-dasharray="8 6" opacity="0.8" />
+        <text x="50%" y="54%" font-family="'Montserrat', 'Outfit', sans-serif" font-weight="900" font-size="76" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${firstLetter}</text>
+      </svg>
+    `;
+    const base64 = btoa(unescape(encodeURIComponent(svg)));
+    return `data:image/svg+xml;base64,${base64}`;
+  };
+
+  const getNicheImage = (niche: string) => {
+    const n = (niche || '').toLowerCase();
+    if (n.includes('food') || n.includes('catering') || n.includes('restaurant') || n.includes('mama put')) {
+      return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('fashion') || n.includes('tailor') || n.includes('boutique') || n.includes('clothing')) {
+      return 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('beauty') || n.includes('skincare') || n.includes('cosmetic') || n.includes('salon')) {
+      return 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('barber') || n.includes('hair')) {
+      return 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('laundry') || n.includes('dryclean')) {
+      return 'https://images.unsplash.com/photo-1545173168-9f1947e80154?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('tech') || n.includes('computer') || n.includes('repair') || n.includes('phone')) {
+      return 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('agriculture') || n.includes('farm') || n.includes('poultry')) {
+      return 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=80';
+    }
+    if (n.includes('carpenter') || n.includes('wood') || n.includes('furniture')) {
+      return 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=800&q=80';
+    }
+    return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80';
+  };
+
   // Cart actions
   const addToCart = (product: any) => {
     const existing = cart.find(item => item.product.id === product.id);
@@ -221,7 +273,7 @@ const PublicStorefront: React.FC = () => {
         className="w-full h-48 md:h-64 relative overflow-hidden bg-cover bg-center shadow-inner"
         style={{ 
           backgroundColor: primaryColor,
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4))`
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url(${getNicheImage(brand?.niche)})`
         }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
@@ -237,13 +289,7 @@ const PublicStorefront: React.FC = () => {
             className="w-28 h-28 rounded-[36px] shadow-2xl p-1 bg-white border-4 overflow-hidden -mt-14"
             style={{ borderColor: primaryColor }}
           >
-            {brand.logoUrl ? (
-              <img src={brand.logoUrl} alt={brand.businessName || 'Business'} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-slate-50 text-2xl font-black text-slate-350">
-                {(brand.businessName || 'B').charAt(0)}
-              </div>
-            )}
+            <img src={getLogoUrl()} alt={brand.businessName || 'Business'} className="w-full h-full object-contain rounded-[32px] bg-white" />
           </motion.div>
 
           <div className="space-y-3">
