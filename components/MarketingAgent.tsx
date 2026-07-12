@@ -452,7 +452,7 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
                           <li>Go to <a href="https://termii.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">termii.com</a> and create a free account</li>
                           <li>Copy your API key from the dashboard</li>
                           <li>Add to your backend <code className="bg-slate-100 px-1 rounded">.env</code> file: <code className="bg-slate-100 px-1 rounded">TERMII_API_KEY=your_key_here</code></li>
-                          <li>Re-deploy your backend on Railway</li>
+                          <li>Re-deploy your backend on Render</li>
                         </ol>
                         <p className="text-xs text-amber-600 mt-2">💡 New accounts get ₦200 free SMS credits. Nigerian SMS ~₦2–4 per message.</p>
                       </div>
