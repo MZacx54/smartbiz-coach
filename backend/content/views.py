@@ -198,22 +198,11 @@ class EditImageView(views.APIView):
             return Response({'error': 'Missing image data or prompt'}, status=400)
             
         try:
-            # Construct Vision API payload (OpenAI format)
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt_text},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{mime_type};base64,{image_base64}"
-                            }
-                        }
-                    ]
-                }
-            ]
-            response_text = gemini_utils.make_gemini_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
+            response_text = gemini_utils.generate_text_content(
+                prompt_text,
+                image_base64=image_base64,
+                mime_type=mime_type
+            )
             # Deduct credits after successful call
             deduct_credits(request.user, 'image_edit')
             return Response({'text': response_text})

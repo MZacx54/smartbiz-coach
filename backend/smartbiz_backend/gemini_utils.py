@@ -203,12 +203,19 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None,
         print(f"Gemini JSON generation error: {e}")
         return {"error": str(e)}
 
-def generate_text_content(prompt, audio_base64=None, mime_type=None):
+def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_type=None):
     """
     Generates pure text content using Google Gemini.
-    Supports audio base64 input for transcription and analysis.
+    Supports optional image or audio base64 inputs for vision or voice tasks.
     """
     parts = []
+    if image_base64:
+        parts.append({
+            "inlineData": {
+                "mimeType": mime_type or "image/jpeg",
+                "data": image_base64
+            }
+        })
     if audio_base64:
         parts.append({
             "inlineData": {

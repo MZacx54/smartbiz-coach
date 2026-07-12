@@ -33,7 +33,7 @@ interface ContentStudioProps {
 
 const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateCredits }) => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<TabType>('Post Writer');
+    const [activeTab, setActiveTab] = useState<TabType>('Photo Studio');
 
     // Credit limits modal state
     const [showCreditPrompt, setShowCreditPrompt] = useState(false);
@@ -78,6 +78,63 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [blogTopic, setBlogTopic] = useState('');
     const [blogTone, setBlogTone] = useState<string>('Informative');
     const [blogLength, setBlogLength] = useState<string>('Medium');
+
+    // AI Magic Ideas States
+    const [magicIdeasPost, setMagicIdeasPost] = useState<string[]>([]);
+    const [isLoadingMagicPost, setIsLoadingMagicPost] = useState(false);
+
+    const [magicIdeasVideo, setMagicIdeasVideo] = useState<string[]>([]);
+    const [isLoadingMagicVideo, setIsLoadingMagicVideo] = useState(false);
+
+    const fetchMagicIdeasPost = async () => {
+        setIsLoadingMagicPost(true);
+        try {
+            const result = await geminiService.generateSuggestedPrompts(brand?.niche || 'Small Business', 'POST');
+            if (Array.isArray(result) && result.length > 0) {
+                setMagicIdeasPost(result);
+            } else {
+                setMagicIdeasPost([
+                    "Write a compelling story about how my product solves a common Nigerian problem.",
+                    "Behind the scenes look at my daily business hustle.",
+                    "A warm thank you post spotlighting recent customer feedback."
+                ]);
+            }
+        } catch (e) {
+            console.error("Failed to load magic ideas:", e);
+            setMagicIdeasPost([
+                "Write a compelling story about how my product solves a common Nigerian problem.",
+                "Behind the scenes look at my daily business hustle.",
+                "A warm thank you post spotlighting recent customer feedback."
+            ]);
+        } finally {
+            setIsLoadingMagicPost(false);
+        }
+    };
+
+    const fetchMagicIdeasVideo = async () => {
+        setIsLoadingMagicVideo(true);
+        try {
+            const result = await geminiService.generateSuggestedPrompts(brand?.niche || 'Small Business', 'SCRIPT');
+            if (Array.isArray(result) && result.length > 0) {
+                setMagicIdeasVideo(result);
+            } else {
+                setMagicIdeasVideo([
+                    "A funny sketch about customers who promise to pay tomorrow but never do.",
+                    "A day in the life of a small business owner in Lagos.",
+                    "3 reasons to digitize your retail inventory list."
+                ]);
+            }
+        } catch (e) {
+            console.error("Failed to load magic ideas:", e);
+            setMagicIdeasVideo([
+                "A funny sketch about customers who promise to pay tomorrow but never do.",
+                "A day in the life of a small business owner in Lagos.",
+                "3 reasons to digitize your retail inventory list."
+            ]);
+        } finally {
+            setIsLoadingMagicVideo(false);
+        }
+    };
 
     // Partnership Pitch State
     const [partnerName, setPartnerName] = useState<string>('SMEDAN');
@@ -260,12 +317,12 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     };
 
     const tabs: { id: TabType; icon: string }[] = [
+        { id: 'Photo Studio', icon: '📸' },
         { id: 'Post Writer', icon: '✍️' },
-        { id: 'Blog Writer', icon: '📝' },
         { id: 'Video Script', icon: '🎬' },
         { id: 'Weekly Plan', icon: '📅' },
+        { id: 'Blog Writer', icon: '📝' },
         { id: 'Partnership Pitch', icon: '🤝' },
-        { id: 'Photo Studio', icon: '📸' },
         { id: 'Creations History', icon: '📜' }
     ];
 
@@ -321,9 +378,9 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 <div>
                                     <div className="flex justify-between items-center mb-3">
                                         <label className="block text-sm font-bold text-slate-700">Topic</label>
-                                        <button type="button" className="flex items-center space-x-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors"
-                                            onClick={() => setPostTopic("Write a compelling story about how my product solves a common Nigerian problem.")}>
-                                            <span>✨</span><span>Get Magic Ideas</span>
+                                        <button type="button" disabled={isLoadingMagicPost} className="flex items-center space-x-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                                            onClick={fetchMagicIdeasPost}>
+                                            <span>✨</span><span>{isLoadingMagicPost ? "Generating..." : "Get Magic Ideas"}</span>
                                         </button>
                                     </div>
                                     <div className="relative">
@@ -331,6 +388,28 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             placeholder="e.g. 50% discount on all wigs this weekend" value={postTopic} onChange={(e) => setPostTopic(e.target.value)}
                                         ></textarea>
                                     </div>
+                                    {isLoadingMagicPost && (
+                                        <p className="text-xs text-indigo-650 animate-pulse mt-2 flex items-center gap-1 font-medium">
+                                            <span>✨</span> Tailoring custom ideas for {brand?.businessName || brand?.niche || "your brand"}...
+                                        </p>
+                                    )}
+                                    {!isLoadingMagicPost && magicIdeasPost.length > 0 && (
+                                        <div className="mt-3 space-y-2 bg-slate-50/50 p-3.5 rounded-xl border border-slate-200">
+                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">💡 Click an idea to fill:</p>
+                                            <div className="flex flex-col gap-1.5">
+                                                {magicIdeasPost.map((idea, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => setPostTopic(idea)}
+                                                        className="text-left text-xs bg-white hover:bg-indigo-50 hover:text-indigo-700 p-2.5 rounded-xl border border-slate-200 hover:border-indigo-200 transition-all font-medium text-slate-705 shadow-sm"
+                                                    >
+                                                        {idea}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -443,9 +522,9 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 <div>
                                     <div className="flex justify-between items-center mb-3">
                                         <label className="block text-sm font-bold text-slate-700">Video Topic / Concept</label>
-                                        <button type="button" className="flex items-center space-x-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors"
-                                            onClick={() => setVideoTopic("A funny sketch about customers who promise to pay 'tomorrow' but never do.")}>
-                                            <span>✨</span><span>Get Magic Ideas</span>
+                                        <button type="button" disabled={isLoadingMagicVideo} className="flex items-center space-x-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+                                            onClick={fetchMagicIdeasVideo}>
+                                            <span>✨</span><span>{isLoadingMagicVideo ? "Generating..." : "Get Magic Ideas"}</span>
                                         </button>
                                     </div>
                                     <div className="relative">
@@ -453,6 +532,28 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             placeholder="e.g. 3 reasons to digitize your retail inventory list" value={videoTopic} onChange={(e) => setVideoTopic(e.target.value)}
                                         ></textarea>
                                     </div>
+                                    {isLoadingMagicVideo && (
+                                        <p className="text-xs text-indigo-650 animate-pulse mt-2 flex items-center gap-1 font-medium">
+                                            <span>✨</span> Tailoring custom video concepts for {brand?.businessName || brand?.niche || "your brand"}...
+                                        </p>
+                                    )}
+                                    {!isLoadingMagicVideo && magicIdeasVideo.length > 0 && (
+                                        <div className="mt-3 space-y-2 bg-slate-55/50 p-3.5 rounded-xl border border-slate-200">
+                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">💡 Click an idea to fill:</p>
+                                            <div className="flex flex-col gap-1.5">
+                                                {magicIdeasVideo.map((idea, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => setVideoTopic(idea)}
+                                                        className="text-left text-xs bg-white hover:bg-indigo-50 hover:text-indigo-700 p-2.5 rounded-xl border border-slate-200 hover:border-indigo-200 transition-all font-medium text-slate-705 shadow-sm"
+                                                    >
+                                                        {idea}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -658,9 +759,9 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 <div className="space-y-6">
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
                                                         <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Main Caption</h4>
-                                                        <p className="text-white whitespace-pre-wrap">{generatedContent.caption}</p>
+                                                        <p className="text-white whitespace-pre-wrap">{generatedContent.caption || generatedContent.post}</p>
                                                         <div className="flex flex-wrap gap-2 pt-2">
-                                                            {generatedContent.hashtags?.map((tag: string) => (
+                                                            {(generatedContent.hashtags || generatedContent.tags)?.map((tag: string) => (
                                                                 <span key={tag} className="text-indigo-300 font-bold">#{tag}</span>
                                                             ))}
                                                         </div>
@@ -669,18 +770,18 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                                             <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-2">Call to Action</h4>
-                                                            <p className="text-white font-medium">{generatedContent.callToAction}</p>
+                                                            <p className="text-white font-medium">{generatedContent.callToAction || generatedContent.cta}</p>
                                                         </div>
                                                         <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                                             <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mb-2">Image Text Overlay</h4>
-                                                            <p className="text-white font-medium italic">"{generatedContent.imageText}"</p>
+                                                            <p className="text-white font-medium italic">"{generatedContent.imageText || generatedContent.overlay || generatedContent.image_text}"</p>
                                                         </div>
                                                     </div>
 
                                                     <div className="bg-indigo-500/10 p-6 rounded-2xl border border-indigo-500/20">
                                                         <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest mb-3">🤝 Relationship Closer (DM Script)</h4>
                                                         <p className="text-indigo-100 italic">"Use this to reply to comments or DMs:"</p>
-                                                        <p className="text-white mt-2 font-medium">{generatedContent.dmReply}</p>
+                                                        <p className="text-white mt-2 font-medium">{generatedContent.dmReply || generatedContent.dm_reply || generatedContent.reply}</p>
                                                     </div>
                                                 </div>
                                             )}
@@ -689,25 +790,25 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 <div className="space-y-6">
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
                                                         <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Blog Post Headline</h4>
-                                                        <h3 className="text-lg font-bold text-white font-heading">{generatedContent.title}</h3>
+                                                        <h3 className="text-lg font-bold text-white font-heading">{generatedContent.title || generatedContent.headline}</h3>
                                                     </div>
                                                     
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
                                                         <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Meta Description</h4>
-                                                        <p className="text-slate-350 italic">"{generatedContent.metaDescription}"</p>
+                                                        <p className="text-slate-350 italic">"{generatedContent.metaDescription || generatedContent.meta_description || generatedContent.description}"</p>
                                                     </div>
 
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
                                                         <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Article Body (GEO Optimized)</h4>
                                                         <div className="text-slate-200 whitespace-pre-wrap leading-relaxed max-w-none text-xs font-medium">
-                                                            {generatedContent.blogContent}
+                                                            {generatedContent.blogContent || generatedContent.blog_content || generatedContent.content || generatedContent.body}
                                                         </div>
                                                     </div>
 
                                                     <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                                                         <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-2">Target SEO Keywords</h4>
                                                         <div className="flex flex-wrap gap-2">
-                                                            {generatedContent.keywords?.map((keyword: string) => (
+                                                            {(generatedContent.keywords || generatedContent.key_words)?.map((keyword: string) => (
                                                                 <span key={keyword} className="bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded-full text-[10px] font-bold">#{keyword}</span>
                                                             ))}
                                                         </div>
@@ -719,26 +820,26 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 <div className="space-y-6">
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
                                                         <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Proposal Subject Line</h4>
-                                                        <p className="text-white font-bold">{generatedContent.subjectLine}</p>
+                                                        <p className="text-white font-bold">{generatedContent.subjectLine || generatedContent.subject_line || generatedContent.subject}</p>
                                                     </div>
 
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
                                                         <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Email Body Proposal</h4>
-                                                        <p className="text-white whitespace-pre-wrap leading-relaxed text-xs">{generatedContent.emailBody}</p>
+                                                        <p className="text-white whitespace-pre-wrap leading-relaxed text-xs">{generatedContent.emailBody || generatedContent.email_body || generatedContent.body}</p>
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
                                                             <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-3">Key Benefits to Partner</h4>
                                                             <ul className="list-disc pl-4 space-y-2 text-slate-350 text-xs">
-                                                                {generatedContent.keyBenefits?.map((b: string, i: number) => (
+                                                                {(generatedContent.keyBenefits || generatedContent.key_benefits || generatedContent.benefits)?.map((b: string, i: number) => (
                                                                     <li key={i}>{b}</li>
                                                                 ))}
                                                             </ul>
                                                         </div>
                                                         <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
                                                             <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mb-3">Recommended Follow Up</h4>
-                                                            <p className="text-white text-xs leading-relaxed">{generatedContent.followUpStrategy}</p>
+                                                            <p className="text-white text-xs leading-relaxed">{generatedContent.followUpStrategy || generatedContent.follow_up_strategy || generatedContent.followUp}</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -825,7 +926,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                                         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                                                                     </div>
                                                                     <h5 className="text-white font-bold text-xs mt-2 line-clamp-1">{day.theme}</h5>
-                                                                    <p className="text-[10px] text-slate-400 mt-1.5 leading-normal line-clamp-3">{day.postIdea || day.idea}</p>
+                                                                    <p className="text-[10px] text-slate-400 mt-1.5 leading-normal line-clamp-3">{day.postIdea || day.post_idea || day.idea || day.content}</p>
                                                                 </div>
                                                                 <button 
                                                                     onClick={() => {
