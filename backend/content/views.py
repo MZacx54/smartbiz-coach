@@ -57,7 +57,7 @@ class GenerateSocialContentView(views.APIView):
         topic = request.data.get('topic')
         platform = request.data.get('platform')
         tone = request.data.get('tone')
-        format_type = request.data.get('format', 'SINGLE')
+        format_type = request.data.get('format', 'SINGLE').upper().strip()
         user_context = request.data.get('context', '')
 
         if not all([topic, platform, tone]):
@@ -128,7 +128,7 @@ class GenerateVideoScriptView(views.APIView):
         - body: The main value proposition.
         - visual_cues: Array of directions for the camera/creator.
         - audio_suggestions: Background music or SFX ideas.
-        - cta: The closing Call to Action.
+        - callToAction: The closing Call to Action.
         - estimated_duration: In seconds.
         """
         
@@ -146,12 +146,15 @@ class GenerateVideoScriptView(views.APIView):
         - body: The main value proposition/script.
         - visual_cues: Array of directions for the camera/creator.
         - audio_suggestions: Background music or SFX ideas.
-        - cta: The closing Call to Action.
+        - callToAction: The closing Call to Action.
         - estimated_duration: In seconds.
         """
         
         try:
             script = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            if isinstance(script, dict):
+                if 'cta' in script and 'callToAction' not in script:
+                    script['callToAction'] = script['cta']
             deduct_credits(request.user, 'video_script')
             return Response(script)
         except Exception as e:
@@ -440,10 +443,10 @@ class GenerateSuggestedPromptsView(views.APIView):
     
     def post(self, request):
         niche = request.data.get('niche')
-        context = request.data.get('context') # POST, SCRIPT, PHOTO
-        image = request.data.get('image') # Base64
-        mime_type = request.data.get('mimeType')
-        trends = request.data.get('trends', [])
+        context = request.data.get('context') or request.data.get('content_type') # Map both
+        image = request.data.get('image') or request.data.get('image_base_64') or request.data.get('image_base64')
+        mime_type = request.data.get('mimeType') or request.data.get('image_mime_type') or request.data.get('mime_type')
+        trends = request.data.get('trends') or request.data.get('trend_names') or []
         
         trend_context = f"Consider trends: {', '.join(trends)}." if trends else ""
         
@@ -486,10 +489,20 @@ class GenerateWeeklyPlanView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        goal_input = request.data.get('goal') or request.data.get('niche') or 'Brand Awareness'
+        goal_mapping = {
+            'SALES': 'Increase Direct Product Sales & Conversions',
+            'BRAND AWARENESS': 'Grow Brand Authority & Trust',
+            'ENGAGEMENT': 'Engage Community, Spark Conversations & Gather Reviews'
+        }
+        goal = goal_mapping.get(str(goal_input).upper().strip(), str(goal_input))
+        
         brand_context = get_brand_context(request.user)
         prompt = f"""
         {brand_context}
-        Create a 7-day social media content plan for this specific business.
+        CAMPAIGN GOAL: {goal}
+        
+        Create a 7-day social media content plan for this specific business tailored to the CAMPAIGN GOAL above.
         Balance promotional, educational, and entertainment content.
         Themes should be professional yet engaging, reflecting the brand voice.
         Return JSON with keys: weekStartDate, days (array of objects with day, theme, postIdea).
@@ -507,13 +520,28 @@ class GenerateMarketingVideoView(views.APIView):
     throttle_classes = [VideoGenThrottle]
 
     def post(self, request):
-        script_data = request.data.get('script')
-        visual_style = request.data.get('visualStyle', 'REALISTIC')
+        script_data = request.data.get('script') or {}
+        visual_style = request.data.get('visualStyle') or request.data.get('visual_style', 'Professional Cinematic')
         
-        # Step 1: Generate the exact audio script for TTS
+        title = script_data.get('title', '')
+        hook = script_data.get('hook', '')
+        body = script_data.get('body', '')
+        cta = script_data.get('callToAction') or script_data.get('cta', '')
+        
         prompt = f"""
-        Extract ONLY the spoken audio portion from this video script: {script_data}.
-        Return ONLY the raw text that should be spoken by a voiceover artist. No brackets, no stage directions, just the spoken words.
+        Generate a step-by-step visual storyboard for a video script based on these details:
+        Title: {title}
+        Hook: {hook}
+        Body: {body}
+        CTA: {cta}
+        
+        Visual Style: {visual_style}
+        
+        For each scene in the video, provide:
+        1. "visual": A description of what is shown on screen (camera angle, actor action, visual style '{visual_style}').
+        2. "audio": The precise words spoken by the narrator/voiceover during this scene.
+        
+        Return a JSON list of 3-5 objects with keys: visual, audio.
         """
         
         try:
@@ -522,11 +550,23 @@ class GenerateMarketingVideoView(views.APIView):
             import base64
             from gtts import gTTS
             
-            # Get the spoken text
-            spoken_text = gemini_utils.generate_text_content(prompt)
+            # Step 1: Generate storyboard using Gemini
+            storyboard = gemini_utils.generate_json_content(prompt)
             
-            # Step 2: Generate Audio using gTTS (Free Google Text-to-Speech)
-            # tld='com.ng' gives it a slight localized accent (if available, else defaults to standard)
+            # Fallback if storyboard is invalid or contains errors
+            if not isinstance(storyboard, list) or len(storyboard) == 0 or (isinstance(storyboard, dict) and 'error' in storyboard):
+                storyboard = [
+                    {"visual": f"Open scene showing a high-impact hook with title text overlay: '{title}'", "audio": hook},
+                    {"visual": "Cut to mid-shot demonstrating the core benefits and value proposition", "audio": body},
+                    {"visual": f"End card showing a clear call to action: '{cta}'", "audio": cta}
+                ]
+            
+            # Step 2: Combine narration audio for TTS
+            spoken_text = " ".join([scene.get('audio', '') for scene in storyboard if scene.get('audio')])
+            if not spoken_text.strip():
+                spoken_text = f"{hook} {body} {cta}"
+            
+            # Step 3: Generate Audio using gTTS
             tts = gTTS(text=spoken_text, lang='en', tld='com.ng', slow=False)
             
             with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
@@ -534,19 +574,20 @@ class GenerateMarketingVideoView(views.APIView):
                 
             tts.save(temp_name)
             
-            # Step 3: Encode audio to base64 to send to frontend
+            # Step 4: Encode audio to base64
             with open(temp_name, "rb") as audio_file:
                 audio_b64 = base64.b64encode(audio_file.read()).decode('utf-8')
                 
             os.remove(temp_name)
             
-            # Deduct credits (It's a heavy action)
+            # Deduct credits
             deduct_credits(request.user, 'video_script')
             
             return Response({
+                'storyboard': storyboard,
                 'audio_base64': audio_b64,
                 'spoken_text': spoken_text,
-                'message': "Audio Voiceover Generated Successfully! You can use this sound for your Faceless Marketing Reels."
+                'message': "Video storyboard and voiceover generated successfully!"
             })
             
         except Exception as e:

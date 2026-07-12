@@ -226,7 +226,25 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 toast.loading(msg, { id: 'vid-gen' });
             });
             setStoryboard(response.storyboard);
-            toast.success('Video storyboard drafted!', { id: 'vid-gen' });
+            
+            if (response.audio_base64) {
+                try {
+                    const binary = atob(response.audio_base64);
+                    const array = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) {
+                        array[i] = binary.charCodeAt(i);
+                    }
+                    const blob = new Blob([array], { type: 'audio/mp3' });
+                    const url = URL.createObjectURL(blob);
+                    setAudioUrl(url);
+                    toast.success('Storyboard & voiceover generated successfully!', { id: 'vid-gen' });
+                } catch (audioErr) {
+                    console.error("Failed to decode audio:", audioErr);
+                    toast.success('Video storyboard drafted!', { id: 'vid-gen' });
+                }
+            } else {
+                toast.success('Video storyboard drafted!', { id: 'vid-gen' });
+            }
         } catch (err) {
             toast.error('Failed to generate video layout', { id: 'vid-gen' });
         } finally {
@@ -766,6 +784,12 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                                                             {storyboard ? (
                                                                 <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                                                                    {audioUrl && (
+                                                                        <div className="bg-indigo-500/10 p-3 rounded-xl border border-indigo-500/20 mb-3 flex flex-col gap-1">
+                                                                            <span className="text-[9px] font-bold text-indigo-300 uppercase tracking-widest">🔊 Listen to AI Voiceover (Nigerian Accent)</span>
+                                                                            <audio src={audioUrl} controls className="w-full h-8 outline-none" />
+                                                                        </div>
+                                                                    )}
                                                                     {storyboard.map((scene: any, i: number) => (
                                                                         <div key={i} className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-1.5">
                                                                             <span className="text-[9px] font-bold text-slate-500 uppercase">Scene {i + 1}</span>
