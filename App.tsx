@@ -209,9 +209,11 @@ const App: React.FC = () => {
           }
           if (stats.status === "fulfilled") setUserStats(stats.value);
           if (userActions.status === "fulfilled") setActions(userActions.value);
-        } catch (error) {
-          console.error("Session expired or invalid", error);
-          if (currentView !== AppView.DASHBOARD || true) {
+        } catch (error: any) {
+          console.error("Session check failed:", error);
+          const status = error?.response?.status;
+          // Only log out if it is an explicit auth token failure (401/403)
+          if (status === 401 || status === 403) {
             handleLogout();
           }
         }
