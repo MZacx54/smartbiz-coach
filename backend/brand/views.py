@@ -209,13 +209,20 @@ class GenerateBrandLogoView(views.APIView):
     def post(self, request):
         prompt = request.data.get('prompt')
         
-        # Use gemini_utils or gemini_proxy if updated.
-        # Assuming we need to implement image gen logic.
-        # For this demo/plan, we'll try to use gemini_utils if it supported image gen or just proxy logic.
-        
         from smartbiz_backend import gemini_utils
         try:
-            prompt_svg = f"Create a simple, modern SVG logo for {prompt}. Use clean shapes. Return ONLY the SVG code. No markdown or explanation. Ensure standard namespaces are included."
+            import random
+            archetypes = [
+                "geometric clean vector style icon",
+                "flat modern abstract shape graphic",
+                "clean corporate emblem badge design",
+                "minimalist monogram symbol",
+                "sleek line art circular logo",
+                "negative-space iconic graphic style",
+                "creative modern border badge style"
+            ]
+            style = random.choice(archetypes)
+            prompt_svg = f"Create a simple, modern SVG logo for {prompt}. Style: {style}. Use clean shapes. Return ONLY the SVG code. No markdown or explanation. Ensure standard namespaces are included."
             svg_code = gemini_utils.generate_text_content(prompt_svg)
             
             # Clean conversational wrappers and extract strictly the SVG node
