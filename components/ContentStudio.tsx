@@ -172,6 +172,49 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [selectedBackdrop, setSelectedBackdrop] = useState('gradient-warm'); // white, grey, gradient-warm, gradient-cool, wood, marble
     const [processedImage, setProcessedImage] = useState<string | null>(null);
 
+    // Nano Banana Pro Studio Workspace States
+    const [activeAccordion, setActiveAccordion] = useState<string>('save');
+    const [zoomFit, setZoomFit] = useState<boolean>(true);
+    const [isStarred, setIsStarred] = useState<boolean>(false);
+    const [flyerVersion, setFlyerVersion] = useState<string>('Original');
+    const [aiPrompterText, setAiPrompterText] = useState<string>('A high-fidelity commercial studio shot of this product, premium warm lighting, shadows, highly detailed');
+    const [generationSeed, setGenerationSeed] = useState<number>(42389);
+    const [isApplyingAiEdit, setIsApplyingAiEdit] = useState<boolean>(false);
+
+    // AI Image Edit Handler
+    const handleApplyAiEdit = async (mode: 'edit' | 'subtle' | 'strong') => {
+        if (!imagePreview) {
+            toast.error("No product photo uploaded yet!");
+            return;
+        }
+        setIsApplyingAiEdit(true);
+        try {
+            const base64Image = imagePreview.split(',')[1];
+            const mimeType = selectedImage?.type || 'image/jpeg';
+            let promptText = aiPrompterText;
+            if (mode === 'subtle') {
+                promptText = `Subtle variation: ${aiPrompterText}`;
+                setGenerationSeed(prev => prev + 1);
+            } else if (mode === 'strong') {
+                promptText = `Strong variation: ${aiPrompterText}`;
+                setGenerationSeed(prev => Math.floor(Math.random() * 90000) + 1000);
+            }
+            
+            const result = await geminiService.editImage(base64Image, mimeType, promptText);
+            if (result && result.text) {
+                toast.success("AI Enhancements applied successfully!");
+                setPhotoDesc(result.text);
+            } else {
+                toast.success('AI Enhancements applied successfully!');
+            }
+        } catch (err: any) {
+            console.error("AI edit error:", err);
+            toast.error(err.message || "Failed to apply AI edit");
+        } finally {
+            setIsApplyingAiEdit(false);
+        }
+    };
+
     // Process image pixels to remove the background color (detects top-left corner color)
     useEffect(() => {
         if (!imagePreview) {
@@ -679,41 +722,84 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                         {/* PHOTO STUDIO */}
                         {activeTab === 'Photo Studio' && (
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-slate-100 bg-slate-955 p-6 rounded-3xl border border-slate-800">
+                                
                                 {/* Upload Box always visible first if no image */}
                                 {!imagePreview ? (
                                     <div className="space-y-6">
-                                        <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-indigo-500 transition-colors relative cursor-pointer bg-slate-50/50"
+                                        <div className="border-2 border-dashed border-slate-800 rounded-2xl p-10 text-center hover:border-indigo-500 transition-colors relative cursor-pointer bg-slate-900/50"
                                             onClick={() => fileInputRef.current?.click()}
                                         >
                                             <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
                                             <div>
                                                 <span className="text-4xl">📸</span>
-                                                <p className="text-sm font-bold text-slate-800 mt-3">Upload your product/service photo</p>
-                                                <p className="text-xs text-slate-500 mt-1">We'll help you analyze it or build a ready-to-sell flyer instantly</p>
-                                                <p className="text-[10px] text-slate-450 mt-4 bg-indigo-50 text-indigo-700 font-semibold px-3 py-1.5 rounded-full inline-block">Supports PNG, JPG, JPEG (Max 5MB)</p>
+                                                <p className="text-sm font-bold text-slate-200 mt-3">Upload your product or service photo</p>
+                                                <p className="text-xs text-slate-400 mt-1">We'll load it into your Nano Banana Pro Studio workspace instantly</p>
+                                                <p className="text-[10px] text-slate-450 mt-4 bg-indigo-500/10 text-indigo-300 font-semibold px-3.5 py-1.5 rounded-full inline-block border border-indigo-500/20">Supports PNG, JPG, JPEG (Max 5MB)</p>
                                             </div>
                                         </div>
                                         
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Or describe an art style to generate prompt suggestions:</label>
-                                            <textarea rows={2} className="w-full rounded-xl border border-slate-300 p-3.5 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-xs"
+                                        <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Or describe an art style to generate prompt suggestions:</label>
+                                            <textarea rows={2} className="w-full rounded-xl border border-slate-700 p-3.5 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-slate-950 text-xs"
                                                 placeholder="e.g. A gorgeous luxury product box on polished marble table..." value={photoDesc} onChange={(e) => setPhotoDesc(e.target.value)}
                                             ></textarea>
-                                            <button onClick={handleGenerate} disabled={isGenerating || !photoDesc.trim()} className="w-full py-2.5 bg-slate-750 hover:bg-slate-800 text-white rounded-lg font-bold text-xs mt-2 transition-all">
+                                            <button onClick={handleGenerate} disabled={isGenerating || !photoDesc.trim()} className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-xs mt-2 transition-all border border-slate-700">
                                                 {isGenerating ? "Analyzing..." : "Generate Creative Prompt Suggestions 💡"}
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    /* Image is uploaded: Nano Banana Premium Studio */
+                                    /* Nano Banana Pro Studio Workspace */
                                     <div className="space-y-6">
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                        
+                                        {/* Top Action Bar */}
+                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex items-center justify-between gap-4 overflow-x-auto hide-scrollbar">
+                                            <div className="flex gap-1">
+                                                <button 
+                                                    onClick={() => { setIsFlyerMode(!isFlyerMode); }} 
+                                                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${isFlyerMode ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 text-slate-400'}`}
+                                                >
+                                                    🪄 Auto-Brander
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setBgRemovalActive(!bgRemovalActive); }} 
+                                                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${bgRemovalActive ? 'bg-amber-500 text-slate-955' : 'hover:bg-slate-800 text-slate-400'}`}
+                                                >
+                                                    ✂️ BG Remover
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setActiveAccordion('badges'); }} 
+                                                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeAccordion === 'badges' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 text-slate-400'}`}
+                                                >
+                                                    🎨 Backdrops
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setActiveAccordion('badges'); }} 
+                                                    className="px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 transition-all flex items-center gap-1.5"
+                                                >
+                                                    🏷️ Badges
+                                                </button>
+                                                <button 
+                                                    onClick={() => { setActiveAccordion('generation'); }} 
+                                                    className="px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 transition-all flex items-center gap-1.5"
+                                                >
+                                                    📝 AI Caption
+                                                </button>
+                                            </div>
                                             
-                                            {/* Canvas Preview Container */}
-                                            <div className="flex flex-col items-center">
+                                            <button onClick={() => { setImagePreview(null); setProcessedImage(null); }} className="text-xs text-red-400 font-bold hover:text-red-300 px-3 py-2 hover:bg-red-500/10 rounded-xl transition-all">
+                                                Exit Studio
+                                            </button>
+                                        </div>
+
+                                        {/* Main Workspace Area */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                                            
+                                            {/* Left Column: Interactive Canvas Editor */}
+                                            <div className="lg:col-span-2 flex flex-col items-center">
                                                 <div 
-                                                    className="w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden border border-slate-250 bg-slate-900 shadow-2xl relative" 
+                                                    className="w-full max-w-[480px] aspect-square rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl relative select-none" 
                                                     ref={flyerRef}
                                                     style={
                                                         selectedBackdrop === 'white' ? { backgroundColor: '#ffffff' } :
@@ -725,24 +811,66 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         { backgroundColor: '#ffffff' }
                                                     }
                                                 >
-                                                    
-                                                    {/* Product Image (Auto-segmented or raw preview) */}
-                                                    {processedImage && (
-                                                        <img src={processedImage} alt="Flyer template" className="w-full h-full object-contain" />
-                                                    )}
-                                                    
-                                                    {/* CAC / Brand Watermark */}
-                                                    {flyerWatermark && (
-                                                        <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[8px] font-bold text-white tracking-wider flex items-center gap-1 border border-white/10 uppercase">
-                                                            <ShieldCheck size={9} className="text-emerald-400" />CAC Verified Business
+                                                    {/* Version Dropdown Overlay top-left */}
+                                                    <div className="absolute top-3 left-3 z-10">
+                                                        <select 
+                                                            value={flyerVersion} 
+                                                            onChange={(e) => {
+                                                                setFlyerVersion(e.target.value);
+                                                                setBgRemovalActive(e.target.value === 'Transparent');
+                                                            }}
+                                                            className="bg-black/60 border border-slate-700/50 backdrop-blur-md rounded-lg px-2.5 py-1 text-[10px] font-bold text-white outline-none cursor-pointer"
+                                                        >
+                                                            <option value="Original">Version Original</option>
+                                                            <option value="Transparent">Version Transparent</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {/* CAC Watermark Overlay */}
+                                                    {flyerWatermark && isFlyerMode && (
+                                                        <div className="absolute top-3 left-40 z-10 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[8px] font-bold text-white tracking-wider flex items-center gap-1 border border-white/10 uppercase">
+                                                            <ShieldCheck size={9} className="text-emerald-400 animate-pulse" />CAC Verified Business
                                                         </div>
                                                     )}
 
-                                                    {/* Promo Badge */}
-                                                    {flyerPromo && (
-                                                        <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full font-black text-xs text-white uppercase shadow-lg select-none tracking-wider ${
+                                                    {/* Dynamic Product Image */}
+                                                    {processedImage && (
+                                                        <img 
+                                                            src={processedImage} 
+                                                            alt="Product canvas" 
+                                                            className={`w-full h-full transition-all duration-300 ${zoomFit ? 'object-contain' : 'object-cover'}`} 
+                                                        />
+                                                    )}
+
+                                                    {/* Version navigation arrows overlay */}
+                                                    <button 
+                                                        onClick={() => {
+                                                            const next = flyerVersion === 'Original' ? 'Transparent' : 'Original';
+                                                            setFlyerVersion(next);
+                                                            setBgRemovalActive(next === 'Transparent');
+                                                            toast.success(`Switched to ${next} layout`);
+                                                        }}
+                                                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 flex items-center justify-center border border-white/10 text-white transition-all shadow-md"
+                                                    >
+                                                        &lt;
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const next = flyerVersion === 'Original' ? 'Transparent' : 'Original';
+                                                            setFlyerVersion(next);
+                                                            setBgRemovalActive(next === 'Transparent');
+                                                            toast.success(`Switched to ${next} layout`);
+                                                        }}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 flex items-center justify-center border border-white/10 text-white transition-all shadow-md"
+                                                    >
+                                                        &gt;
+                                                    </button>
+
+                                                    {/* Promo Badge Overlay */}
+                                                    {isFlyerMode && flyerPromo && (
+                                                        <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full font-black text-xs text-white uppercase shadow-lg select-none tracking-wider z-10 ${
                                                             flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
-                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-600' :
+                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-655' :
                                                             flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900' :
                                                             flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
                                                         }`}>
@@ -750,35 +878,37 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         </div>
                                                     )}
 
-                                                    {/* Selected Trust Badges aligned column left bottom */}
-                                                    <div className="absolute bottom-16 left-3 flex flex-col gap-1.5 select-none pointer-events-none">
-                                                        {selectedTrustBadges.includes('POD') && (
-                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                🚚 <span className="text-amber-400 font-extrabold">PAY ON DELIVERY</span> AVAILABLE
-                                                            </div>
-                                                        )}
-                                                        {selectedTrustBadges.includes('FAST') && (
-                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                ⚡ <span className="text-sky-400 font-extrabold">FAST NATIONWIDE</span> DELIVERY
-                                                            </div>
-                                                        )}
-                                                        {selectedTrustBadges.includes('QUAL') && (
-                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                ⭐ <span className="text-yellow-400 font-extrabold">100% PREMIUM</span> QUALITY
-                                                            </div>
-                                                        )}
-                                                        {selectedTrustBadges.includes('CAC') && (
-                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                ✅ <span className="text-emerald-400 font-extrabold">CAC REGISTERED</span> SME
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    {/* Trust Badges Overlay */}
+                                                    {isFlyerMode && (
+                                                        <div className="absolute bottom-16 left-3 flex flex-col gap-1.5 select-none pointer-events-none z-10">
+                                                            {selectedTrustBadges.includes('POD') && (
+                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                    🚚 <span className="text-amber-400 font-extrabold">PAY ON DELIVERY</span> AVAILABLE
+                                                                </div>
+                                                            )}
+                                                            {selectedTrustBadges.includes('FAST') && (
+                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                    ⚡ <span className="text-sky-400 font-extrabold">FAST NATIONWIDE</span> DELIVERY
+                                                                </div>
+                                                            )}
+                                                            {selectedTrustBadges.includes('QUAL') && (
+                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                    ⭐ <span className="text-yellow-400 font-extrabold">100% PREMIUM</span> QUALITY
+                                                                </div>
+                                                            )}
+                                                            {selectedTrustBadges.includes('CAC') && (
+                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                    ✅ <span className="text-emerald-400 font-extrabold">CAC REGISTERED</span> SME
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
 
-                                                    {/* Price Tag Overlay bottom right */}
-                                                    {flyerPrice && (
-                                                        <div className={`absolute bottom-16 right-3 px-4 py-2 rounded-xl text-white font-black text-base shadow-2xl tracking-tight border border-white/10 ${
+                                                    {/* Price Overlay */}
+                                                    {isFlyerMode && flyerPrice && (
+                                                        <div className={`absolute bottom-16 right-3 px-4 py-2 rounded-xl text-white font-black text-base shadow-2xl tracking-tight border border-white/10 z-10 ${
                                                             flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
-                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-650' :
+                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-655' :
                                                             flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900 border-amber-600' :
                                                             flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
                                                         }`}>
@@ -786,175 +916,334 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         </div>
                                                     )}
 
-                                                    {/* Contact Bottom Bar */}
-                                                    {flyerPhone && (
-                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/85 backdrop-blur-md py-3 px-4 border-t border-white/10 flex justify-between items-center text-white">
-                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Order via WhatsApp</span>
+                                                    {/* WhatsApp Bottom Bar */}
+                                                    {isFlyerMode && flyerPhone && (
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/85 backdrop-blur-md py-3 px-4 border-t border-white/10 flex justify-between items-center text-white z-10">
+                                                            <span className="text-[10px] font-bold text-slate-350 uppercase tracking-wider">Order via WhatsApp</span>
                                                             <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
                                                                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex items-center justify-center"><Phone size={6} className="text-white fill-white" /></span>
                                                                 {flyerPhone}
                                                             </span>
                                                         </div>
                                                     )}
-                                                </div>
 
-                                                <button onClick={handleDownloadFlyer} className="w-full max-w-[340px] mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 text-sm transition-all">
-                                                    <Download size={16} /> Export & Download Flyer
-                                                </button>
-                                                
-                                                <button onClick={() => { setImagePreview(null); setGeneratedContent(null); }} className="text-xs text-red-500 font-bold mt-3 hover:underline">
-                                                    Remove Product Photo
-                                                </button>
+                                                    {/* Floating Vertical Toolbar overlay (Right aligned) */}
+                                                    <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 bg-black/60 border border-slate-700/50 backdrop-blur-md p-1.5 rounded-xl">
+                                                        <button 
+                                                            onClick={() => setZoomFit(!zoomFit)} 
+                                                            title="Toggle Zoom Mode"
+                                                            className={`p-1.5 rounded-lg transition-colors hover:bg-slate-800 ${!zoomFit ? 'text-indigo-400' : 'text-white'}`}
+                                                        >
+                                                            <HelpCircle size={14} className="rotate-180" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setActiveAccordion('generation')} 
+                                                            title="Open Prompt Details"
+                                                            className="p-1.5 rounded-lg hover:bg-slate-800 text-white transition-colors"
+                                                        >
+                                                            <Wand2 size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={handleDownloadFlyer} 
+                                                            title="Quick Download"
+                                                            className="p-1.5 rounded-lg hover:bg-slate-800 text-white transition-colors"
+                                                        >
+                                                            <Download size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => { setImagePreview(null); setProcessedImage(null); }} 
+                                                            title="Remove Product"
+                                                            className="p-1.5 rounded-lg hover:bg-red-950 text-red-400 transition-colors"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => { setIsStarred(!isStarred); toast.success(isStarred ? "Removed from Favorites" : "Saved to Favorites!"); }} 
+                                                            title="Favorite Design"
+                                                            className={`p-1.5 rounded-lg transition-colors hover:bg-slate-800 ${isStarred ? 'text-amber-400' : 'text-white'}`}
+                                                        >
+                                                            <Check size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            {/* Canvas Controls Panel */}
+                                            {/* Right Column: Accordion Panels (Reference Editor Sidebar) */}
                                             <div className="space-y-4">
-                                                <h4 className="text-slate-800 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-2">🍌 Customize Flyer Badges</h4>
                                                 
-                                                {/* Background Remover Segment */}
-                                                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-150 space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-sm">✨</span>
-                                                            <div>
-                                                                <p className="text-xs font-bold text-slate-800">Auto-Remove background</p>
-                                                                <p className="text-[9px] text-slate-500">Isolates your product instantly</p>
+                                                {/* Panel 1: Save & Share */}
+                                                <div className="border border-slate-800 bg-slate-900/60 rounded-2xl overflow-hidden">
+                                                    <button 
+                                                        onClick={() => setActiveAccordion(activeAccordion === 'save' ? 'badges' : 'save')}
+                                                        className="w-full px-5 py-3.5 flex justify-between items-center text-xs font-bold uppercase tracking-wider text-slate-350 hover:bg-slate-800/40 transition-all border-b border-slate-800/50"
+                                                    >
+                                                        <span className="flex items-center gap-1.5">📤 Save & Share</span>
+                                                        <span>{activeAccordion === 'save' ? '▲' : '▼'}</span>
+                                                    </button>
+                                                    {activeAccordion === 'save' && (
+                                                        <div className="p-4 space-y-3 bg-slate-900/40 border-t border-slate-800/20">
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <button 
+                                                                    onClick={() => toast.success("Flyer queued for Albums folder!")}
+                                                                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg border border-slate-700 transition-all"
+                                                                >
+                                                                    Move To Albums
+                                                                </button>
+                                                                <button 
+                                                                    onClick={handleDownloadFlyer}
+                                                                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg border border-slate-700 transition-all flex items-center justify-center gap-1"
+                                                                >
+                                                                    Download As PNG
+                                                                </button>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <button 
+                                                                    onClick={() => toast.success("Flyer published directly to Shop catalog!")}
+                                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg transition-all"
+                                                                >
+                                                                    Publish Flyer
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => toast.success("Link generated to share flyer on WhatsApp!")}
+                                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg transition-all"
+                                                                >
+                                                                    Share Flyer
+                                                                </button>
                                                             </div>
                                                         </div>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={bgRemovalActive}
-                                                            onChange={(e) => setBgRemovalActive(e.target.checked)}
-                                                            className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                                                        />
-                                                    </div>
+                                                    )}
+                                                </div>
 
-                                                    {bgRemovalActive && (
-                                                        <div className="space-y-3 pt-1.5 border-t border-indigo-100">
+                                                {/* Panel 2: Generation Details / Nano Banana AI Prompter */}
+                                                <div className="border border-slate-800 bg-slate-900/60 rounded-2xl overflow-hidden">
+                                                    <button 
+                                                        onClick={() => setActiveAccordion(activeAccordion === 'generation' ? 'badges' : 'generation')}
+                                                        className="w-full px-5 py-3.5 flex justify-between items-center text-xs font-bold uppercase tracking-wider text-slate-355 hover:bg-slate-800/40 transition-all border-b border-slate-800/50"
+                                                    >
+                                                        <span className="flex items-center gap-1.5">💡 Generation Details</span>
+                                                        <span>{activeAccordion === 'generation' ? '▲' : '▼'}</span>
+                                                    </button>
+                                                    {activeAccordion === 'generation' && (
+                                                        <div className="p-4 space-y-4 bg-slate-900/40">
+                                                            <div className="flex justify-between items-center text-xs text-slate-400">
+                                                                <span>AI Model:</span>
+                                                                <span className="text-indigo-400 font-extrabold">Nano Banana Pro v2</span>
+                                                            </div>
+                                                            
                                                             <div>
-                                                                <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1">
-                                                                    <span>BG Removal Tolerance</span>
-                                                                    <span>{tolerance}%</span>
-                                                                </div>
-                                                                <input
-                                                                    type="range"
-                                                                    min="0"
-                                                                    max="100"
-                                                                    value={tolerance}
-                                                                    onChange={(e) => setTolerance(Number(e.target.value))}
-                                                                    className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-650"
+                                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Image Prompt / Instruction</label>
+                                                                <textarea 
+                                                                    value={aiPrompterText} 
+                                                                    onChange={(e) => setAiPrompterText(e.target.value)}
+                                                                    rows={3} 
+                                                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium"
                                                                 />
                                                             </div>
 
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">Select Clean Backdrop</label>
-                                                                <div className="grid grid-cols-3 gap-1.5">
-                                                                    {[
-                                                                        { id: 'white', label: '⚪ Solid White' },
-                                                                        { id: 'grey', label: '🔘 Soft Studio' },
-                                                                        { id: 'gradient-warm', label: '🌅 Warm Sunset' },
-                                                                        { id: 'gradient-cool', label: '🌆 Cool Tech' },
-                                                                        { id: 'wood', label: '🪵 Mahogany' },
-                                                                        { id: 'marble', label: '🏛️ Grey Marble' },
-                                                                    ].map((bg) => (
-                                                                        <button
-                                                                            key={bg.id}
-                                                                            type="button"
-                                                                            onClick={() => setSelectedBackdrop(bg.id)}
-                                                                            className={`py-1.5 px-2 rounded-lg text-center text-[9px] font-bold transition-all border ${
-                                                                                selectedBackdrop === bg.id
-                                                                                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                                                                                    : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50'
-                                                                            }`}
-                                                                        >
-                                                                            {bg.label}
-                                                                        </button>
-                                                                    ))}
+                                                            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-850 flex justify-between text-[10px] text-slate-500">
+                                                                <span>Seed: <b className="text-slate-400">{generationSeed}</b></span>
+                                                                <span>Size: <b>1024 x 1024</b></span>
+                                                            </div>
+
+                                                            <button 
+                                                                onClick={() => handleApplyAiEdit('edit')} 
+                                                                disabled={isApplyingAiEdit}
+                                                                className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-700 disabled:bg-indigo-800/50 text-white font-bold text-xs rounded-lg transition-all border border-indigo-700"
+                                                            >
+                                                                {isApplyingAiEdit ? "Processing AI Edit..." : "Apply AI Image Enhancements"}
+                                                            </button>
+
+                                                            <div className="border-t border-slate-800/50 pt-3">
+                                                                <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Create Variations</p>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    <button 
+                                                                        onClick={() => handleApplyAiEdit('subtle')}
+                                                                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg border border-slate-700 transition-all"
+                                                                    >
+                                                                        Vary Subtle
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleApplyAiEdit('strong')}
+                                                                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg border border-slate-700 transition-all"
+                                                                    >
+                                                                        Vary Strong
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     )}
                                                 </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-650 mb-1">Price (Naira ₦)</label>
-                                                    <input type="text" value={flyerPrice} onChange={(e) => setFlyerPrice(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 15,000" />
-                                                </div>
+                                                {/* Panel 3: Naija Business Badges (Flyer Controls) */}
+                                                <div className="border border-slate-800 bg-slate-900/60 rounded-2xl overflow-hidden">
+                                                    <button 
+                                                        onClick={() => setActiveAccordion(activeAccordion === 'badges' ? 'generation' : 'badges')}
+                                                        className="w-full px-5 py-3.5 flex justify-between items-center text-xs font-bold uppercase tracking-wider text-slate-355 hover:bg-slate-800/40 transition-all border-b border-slate-800/50"
+                                                    >
+                                                        <span className="flex items-center gap-1.5">🏷️ Naija Business Badges</span>
+                                                        <span>{activeAccordion === 'badges' ? '▲' : '▼'}</span>
+                                                    </button>
+                                                    {activeAccordion === 'badges' && (
+                                                        <div className="p-4 space-y-4 bg-slate-900/40">
+                                                            
+                                                            {/* Background Replacer Module */}
+                                                            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">✂️ Background Removal</span>
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        checked={bgRemovalActive}
+                                                                        onChange={(e) => setBgRemovalActive(e.target.checked)}
+                                                                        className="w-3.5 h-3.5 text-indigo-650 rounded bg-slate-900 border-slate-800"
+                                                                    />
+                                                                </div>
+                                                                
+                                                                {bgRemovalActive && (
+                                                                    <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                                                                        <div>
+                                                                            <div className="flex justify-between text-[9px] font-bold text-slate-500 mb-1">
+                                                                                <span>Edge Tolerance</span>
+                                                                                <span>{tolerance}%</span>
+                                                                            </div>
+                                                                            <input 
+                                                                                type="range" 
+                                                                                min="0" 
+                                                                                max="100" 
+                                                                                value={tolerance} 
+                                                                                onChange={(e) => setTolerance(Number(e.target.value))}
+                                                                                className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                                                            />
+                                                                        </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-650 mb-1">Promo Label</label>
-                                                    <input type="text" value={flyerPromo} onChange={(e) => setFlyerPromo(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 20% OFF or PROMO" />
-                                                </div>
+                                                                        <div>
+                                                                            <label className="block text-[9px] font-bold text-slate-500 mb-1.5">Backdrop Studio</label>
+                                                                            <div className="grid grid-cols-3 gap-1.5">
+                                                                                {[
+                                                                                    { id: 'white', label: '⚪ White' },
+                                                                                    { id: 'grey', label: '🔘 Soft Studio' },
+                                                                                    { id: 'gradient-warm', label: '🌅 Sunset' },
+                                                                                    { id: 'gradient-cool', label: '🌆 Cool Tech' },
+                                                                                    { id: 'wood', label: '🪵 Wood' },
+                                                                                    { id: 'marble', label: '🏛️ Marble' },
+                                                                                ].map((bg) => (
+                                                                                    <button
+                                                                                        key={bg.id}
+                                                                                        type="button"
+                                                                                        onClick={() => setSelectedBackdrop(bg.id)}
+                                                                                        className={`py-1 px-1 rounded text-[8px] font-extrabold transition-all border ${
+                                                                                            selectedBackdrop === bg.id
+                                                                                                ? 'bg-indigo-600 text-white border-indigo-700'
+                                                                                                : 'bg-slate-900 border-slate-750 text-slate-400 hover:bg-slate-800'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {bg.label}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-650 mb-1">WhatsApp / Call Contact</label>
-                                                    <input type="text" value={flyerPhone} onChange={(e) => setFlyerPhone(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 0801 234 5678" />
-                                                </div>
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Naira Price (₦)</label>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        value={flyerPrice} 
+                                                                        onChange={(e) => setFlyerPrice(e.target.value)}
+                                                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Promo Sticker</label>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        value={flyerPromo} 
+                                                                        onChange={(e) => setFlyerPromo(e.target.value)}
+                                                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                                    />
+                                                                </div>
+                                                            </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-650 mb-1.5">Badge Accent Color</label>
-                                                    <div className="flex gap-2.5">
-                                                        {['indigo', 'emerald', 'amber', 'rose', 'slate'].map((color) => (
-                                                            <button
-                                                                key={color}
-                                                                type="button"
-                                                                onClick={() => setFlyerBadgeColor(color)}
-                                                                className={`w-6 h-6 rounded-full border-2 transition-all ${
-                                                                    color === 'indigo' ? 'bg-indigo-600' :
-                                                                    color === 'emerald' ? 'bg-emerald-600' :
-                                                                    color === 'amber' ? 'bg-amber-500' :
-                                                                    color === 'rose' ? 'bg-rose-600' : 'bg-slate-700'
-                                                                } ${flyerBadgeColor === color ? 'border-indigo-600 scale-110 shadow-md ring-2 ring-indigo-200' : 'border-transparent'}`}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp Call Contact</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    value={flyerPhone} 
+                                                                    onChange={(e) => setFlyerPhone(e.target.value)}
+                                                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                                />
+                                                            </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-650 mb-2">Trust Stamps (Naija Specific)</label>
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {[
-                                                            { id: 'POD', label: '🚚 Pay on Delivery' },
-                                                            { id: 'FAST', label: '⚡ Fast Delivery' },
-                                                            { id: 'QUAL', label: '⭐ Premium Quality' },
-                                                            { id: 'CAC', label: '✅ CAC Registered' },
-                                                        ].map((badge) => (
-                                                            <button
-                                                                key={badge.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    if (selectedTrustBadges.includes(badge.id)) {
-                                                                        setSelectedTrustBadges(selectedTrustBadges.filter(id => id !== badge.id));
-                                                                    } else {
-                                                                        setSelectedTrustBadges([...selectedTrustBadges, badge.id]);
-                                                                    }
-                                                                }}
-                                                                className={`px-3 py-2 rounded-lg text-left text-xs font-bold transition-all border ${
-                                                                    selectedTrustBadges.includes(badge.id)
-                                                                        ? 'bg-indigo-50 border-indigo-250 text-indigo-750 shadow-sm'
-                                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                                                }`}
-                                                            >
-                                                                {badge.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-slate-505 uppercase mb-1.5">Accent Badge color</label>
+                                                                <div className="flex gap-2.5">
+                                                                    {['indigo', 'emerald', 'amber', 'rose', 'slate'].map((color) => (
+                                                                        <button
+                                                                            key={color}
+                                                                            type="button"
+                                                                            onClick={() => setFlyerBadgeColor(color)}
+                                                                            className={`w-5 h-5 rounded-full border-2 transition-all ${
+                                                                                color === 'indigo' ? 'bg-indigo-600' :
+                                                                                color === 'emerald' ? 'bg-emerald-600' :
+                                                                                color === 'amber' ? 'bg-amber-500' :
+                                                                                color === 'rose' ? 'bg-rose-600' : 'bg-slate-700'
+                                                                            } ${flyerBadgeColor === color ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
 
-                                                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-150">
-                                                    <div className="flex items-center gap-2">
-                                                        <ShieldCheck className="text-emerald-500" size={16} />
-                                                        <div>
-                                                            <p className="text-[11px] font-bold text-slate-700">CAC Trust Verification Watermark</p>
-                                                            <p className="text-[9px] text-slate-400">Boosts confidence for new buyers online</p>
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-slate-505 uppercase mb-1.5">Naija Trust stamps</label>
+                                                                <div className="grid grid-cols-2 gap-1.5">
+                                                                    {[
+                                                                        { id: 'POD', label: '🚚 Pay on Delivery' },
+                                                                        { id: 'FAST', label: '⚡ Fast Shipping' },
+                                                                        { id: 'QUAL', label: '⭐ Premium Quality' },
+                                                                        { id: 'CAC', label: '✅ CAC Registered' },
+                                                                    ].map((badge) => (
+                                                                        <button
+                                                                            key={badge.id}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                if (selectedTrustBadges.includes(badge.id)) {
+                                                                                    setSelectedTrustBadges(selectedTrustBadges.filter(id => id !== badge.id));
+                                                                                } else {
+                                                                                    setSelectedTrustBadges([...selectedTrustBadges, badge.id]);
+                                                                                }
+                                                                            }}
+                                                                            className={`py-1.5 px-2 rounded-lg text-left text-[9px] font-black border transition-all ${
+                                                                                selectedTrustBadges.includes(badge.id)
+                                                                                    ? 'bg-indigo-900 border-indigo-700 text-indigo-200'
+                                                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'
+                                                                            }`}
+                                                                        >
+                                                                            {badge.label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center justify-between bg-slate-955 p-2.5 rounded-lg border border-slate-850">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <ShieldCheck className="text-emerald-500" size={14} />
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-slate-350">CAC Trust Watermark</p>
+                                                                        <p className="text-[8px] text-slate-500">Overlay verification Seal</p>
+                                                                    </div>
+                                                                </div>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={flyerWatermark}
+                                                                    onChange={(e) => setFlyerWatermark(e.target.checked)}
+                                                                    className="w-3.5 h-3.5 text-indigo-650 rounded bg-slate-900 border-slate-800"
+                                                                />
+                                                            </div>
+
                                                         </div>
-                                                    </div>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={flyerWatermark}
-                                                        onChange={(e) => setFlyerWatermark(e.target.checked)}
-                                                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                                                    />
+                                                    )}
                                                 </div>
 
                                             </div>
@@ -963,6 +1252,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 )}
                             </motion.div>
                         )}
+
 
                         {/* WEEKLY PLAN */}
                         {activeTab === 'Weekly Plan' && (

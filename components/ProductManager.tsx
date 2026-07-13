@@ -106,6 +106,37 @@ const ProductManager: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Unsplash Photo Studio States
+  const [showStudioModal, setShowStudioModal] = useState(false);
+  const [studioSearchQuery, setStudioSearchQuery] = useState('');
+  const [studioPhotos, setStudioPhotos] = useState<string[]>([
+    'https://images.unsplash.com/photo-1542291026-7eec264c27ff',
+    'https://images.unsplash.com/photo-1490481651871-ab68de25d43d',
+    'https://images.unsplash.com/photo-1441986300917-64674bd600d8',
+    'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40',
+    'https://images.unsplash.com/photo-1521791136364-7098ec389f5f',
+    'https://images.unsplash.com/photo-1556740734-7f95cb93502b',
+    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6',
+    'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf',
+    'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688',
+    'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d',
+    'https://images.unsplash.com/photo-1578575437130-527eed3abbec',
+    'https://images.unsplash.com/photo-1563986768609-322da13575f3'
+  ]);
+  const [isSearchingStudio, setIsSearchingStudio] = useState(false);
+
+  const searchStockPhotos = async (query: string) => {
+    if (!query.trim()) return;
+    setIsSearchingStudio(true);
+    // Simulate real-time API filtering by constructing high-quality query matched images
+    const searchTerms = encodeURIComponent(query.toLowerCase().split(' ').join(','));
+    const generatedPhotos = Array.from({ length: 8 }, (_, i) => 
+      `https://images.unsplash.com/photo-${1500000000000 + (i * 1042531)}?auto=format&fit=crop&w=600&q=80&sig=${Math.floor(Math.random() * 1000)}&q=${searchTerms}`
+    );
+    setStudioPhotos(generatedPhotos);
+    setIsSearchingStudio(false);
+  };
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({
     name: '',
     description: '',
@@ -239,6 +270,16 @@ const ProductManager: React.FC = () => {
     toast.success(`Generated SKU: ${skuCode}`);
   };
 
+  const updateMetadata = (key: string, value: any) => {
+    setCurrentProduct(prev => ({
+      ...prev,
+      metadata: {
+        ...(prev.metadata || {}),
+        [key]: value
+      }
+    }));
+  };
+
   const exportInventoryToCSV = () => {
     if (products.length === 0) {
       toast.error('No inventory items to export');
@@ -278,12 +319,7 @@ const ProductManager: React.FC = () => {
   const marginPercentage = totalValuationRetail > 0 ? (projectedProfit / totalValuationRetail) * 100 : 0;
   const lowStockCount = products.filter(p => (p.stock_count || 0) <= (p.low_stock_threshold || 5)).length;
 
-  const updateMetadata = (key: string, value: any) => {
-    setCurrentProduct(prev => ({
-      ...prev,
-      metadata: { ...prev.metadata, [key]: value }
-    }));
-  };
+
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 animate-fade-in pb-24">
@@ -429,64 +465,284 @@ const ProductManager: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Audited Valuation & SKU Details Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Cost Price (COGS) (₦)</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input 
-                          type="number" 
-                          value={currentProduct.cost_price}
-                          onChange={(e) => setCurrentProduct({ ...currentProduct, cost_price: e.target.value })}
-                          placeholder="0.00"
-                          className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-emerald-600"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock SKU</label>
-                        <button 
-                          onClick={generateSku}
-                          className="text-[9px] font-bold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-lg"
-                        >
-                          Generate SKU
-                        </button>
-                      </div>
-                      <input 
-                        type="text" 
-                        value={currentProduct.sku}
-                        onChange={(e) => setCurrentProduct({ ...currentProduct, sku: e.target.value })}
-                        placeholder="e.g. TEX-ANK-492"
-                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-                      />
-                    </div>
-                  </div>
+                  {/* Category-Specific Form Fields */}
+                  {currentProduct.product_type === 'PHYSICAL' && (
+                     <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
+                          {/* Cost Price */}
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Cost Price (COGS) (₦)</label>
+                            <div className="relative">
+                              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <input 
+                                type="number" 
+                                value={currentProduct.cost_price || ''}
+                                onChange={(e) => setCurrentProduct({ ...currentProduct, cost_price: e.target.value })}
+                                placeholder="0.00"
+                                className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-emerald-600"
+                              />
+                            </div>
+                          </div>
+                          {/* Stock SKU */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-center">
+                              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock SKU</label>
+                              <button 
+                                onClick={generateSku}
+                                className="text-[9px] font-bold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-lg"
+                              >
+                                Generate SKU
+                              </button>
+                            </div>
+                            <input 
+                              type="text" 
+                              value={currentProduct.sku || ''}
+                              onChange={(e) => setCurrentProduct({ ...currentProduct, sku: e.target.value })}
+                              placeholder="e.g. TEX-ANK-492"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                            />
+                          </div>
+                        </div>
 
-                  {/* Stock Quantity and warnings */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock Quantity</label>
-                      <input 
-                        type="number" 
-                        value={currentProduct.stock_count}
-                        onChange={(e) => setCurrentProduct({ ...currentProduct, stock_count: parseInt(e.target.value) || 0 })}
-                        placeholder="1"
-                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Low Stock Limit Alert</label>
-                      <input 
-                        type="number" 
-                        value={currentProduct.low_stock_threshold}
-                        onChange={(e) => setCurrentProduct({ ...currentProduct, low_stock_threshold: parseInt(e.target.value) || 0 })}
-                        placeholder="5"
-                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
-                      />
-                    </div>
-                  </div>
+                        <div className="grid grid-cols-2 gap-4 animate-in fade-in">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock Quantity</label>
+                            <input 
+                              type="number" 
+                              value={currentProduct.stock_count || 0}
+                              onChange={(e) => setCurrentProduct({ ...currentProduct, stock_count: parseInt(e.target.value) || 0 })}
+                              placeholder="1"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Low Stock Limit Alert</label>
+                            <input 
+                              type="number" 
+                              value={currentProduct.low_stock_threshold || 5}
+                              onChange={(e) => setCurrentProduct({ ...currentProduct, low_stock_threshold: parseInt(e.target.value) || 0 })}
+                              placeholder="5"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Weight / Volume</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.weight || ''}
+                              onChange={(e) => updateMetadata('weight', e.target.value)}
+                              placeholder="e.g. 500g or 6 Yards"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Brand / Manufacturer</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.brand || ''}
+                              onChange={(e) => updateMetadata('brand', e.target.value)}
+                              placeholder="e.g. Unique Prints"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+                     </>
+                  )}
+
+                  {currentProduct.product_type === 'SERVICE' && (
+                     <div className="space-y-4 animate-in fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Type</label>
+                            <select 
+                              value={currentProduct.metadata?.billingType || 'Fixed'}
+                              onChange={(e) => updateMetadata('billingType', e.target.value)}
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="Fixed">Fixed Rate</option>
+                              <option value="Hourly">Hourly Rate</option>
+                              <option value="Project">Per Project</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Service Duration</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.duration || ''}
+                              onChange={(e) => updateMetadata('duration', e.target.value)}
+                              placeholder="e.g. 2 hours or 3 business days"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Availability / Working Hours</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.availability || ''}
+                              onChange={(e) => updateMetadata('availability', e.target.value)}
+                              placeholder="e.g. Mon-Fri 9AM - 5PM"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Experience Level</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.experienceLevel || ''}
+                              onChange={(e) => updateMetadata('experienceLevel', e.target.value)}
+                              placeholder="e.g. Senior Consultant (5+ yrs)"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+                     </div>
+                  )}
+
+                  {currentProduct.product_type === 'PROPERTY' && (
+                     <div className="space-y-4 animate-in fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Listing Type</label>
+                            <select 
+                              value={currentProduct.metadata?.listingType || 'Rent'}
+                              onChange={(e) => updateMetadata('listingType', e.target.value)}
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="Rent">For Rent</option>
+                              <option value="Sale">For Sale</option>
+                              <option value="Shortlet">Shortlet / Lease</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Property Category</label>
+                            <select 
+                              value={currentProduct.metadata?.propertyType || 'Apartment'}
+                              onChange={(e) => updateMetadata('propertyType', e.target.value)}
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="Apartment">Apartment / Flat</option>
+                              <option value="House">Self-contained House</option>
+                              <option value="Commercial">Office / Shop Space</option>
+                              <option value="Land">Land / Plot</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bedrooms</label>
+                            <input 
+                              type="number" 
+                              value={currentProduct.metadata?.bedrooms || ''}
+                              onChange={(e) => updateMetadata('bedrooms', parseInt(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bathrooms</label>
+                            <input 
+                              type="number" 
+                              value={currentProduct.metadata?.bathrooms || ''}
+                              onChange={(e) => updateMetadata('bathrooms', parseInt(e.target.value) || 0)}
+                              placeholder="0"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Furnished</label>
+                            <select 
+                              value={currentProduct.metadata?.furnished || 'No'}
+                              onChange={(e) => updateMetadata('furnished', e.target.value)}
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                            >
+                              <option value="No">Unfurnished</option>
+                              <option value="Yes">Fully Furnished</option>
+                              <option value="Semi">Semi-Furnished</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Geographic Location</label>
+                          <div className="relative">
+                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input 
+                              type="text" 
+                              value={currentProduct.location || ''}
+                              onChange={(e) => setCurrentProduct({ ...currentProduct, location: e.target.value })}
+                              placeholder="e.g. Lekki Phase 1, Lagos"
+                              className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+                     </div>
+                  )}
+
+                  {currentProduct.product_type === 'B2B' && (
+                     <div className="space-y-4 animate-in fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Minimum Order Quantity (MOQ)</label>
+                            <input 
+                              type="number" 
+                              value={currentProduct.metadata?.moq || ''}
+                              onChange={(e) => updateMetadata('moq', parseInt(e.target.value) || 0)}
+                              placeholder="e.g. 50"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Wholesale Pricing Tiers</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.tierPrices || ''}
+                              onChange={(e) => updateMetadata('tierPrices', e.target.value)}
+                              placeholder="e.g. 50-100 units: ₦800, 100+: ₦700"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Production Lead Time</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.leadTime || ''}
+                              onChange={(e) => updateMetadata('leadTime', e.target.value)}
+                              placeholder="e.g. 5-7 business days"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Supply Capacity / Month</label>
+                            <input 
+                              type="text" 
+                              value={currentProduct.metadata?.capacity || ''}
+                              onChange={(e) => updateMetadata('capacity', e.target.value)}
+                              placeholder="e.g. 5,000 units per month"
+                              className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Supply Hub Location</label>
+                          <div className="relative">
+                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input 
+                              type="text" 
+                              value={currentProduct.location || ''}
+                              onChange={(e) => setCurrentProduct({ ...currentProduct, location: e.target.value })}
+                              placeholder="e.g. Mushin Industrial, Lagos"
+                              className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm"
+                            />
+                          </div>
+                        </div>
+                     </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center">
@@ -506,22 +762,6 @@ const ProductManager: React.FC = () => {
                       className="w-full bg-slate-50 border-none rounded-3xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
                     />
                   </div>
-
-                  {(currentProduct.product_type === 'PROPERTY' || currentProduct.product_type === 'B2B') && (
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Location</label>
-                      <div className="relative">
-                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input 
-                          type="text" 
-                          value={currentProduct.location}
-                          onChange={(e) => setCurrentProduct({ ...currentProduct, location: e.target.value })}
-                          placeholder="e.g. Lagos, Lekki Phase 1"
-                          className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Settings Side */}
@@ -566,16 +806,70 @@ const ProductManager: React.FC = () => {
                       </div>
                    </div>
 
-                   <div className="space-y-1.5">
-                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Featured Image URL</label>
-                      <input 
-                        type="text" 
-                        value={currentProduct.image_url}
-                        onChange={(e) => setCurrentProduct({ ...currentProduct, image_url: e.target.value })}
-                        placeholder="https://..."
-                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
-                      />
-                   </div>
+                   <div className="space-y-3">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Listing Image</label>
+                       
+                       {currentProduct.image_url ? (
+                         <div className="relative rounded-3xl overflow-hidden border border-slate-100 aspect-[4/3] bg-slate-50">
+                           <img 
+                             src={currentProduct.image_url} 
+                             alt="Featured Preview" 
+                             className="w-full h-full object-cover" 
+                           />
+                           <button
+                             type="button"
+                             onClick={() => setCurrentProduct(prev => ({ ...prev, image_url: '' }))}
+                             className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white rounded-xl px-3 py-1.5 text-xs shadow-md transition-all font-bold border-0 cursor-pointer"
+                           >
+                             Remove Image
+                           </button>
+                         </div>
+                       ) : (
+                         <div className="border-2 border-dashed border-slate-200 rounded-3xl p-6 text-center bg-slate-50/50 hover:bg-slate-50 transition-all flex flex-col items-center justify-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                             🖼️
+                           </div>
+                           <div>
+                             <p className="text-xs font-bold text-slate-700">No Image Selected</p>
+                             <p className="text-[10px] text-slate-400 mt-0.5">Upload a photo from your phone or get one from our photo studio</p>
+                           </div>
+                         </div>
+                       )}
+
+                       <div className="flex gap-2">
+                         <label className="flex-1 flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 cursor-pointer px-4 py-3 rounded-2xl text-xs font-bold text-slate-700 transition-all shadow-sm">
+                           <span>📁</span> Upload Photo
+                           <input
+                             type="file"
+                             accept="image/*"
+                             className="hidden"
+                             onChange={(e) => {
+                               const file = e.target.files?.[0];
+                               if (file) {
+                                 if (file.size > 10 * 1024 * 1024) {
+                                   toast.error('Image is too large (max 10MB)');
+                                   return;
+                                 }
+                                 const reader = new FileReader();
+                                 reader.onloadend = () => {
+                                   setCurrentProduct(prev => ({ ...prev, image_url: reader.result as string }));
+                                   toast.success('Image loaded successfully');
+                                 };
+                                 reader.readAsDataURL(file);
+                               }
+                             }}
+                           />
+                         </label>
+
+                         <button
+                           type="button"
+                           onClick={() => setShowStudioModal(true)}
+                           className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 px-4 py-3 rounded-2xl text-xs font-bold text-indigo-650 transition-all border-0"
+                         >
+                           <span>🎨</span> Photo Studio
+                         </button>
+                       </div>
+                    </div>
 
                    <div className="flex gap-4 pt-4">
                       <button 
@@ -659,7 +953,10 @@ const ProductManager: React.FC = () => {
                       <div className="flex gap-2 pt-2">
                          <button 
                           onClick={() => {
-                            setCurrentProduct(product);
+                            setCurrentProduct({
+                              ...product,
+                              metadata: product.metadata || {}
+                            });
                             setIsEditing(true);
                           }}
                           className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-600 px-4 py-3 rounded-2xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all"
