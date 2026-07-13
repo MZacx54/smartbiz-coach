@@ -142,6 +142,21 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [pitchType, setPitchType] = useState<string>('Free Digital Literacy Workshops');
     const [pitchCta, setPitchCta] = useState<string>('Schedule a 10-minute Zoom call');
 
+    // Multimodal State
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedImage(file);
+            const reader = new FileReader();
+            reader.onloadend = () => setImagePreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
     // Nano Banana Flyer Mode States
     const [isFlyerMode, setIsFlyerMode] = useState(false);
     const [flyerPrice, setFlyerPrice] = useState('15,000');
@@ -151,6 +166,66 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [flyerBadgeColor, setFlyerBadgeColor] = useState('indigo'); // indigo, emerald, amber, rose, slate
     const [flyerWatermark, setFlyerWatermark] = useState(true);
     
+    // Background Removal States
+    const [bgRemovalActive, setBgRemovalActive] = useState(false);
+    const [tolerance, setTolerance] = useState(30); // 0 to 100
+    const [selectedBackdrop, setSelectedBackdrop] = useState('gradient-warm'); // white, grey, gradient-warm, gradient-cool, wood, marble
+    const [processedImage, setProcessedImage] = useState<string | null>(null);
+
+    // Process image pixels to remove the background color (detects top-left corner color)
+    useEffect(() => {
+        if (!imagePreview) {
+            setProcessedImage(null);
+            return;
+        }
+
+        if (!bgRemovalActive) {
+            setProcessedImage(imagePreview);
+            return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+
+            // Auto-detect the key color from the top-left corner pixel
+            const keyR = data[0];
+            const keyG = data[1];
+            const keyB = data[2];
+
+            // Filter out colors close to the key color within the tolerance range
+            const maxDist = (tolerance / 100) * 440; // Max distance is sqrt(255^2 * 3) = ~441
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                const dist = Math.sqrt(
+                    Math.pow(r - keyR, 2) +
+                    Math.pow(g - keyG, 2) +
+                    Math.pow(b - keyB, 2)
+                );
+
+                if (dist < maxDist) {
+                    data[i + 3] = 0; // Make matching background pixels transparent
+                }
+            }
+
+            ctx.putImageData(imgData, 0, 0);
+            setProcessedImage(canvas.toDataURL());
+        };
+        img.src = imagePreview;
+    }, [imagePreview, bgRemovalActive, tolerance]);
+
     const flyerRef = useRef<HTMLDivElement>(null);
 
     const handleDownloadFlyer = async () => {
@@ -193,21 +268,6 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [spokenText, setSpokenText] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    // Multimodal State
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [selectedImage, setSelectedImage] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedImage(file);
-            const reader = new FileReader();
-            reader.onloadend = () => setImagePreview(reader.result as string);
-            reader.readAsDataURL(file);
-        }
-    };
 
     const executeGeneration = async (deduct: boolean, cost: number) => {
         setIsGenerating(true);
@@ -646,219 +706,259 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                         </div>
                                     </div>
                                 ) : (
-                                    /* Image is uploaded: show mode selection tab */
+                                    /* Image is uploaded: Nano Banana Premium Studio */
                                     <div className="space-y-6">
-                                        <div className="flex bg-slate-100 p-1 rounded-xl">
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsFlyerMode(false)}
-                                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${!isFlyerMode ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                            >
-                                                🔍 AI Analysis & Suggestions
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsFlyerMode(true)}
-                                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${isFlyerMode ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                            >
-                                                🍌 Nano Banana Flyer Builder <span className="bg-amber-400 text-slate-900 font-extrabold text-[9px] uppercase px-1.5 py-0.5 rounded scale-90">PREMIUM</span>
-                                            </button>
-                                        </div>
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                            
+                                            {/* Canvas Preview Container */}
+                                            <div className="flex flex-col items-center">
+                                                <div 
+                                                    className="w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden border border-slate-250 bg-slate-900 shadow-2xl relative" 
+                                                    ref={flyerRef}
+                                                    style={
+                                                        selectedBackdrop === 'white' ? { backgroundColor: '#ffffff' } :
+                                                        selectedBackdrop === 'grey' ? { backgroundColor: '#f3f4f6' } :
+                                                        selectedBackdrop === 'gradient-warm' ? { backgroundImage: 'linear-gradient(to bottom right, #ffedd5, #fee2e2)' } :
+                                                        selectedBackdrop === 'gradient-cool' ? { backgroundImage: 'linear-gradient(to bottom right, #e0e7ff, #fae8ff)' } :
+                                                        selectedBackdrop === 'wood' ? { backgroundImage: 'linear-gradient(to bottom, #7c2d12, #451a03)' } :
+                                                        selectedBackdrop === 'marble' ? { backgroundImage: 'linear-gradient(to bottom right, #f8fafc, #e2e8f0)' } :
+                                                        { backgroundColor: '#ffffff' }
+                                                    }
+                                                >
+                                                    
+                                                    {/* Product Image (Auto-segmented or raw preview) */}
+                                                    {processedImage && (
+                                                        <img src={processedImage} alt="Flyer template" className="w-full h-full object-contain" />
+                                                    )}
+                                                    
+                                                    {/* CAC / Brand Watermark */}
+                                                    {flyerWatermark && (
+                                                        <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[8px] font-bold text-white tracking-wider flex items-center gap-1 border border-white/10 uppercase">
+                                                            <ShieldCheck size={9} className="text-emerald-400" />CAC Verified Business
+                                                        </div>
+                                                    )}
 
-                                        {!isFlyerMode ? (
-                                            /* Regular AI Analysis Mode */
-                                            <div className="space-y-4">
-                                                <div className="relative w-full max-h-[300px] rounded-2xl overflow-hidden border border-slate-200 bg-black flex items-center justify-center">
-                                                    <img src={imagePreview} alt="Selected preview" className="max-h-[300px] object-contain" />
-                                                    <button onClick={() => { setImagePreview(null); setGeneratedContent(null); }} className="absolute top-3 right-3 bg-red-600 hover:bg-red-700 text-white p-1.5 rounded-full shadow-lg transition-colors">
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    {/* Promo Badge */}
+                                                    {flyerPromo && (
+                                                        <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full font-black text-xs text-white uppercase shadow-lg select-none tracking-wider ${
+                                                            flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
+                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-600' :
+                                                            flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900' :
+                                                            flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
+                                                        }`}>
+                                                            💥 {flyerPromo}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Selected Trust Badges aligned column left bottom */}
+                                                    <div className="absolute bottom-16 left-3 flex flex-col gap-1.5 select-none pointer-events-none">
+                                                        {selectedTrustBadges.includes('POD') && (
+                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                🚚 <span className="text-amber-400 font-extrabold">PAY ON DELIVERY</span> AVAILABLE
+                                                            </div>
+                                                        )}
+                                                        {selectedTrustBadges.includes('FAST') && (
+                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                ⚡ <span className="text-sky-400 font-extrabold">FAST NATIONWIDE</span> DELIVERY
+                                                            </div>
+                                                        )}
+                                                        {selectedTrustBadges.includes('QUAL') && (
+                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                ⭐ <span className="text-yellow-400 font-extrabold">100% PREMIUM</span> QUALITY
+                                                            </div>
+                                                        )}
+                                                        {selectedTrustBadges.includes('CAC') && (
+                                                            <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
+                                                                ✅ <span className="text-emerald-400 font-extrabold">CAC REGISTERED</span> SME
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Price Tag Overlay bottom right */}
+                                                    {flyerPrice && (
+                                                        <div className={`absolute bottom-16 right-3 px-4 py-2 rounded-xl text-white font-black text-base shadow-2xl tracking-tight border border-white/10 ${
+                                                            flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
+                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-650' :
+                                                            flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900 border-amber-600' :
+                                                            flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
+                                                        }`}>
+                                                            ₦{flyerPrice}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Contact Bottom Bar */}
+                                                    {flyerPhone && (
+                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/85 backdrop-blur-md py-3 px-4 border-t border-white/10 flex justify-between items-center text-white">
+                                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Order via WhatsApp</span>
+                                                            <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
+                                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex items-center justify-center"><Phone size={6} className="text-white fill-white" /></span>
+                                                                {flyerPhone}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Analysis focus or custom query (Optional)</label>
-                                                    <textarea rows={2} className="w-full rounded-xl border border-slate-300 p-3 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-xs"
-                                                        placeholder="Ask AI to check lighting, backgrounds, or suggest social media hooks..." value={photoDesc} onChange={(e) => setPhotoDesc(e.target.value)}
-                                                    ></textarea>
-                                                </div>
-                                                <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base">
-                                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Analyze Image</span><span>📸</span></>}
+
+                                                <button onClick={handleDownloadFlyer} className="w-full max-w-[340px] mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 text-sm transition-all">
+                                                    <Download size={16} /> Export & Download Flyer
+                                                </button>
+                                                
+                                                <button onClick={() => { setImagePreview(null); setGeneratedContent(null); }} className="text-xs text-red-500 font-bold mt-3 hover:underline">
+                                                    Remove Product Photo
                                                 </button>
                                             </div>
-                                        ) : (
-                                            /* Nano Banana Premium Flyer Mode */
-                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+                                            {/* Canvas Controls Panel */}
+                                            <div className="space-y-4">
+                                                <h4 className="text-slate-800 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-2">🍌 Customize Flyer Badges</h4>
                                                 
-                                                {/* Canvas Preview Container */}
-                                                <div className="flex flex-col items-center">
-                                                    <div className="w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden border border-slate-250 bg-slate-900 shadow-2xl relative" ref={flyerRef}>
-                                                        
-                                                        {/* Product Image */}
-                                                        <img src={imagePreview} alt="Flyer template" className="w-full h-full object-cover" />
-                                                        
-                                                        {/* CAC / Brand Watermark */}
-                                                        {flyerWatermark && (
-                                                            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[8px] font-bold text-white tracking-wider flex items-center gap-1 border border-white/10 uppercase">
-                                                                <ShieldCheck size={9} className="text-emerald-400" />CAC Verified Business
-                                                            </div>
-                                                        )}
-
-                                                        {/* Promo Badge */}
-                                                        {flyerPromo && (
-                                                            <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full font-black text-xs text-white uppercase shadow-lg select-none tracking-wider ${
-                                                                flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
-                                                                flyerBadgeColor === 'emerald' ? 'bg-emerald-600' :
-                                                                flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900' :
-                                                                flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
-                                                            }`}>
-                                                                💥 {flyerPromo}
-                                                            </div>
-                                                        )}
-
-                                                        {/* Selected Trust Badges aligned column left bottom */}
-                                                        <div className="absolute bottom-16 left-3 flex flex-col gap-1.5 select-none pointer-events-none">
-                                                            {selectedTrustBadges.includes('POD') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    🚚 <span className="text-amber-400 font-extrabold">PAY ON DELIVERY</span> AVAILABLE
-                                                                </div>
-                                                            )}
-                                                            {selectedTrustBadges.includes('FAST') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    ⚡ <span className="text-sky-400 font-extrabold">FAST NATIONWIDE</span> DELIVERY
-                                                                </div>
-                                                            )}
-                                                            {selectedTrustBadges.includes('QUAL') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    ⭐ <span className="text-yellow-400 font-extrabold">100% PREMIUM</span> QUALITY
-                                                                </div>
-                                                            )}
-                                                            {selectedTrustBadges.includes('CAC') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    ✅ <span className="text-emerald-400 font-extrabold">CAC REGISTERED</span> SME
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Price Tag Overlay bottom right */}
-                                                        {flyerPrice && (
-                                                            <div className={`absolute bottom-16 right-3 px-4 py-2 rounded-xl text-white font-black text-base shadow-2xl tracking-tight border border-white/10 ${
-                                                                flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
-                                                                flyerBadgeColor === 'emerald' ? 'bg-emerald-650' :
-                                                                flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900 border-amber-600' :
-                                                                flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
-                                                            }`}>
-                                                                ₦{flyerPrice}
-                                                            </div>
-                                                        )}
-
-                                                        {/* Contact Bottom Bar */}
-                                                        {flyerPhone && (
-                                                            <div className="absolute bottom-0 left-0 right-0 bg-black/85 backdrop-blur-md py-3 px-4 border-t border-white/10 flex justify-between items-center text-white">
-                                                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Order via WhatsApp</span>
-                                                                <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
-                                                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex items-center justify-center"><Phone size={6} className="text-white fill-white" /></span>
-                                                                    {flyerPhone}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <button onClick={handleDownloadFlyer} className="w-full max-w-[340px] mt-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 text-sm transition-all">
-                                                        <Download size={16} /> Export & Download Flyer
-                                                    </button>
-                                                    
-                                                    <button onClick={() => { setImagePreview(null); setGeneratedContent(null); }} className="text-xs text-red-500 font-bold mt-3 hover:underline">
-                                                        Remove Product Photo
-                                                    </button>
-                                                </div>
-
-                                                {/* Canvas Controls Panel */}
-                                                <div className="space-y-4">
-                                                    <h4 className="text-slate-800 font-bold text-xs uppercase tracking-wider border-b border-slate-100 pb-2">🍌 Customize Flyer Badges</h4>
-                                                    
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-650 mb-1">Price (Naira ₦)</label>
-                                                        <input type="text" value={flyerPrice} onChange={(e) => setFlyerPrice(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 15,000" />
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-650 mb-1">Promo Label</label>
-                                                        <input type="text" value={flyerPromo} onChange={(e) => setFlyerPromo(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 20% OFF or PROMO" />
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-650 mb-1">WhatsApp / Call Contact</label>
-                                                        <input type="text" value={flyerPhone} onChange={(e) => setFlyerPhone(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 0801 234 5678" />
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-650 mb-1.5">Badge Accent Color</label>
-                                                        <div className="flex gap-2.5">
-                                                            {['indigo', 'emerald', 'amber', 'rose', 'slate'].map((color) => (
-                                                                <button
-                                                                    key={color}
-                                                                    type="button"
-                                                                    onClick={() => setFlyerBadgeColor(color)}
-                                                                    className={`w-6 h-6 rounded-full border-2 transition-all ${
-                                                                        color === 'indigo' ? 'bg-indigo-600' :
-                                                                        color === 'emerald' ? 'bg-emerald-600' :
-                                                                        color === 'amber' ? 'bg-amber-500' :
-                                                                        color === 'rose' ? 'bg-rose-600' : 'bg-slate-700'
-                                                                    } ${flyerBadgeColor === color ? 'border-indigo-600 scale-110 shadow-md ring-2 ring-indigo-200' : 'border-transparent'}`}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-650 mb-2">Trust Stamps (Naija Specific)</label>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {[
-                                                                { id: 'POD', label: '🚚 Pay on Delivery' },
-                                                                { id: 'FAST', label: '⚡ Fast Delivery' },
-                                                                { id: 'QUAL', label: '⭐ Premium Quality' },
-                                                                { id: 'CAC', label: '✅ CAC Registered' },
-                                                            ].map((badge) => (
-                                                                <button
-                                                                    key={badge.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        if (selectedTrustBadges.includes(badge.id)) {
-                                                                            setSelectedTrustBadges(selectedTrustBadges.filter(id => id !== badge.id));
-                                                                        } else {
-                                                                            setSelectedTrustBadges([...selectedTrustBadges, badge.id]);
-                                                                        }
-                                                                    }}
-                                                                    className={`px-3 py-2 rounded-lg text-left text-xs font-bold transition-all border ${
-                                                                        selectedTrustBadges.includes(badge.id)
-                                                                            ? 'bg-indigo-50 border-indigo-250 text-indigo-750 shadow-sm'
-                                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                                                    }`}
-                                                                >
-                                                                    {badge.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-150">
+                                                {/* Background Remover Segment */}
+                                                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-150 space-y-3">
+                                                    <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-2">
-                                                            <ShieldCheck className="text-emerald-500" size={16} />
+                                                            <span className="text-sm">✨</span>
                                                             <div>
-                                                                <p className="text-[11px] font-bold text-slate-700">CAC Trust Verification Watermark</p>
-                                                                <p className="text-[9px] text-slate-400">Boosts confidence for new buyers online</p>
+                                                                <p className="text-xs font-bold text-slate-800">Auto-Remove background</p>
+                                                                <p className="text-[9px] text-slate-500">Isolates your product instantly</p>
                                                             </div>
                                                         </div>
                                                         <input
                                                             type="checkbox"
-                                                            checked={flyerWatermark}
-                                                            onChange={(e) => setFlyerWatermark(e.target.checked)}
+                                                            checked={bgRemovalActive}
+                                                            onChange={(e) => setBgRemovalActive(e.target.checked)}
                                                             className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
                                                         />
                                                     </div>
 
+                                                    {bgRemovalActive && (
+                                                        <div className="space-y-3 pt-1.5 border-t border-indigo-100">
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1">
+                                                                    <span>BG Removal Tolerance</span>
+                                                                    <span>{tolerance}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range"
+                                                                    min="0"
+                                                                    max="100"
+                                                                    value={tolerance}
+                                                                    onChange={(e) => setTolerance(Number(e.target.value))}
+                                                                    className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-650"
+                                                                />
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-[10px] font-bold text-slate-500 mb-1.5">Select Clean Backdrop</label>
+                                                                <div className="grid grid-cols-3 gap-1.5">
+                                                                    {[
+                                                                        { id: 'white', label: '⚪ Solid White' },
+                                                                        { id: 'grey', label: '🔘 Soft Studio' },
+                                                                        { id: 'gradient-warm', label: '🌅 Warm Sunset' },
+                                                                        { id: 'gradient-cool', label: '🌆 Cool Tech' },
+                                                                        { id: 'wood', label: '🪵 Mahogany' },
+                                                                        { id: 'marble', label: '🏛️ Grey Marble' },
+                                                                    ].map((bg) => (
+                                                                        <button
+                                                                            key={bg.id}
+                                                                            type="button"
+                                                                            onClick={() => setSelectedBackdrop(bg.id)}
+                                                                            className={`py-1.5 px-2 rounded-lg text-center text-[9px] font-bold transition-all border ${
+                                                                                selectedBackdrop === bg.id
+                                                                                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
+                                                                                    : 'bg-white border-slate-200 text-slate-650 hover:bg-slate-50'
+                                                                            }`}
+                                                                        >
+                                                                            {bg.label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-650 mb-1">Price (Naira ₦)</label>
+                                                    <input type="text" value={flyerPrice} onChange={(e) => setFlyerPrice(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 15,000" />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-650 mb-1">Promo Label</label>
+                                                    <input type="text" value={flyerPromo} onChange={(e) => setFlyerPromo(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 20% OFF or PROMO" />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-650 mb-1">WhatsApp / Call Contact</label>
+                                                    <input type="text" value={flyerPhone} onChange={(e) => setFlyerPhone(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3.5 py-2 bg-white text-xs text-slate-700 font-medium outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. 0801 234 5678" />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-650 mb-1.5">Badge Accent Color</label>
+                                                    <div className="flex gap-2.5">
+                                                        {['indigo', 'emerald', 'amber', 'rose', 'slate'].map((color) => (
+                                                            <button
+                                                                key={color}
+                                                                type="button"
+                                                                onClick={() => setFlyerBadgeColor(color)}
+                                                                className={`w-6 h-6 rounded-full border-2 transition-all ${
+                                                                    color === 'indigo' ? 'bg-indigo-600' :
+                                                                    color === 'emerald' ? 'bg-emerald-600' :
+                                                                    color === 'amber' ? 'bg-amber-500' :
+                                                                    color === 'rose' ? 'bg-rose-600' : 'bg-slate-700'
+                                                                } ${flyerBadgeColor === color ? 'border-indigo-600 scale-110 shadow-md ring-2 ring-indigo-200' : 'border-transparent'}`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-650 mb-2">Trust Stamps (Naija Specific)</label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {[
+                                                            { id: 'POD', label: '🚚 Pay on Delivery' },
+                                                            { id: 'FAST', label: '⚡ Fast Delivery' },
+                                                            { id: 'QUAL', label: '⭐ Premium Quality' },
+                                                            { id: 'CAC', label: '✅ CAC Registered' },
+                                                        ].map((badge) => (
+                                                            <button
+                                                                key={badge.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (selectedTrustBadges.includes(badge.id)) {
+                                                                        setSelectedTrustBadges(selectedTrustBadges.filter(id => id !== badge.id));
+                                                                    } else {
+                                                                        setSelectedTrustBadges([...selectedTrustBadges, badge.id]);
+                                                                    }
+                                                                }}
+                                                                className={`px-3 py-2 rounded-lg text-left text-xs font-bold transition-all border ${
+                                                                    selectedTrustBadges.includes(badge.id)
+                                                                        ? 'bg-indigo-50 border-indigo-250 text-indigo-750 shadow-sm'
+                                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                                }`}
+                                                            >
+                                                                {badge.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-150">
+                                                    <div className="flex items-center gap-2">
+                                                        <ShieldCheck className="text-emerald-500" size={16} />
+                                                        <div>
+                                                            <p className="text-[11px] font-bold text-slate-700">CAC Trust Verification Watermark</p>
+                                                            <p className="text-[9px] text-slate-400">Boosts confidence for new buyers online</p>
+                                                        </div>
+                                                    </div>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={flyerWatermark}
+                                                        onChange={(e) => setFlyerWatermark(e.target.checked)}
+                                                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                                    />
+                                                </div>
+
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 )}
                             </motion.div>
