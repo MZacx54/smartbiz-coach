@@ -557,6 +557,7 @@ const App: React.FC = () => {
                 currentView={currentView}
                 onNavigate={handleNavigate}
                 onUpdateUser={setUser}
+                onUpdateCredits={handleUpdateCredits}
               >
               <Suspense
                 fallback={

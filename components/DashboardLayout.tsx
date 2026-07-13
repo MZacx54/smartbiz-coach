@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppView, User, CartItem, UserStats, ActionCard } from '../types';
 import GlobalSearch from './GlobalSearch';
 import { toast } from 'react-hot-toast';
+import LiveSupportWidget from './LiveSupportWidget';
 
 interface DashboardLayoutProps {
     user: User;
@@ -12,6 +13,7 @@ interface DashboardLayoutProps {
     currentView: AppView;
     onNavigate: (view: AppView) => void;
     onUpdateUser?: (user: User) => void;
+    onUpdateCredits?: (credits: number) => void;
     children: React.ReactNode;
 }
 
@@ -23,6 +25,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     currentView,
     onNavigate,
     onUpdateUser,
+    onUpdateCredits,
     children
 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -397,6 +400,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     onClick={() => setIsMenuOpen(false)}
                 ></div>
             )}
+
+            {/* Global Floating Live Support Widget */}
+            <LiveSupportWidget credits={userStats.bizCredits} onUpdateCredits={onUpdateCredits} />
         </div>
     );
 };
