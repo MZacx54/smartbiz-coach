@@ -994,6 +994,101 @@ const ProductManager: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Unsplash Studio Search Modal */}
+      {showStudioModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl animate-in zoom-in-95 max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                  <span>🎨</span> Curated Photo Studio
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Find high-quality stock photos matching your business niche</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowStudioModal(false)}
+                className="text-slate-450 hover:text-slate-650 text-xl font-bold bg-slate-50 hover:bg-slate-100 p-2 rounded-full w-9 h-9 flex items-center justify-center transition-colors border-0 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="py-4 flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. Ankara textile, catering service, rental house..."
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                value={studioSearchQuery}
+                onChange={(e) => setStudioSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') searchStockPhotos(studioSearchQuery);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => searchStockPhotos(studioSearchQuery)}
+                disabled={isSearchingStudio}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl text-xs font-bold transition-all disabled:opacity-50 border-0 cursor-pointer"
+              >
+                {isSearchingStudio ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+
+            {/* Quick Filters */}
+            <div className="flex flex-wrap gap-2 pb-4">
+              {['Fashion', 'Catering', 'Logistics', 'Consulting', 'Real Estate', 'Wholesale', 'Packaging'].map((tag) => (
+                <button
+                  type="button"
+                  key={tag}
+                  onClick={() => {
+                    setStudioSearchQuery(tag);
+                    searchStockPhotos(tag);
+                  }}
+                  className="bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200/60 text-slate-600 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all cursor-pointer"
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
+
+            {/* Results Grid */}
+            <div className="flex-1 overflow-y-auto min-h-[250px] max-h-[400px]">
+              {isSearchingStudio ? (
+                <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                  <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-slate-400">Fetching studio photos...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
+                  {studioPhotos.map((url, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        setCurrentProduct(prev => ({ ...prev, image_url: url }));
+                        setShowStudioModal(false);
+                        toast.success('Selected image applied!');
+                      }}
+                      className="group relative rounded-2xl overflow-hidden aspect-[4/3] cursor-pointer border border-slate-100 hover:border-indigo-500 hover:shadow-md transition-all bg-slate-50"
+                    >
+                      <img 
+                        src={url} 
+                        alt="Unsplash Option" 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <span className="text-white text-[10px] font-bold bg-black/60 px-3 py-1.5 rounded-full">Apply Photo</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

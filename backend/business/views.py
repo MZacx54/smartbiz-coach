@@ -15,7 +15,24 @@ class GenerateBusinessPlanView(views.APIView):
         employees = request.data.get('employeesCount', 'Not Specified')
         revenue_model = request.data.get('revenueModel', 'Not Specified')
 
+        from brand.models import BrandIdentity
+        # Retrieve BrandIdentity to enrich prompt with user's specific brand settings
+        brand_context = ""
+        try:
+            brand = BrandIdentity.objects.get(user=request.user)
+            brand_context = f"""
+            Brand Profile Context:
+            - Target Audience: {brand.target_audience}
+            - Brand Voice/Vibe: {brand.brand_voice} (Style: {brand.vibe})
+            - Elevator Pitch: {brand.elevator_pitch}
+            - Business Bio: {brand.social_bio}
+            - Taglines: {", ".join(brand.taglines) if isinstance(brand.taglines, list) else ""}
+            """
+        except BrandIdentity.DoesNotExist:
+            pass
+
         prompt = f"""Write a comprehensive, investor-ready, bank-quality business plan for "{name}" in the "{niche}" industry.
+        {brand_context}
         Specific details: {details}
         Startup Capital: {capital}
         Number of Employees: {employees}
@@ -35,11 +52,64 @@ class GenerateBusinessPlanView(views.APIView):
         
         try:
             plan = gemini_utils.generate_json_content(prompt)
+            
+            # Handle list outputs or non-dict structures safely
+            if not isinstance(plan, dict):
+                raise Exception("Generative model failed to output a valid structured JSON dictionary.")
+
+            if 'error' in plan:
+                raise Exception(plan.get('error'))
+
+            # Normalize keys to camelCase to ensure consistency for the frontend component
+            normalized_plan = {}
+            
+            normalized_plan['executiveSummary'] = (
+                plan.get('executiveSummary') or 
+                plan.get('executive_summary') or 
+                plan.get('ExecutiveSummary') or 
+                plan.get('executiveSummaryText') or 
+                ""
+            )
+            
+            normalized_plan['marketAnalysis'] = (
+                plan.get('marketAnalysis') or 
+                plan.get('market_analysis') or 
+                plan.get('MarketAnalysis') or 
+                ""
+            )
+            
+            normalized_plan['marketingStrategy'] = (
+                plan.get('marketingStrategy') or 
+                plan.get('marketing_strategy') or 
+                plan.get('MarketingStrategy') or 
+                ""
+            )
+            
+            normalized_plan['financialProjection'] = (
+                plan.get('financialProjection') or 
+                plan.get('financial_projection') or 
+                plan.get('FinancialProjection') or 
+                plan.get('financialProjections') or 
+                plan.get('financial_projections') or 
+                ""
+            )
+            
+            normalized_plan['operationalPlan'] = (
+                plan.get('operationalPlan') or 
+                plan.get('operational_plan') or 
+                plan.get('OperationalPlan') or 
+                ""
+            )
+
+            # Ensure we actually have content in the plan
+            if not normalized_plan['executiveSummary'] and not normalized_plan['marketAnalysis']:
+                raise Exception("The generated business plan content was empty or incomplete. Please try again.")
+
             # Deduct credits
             deduct_credits(request.user, 'business_plan')
-            return Response(plan)
+            return Response(normalized_plan)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({'error': f"Business Plan Generation Failed: {str(e)}"}, status=500)
 
 class FindGrantsView(views.APIView):
     permission_classes = [IsAuthenticated]
