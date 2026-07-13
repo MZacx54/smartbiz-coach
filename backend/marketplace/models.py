@@ -50,7 +50,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=12, decimal_places=2)
     price_max = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     
-    image_url = models.URLField(blank=True, null=True)
+    image_url = models.TextField(blank=True, null=True)
     category = models.CharField(max_length=100, blank=True)
     product_type = models.CharField(max_length=20, choices=PRODUCT_TYPES, default='PHYSICAL')
     

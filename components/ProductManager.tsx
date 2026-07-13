@@ -214,13 +214,15 @@ const ProductManager: React.FC = () => {
     }
     const toastId = toast.loading('AI is crafting your copy...');
     try {
-      const response = await api.post('/api/content/generate-post/', {
-        topic: `A professional sales description for a ${currentProduct.product_type} named ${currentProduct.name}.`
+      const response = await api.post('/api/content/generate-social/', {
+        topic: `A professional sales description for a ${currentProduct.product_type || 'PHYSICAL'} named ${currentProduct.name}.`,
+        platform: 'Instagram',
+        tone: 'Persuasive'
       });
-      setCurrentProduct(prev => ({ ...prev, description: response.data.caption }));
+      setCurrentProduct(prev => ({ ...prev, description: response.data.caption || response.data.text }));
       toast.success('AI Copy applied!', { id: toastId });
     } catch (err) {
-      toast.error('AI craft failed', { id: toastId });
+      toast.error('AI craft failed. Make sure you have credits.', { id: toastId });
     }
   };
 

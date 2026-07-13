@@ -188,3 +188,47 @@ class DashboardSearchView(generics.ListAPIView):
     def get_queryset(self):
         # Search across ALL the user's ecosystem items
         return Product.objects.filter(brand__user=self.request.user).order_by('-created_at')
+
+class ProductSnapAndListView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        image_base64 = request.data.get('image_base64')
+        mime_type = request.data.get('mime_type', 'image/jpeg')
+
+        if not image_base64:
+            return Response({'error': 'No image provided'}, status=400)
+
+        prompt = """
+        Analyze this product image and suggest details for creating a new digital inventory listing in a Nigerian small business.
+        Identify what the item is and suggest:
+        1. A clear, professional Product Name (under 50 characters).
+        2. A suggested Retail Selling Price in Nigerian Naira (₦, as an integer e.g., 15000). Make it realistic for the Nigerian market.
+        3. A suggested Cost Price (COGS, as an integer e.g., 9000). Make it about 55-75% of the suggested Retail Selling Price.
+        4. A suitable category choice (e.g. Fashion, Electronics, Groceries, Beauty, Home, Industrial).
+        5. A high-converting product description (2-3 sentences) suitable for Instagram or WhatsApp sales copy.
+        
+        You must respond STRICTLY with a JSON object containing these keys:
+        - name: string
+        - price: integer
+        - cost_price: integer
+        - category: string
+        - description: string
+        """
+
+        try:
+            from smartbiz_backend import gemini_utils
+            content = gemini_utils.generate_json_content(
+                prompt,
+                image_base64=image_base64,
+                mime_type=mime_type
+            )
+            return Response(content)
+        except Exception as e:
+            return Response({
+                'name': 'Scanned Product',
+                'price': 5000,
+                'cost_price': 3000,
+                'category': 'General Goods',
+                'description': 'Scanned item description. Please edit to add details.'
+            })

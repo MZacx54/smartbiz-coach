@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Base URL comes from the Vercel environment variable VITE_API_URL
 // which must be set to: https://api.smartbizcoach.com.ng
-let BASE_URL = import.meta.env.VITE_API_URL || 'https://smartbiz-coach.onrender.com';
+let BASE_URL = import.meta.env.VITE_API_URL || 'https://smartbiz-backend-qj3r.onrender.com';
 // Normalize trailing slashes and strip redundant /api suffix
 BASE_URL = BASE_URL.replace(/\/api\/?$/, '');
 

@@ -10,7 +10,8 @@ from .views import (
     LeadListCreateView,
     LeadDetailView,
     EcosystemAnalyticsView,
-    OrderCreateView
+    OrderCreateView,
+    ProductSnapAndListView
 )
 
 urlpatterns = [
@@ -21,6 +22,7 @@ urlpatterns = [
     path('vendor/profile/', VendorProfileView.as_view(), name='vendor_profile'),
     path('listings/', MarketplaceListingListView.as_view(), name='marketplace_listings'),
     path('products/', ProductListCreateView.as_view(), name='product_list_create'),
+    path('products/snap-and-list/', ProductSnapAndListView.as_view(), name='product_snap_and_list'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product_detail'),
     path('products/u/<slug:slug>/', PublicBrandProductListView.as_view(), name='public_brand_products'),
     path('global/', GlobalMarketplaceListView.as_view(), name='global_marketplace'),
