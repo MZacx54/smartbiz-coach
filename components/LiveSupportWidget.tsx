@@ -108,7 +108,7 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
       {/* Floating Support Bubble Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 transform active:scale-95 ${
+        className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 transform active:scale-95 focus:outline-none focus:ring-0 outline-none border-0 ${
           isOpen ? 'bg-red-500 hover:bg-red-600 rotate-90' : 'bg-emerald-600 hover:bg-emerald-500 hover:shadow-emerald-500/25'
         }`}
         title="Live Support Chat"
@@ -128,7 +128,7 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
 
       {/* Floating Chat Panel overlay */}
       {isOpen && (
-        <div className="absolute bottom-18 right-0 w-80 sm:w-96 h-[480px] bg-white border border-slate-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-350 z-50">
+        <div className="fixed bottom-24 right-6 w-[340px] sm:w-[380px] h-[480px] bg-white border border-slate-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-350 z-50">
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white">
             <div className="flex justify-between items-center">

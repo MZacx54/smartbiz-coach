@@ -77,7 +77,7 @@ export const generateDailyMotivation = async (persona?: string) => {
 
 export const chatWithSmartBiz = async (history: any[], message: string) => {
     const response = await api.post('/api/content/chat/', { history, message });
-    return response.data;
+    return response.data.text || response.data;
 };
 
 export const findGrants = async (params: GrantSearchParams) => {
