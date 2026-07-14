@@ -27,7 +27,6 @@ const Marketplace = lazy(() => import("./components/Marketplace"));
 const Cart = lazy(() => import("./components/Cart"));
 const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
-const SmartBizHub = lazy(() => import("./components/SmartBizHub"));
 const ProductMagic = lazy(() => import("./components/ProductMagic"));
 const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));

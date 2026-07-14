@@ -36,6 +36,43 @@ class MarketplaceListing(models.Model):
     def __str__(self):
         return f"{self.title} - {self.vendor.business_name}"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        
+        # Sync to Product model
+        from brand.models import BrandIdentity
+        
+        # Get or create a BrandIdentity for the vendor user
+        brand, _ = BrandIdentity.objects.get_or_create(
+            user=self.vendor.user,
+            defaults={'business_name': self.vendor.business_name}
+        )
+        
+        # Check plan limits for is_promoted monetization logic
+        from marketing.views import get_plan_limits
+        limits = get_plan_limits(self.vendor.user)
+        is_promoted = self.vendor.user.is_admin_or_owner or (limits['plan_name'] == 'Pro')
+        
+        Product.objects.update_or_create(
+            sku=f"LISTING_{self.id}",
+            defaults={
+                'brand': brand,
+                'name': self.title,
+                'description': self.description,
+                'price': self.price_min or 0.00,
+                'price_max': self.price_max,
+                'product_type': 'B2B',
+                'category': self.category,
+                'location': self.location,
+                'is_public': self.is_active,
+                'is_promoted': is_promoted
+            }
+        )
+
+    def delete(self, *args, **kwargs):
+        Product.objects.filter(sku=f"LISTING_{self.id}").delete()
+        super().delete(*args, **kwargs)
+
 class Product(models.Model):
     PRODUCT_TYPES = [
         ('PHYSICAL', 'Physical Product'),

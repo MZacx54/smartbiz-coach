@@ -20,6 +20,19 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['brand']
 
+    def validate(self, attrs):
+        is_promoted = attrs.get('is_promoted', False)
+        request = self.context.get('request')
+        if is_promoted and request and request.user:
+            from marketing.views import get_plan_limits
+            limits = get_plan_limits(request.user)
+            is_pro = request.user.is_admin_or_owner or (limits['plan_name'] == 'Pro')
+            if not is_pro:
+                raise serializers.ValidationError({
+                    "is_promoted": "Promoting/featuring products on the Marketplace is a premium feature. Please upgrade to a Pro plan to feature your listings."
+                })
+        return attrs
+
 class LeadSerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')
     product_type = serializers.ReadOnlyField(source='product.product_type')

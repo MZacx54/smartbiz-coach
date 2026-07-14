@@ -12,17 +12,22 @@ interface MarketplaceProps {
 }
 
 const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'PHYSICAL' }) => {
-  const [activeTab, setActiveTab] = useState(initialType);
+  const [activeTab, setActiveTab] = useState<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'>(initialType);
   const [items, setItems] = useState<UnifiedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedItem, setSelectedItem] = useState<UnifiedItem | null>(null);
 
   const fetchItems = async () => {
     setIsLoading(true);
     try {
       const response = await api.get('/api/marketplace/global/', {
-        params: { product_type: activeTab, search: searchQuery }
+        params: { 
+          product_type: activeTab, 
+          search: searchQuery,
+          category: selectedCategory 
+        }
       });
       setItems(response.data);
     } catch (err) {
@@ -33,8 +38,14 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   };
 
   useEffect(() => {
+    // Reset category filter when switching tabs
+    setSelectedCategory('');
     fetchItems();
   }, [activeTab]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [selectedCategory]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,37 +53,37 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 pb-24">
-      {/* Premium Hero */}
-      <section className="relative rounded-[48px] overflow-hidden bg-slate-900 text-white p-12 md:p-20 shadow-3xl">
+    <div className="max-w-7xl mx-auto space-y-8 pb-24">
+      {/* Premium Hero (Compact & Elegant) */}
+      <section className="relative rounded-[32px] overflow-hidden bg-slate-900 text-white p-8 md:p-14 shadow-2xl">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-indigo-500/20 to-transparent pointer-events-none"></div>
         <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-emerald-600/10 rounded-full blur-[100px] pointer-events-none"></div>
         
-        <div className="relative z-10 max-w-3xl space-y-8">
+        <div className="relative z-10 max-w-3xl space-y-5">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
+             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-[0.2em] mb-3">
                 <ShieldCheck className="w-3.5 h-3.5" /> Verified MSME Network
              </div>
-             <h1 className="text-5xl md:text-7xl font-black font-heading tracking-tight leading-[0.95]">
-               The <span className="text-indigo-400">Unified</span> <br/>Market Square
+             <h1 className="text-3xl md:text-5xl font-black font-heading tracking-tight leading-tight">
+               The <span className="text-indigo-400">Unified</span> Market Square
              </h1>
-             <p className="text-slate-400 text-lg md:text-xl max-w-xl mt-6 leading-relaxed">
-               Discover verified products, professional services, and prime properties from Nigeria's top emerging brands.
+             <p className="text-slate-400 text-sm md:text-base max-w-xl mt-3 leading-relaxed">
+               Discover verified products, B2B wholesale listings, and professional service offers from Nigeria's top emerging brands.
              </p>
           </motion.div>
-
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4 max-w-2xl">
+ 
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 max-w-xl">
             <div className="flex-1 relative">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search products, services, or locations..."
-                className="w-full bg-white/10 backdrop-blur-md border-none rounded-3xl pl-14 pr-6 py-5 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 transition-all shadow-2xl"
+                className="w-full bg-white/10 backdrop-blur-md border-none rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500 transition-all shadow-xl"
               />
             </div>
-            <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-5 rounded-3xl font-black transition-all shadow-xl shadow-indigo-600/20 active:scale-95">
+            <button className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3.5 rounded-2xl text-sm font-black transition-all shadow-lg shadow-indigo-600/20 active:scale-95">
               Search
             </button>
           </form>
@@ -99,6 +110,32 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           </button>
         ))}
       </div>
+
+      {/* Category Pills (For B2B listings) */}
+      {activeTab === 'B2B' && (
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-4 animate-in fade-in">
+          {[
+            { value: '', label: 'All B2B' },
+            { value: 'LOGISTICS', label: '🚚 Logistics & Dispatch' },
+            { value: 'WHOLESALE', label: '📦 Wholesale Suppliers' },
+            { value: 'INFLUENCER', label: '📣 Micro-Influencers' },
+            { value: 'SERVICES', label: '💼 Business Services' },
+            { value: 'RAW_MATERIALS', label: '🏭 Raw Materials' },
+          ].map(cat => (
+            <button
+              key={cat.value}
+              onClick={() => setSelectedCategory(cat.value)}
+              className={`px-6 py-2.5 rounded-2xl text-xs font-black transition-all border ${
+                selectedCategory === cat.value
+                  ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
+                  : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-650'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

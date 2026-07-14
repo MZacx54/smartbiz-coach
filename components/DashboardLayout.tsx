@@ -195,7 +195,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         </p>
                     </div>
                     <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🏛️" />
-                    <NavItem view={AppView.HUB} label="SmartBiz Hub" icon="🤝" />
                     <NavItem view={AppView.LEAD_MANAGER} label="Lead Inbox" icon="📬" />
                     <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
                     <NavItem view={AppView.SALES_ASSISTANT} label="Sales Closer" icon="💬" />

@@ -172,11 +172,16 @@ class GlobalMarketplaceListView(generics.ListAPIView):
     search_fields = ['name', 'description', 'category', 'location', 'brand__business_name']
 
     def get_queryset(self):
-        # Only show items promoted to market square
-        queryset = Product.objects.filter(is_promoted=True).order_by('-created_at')
+        # Display all public products, ordering promoted/featured items to the top
+        queryset = Product.objects.filter(is_public=True).order_by('-is_promoted', '-created_at')
         product_type = self.request.query_params.get('product_type')
         if product_type:
             queryset = queryset.filter(product_type=product_type)
+            
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+            
         return queryset
 
 class DashboardSearchView(generics.ListAPIView):

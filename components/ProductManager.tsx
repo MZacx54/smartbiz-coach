@@ -458,8 +458,40 @@ const ProductManager: React.FC = () => {
     }
     const toastId = toast.loading('AI is crafting your copy...');
     try {
+      const pType = currentProduct.product_type || 'PHYSICAL';
+      const name = currentProduct.name;
+      const price = currentProduct.price ? `₦${currentProduct.price}` : '';
+      const meta = currentProduct.metadata || {};
+      
+      let detailsPrompt = `Create a professional, premium sales description for a ${pType.toLowerCase()} named "${name}". `;
+      if (price) detailsPrompt += `Price is ${price}. `;
+
+      if (pType === 'PHYSICAL') {
+        if (meta.brand) detailsPrompt += `Brand: ${meta.brand}. `;
+        if (meta.weight) detailsPrompt += `Weight/Volume: ${meta.weight}. `;
+        if (currentProduct.sku) detailsPrompt += `SKU: ${currentProduct.sku}. `;
+      } else if (pType === 'SERVICE') {
+        if (meta.billingType) detailsPrompt += `Billing structure: ${meta.billingType} rates. `;
+        if (meta.duration) detailsPrompt += `Expected duration/delivery: ${meta.duration}. `;
+        if (meta.experienceLevel) detailsPrompt += `Experience level: ${meta.experienceLevel}. `;
+        if (meta.availability) detailsPrompt += `Working hours: ${meta.availability}. `;
+      } else if (pType === 'PROPERTY') {
+        if (meta.listingType) detailsPrompt += `Listed for: ${meta.listingType}. `;
+        if (meta.propertyType) detailsPrompt += `Property type: ${meta.propertyType}. `;
+        if (meta.bedrooms) detailsPrompt += `Bedrooms: ${meta.bedrooms}. `;
+        if (meta.bathrooms) detailsPrompt += `Bathrooms: ${meta.bathrooms}. `;
+        if (meta.furnished) detailsPrompt += `Furnishing: ${meta.furnished}. `;
+        if (currentProduct.location) detailsPrompt += `Located at: ${currentProduct.location}. `;
+      } else if (pType === 'B2B') {
+        if (meta.moq) detailsPrompt += `Minimum Order Quantity (MOQ): ${meta.moq}. `;
+        if (meta.tierPrices) detailsPrompt += `Wholesale pricing: ${meta.tierPrices}. `;
+        if (meta.leadTime) detailsPrompt += `Lead time: ${meta.leadTime}. `;
+        if (meta.capacity) detailsPrompt += `Capacity: ${meta.capacity}. `;
+        if (currentProduct.location) detailsPrompt += `Supply hub: ${currentProduct.location}. `;
+      }
+
       const response = await api.post('/api/content/generate-social/', {
-        topic: `A professional sales description for a ${currentProduct.product_type || 'PHYSICAL'} named ${currentProduct.name}.`,
+        topic: detailsPrompt,
         platform: 'Instagram',
         tone: 'Persuasive'
       });
@@ -585,8 +617,41 @@ const ProductManager: React.FC = () => {
         )}
       </div>
 
-      {/* Audit & Valuation Summary Dashboard (List View Only) */}
+      {/* View Tabs */}
       {!isEditing && !isBulkOnboarding && (
+        <div className="flex border-b border-slate-200 gap-6 mb-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('catalog')}
+            className={`pb-4 text-sm font-black transition-all border-b-2 outline-none border-0 bg-transparent cursor-pointer ${
+              activeTab === 'catalog'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-450 hover:text-slate-600'
+            }`}
+          >
+            📦 Inventory Catalog
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('ledger')}
+            className={`pb-4 text-sm font-black transition-all border-b-2 outline-none border-0 bg-transparent cursor-pointer flex items-center gap-2 ${
+              activeTab === 'ledger'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-450 hover:text-slate-600'
+            }`}
+          >
+            📋 Audited Stock Ledger
+            {transactionLogs.length > 0 && (
+              <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full text-[9px] font-bold">
+                {transactionLogs.length}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Audit & Valuation Summary Dashboard (List View Only, Catalog Tab) */}
+      {!isEditing && !isBulkOnboarding && activeTab === 'catalog' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-lg">📦</div>
@@ -834,6 +899,43 @@ const ProductManager: React.FC = () => {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+                      {currentProduct.product_type === 'B2B' ? (
+                        <select
+                          value={currentProduct.category || 'WHOLESALE'}
+                          onChange={(e) => setCurrentProduct({ ...currentProduct, category: e.target.value })}
+                          className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="LOGISTICS">🚚 Logistics & Dispatch</option>
+                          <option value="WHOLESALE">📦 Wholesale Suppliers</option>
+                          <option value="INFLUENCER">📣 Micro-Influencers</option>
+                          <option value="SERVICES">💼 Business Services</option>
+                          <option value="RAW_MATERIALS">🏭 Raw Materials & Packaging</option>
+                        </select>
+                      ) : (
+                        <input 
+                          type="text" 
+                          value={currentProduct.category || ''}
+                          onChange={(e) => setCurrentProduct({ ...currentProduct, category: e.target.value })}
+                          placeholder="e.g. Fashion, Electronics, Food"
+                          className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                        />
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Geographic Location</label>
+                      <input 
+                        type="text" 
+                        value={currentProduct.location || ''}
+                        onChange={(e) => setCurrentProduct({ ...currentProduct, location: e.target.value })}
+                        placeholder="e.g. Lagos, Ikeja"
+                        className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
                   {/* Category-Specific Form Fields */}
                   {currentProduct.product_type === 'PHYSICAL' && (
                      <>
@@ -1035,19 +1137,6 @@ const ProductManager: React.FC = () => {
                             </select>
                           </div>
                         </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Geographic Location</label>
-                          <div className="relative">
-                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input 
-                              type="text" 
-                              value={currentProduct.location || ''}
-                              onChange={(e) => setCurrentProduct({ ...currentProduct, location: e.target.value })}
-                              placeholder="e.g. Lekki Phase 1, Lagos"
-                              className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm"
-                            />
-                          </div>
-                        </div>
                      </div>
                   )}
 
@@ -1094,19 +1183,6 @@ const ProductManager: React.FC = () => {
                               onChange={(e) => updateMetadata('capacity', e.target.value)}
                               placeholder="e.g. 5,000 units per month"
                               className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Supply Hub Location</label>
-                          <div className="relative">
-                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input 
-                              type="text" 
-                              value={currentProduct.location || ''}
-                              onChange={(e) => setCurrentProduct({ ...currentProduct, location: e.target.value })}
-                              placeholder="e.g. Mushin Industrial, Lagos"
-                              className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm"
                             />
                           </div>
                         </div>
