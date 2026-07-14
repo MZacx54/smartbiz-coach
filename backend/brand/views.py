@@ -226,12 +226,20 @@ class GenerateBrandLogoView(views.APIView):
             svg_code = gemini_utils.generate_text_content(prompt_svg)
             
             # Clean conversational wrappers and extract strictly the SVG node
+            svg_code = svg_code.replace("```xml", "").replace("```svg", "").replace("```", "").strip()
+            svg_code = svg_code.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&").replace("&quot;", '"')
+            
             match = re.search(r'<svg.*?</svg>', svg_code, re.DOTALL | re.IGNORECASE)
             if match:
                 svg_code = match.group(0)
             else:
-                svg_code = re.sub(r'```(svg)?\s*', '', svg_code)
-                svg_code = re.sub(r'```\s*', '', svg_code).strip()
+                if '<svg' in svg_code.lower():
+                    start_idx = svg_code.lower().find('<svg')
+                    svg_code = svg_code[start_idx:]
+                    if not svg_code.lower().endswith('</svg>'):
+                        svg_code += '</svg>'
+                else:
+                    raise ValueError("No valid SVG content generated")
             
             import base64
             encoded_svg = base64.b64encode(svg_code.encode('utf-8')).decode('utf-8')
