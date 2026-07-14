@@ -169,6 +169,61 @@ const InvoiceGenerator: React.FC = () => {
     });
     localStorage.setItem('sb_invoices', JSON.stringify(summaryStats));
     setInvoices(newInvoices);
+
+    // Sync unpaid/paid invoices with Gbege Book (localStorage sb_debtors)
+    try {
+      const savedDebtors = localStorage.getItem('sb_debtors');
+      let debtorsList: any[] = savedDebtors ? JSON.parse(savedDebtors) : [];
+      
+      newInvoices.forEach(inv => {
+        const sub = inv.items.reduce((a, item) => a + (item.quantity * item.price), 0);
+        const disc = sub * (inv.discount / 100);
+        const tax = (sub - disc) * (inv.taxRate / 100);
+        const totalAmount = sub - disc + tax;
+        
+        // Find existing debtor linked to this invoice
+        const existingIdx = debtorsList.findIndex(d => d.linkedInvoiceId === inv.id || (d.name === inv.clientName && d.amount === totalAmount && d.status === 'UNPAID'));
+        
+        if (inv.paymentStatus === 'PAID') {
+          // If invoice is marked PAID, update debtor status to PAID
+          if (existingIdx !== -1) {
+            debtorsList[existingIdx].status = 'PAID';
+          }
+        } else if (inv.paymentStatus === 'SENT' || inv.paymentStatus === 'OVERDUE') {
+          // If invoice is SENT/OVERDUE (owing), add/update debtor
+          const itemsText = inv.items.map(i => `${i.quantity}x ${i.description}`).join(', ');
+          
+          if (existingIdx !== -1) {
+            debtorsList[existingIdx].amount = totalAmount;
+            debtorsList[existingIdx].name = inv.clientName;
+            debtorsList[existingIdx].phone = inv.clientPhone || debtorsList[existingIdx].phone || '';
+            debtorsList[existingIdx].dueDate = inv.dueDate || debtorsList[existingIdx].dueDate || '';
+            debtorsList[existingIdx].itemsBought = itemsText;
+            if (debtorsList[existingIdx].status === 'PAID') {
+              debtorsList[existingIdx].status = 'UNPAID';
+            }
+          } else {
+            // Add new debtor
+            debtorsList.push({
+              id: `invoice-debt-${inv.id}`,
+              name: inv.clientName,
+              phone: inv.clientPhone || '',
+              amount: totalAmount,
+              dueDate: inv.dueDate || '',
+              itemsBought: itemsText,
+              status: 'UNPAID',
+              linkedInvoiceId: inv.id,
+              payments: [],
+              remindersSentCount: 0
+            });
+          }
+        }
+      });
+      
+      localStorage.setItem('sb_debtors', JSON.stringify(debtorsList));
+    } catch (e) {
+      console.error("Failed to sync invoice with debtor book:", e);
+    }
   };
 
   const addItem = () => {

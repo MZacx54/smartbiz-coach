@@ -204,7 +204,35 @@ export interface InventoryItem {
   sku?: string;
 }
 
+// Product represents a full backend Product model record (from /api/marketplace/products/)
+export interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: string; // stored as decimal string from backend
+  cost_price?: string;
+  category: string;
+  product_type: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B';
+  quantity: number;
+  sku?: string;
+  image_url?: string;
+  location?: string;
+  metadata?: Record<string, any>;
+  brand_name?: string;
+  whatsapp_number?: string;
+  is_public?: boolean;
+  is_promoted?: boolean;
+  stock_count?: number;
+}
+
 // --- Debtor Book Types ---
+export interface DebtorPayment {
+  amount: number;
+  timestamp: string;
+  method: 'CASH' | 'TRANSFER' | 'POS';
+  note?: string;
+}
+
 export interface Debtor {
   id: string;
   name: string;
@@ -214,6 +242,9 @@ export interface Debtor {
   itemsBought: string;
   status: "UNPAID" | "PARTIAL" | "PAID";
   lastReminderSent?: number;
+  linkedInvoiceId?: string;
+  payments?: DebtorPayment[];
+  remindersSentCount?: number;
 }
 
 export interface RoadmapStep {
@@ -419,6 +450,7 @@ export interface UnifiedItem {
     location: string; 
     metadata: any; 
     brand_name?: string; 
+    whatsapp_number?: string;
     is_public: boolean; 
     is_promoted: boolean; 
     stock_count: number; 
