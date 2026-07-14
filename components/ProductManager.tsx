@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Trash2, Edit3, Sparkles, Globe, Megaphone, DollarSign, Package, Tag, ArrowRight, Save, X, Download, ShieldAlert, TrendingUp, AlertTriangle } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, Edit3, Sparkles, Globe, Megaphone, DollarSign, Package, Tag, ArrowRight, Save, X, Download, ShieldAlert, TrendingUp, AlertTriangle, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
@@ -137,6 +137,196 @@ const ProductManager: React.FC = () => {
     setStudioPhotos(generatedPhotos);
     setIsSearchingStudio(false);
   };
+
+  // Bulk Scan States
+  const [bulkDrafts, setBulkDrafts] = useState<{
+    id: number;
+    image_url: string;
+    name: string;
+    price: string;
+    cost_price: string;
+    category: string;
+    description: string;
+    quantity: number;
+    sku: string;
+    status: 'LOADING' | 'READY' | 'ERROR';
+  }[]>([]);
+  const [isBulkOnboarding, setIsBulkOnboarding] = useState(false);
+
+  const handleBulkSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsBulkOnboarding(true);
+    setIsEditing(false);
+
+    const newDrafts = Array.from(files).map((file, index) => ({
+      id: Date.now() + index,
+      image_url: '',
+      name: file.name.split('.')[0].substring(0, 40),
+      price: '5000',
+      cost_price: '3000',
+      category: 'General',
+      description: '',
+      quantity: 10,
+      sku: `SKU-AI-${Math.floor(100 + Math.random() * 900)}`,
+      status: 'LOADING' as const
+    }));
+
+    setBulkDrafts(newDrafts);
+
+    const filesArray = Array.from(files);
+    for (let i = 0; i < filesArray.length; i++) {
+      const file = filesArray[i];
+      const draftId = newDrafts[i].id;
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Url = reader.result as string;
+        setBulkDrafts(prev => prev.map(d => d.id === draftId ? { ...d, image_url: base64Url } : d));
+
+        try {
+          const base64Clean = base64Url.split(',')[1];
+          const response = await api.post('/api/marketplace/products/snap-and-list/', {
+            image_base64: base64Clean,
+            mime_type: file.type
+          });
+
+          setBulkDrafts(prev => prev.map(d => d.id === draftId ? {
+            ...d,
+            name: response.data.name || d.name,
+            price: String(response.data.price || d.price),
+            cost_price: String(response.data.cost_price || d.cost_price),
+            category: response.data.category || d.category,
+            description: response.data.description || d.description,
+            status: 'READY' as const
+          } : d));
+        } catch (err) {
+          setBulkDrafts(prev => prev.map(d => d.id === draftId ? { ...d, status: 'READY' as const } : d));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePublishBulk = async () => {
+    const toastId = toast.loading(`Publishing ${bulkDrafts.length} items to inventory...`);
+    try {
+      for (const draft of bulkDrafts) {
+        const payload = {
+          name: draft.name,
+          description: draft.description,
+          price: parseFloat(draft.price || '0').toFixed(2),
+          cost_price: parseFloat(draft.cost_price || '0').toFixed(2),
+          stock_count: draft.quantity,
+          sku: draft.sku,
+          category: draft.category,
+          product_type: 'PHYSICAL',
+          image_url: draft.image_url,
+          is_public: true,
+          is_promoted: false,
+          low_stock_threshold: 5
+        };
+
+        if (isTractionMode) {
+          setProducts(prev => [{ ...payload, id: Date.now() + Math.random() } as Product, ...prev]);
+        } else {
+          await api.post('/api/marketplace/products/', payload);
+        }
+      }
+      toast.success('All items published successfully!', { id: toastId });
+      setIsBulkOnboarding(false);
+      fetchProducts();
+    } catch (e) {
+      toast.error('Failed to publish all items', { id: toastId });
+    }
+  };
+
+  interface TransactionLog {
+    id: number;
+    productName: string;
+    sku: string;
+    changeType: 'INITIAL' | 'INBOUND' | 'OUTBOUND' | 'ADJUSTMENT';
+    quantityChanged: number;
+    resultingQuantity: number;
+    costPriceAtTime: string;
+    retailPriceAtTime: string;
+    timestamp: string;
+    notes: string;
+  }
+
+  const [transactionLogs, setTransactionLogs] = useState<TransactionLog[]>([]);
+
+  // Load and sync transaction logs
+  useEffect(() => {
+    const savedLogs = localStorage.getItem('sb_idice_transaction_logs');
+    if (savedLogs) {
+      setTransactionLogs(JSON.parse(savedLogs));
+    } else if (products.length > 0) {
+      const initialLogs = products.map((p, idx) => ({
+        id: Date.now() - (idx * 60000),
+        productName: p.name,
+        sku: p.sku || `SKU-INIT-${idx + 100}`,
+        changeType: 'INITIAL' as const,
+        quantityChanged: p.stock_count || 1,
+        resultingQuantity: p.stock_count || 1,
+        costPriceAtTime: p.cost_price || '0.00',
+        retailPriceAtTime: p.price,
+        timestamp: new Date(Date.now() - (idx * 3600000)).toISOString(),
+        notes: 'Initial catalog asset audit onboarding record.'
+      }));
+      setTransactionLogs(initialLogs);
+      localStorage.setItem('sb_idice_transaction_logs', JSON.stringify(initialLogs));
+    }
+  }, [products]);
+
+  const addAuditLog = (
+    productName: string, 
+    sku: string, 
+    changeType: 'INITIAL' | 'INBOUND' | 'OUTBOUND' | 'ADJUSTMENT', 
+    quantityChanged: number, 
+    resultingQuantity: number, 
+    costPrice: string, 
+    retailPrice: string, 
+    notes: string
+  ) => {
+    const newLog: TransactionLog = {
+      id: Date.now(),
+      productName,
+      sku: sku || 'N/A',
+      changeType,
+      quantityChanged,
+      resultingQuantity,
+      costPriceAtTime: costPrice || '0.00',
+      retailPriceAtTime: retailPrice || '0.00',
+      timestamp: new Date().toISOString(),
+      notes
+    };
+    const updated = [newLog, ...transactionLogs];
+    setTransactionLogs(updated);
+    localStorage.setItem('sb_idice_transaction_logs', JSON.stringify(updated));
+  };
+
+  const exportLedgerToCSV = () => {
+    if (transactionLogs.length === 0) {
+      toast.error('No ledger entries to export');
+      return;
+    }
+    const headers = 'Timestamp,Item Name,SKU,Change Type,Quantity Changed,Ending Balance,Cost Price at Time,Retail Price at Time,Memo\n';
+    const rows = transactionLogs.map(log => 
+      `"${log.timestamp}","${log.productName.replace(/"/g, '""')}","${log.sku}","${log.changeType}",${log.quantityChanged},${log.resultingQuantity},${log.costPriceAtTime},${log.retailPriceAtTime},"${log.notes.replace(/"/g, '""')}"`
+    ).join('\n');
+    
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `smartbiz_catalog_audit_ledger_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Audit ledger CSV exported!');
+  };
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({
     name: '',
     description: '',
@@ -195,6 +385,17 @@ const ProductManager: React.FC = () => {
 
     const toastId = toast.loading('Saving listing...');
     try {
+      // Audit trail calculation
+      const isEdit = !!currentProduct.id;
+      const oldProduct = isEdit ? products.find(p => p.id === currentProduct.id) : null;
+      const oldStock = oldProduct ? (oldProduct.stock_count || 0) : 0;
+      const newStock = payload.stock_count;
+      const stockDiff = newStock - oldStock;
+      const changeType = !isEdit ? 'INITIAL' : (stockDiff > 0 ? 'INBOUND' : (stockDiff < 0 ? 'OUTBOUND' : 'ADJUSTMENT'));
+      const memo = !isEdit 
+        ? `Initial catalog asset audit onboarding record.` 
+        : `Listing updated. Stock count changed from ${oldStock} to ${newStock}.`;
+
       if (isTractionMode) {
         // Simulate local-storage persistence for Traction mode edit
         const exists = products.some(p => p.id === currentProduct.id);
@@ -216,6 +417,17 @@ const ProductManager: React.FC = () => {
         }
         fetchProducts();
       }
+
+      addAuditLog(
+        payload.name || '',
+        payload.sku || '',
+        changeType,
+        !isEdit ? newStock : stockDiff,
+        newStock,
+        payload.cost_price,
+        payload.price,
+        memo
+      );
       setIsEditing(false);
     } catch (err) {
       toast.error('Error saving listing', { id: toastId });
@@ -334,14 +546,26 @@ const ProductManager: React.FC = () => {
           </div>
           <p className="text-slate-500 text-sm ml-12">Manage inventory assets, valuation parameters, and storefront details.</p>
         </div>
-        {!isEditing && (
-          <div className="flex gap-3 w-full md:w-auto">
+        {!isEditing && !isBulkOnboarding && (
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <button 
               onClick={exportInventoryToCSV}
               className="flex-1 md:flex-initial flex items-center justify-center gap-2 border border-slate-200 text-slate-600 px-6 py-4 rounded-3xl font-bold hover:bg-slate-50 transition-all shadow-sm"
             >
               <Download className="w-4 h-4" /> Export CSV
             </button>
+            
+            <label className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-3xl font-bold transition-all shadow-xl shadow-emerald-100 active:scale-95 whitespace-nowrap cursor-pointer">
+              <Camera className="w-4 h-4" /> Snap & List
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleBulkSelect} 
+              />
+            </label>
+
             <button 
               onClick={() => {
                 setCurrentProduct({ 
@@ -361,7 +585,7 @@ const ProductManager: React.FC = () => {
       </div>
 
       {/* Audit & Valuation Summary Dashboard (List View Only) */}
-      {!isEditing && (
+      {!isEditing && !isBulkOnboarding && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-lg">📦</div>
@@ -398,7 +622,151 @@ const ProductManager: React.FC = () => {
       )}
 
       <AnimatePresence mode="wait">
-        {isEditing ? (
+        {isBulkOnboarding ? (
+          <motion.div 
+            key="bulk"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-8"
+          >
+             {/* Bulk Header */}
+             <div className="flex justify-between items-center bg-slate-900 text-white p-6 rounded-3xl shadow-xl">
+               <div>
+                 <h2 className="text-xl font-black font-heading">📸 AI Bulk Onboarding Review</h2>
+                 <p className="text-xs text-slate-300 mt-1">We analyzed your photos. Verify the quantities, edit prices, and tap publish to list them all!</p>
+               </div>
+               <div className="flex gap-2">
+                 <button 
+                   type="button"
+                   onClick={() => setIsBulkOnboarding(false)}
+                   className="bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-2xl text-xs font-bold transition-all border-0 cursor-pointer"
+                 >
+                   Cancel
+                 </button>
+                 <button 
+                   type="button"
+                   onClick={handlePublishBulk}
+                   className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-emerald-700/20 transition-all border-0 cursor-pointer"
+                 >
+                   Publish {bulkDrafts.length} Listings
+                 </button>
+               </div>
+             </div>
+
+             {/* Draft Grid */}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+               {bulkDrafts.map((draft) => (
+                  <div key={draft.id} className={`bg-white rounded-[32px] overflow-hidden border p-6 flex flex-col sm:flex-row gap-6 transition-all shadow-sm ${draft.status === 'LOADING' ? 'animate-pulse border-indigo-200 bg-indigo-50/10' : 'border-slate-100'}`}>
+                    {/* Photo Preview / Loader */}
+                    <div className="w-full sm:w-1/3 aspect-square bg-slate-100 rounded-2xl overflow-hidden relative flex-shrink-0">
+                      {draft.image_url ? (
+                        <img src={draft.image_url} alt="Draft Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {draft.status === 'LOADING' && (
+                        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px] flex items-center justify-center">
+                          <span className="text-[10px] text-white font-black tracking-widest uppercase animate-pulse">Analyzing...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Form fields for Draft */}
+                    <div className="flex-1 space-y-4">
+                       <div className="space-y-1">
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Item Name</label>
+                         <input 
+                           type="text"
+                           value={draft.name}
+                           onChange={(e) => {
+                             const val = e.target.value;
+                             setBulkDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, name: val } : d));
+                           }}
+                           className="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-1 focus:ring-indigo-550"
+                           placeholder="Product Name"
+                         />
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-3">
+                         <div className="space-y-1">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Selling Price (₦)</label>
+                           <input 
+                             type="number"
+                             value={draft.price}
+                             onChange={(e) => {
+                               const val = e.target.value;
+                               setBulkDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, price: val } : d));
+                             }}
+                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-xs font-black text-indigo-600 focus:ring-1 focus:ring-indigo-550"
+                             placeholder="Price"
+                           />
+                         </div>
+                         <div className="space-y-1">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Cost Price (₦)</label>
+                           <input 
+                             type="number"
+                             value={draft.cost_price}
+                             onChange={(e) => {
+                               const val = e.target.value;
+                               setBulkDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, cost_price: val } : d));
+                             }}
+                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-xs font-bold text-emerald-600 focus:ring-1 focus:ring-indigo-550"
+                             placeholder="COGS"
+                           />
+                         </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-3">
+                         <div className="space-y-1">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Stock Qty</label>
+                           <input 
+                             type="number"
+                             value={draft.quantity}
+                             onChange={(e) => {
+                               const val = parseInt(e.target.value) || 0;
+                               setBulkDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, quantity: val } : d));
+                             }}
+                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-1 focus:ring-indigo-550"
+                             placeholder="Quantity"
+                           />
+                         </div>
+                         <div className="space-y-1">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Category</label>
+                           <input 
+                             type="text"
+                             value={draft.category}
+                             onChange={(e) => {
+                               const val = e.target.value;
+                               setBulkDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, category: val } : d));
+                             }}
+                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-xs font-bold focus:ring-1 focus:ring-indigo-550"
+                             placeholder="Category"
+                         />
+                       </div>
+                     </div>
+
+                     <div className="space-y-1">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">AI Sales Description</label>
+                       <textarea 
+                         value={draft.description}
+                         onChange={(e) => {
+                           const val = e.target.value;
+                           setBulkDrafts(prev => prev.map(d => d.id === draft.id ? { ...d, description: val } : d));
+                         }}
+                         rows={2}
+                         className="w-full bg-slate-50 border-none rounded-xl px-4 py-2.5 text-[11px] leading-relaxed resize-none focus:ring-1 focus:ring-indigo-550"
+                         placeholder="Describe this item..."
+                       />
+                     </div>
+                  </div>
+                </div>
+             ))}
+           </div>
+          </motion.div>
+        ) : isEditing ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -994,6 +1362,82 @@ const ProductManager: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* NGO/Investor Audited Transaction Ledger */}
+      {!isEditing && !isBulkOnboarding && products.length > 0 && (
+         <div className="bg-white rounded-[40px] border border-slate-100 p-8 space-y-6 shadow-sm animate-in fade-in">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                  <span>📋</span> NGO / Investor Stock Audit Ledger
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Independent ledger records for Cost of Goods Sold (COGS), supply valuation, and grant auditing standard compliance.</p>
+              </div>
+              <button
+                type="button"
+                onClick={exportLedgerToCSV}
+                className="flex items-center gap-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 px-5 py-3 rounded-2xl text-xs font-bold transition-all border-0 cursor-pointer"
+              >
+                📥 Export Ledger CSV
+              </button>
+            </div>
+
+            <div className="overflow-x-auto rounded-3xl border border-slate-100">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="p-4">Timestamp</th>
+                    <th className="p-4">Item Name / SKU</th>
+                    <th className="p-4">Change Type</th>
+                    <th className="p-4 text-center">Change Qty</th>
+                    <th className="p-4 text-center">Ending Balance</th>
+                    <th className="p-4 text-right">Valuation Cost</th>
+                    <th className="p-4">Audit Memo / Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {transactionLogs.slice(0, 10).map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 text-slate-400 font-medium whitespace-nowrap">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                      <td className="p-4">
+                        <div className="font-bold text-slate-800">{log.productName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">{log.sku}</div>
+                      </td>
+                      <td className="p-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                          log.changeType === 'INITIAL' ? 'bg-indigo-50 text-indigo-650' :
+                          log.changeType === 'INBOUND' ? 'bg-emerald-50 text-emerald-650' :
+                          log.changeType === 'OUTBOUND' ? 'bg-rose-50 text-rose-650' :
+                          'bg-amber-50 text-amber-655'
+                        }`}>
+                          {log.changeType}
+                        </span>
+                      </td>
+                      <td className={`p-4 text-center font-extrabold ${
+                        log.quantityChanged > 0 ? 'text-emerald-600' : 
+                        log.quantityChanged < 0 ? 'text-rose-600' : 'text-slate-500'
+                      }`}>
+                        {log.quantityChanged > 0 ? `+${log.quantityChanged}` : log.quantityChanged}
+                      </td>
+                      <td className="p-4 text-center font-bold text-slate-700">
+                        {log.resultingQuantity} units
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="font-bold text-slate-800">₦{parseFloat(log.costPriceAtTime).toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">Retail: ₦{parseFloat(log.retailPriceAtTime).toLocaleString()}</div>
+                      </td>
+                      <td className="p-4 text-slate-500 italic max-w-xs truncate">
+                        {log.notes}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+         </div>
+      )}
 
       {/* Unsplash Studio Search Modal */}
       {showStudioModal && (

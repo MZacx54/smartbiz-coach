@@ -181,6 +181,48 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [generationSeed, setGenerationSeed] = useState<number>(42389);
     const [isApplyingAiEdit, setIsApplyingAiEdit] = useState<boolean>(false);
 
+    // Interactive BG Remover Tools & Transforms
+    const [activeTool, setActiveTool] = useState<'move' | 'picker' | 'eraser'>('move');
+    const [keyColor, setKeyColor] = useState<{ r: number; g: number; b: number } | null>(null);
+    const [eraserBrushSize, setEraserBrushSize] = useState<number>(30);
+    const [triggerProcess, setTriggerProcess] = useState<number>(0);
+    const [isErasing, setIsErasing] = useState<boolean>(false);
+    const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const imgRef = useRef<HTMLImageElement | null>(null);
+
+    // Transform states
+    const [productScale, setProductScale] = useState<number>(100);
+    const [productRotation, setProductRotation] = useState<number>(0);
+    const [productPos, setProductPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+    const [isDraggingProduct, setIsDraggingProduct] = useState<boolean>(false);
+    const dragStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+    // Initialize or reset mask canvas and transforms whenever imagePreview changes
+    useEffect(() => {
+        if (!imagePreview) {
+            maskCanvasRef.current = null;
+            setKeyColor(null);
+            setProductPos({ x: 0, y: 0 });
+            setProductScale(100);
+            setProductRotation(0);
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#ffffff'; // Start fully opaque (white)
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            maskCanvasRef.current = canvas;
+            setTriggerProcess(prev => prev + 1);
+        };
+        img.src = imagePreview;
+    }, [imagePreview]);
+
     // AI Image Edit Handler
     const handleApplyAiEdit = async (mode: 'edit' | 'subtle' | 'strong') => {
         if (!imagePreview) {
@@ -215,15 +257,10 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         }
     };
 
-    // Process image pixels to remove the background color (detects top-left corner color)
+    // Process image pixels to remove background + apply manual eraser mask
     useEffect(() => {
         if (!imagePreview) {
             setProcessedImage(null);
-            return;
-        }
-
-        if (!bgRemovalActive) {
-            setProcessedImage(imagePreview);
             return;
         }
 
@@ -239,27 +276,43 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imgData.data;
 
-            // Auto-detect the key color from the top-left corner pixel
-            const keyR = data[0];
-            const keyG = data[1];
-            const keyB = data[2];
+            // Apply chroma key if active
+            if (bgRemovalActive) {
+                // Auto-detect color from top-left pixel if keyColor is not set
+                const rColor = keyColor ? keyColor.r : data[0];
+                const gColor = keyColor ? keyColor.g : data[1];
+                const bColor = keyColor ? keyColor.b : data[2];
 
-            // Filter out colors close to the key color within the tolerance range
-            const maxDist = (tolerance / 100) * 440; // Max distance is sqrt(255^2 * 3) = ~441
+                const maxDist = (tolerance / 100) * 440; // Max distance in RGB space
 
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
 
-                const dist = Math.sqrt(
-                    Math.pow(r - keyR, 2) +
-                    Math.pow(g - keyG, 2) +
-                    Math.pow(b - keyB, 2)
-                );
+                    const dist = Math.sqrt(
+                        Math.pow(r - rColor, 2) +
+                        Math.pow(g - gColor, 2) +
+                        Math.pow(b - bColor, 2)
+                    );
 
-                if (dist < maxDist) {
-                    data[i + 3] = 0; // Make matching background pixels transparent
+                    if (dist < maxDist) {
+                        data[i + 3] = 0; // Set alpha to 0
+                    }
+                }
+            }
+
+            // Apply manual eraser mask if available
+            if (maskCanvasRef.current) {
+                const maskCtx = maskCanvasRef.current.getContext('2d');
+                if (maskCtx) {
+                    const maskData = maskCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        // If the mask pixel is black (R=0, G=0, B=0), make it transparent
+                        if (maskData[i] < 128) {
+                            data[i + 3] = 0;
+                        }
+                    }
                 }
             }
 
@@ -267,7 +320,120 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             setProcessedImage(canvas.toDataURL());
         };
         img.src = imagePreview;
-    }, [imagePreview, bgRemovalActive, tolerance]);
+    }, [imagePreview, bgRemovalActive, tolerance, keyColor, triggerProcess]);
+
+    // Click on image to sample background color (Eye-dropper)
+    const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
+        if (activeTool !== 'picker' || !imagePreview) return;
+
+        const imgElement = imgRef.current;
+        if (!imgElement) return;
+
+        const rect = imgElement.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Map relative position to natural dimensions
+        const naturalX = Math.floor((x / rect.width) * imgElement.naturalWidth);
+        const naturalY = Math.floor((y / rect.height) * imgElement.naturalHeight);
+
+        // Draw image temporarily to sample color
+        const canvas = document.createElement('canvas');
+        canvas.width = imgElement.naturalWidth;
+        canvas.height = imgElement.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const img = new Image();
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+            try {
+                const pixel = ctx.getImageData(naturalX, naturalY, 1, 1).data;
+                setKeyColor({ r: pixel[0], g: pixel[1], b: pixel[2] });
+                setBgRemovalActive(true);
+                toast.success(`Color sampled: RGB(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`);
+            } catch (err) {
+                console.error("Sampling error:", err);
+            }
+        };
+        img.src = imagePreview;
+    };
+
+    // Eraser drawing actions mapped to image dimensions
+    const drawEraserStroke = (clientX: number, clientY: number) => {
+        const maskCanvas = maskCanvasRef.current;
+        const imgElement = imgRef.current;
+        if (!maskCanvas || !imgElement) return;
+
+        const rect = imgElement.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        const naturalX = (x / rect.width) * imgElement.naturalWidth;
+        const naturalY = (y / rect.height) * imgElement.naturalHeight;
+        
+        // Calculate brush size relative to natural dimensions
+        const naturalSize = (eraserBrushSize / rect.width) * imgElement.naturalWidth;
+
+        const ctx = maskCanvas.getContext('2d');
+        if (ctx) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(naturalX, naturalY, naturalSize / 2, 0, 2 * Math.PI);
+            ctx.fillStyle = '#000000'; // Black represents transparent mask
+            ctx.fill();
+            ctx.restore();
+        }
+        setTriggerProcess(prev => prev + 1);
+    };
+
+    const handleEraserStart = (e: React.MouseEvent | React.TouchEvent) => {
+        if (activeTool !== 'eraser') return;
+        setIsErasing(true);
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        drawEraserStroke(clientX, clientY);
+    };
+
+    const handleEraserMove = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isErasing || activeTool !== 'eraser') return;
+        if ('touches' in e) {
+            e.preventDefault();
+        }
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        drawEraserStroke(clientX, clientY);
+    };
+
+    const handleEraserEnd = () => {
+        setIsErasing(false);
+    };
+
+    // Drag-and-drop position handlers
+    const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+        if (activeTool !== 'move') return;
+        setIsDraggingProduct(true);
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        dragStart.current = {
+            x: clientX - productPos.x,
+            y: clientY - productPos.y
+        };
+    };
+
+    const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!isDraggingProduct || activeTool !== 'move') return;
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        setProductPos({
+            x: clientX - dragStart.current.x,
+            y: clientY - dragStart.current.y
+        });
+    };
+
+    const handleDragEnd = () => {
+        setIsDraggingProduct(false);
+    };
 
     const flyerRef = useRef<HTMLDivElement>(null);
 
@@ -833,13 +999,53 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         </div>
                                                     )}
 
-                                                    {/* Dynamic Product Image */}
+                                                    {/* Dynamic Product Image (Draggable & Transformable Wrapper) */}
                                                     {processedImage && (
-                                                        <img 
-                                                            src={processedImage} 
-                                                            alt="Product canvas" 
-                                                            className={`w-full h-full transition-all duration-300 ${zoomFit ? 'object-contain' : 'object-cover'}`} 
-                                                        />
+                                                        <div 
+                                                            className="absolute inset-0 flex items-center justify-center pointer-events-auto"
+                                                            style={{
+                                                                transform: `translate(${productPos.x}px, ${productPos.y}px) scale(${productScale / 100}) rotate(${productRotation}deg)`,
+                                                                cursor: activeTool === 'move' ? (isDraggingProduct ? 'grabbing' : 'grab') : activeTool === 'picker' ? 'crosshair' : 'crosshair',
+                                                                transition: isDraggingProduct ? 'none' : 'transform 0.1s ease-out'
+                                                            }}
+                                                            onMouseDown={(e) => {
+                                                                if (activeTool === 'move') handleDragStart(e);
+                                                                else if (activeTool === 'eraser') handleEraserStart(e);
+                                                            }}
+                                                            onMouseMove={(e) => {
+                                                                if (activeTool === 'move') handleDragMove(e);
+                                                                else if (activeTool === 'eraser') handleEraserMove(e);
+                                                            }}
+                                                            onMouseUp={() => {
+                                                                if (activeTool === 'move') handleDragEnd();
+                                                                else if (activeTool === 'eraser') handleEraserEnd();
+                                                            }}
+                                                            onMouseLeave={() => {
+                                                                if (activeTool === 'move') handleDragEnd();
+                                                                else if (activeTool === 'eraser') handleEraserEnd();
+                                                            }}
+                                                            onTouchStart={(e) => {
+                                                                if (activeTool === 'move') handleDragStart(e);
+                                                                else if (activeTool === 'eraser') handleEraserStart(e);
+                                                            }}
+                                                            onTouchMove={(e) => {
+                                                                if (activeTool === 'move') handleDragMove(e);
+                                                                else if (activeTool === 'eraser') handleEraserMove(e);
+                                                            }}
+                                                            onTouchEnd={() => {
+                                                                if (activeTool === 'move') handleDragEnd();
+                                                                else if (activeTool === 'eraser') handleEraserEnd();
+                                                            }}
+                                                        >
+                                                            <img 
+                                                                ref={imgRef}
+                                                                src={processedImage} 
+                                                                alt="Product canvas" 
+                                                                draggable={false}
+                                                                className={`max-w-full max-h-full transition-all duration-300 ${zoomFit ? 'object-contain' : 'object-cover'} select-none`} 
+                                                                onClick={handleImageClick}
+                                                            />
+                                                        </div>
                                                     )}
 
                                                     {/* Version navigation arrows overlay */}
@@ -965,6 +1171,136 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                             <Check size={14} />
                                                         </button>
                                                     </div>
+                                                </div>
+
+                                                {/* Interactive Workspace Control Toolbar (Below Canvas) */}
+                                                <div className="w-full max-w-[480px] bg-slate-900 border border-slate-800 p-4 rounded-2xl mt-4 space-y-4">
+                                                    {/* Tool selector buttons */}
+                                                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workspace Tool:</span>
+                                                        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850 gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setActiveTool('move'); toast("Drag image to position, use sliders to scale & rotate."); }}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTool === 'move' ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
+                                                            >
+                                                                🖱️ Transform
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setActiveTool('picker'); toast("Click background color on image to remove it."); }}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTool === 'picker' ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
+                                                            >
+                                                                🧪 Color Picker
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setActiveTool('eraser'); toast("Drag brush over parts of image to manually erase."); }}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTool === 'eraser' ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
+                                                            >
+                                                                🪥 Eraser Brush
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Tool settings panels */}
+                                                    {activeTool === 'move' && (
+                                                        <div className="space-y-3 animate-fade-in text-slate-350">
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] font-bold text-slate-450 mb-1">
+                                                                    <span>Scale Product</span>
+                                                                    <span>{productScale}%</span>
+                                                                </div>
+                                                                <input 
+                                                                    type="range" min="10" max="200" value={productScale} 
+                                                                    onChange={(e) => setProductScale(Number(e.target.value))}
+                                                                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] font-bold text-slate-450 mb-1">
+                                                                    <span>Rotate Product</span>
+                                                                    <span>{productRotation}°</span>
+                                                                </div>
+                                                                <input 
+                                                                    type="range" min="-180" max="180" value={productRotation} 
+                                                                    onChange={(e) => setProductRotation(Number(e.target.value))}
+                                                                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setProductPos({ x: 0, y: 0 });
+                                                                    setProductScale(100);
+                                                                    setProductRotation(0);
+                                                                    toast.success("Canvas layout reset!");
+                                                                }}
+                                                                className="w-full py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-800 transition-all"
+                                                            >
+                                                                Reset Position & Size
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {activeTool === 'picker' && (
+                                                        <div className="space-y-3 animate-fade-in text-slate-350">
+                                                            <div className="flex justify-between items-center text-[10px] text-slate-400">
+                                                                <span>Sampled Color:</span>
+                                                                {keyColor ? (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: `rgb(${keyColor.r}, ${keyColor.g}, ${keyColor.b})` }} />
+                                                                        <span className="font-mono text-[9px]">RGB({keyColor.r}, {keyColor.g}, {keyColor.b})</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="italic text-slate-500 text-[9px]">Auto (top-left pixel)</span>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setKeyColor(null);
+                                                                    toast.success("Reset to auto key color!");
+                                                                }}
+                                                                className="w-full py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-800 transition-all"
+                                                            >
+                                                                Reset Sampled Color
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {activeTool === 'eraser' && (
+                                                        <div className="space-y-3 animate-fade-in text-slate-350">
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] font-bold text-slate-450 mb-1">
+                                                                    <span>Brush Size</span>
+                                                                    <span>{eraserBrushSize}px</span>
+                                                                </div>
+                                                                <input 
+                                                                    type="range" min="10" max="100" value={eraserBrushSize} 
+                                                                    onChange={(e) => setEraserBrushSize(Number(e.target.value))}
+                                                                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (maskCanvasRef.current) {
+                                                                        const ctx = maskCanvasRef.current.getContext('2d');
+                                                                        if (ctx) {
+                                                                            ctx.fillStyle = '#ffffff';
+                                                                            ctx.fillRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
+                                                                        }
+                                                                        setTriggerProcess(prev => prev + 1);
+                                                                        toast.success("Erase strokes reset!");
+                                                                    }
+                                                                }}
+                                                                className="w-full py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-800 transition-all"
+                                                            >
+                                                                Reset Eraser Mask
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
