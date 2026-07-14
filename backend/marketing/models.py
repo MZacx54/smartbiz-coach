@@ -47,6 +47,8 @@ class Campaign(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     scheduled_time = models.TimeField(null=True, blank=True)  # Time of day to send
+    scheduled_at = models.DateTimeField(null=True, blank=True)  # Full scheduled date & time
+    target_tags = models.CharField(max_length=500, blank=True, default='')  # Comma-separated target tags
 
     class Meta:
         ordering = ['-created_at']

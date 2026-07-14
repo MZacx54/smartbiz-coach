@@ -239,6 +239,8 @@ def campaigns_list(request):
                 'progress_percent': c.progress_percent,
                 'message_template': c.message_template,
                 'created_at': c.created_at,
+                'scheduled_at': c.scheduled_at,
+                'target_tags': c.target_tags,
             }
             for c in campaigns
         ])
@@ -259,12 +261,22 @@ def campaigns_list(request):
         channel=data.get('channel', 'WHATSAPP'),
         daily_limit=int(data.get('daily_limit', 100)),
         status='DRAFT',
+        scheduled_at=data.get('scheduled_at') if data.get('scheduled_at') else None,
+        target_tags=data.get('target_tags', ''),
     )
 
     # Count total contacts
-    campaign.total_contacts = Contact.objects.filter(
-        user=request.user, is_opted_out=False
-    ).count()
+    contacts_qs = Contact.objects.filter(user=request.user, is_opted_out=False)
+    if campaign.target_tags:
+        from django.db.models import Q
+        target_tags_list = [t.strip() for t in campaign.target_tags.split(',') if t.strip()]
+        if target_tags_list:
+            tag_query = Q()
+            for tag in target_tags_list:
+                tag_query |= Q(tags__icontains=tag)
+            contacts_qs = contacts_qs.filter(tag_query)
+            
+    campaign.total_contacts = contacts_qs.count()
     campaign.save()
 
     return Response({
@@ -272,6 +284,8 @@ def campaigns_list(request):
         'name': campaign.name,
         'channel': campaign.channel,
         'total_contacts': campaign.total_contacts,
+        'scheduled_at': campaign.scheduled_at,
+        'target_tags': campaign.target_tags,
     }, status=201)
 
 
@@ -294,6 +308,21 @@ def campaign_detail(request, campaign_id):
         campaign.message_template = data.get('message_template', campaign.message_template)
         campaign.daily_limit = int(data.get('daily_limit', campaign.daily_limit))
         campaign.status = data.get('status', campaign.status)
+        if 'scheduled_at' in data:
+            campaign.scheduled_at = data.get('scheduled_at') if data.get('scheduled_at') else None
+        campaign.target_tags = data.get('target_tags', campaign.target_tags)
+        
+        # Re-evaluate contact count if target_tags changed
+        contacts_qs = Contact.objects.filter(user=request.user, is_opted_out=False)
+        if campaign.target_tags:
+            from django.db.models import Q
+            target_tags_list = [t.strip() for t in campaign.target_tags.split(',') if t.strip()]
+            if target_tags_list:
+                tag_query = Q()
+                for tag in target_tags_list:
+                    tag_query |= Q(tags__icontains=tag)
+                contacts_qs = contacts_qs.filter(tag_query)
+        campaign.total_contacts = contacts_qs.count()
         campaign.save()
 
     return Response({
@@ -307,6 +336,8 @@ def campaign_detail(request, campaign_id):
         'failed_count': campaign.failed_count,
         'progress_percent': campaign.progress_percent,
         'message_template': campaign.message_template,
+        'scheduled_at': campaign.scheduled_at,
+        'target_tags': campaign.target_tags,
     })
 
 
@@ -337,10 +368,21 @@ def generate_whatsapp_batch(request):
         campaign=campaign
     ).values_list('phone', flat=True)
 
-    contacts = Contact.objects.filter(
+    contacts_qs = Contact.objects.filter(
         user=request.user,
         is_opted_out=False
-    ).exclude(phone__in=messaged_phones)[:batch_size]
+    ).exclude(phone__in=messaged_phones)
+
+    if campaign.target_tags:
+        from django.db.models import Q
+        target_tags_list = [t.strip() for t in campaign.target_tags.split(',') if t.strip()]
+        if target_tags_list:
+            tag_query = Q()
+            for tag in target_tags_list:
+                tag_query |= Q(tags__icontains=tag)
+            contacts_qs = contacts_qs.filter(tag_query)
+
+    contacts = contacts_qs[:batch_size]
 
     batch = []
     for contact in contacts:
@@ -467,9 +509,20 @@ def send_sms_batch(request):
         campaign=campaign, status__in=['SENT', 'DELIVERED']
     ).values_list('phone', flat=True)
 
-    contacts = Contact.objects.filter(
+    contacts_qs = Contact.objects.filter(
         user=request.user, is_opted_out=False
-    ).exclude(phone__in=messaged_phones)[:batch_size]
+    ).exclude(phone__in=messaged_phones)
+
+    if campaign.target_tags:
+        from django.db.models import Q
+        target_tags_list = [t.strip() for t in campaign.target_tags.split(',') if t.strip()]
+        if target_tags_list:
+            tag_query = Q()
+            for tag in target_tags_list:
+                tag_query |= Q(tags__icontains=tag)
+            contacts_qs = contacts_qs.filter(tag_query)
+
+    contacts = contacts_qs[:batch_size]
 
     if not contacts:
         return Response({'message': 'No more contacts to message in this campaign.', 'sent': 0})

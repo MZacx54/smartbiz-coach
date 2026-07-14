@@ -29,6 +29,8 @@ interface Campaign {
   failed_count: number;
   progress_percent: number;
   message_template: string;
+  scheduled_at?: string | null;
+  target_tags?: string;
 }
 
 interface WhatsAppBatchItem {
@@ -101,6 +103,8 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
   const [newCampaignChannel, setNewCampaignChannel] = useState<'WHATSAPP' | 'SMS'>('WHATSAPP');
   const [newCampaignTemplate, setNewCampaignTemplate] = useState(MESSAGE_TEMPLATES[0].text);
   const [newCampaignDailyLimit, setNewCampaignDailyLimit] = useState(100);
+  const [newCampaignScheduledAt, setNewCampaignScheduledAt] = useState('');
+  const [newCampaignTargetTags, setNewCampaignTargetTags] = useState('');
   const [creatingCampaign, setCreatingCampaign] = useState(false);
 
   // AI suggest states
@@ -264,9 +268,13 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
         message_template: newCampaignTemplate,
         channel: newCampaignChannel,
         daily_limit: newCampaignDailyLimit,
+        scheduled_at: newCampaignScheduledAt || null,
+        target_tags: newCampaignTargetTags,
       });
       toast.success(`Campaign "${res.data.name}" created!`);
       setNewCampaignName('');
+      setNewCampaignScheduledAt('');
+      setNewCampaignTargetTags('');
       fetchCampaigns();
       setActiveTab('whatsapp');
       setSelectedCampaign(res.data);
@@ -757,6 +765,28 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">📅 Schedule Date & Time (Optional)</label>
+                      <input
+                        type="datetime-local"
+                        value={newCampaignScheduledAt}
+                        onChange={e => setNewCampaignScheduledAt(e.target.value)}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">🏷️ Target Tags (Optional, comma-separated)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. VIP, Customer, Lead"
+                        value={newCampaignTargetTags}
+                        onChange={e => setNewCampaignTargetTags(e.target.value)}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">
                       Quick Templates
@@ -819,8 +849,22 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
                             <span className="font-bold text-slate-800">{c.name}</span>
                             <StatusBadge status={c.status} />
                           </div>
-                          <div className="text-xs text-slate-400">
-                            {c.channel === 'WHATSAPP' ? '💬 WhatsApp' : '📩 SMS'} · {c.daily_limit}/day limit
+                          <div className="text-xs text-slate-400 flex flex-wrap gap-1.5 items-center mt-1">
+                            <span>{c.channel === 'WHATSAPP' ? '💬 WhatsApp' : '📩 SMS'}</span>
+                            <span>·</span>
+                            <span>{c.daily_limit}/day limit</span>
+                            {c.scheduled_at && (
+                              <>
+                                <span>·</span>
+                                <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">📅 {new Date(c.scheduled_at).toLocaleString()}</span>
+                              </>
+                            )}
+                            {c.target_tags && (
+                              <>
+                                <span>·</span>
+                                <span className="bg-pink-50 text-pink-700 px-1.5 py-0.5 rounded text-[10px] font-bold">🏷️ {c.target_tags}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="text-right text-sm">
