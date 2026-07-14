@@ -159,21 +159,33 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                   </div>
                 )}
                 <div className="absolute top-6 left-6 flex gap-2">
-                   <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-900 shadow-sm">
-                      {item.category}
-                   </div>
-                   {item.location && (
-                     <div className="bg-indigo-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-white shadow-sm flex items-center gap-1">
-                        <MapPin className="w-2.5 h-2.5" /> {item.location}
-                     </div>
-                   )}
-                </div>
+                    <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-900 shadow-sm flex items-center gap-1.5">
+                       <span>
+                         {item.product_type === 'PHYSICAL' && '🛍️'}
+                         {item.product_type === 'SERVICE' && '🛠️'}
+                         {item.product_type === 'PROPERTY' && '🏠'}
+                         {item.product_type === 'B2B' && '🤝'}
+                       </span>
+                       {item.product_type === 'B2B' ? (
+                         item.category === 'LOGISTICS' ? 'Logistics' :
+                         item.category === 'WHOLESALE' ? 'Wholesale' :
+                         item.category === 'INFLUENCER' ? 'Influencer' :
+                         item.category === 'SERVICES' ? 'B2B Services' :
+                         item.category === 'RAW_MATERIALS' ? 'Raw Materials' : item.category
+                       ) : item.category}
+                    </div>
+                    {item.location && (
+                      <div className="bg-indigo-600/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-white shadow-sm flex items-center gap-1">
+                         <MapPin className="w-2.5 h-2.5" /> {item.location}
+                      </div>
+                    )}
+                 </div>
               </div>
 
               <div className="p-8 flex flex-col flex-1 space-y-4">
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">{item.brand_name || 'Verified Partner'}</p>
+                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">{item.brand_name || 'Verified Vendor'}</p>
                     <h3 className="text-xl font-bold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors leading-tight">{item.name}</h3>
                   </div>
                   <div className="text-right">
@@ -184,6 +196,66 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed">
                   {item.description}
                 </p>
+
+                {/* Dynamic Quick specs directly on cards */}
+                {item.product_type === 'PHYSICAL' && (item.metadata?.brand || item.metadata?.weight) && (
+                  <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-bold bg-slate-50 p-2.5 rounded-xl border border-slate-100/60">
+                    {item.metadata?.brand && <span>🏷️ Brand: {item.metadata.brand}</span>}
+                    {item.metadata?.weight && (
+                      <>
+                        <span className="text-slate-300">•</span>
+                        <span>⚖️ {item.metadata.weight}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {item.product_type === 'SERVICE' && (
+                  <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-bold bg-indigo-50/40 p-2.5 rounded-xl border border-indigo-100/40">
+                    <span>⏱️ {item.metadata?.duration || 'Flexible Delivery'}</span>
+                    {item.metadata?.billingType && (
+                      <>
+                        <span className="text-indigo-200">•</span>
+                        <span>💳 {item.metadata.billingType}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {item.product_type === 'PROPERTY' && (
+                  <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-bold bg-emerald-50/40 p-2.5 rounded-xl border border-emerald-100/40">
+                    <span>🛏️ {item.metadata?.bedrooms || 0} Bed</span>
+                    <span className="text-emerald-200">•</span>
+                    <span>🛁 {item.metadata?.bathrooms || 0} Bath</span>
+                    {item.metadata?.furnished && (
+                      <>
+                        <span className="text-emerald-200">•</span>
+                        <span>🛋️ {item.metadata.furnished === 'Yes' ? 'Furnished' : 'Unfurnished'}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {item.product_type === 'B2B' && (
+                  <div className="flex flex-col gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100 w-full">
+                    <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-bold">
+                      <span>📦 MOQ: {item.metadata?.moq || 'None'} units</span>
+                      {item.metadata?.leadTime && (
+                        <>
+                          <span className="text-slate-300">•</span>
+                          <span>⏳ Lead: {item.metadata.leadTime}</span>
+                        </>
+                      )}
+                    </div>
+                    {item.category === 'LOGISTICS' && item.metadata?.vehicleType && (
+                      <div className="text-[9px] text-indigo-600 font-black uppercase tracking-wider bg-indigo-50 px-2.5 py-1 rounded-lg w-max">
+                        🚚 Dispatch: {item.metadata.vehicleType}
+                      </div>
+                    )}
+                    {item.category === 'INFLUENCER' && item.metadata?.followers && (
+                      <div className="text-[9px] text-emerald-600 font-black uppercase tracking-wider bg-emerald-50 px-2.5 py-1 rounded-lg w-max">
+                        📢 Reach: {item.metadata.followers} Fans
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-auto pt-6 flex items-center justify-between border-t border-slate-50">
                    <div className="flex items-center gap-1">
@@ -267,60 +339,251 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
                      {/* Type Specific Metadata */}
                      {selectedItem.product_type === 'PROPERTY' && (
-                       <div className="grid grid-cols-2 gap-4">
-                          {Object.entries(selectedItem.metadata || {}).map(([k, v]) => (
-                            <div key={k} className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
-                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{k}</span>
-                               <span className="text-lg font-bold text-slate-800">{String(v)}</span>
-                            </div>
-                          ))}
-                       </div>
-                     )}
-
-                     {selectedItem.product_type === 'SERVICE' && (
-                        <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 space-y-4">
-                           <div className="flex items-center gap-3">
-                              <Zap className="w-5 h-5 text-indigo-600" />
-                              <p className="text-sm font-bold text-indigo-900">Professional Service Guarantee</p>
-                           </div>
-                           <p className="text-xs text-indigo-700 leading-relaxed">This service is delivered by a vetted professional on the SmartBiz network. Quality assurance and timely delivery guaranteed.</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Listing Type</span>
+                             <span className="text-sm font-bold text-slate-800">{selectedItem.metadata?.listingType || 'For Rent'}</span>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Property Type</span>
+                             <span className="text-sm font-bold text-slate-800">{selectedItem.metadata?.propertyType || 'Apartment'}</span>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bedrooms</span>
+                             <span className="text-sm font-bold text-slate-800">{selectedItem.metadata?.bedrooms || 0} Beds</span>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bathrooms</span>
+                             <span className="text-sm font-bold text-slate-800">{selectedItem.metadata?.bathrooms || 0} Baths</span>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1 col-span-2">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Furnishing Status</span>
+                             <span className="text-sm font-bold text-slate-800">{selectedItem.metadata?.furnished || 'Unfurnished'}</span>
+                          </div>
                         </div>
-                     )}
-                  </div>
+                      )}
 
-                  <div className="mt-auto pt-10 flex gap-4">
-                     {selectedItem.product_type === 'PHYSICAL' ? (
-                       <button 
-                        onClick={() => {
-                          onAddToCart && onAddToCart(selectedItem);
-                          setSelectedItem(null);
-                        }}
-                        className="flex-1 bg-slate-900 text-white py-5 rounded-[24px] font-black hover:bg-indigo-600 transition-all shadow-2xl active:scale-95"
-                       >
-                         Add to Bag
-                       </button>
-                     ) : (
-                       <button 
-                        onClick={async () => {
-                          try {
-                            await api.post('/api/marketplace/leads/', {
-                              product: selectedItem.id,
-                              customer_name: 'Visitor', // In a real app, this would be from a form
-                              customer_contact: 'WhatsApp',
-                              message: `I am interested in ${selectedItem.name}.`,
-                              lead_type: selectedItem.product_type === 'B2B' ? 'B2B' : 'INQUIRY'
-                            });
-                            toast.success('Inquiry sent! The vendor will contact you.');
-                            setSelectedItem(null);
-                          } catch (err) {
-                            toast.error('Failed to send inquiry');
-                          }
-                        }}
-                        className="flex-1 bg-indigo-600 text-white py-5 rounded-[24px] font-black hover:bg-indigo-700 transition-all shadow-2xl active:scale-95"
-                       >
-                         {selectedItem.product_type === 'SERVICE' ? 'Hire Professional' : 'Request Inspection'}
-                       </button>
-                     )}
+                      {selectedItem.product_type === 'SERVICE' && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Billing Rate</span>
+                               <span className="text-sm font-bold text-slate-800">{selectedItem.metadata?.billingType || 'Hourly'}</span>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivery Duration</span>
+                               <span className="text-sm font-bold text-slate-800">{selectedItem.metadata?.duration || 'Flexible'}</span>
+                            </div>
+                            {selectedItem.metadata?.experienceLevel && (
+                              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Experience Level</span>
+                                 <span className="text-sm font-bold text-slate-800">{selectedItem.metadata.experienceLevel}</span>
+                              </div>
+                            )}
+                            {selectedItem.metadata?.availability && (
+                              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Working Hours</span>
+                                 <span className="text-sm font-bold text-slate-800">{selectedItem.metadata.availability}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 space-y-2">
+                             <div className="flex items-center gap-3">
+                                <Zap className="w-5 h-5 text-indigo-650" />
+                                <p className="text-xs font-black text-indigo-900 uppercase tracking-wider">Professional Service Guarantee</p>
+                             </div>
+                             <p className="text-xs text-indigo-750 leading-relaxed">This service is delivered by a vetted professional on the SmartBiz network. Quality assurance and timely delivery guaranteed.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedItem.product_type === 'PHYSICAL' && (selectedItem.metadata?.brand || selectedItem.metadata?.weight) && (
+                        <div className="grid grid-cols-2 gap-4">
+                          {selectedItem.metadata?.brand && (
+                            <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Brand / Maker</span>
+                               <span className="text-sm font-bold text-slate-800">{selectedItem.metadata.brand}</span>
+                            </div>
+                          )}
+                          {selectedItem.metadata?.weight && (
+                            <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Weight / Volume</span>
+                               <span className="text-sm font-bold text-slate-800">{selectedItem.metadata.weight}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {selectedItem.product_type === 'B2B' && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Minimum Order Qty (MOQ)</span>
+                               <span className="text-sm font-bold text-slate-850">{selectedItem.metadata?.moq || 'None'} units</span>
+                            </div>
+                            {selectedItem.metadata?.tierPrices && (
+                              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wholesale Pricing Tiers</span>
+                                 <span className="text-xs font-bold text-slate-800">{selectedItem.metadata.tierPrices}</span>
+                              </div>
+                            )}
+                            {selectedItem.metadata?.leadTime && (
+                              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lead Time</span>
+                                 <span className="text-sm font-bold text-slate-800">{selectedItem.metadata.leadTime}</span>
+                              </div>
+                            )}
+                            {selectedItem.metadata?.capacity && (
+                              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Supply Capacity</span>
+                                 <span className="text-sm font-bold text-slate-800">{selectedItem.metadata.capacity}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* B2B subcategory-specific details display */}
+                          {selectedItem.category === 'LOGISTICS' && (selectedItem.metadata?.vehicleType || selectedItem.metadata?.coverage) && (
+                            <div className="bg-indigo-50/50 p-5 rounded-3xl border border-indigo-100/60 space-y-3">
+                              <h4 className="text-[10px] font-black text-indigo-650 uppercase tracking-wider flex items-center gap-1.5">
+                                🚚 Logistics Dispatch Service
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4 text-xs">
+                                {selectedItem.metadata.vehicleType && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Vehicle Option:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.vehicleType}</strong>
+                                  </div>
+                                )}
+                                {selectedItem.metadata.coverage && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Delivery Areas:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.coverage}</strong>
+                                  </div>
+                                )}
+                                {selectedItem.metadata.maxWeight && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Weight Limits:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.maxWeight}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedItem.category === 'WHOLESALE' && (selectedItem.metadata?.packagingType || selectedItem.metadata?.bulkDiscount) && (
+                            <div className="bg-indigo-50/50 p-5 rounded-3xl border border-indigo-100/60 space-y-3">
+                              <h4 className="text-[10px] font-black text-indigo-650 uppercase tracking-wider flex items-center gap-1.5">
+                                📦 Wholesale & Bulk Distribution
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4 text-xs">
+                                {selectedItem.metadata.packagingType && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Packaging:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.packagingType}</strong>
+                                  </div>
+                                )}
+                                {selectedItem.metadata.bulkDiscount && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Bulk Discount:</span>
+                                    <strong className="text-slate-850 font-extrabold text-emerald-600">{selectedItem.metadata.bulkDiscount}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedItem.category === 'INFLUENCER' && (selectedItem.metadata?.platform || selectedItem.metadata?.followers) && (
+                            <div className="bg-indigo-50/50 p-5 rounded-3xl border border-indigo-100/60 space-y-3">
+                              <h4 className="text-[10px] font-black text-indigo-650 uppercase tracking-wider flex items-center gap-1.5">
+                                📢 Influencer Outreach Reach
+                              </h4>
+                              <div className="grid grid-cols-3 gap-4 text-xs">
+                                {selectedItem.metadata.platform && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Platform:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.platform}</strong>
+                                  </div>
+                                )}
+                                {selectedItem.metadata.followers && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Audience Size:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.followers}</strong>
+                                  </div>
+                                )}
+                                {selectedItem.metadata.niche && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Niche:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.niche}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedItem.category === 'RAW_MATERIALS' && (selectedItem.metadata?.materialGrade || selectedItem.metadata?.unitSize) && (
+                            <div className="bg-indigo-50/50 p-5 rounded-3xl border border-indigo-100/60 space-y-3">
+                              <h4 className="text-[10px] font-black text-indigo-650 uppercase tracking-wider flex items-center gap-1.5">
+                                🏭 Raw Materials Specification
+                              </h4>
+                              <div className="grid grid-cols-2 gap-4 text-xs">
+                                {selectedItem.metadata.materialGrade && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Material Grade:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.materialGrade}</strong>
+                                  </div>
+                                )}
+                                {selectedItem.metadata.unitSize && (
+                                  <div>
+                                    <span className="text-slate-400 font-medium block">Unit Packaging Size:</span>
+                                    <strong className="text-slate-800 font-bold">{selectedItem.metadata.unitSize}</strong>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                   </div>
+
+                   <div className="mt-auto pt-10 flex gap-4">
+                      {selectedItem.product_type === 'PHYSICAL' ? (
+                        <button 
+                         onClick={() => {
+                           onAddToCart && onAddToCart(selectedItem);
+                           setSelectedItem(null);
+                         }}
+                         className="flex-1 bg-slate-900 text-white py-5 rounded-[24px] font-black hover:bg-indigo-600 transition-all shadow-2xl active:scale-95 border-0 cursor-pointer"
+                        >
+                          Add to Bag
+                        </button>
+                      ) : (
+                        <button 
+                         onClick={async () => {
+                           try {
+                             await api.post('/api/marketplace/leads/', {
+                               product: selectedItem.id,
+                               customer_name: 'Marketplace Buyer',
+                               customer_contact: 'WhatsApp',
+                               message: `Interested in B2B/Service listing: ${selectedItem.name}.`,
+                               lead_type: selectedItem.product_type === 'B2B' ? 'B2B' : 'INQUIRY'
+                             });
+
+                             // Direct WhatsApp click-to-chat redirect for Nigerian market convenience!
+                             const whatsappNum = selectedItem.whatsapp_number || '2348000000000';
+                             const text = encodeURIComponent(`Hello! I'm interested in your listing: "${selectedItem.name}" (₦${selectedItem.price.toLocaleString()}) on the SmartBiz Marketplace. Please share pricing and logistics terms.`);
+                             window.open(`https://wa.me/${whatsappNum}?text=${text}`, '_blank');
+
+                             toast.success('CRM Lead generated! Opening WhatsApp chat...');
+                             setSelectedItem(null);
+                           } catch (err) {
+                             toast.error('Failed to create CRM lead inquiry');
+                           }
+                         }}
+                         className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-[24px] font-black transition-all shadow-2xl active:scale-95 border-0 cursor-pointer"
+                        >
+                          <span>💬</span> Contact via WhatsApp
+                        </button>
+                      )}
                      <button className="w-16 h-16 bg-slate-50 text-slate-400 rounded-[24px] flex items-center justify-center hover:bg-slate-100 transition-all">
                         <Tag className="w-6 h-6" />
                      </button>

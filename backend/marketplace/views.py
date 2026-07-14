@@ -207,16 +207,22 @@ class ProductSnapAndListView(views.APIView):
         prompt = """
         Analyze this product image and suggest details for creating a new digital inventory listing in a Nigerian small business.
         Identify what the item is and suggest:
-        1. A clear, professional Product Name (under 50 characters).
+        1. A clear, professional Name (under 50 characters).
         2. A suggested Retail Selling Price in Nigerian Naira (₦, as an integer e.g., 15000). Make it realistic for the Nigerian market.
         3. A suggested Cost Price (COGS, as an integer e.g., 9000). Make it about 55-75% of the suggested Retail Selling Price.
-        4. A suitable category choice (e.g. Fashion, Electronics, Groceries, Beauty, Home, Industrial).
-        5. A high-converting product description (2-3 sentences) suitable for Instagram or WhatsApp sales copy.
+        4. A suitable listing product_type ('PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B').
+        5. A suitable category choice.
+           - If product_type is 'B2B', category MUST be one of: 'LOGISTICS', 'WHOLESALE', 'INFLUENCER', 'SERVICES', 'RAW_MATERIALS'.
+           - If product_type is 'SERVICE', category can be: 'Consulting', 'Delivery', 'Catering', 'Design', 'IT Support', 'Training', 'Cleaning', 'Others'.
+           - If product_type is 'PROPERTY', category can be: 'Apartment', 'Self-Contained', 'Office Space', 'Land', 'Warehouse', 'Short-Let', 'Others'.
+           - If product_type is 'PHYSICAL', category should be a general niche name e.g. 'Fashion', 'Groceries', 'Electronics', 'Beauty', etc.
+        6. A high-converting description (2-3 sentences) suitable for Instagram or WhatsApp sales copy.
         
         You must respond STRICTLY with a JSON object containing these keys:
         - name: string
         - price: integer
         - cost_price: integer
+        - product_type: string
         - category: string
         - description: string
         """
@@ -234,6 +240,7 @@ class ProductSnapAndListView(views.APIView):
                 'name': 'Scanned Product',
                 'price': 5000,
                 'cost_price': 3000,
+                'product_type': 'PHYSICAL',
                 'category': 'General Goods',
                 'description': 'Scanned item description. Please edit to add details.'
             })

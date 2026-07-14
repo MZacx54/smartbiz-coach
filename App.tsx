@@ -55,6 +55,25 @@ import { authService } from "./services/authService";
 import { brandService } from "./services/brandService";
 import { billingService } from "./services/billingService";
 
+const normalizeUser = (backendUser: any): User | null => {
+  if (!backendUser) return null;
+  return {
+    ...backendUser,
+    id: String(backendUser.id || backendUser.username || ''),
+    name: backendUser.name || backendUser.first_name || backendUser.username || 'SmartBiz Partner',
+    email: backendUser.email || '',
+    businessName: backendUser.businessName || backendUser.business_name || 'My Venture',
+    business_name: backendUser.business_name || backendUser.businessName || 'My Venture',
+    plan: backendUser.plan || 'Free',
+    hasOnboarded: backendUser.hasOnboarded || backendUser.has_onboarded || false,
+    has_onboarded: backendUser.has_onboarded || backendUser.hasOnboarded || false,
+    logo: backendUser.logo || '',
+    phone: backendUser.phone || '',
+    location: backendUser.location || '',
+    currency: backendUser.currency || 'NGN'
+  };
+};
+
 const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,7 +83,7 @@ const App: React.FC = () => {
   // Auth State (Persisted)
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem("sb_user");
-    return saved ? JSON.parse(saved) : null;
+    return saved ? normalizeUser(JSON.parse(saved)) : null;
   });
 
   // Data Persistence (Lifted State)
@@ -183,7 +202,7 @@ const App: React.FC = () => {
       if (token) {
         try {
           const profile = await authService.getProfile();
-          setUser(profile);
+          setUser(normalizeUser(profile));
 
           const [brand, txs, stats, userActions] = await Promise.allSettled([
             brandService.getBrand(),
@@ -305,8 +324,28 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (userData: User) => {
-    setUser(userData);
+    setUser(normalizeUser(userData));
     navigate('/dashboard');
+  };
+
+  const handleUpdateUser = async (updatedUser: User) => {
+    try {
+      const backendUser = await authService.updateProfile({
+        first_name: updatedUser.name,
+        business_name: updatedUser.businessName,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        location: updatedUser.location,
+        currency: updatedUser.currency
+      });
+      setUser(normalizeUser(backendUser));
+      toast.success("Profile updated successfully!");
+    } catch (err) {
+      console.error("Failed to update profile on backend:", err);
+      // Fallback local update
+      setUser(normalizeUser(updatedUser));
+      toast.success("Profile updated locally!");
+    }
   };
 
   const handleLogout = () => {
@@ -584,7 +623,7 @@ const App: React.FC = () => {
                   <Route path="roadmap" element={<DigitalRoadmap onNavigate={handleNavigate} />} />
                   <Route path="support" element={<WhatsAppSupport credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="sales-assistant" element={<SalesAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onTopUpSuccess={handleUpdateCredits} />} />
+                  <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onUpdateUser={handleUpdateUser} onTopUpSuccess={handleUpdateCredits} />} />
                   <Route path="product-magic" element={<ProductMagic />} />
                   <Route path="order-gen" element={<OrderGenerator />} />
                   <Route path="leads" element={<LeadManager />} />

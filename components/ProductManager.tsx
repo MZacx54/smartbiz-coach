@@ -146,6 +146,7 @@ const ProductManager: React.FC = () => {
     price: string;
     cost_price: string;
     category: string;
+    product_type: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B';
     description: string;
     quantity: number;
     sku: string;
@@ -168,6 +169,7 @@ const ProductManager: React.FC = () => {
       price: '5000',
       cost_price: '3000',
       category: 'General',
+      product_type: 'PHYSICAL' as 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B',
       description: '',
       quantity: 10,
       sku: `SKU-AI-${Math.floor(100 + Math.random() * 900)}`,
@@ -198,6 +200,7 @@ const ProductManager: React.FC = () => {
             name: response.data.name || d.name,
             price: String(response.data.price || d.price),
             cost_price: String(response.data.cost_price || d.cost_price),
+            product_type: response.data.product_type || d.product_type,
             category: response.data.category || d.category,
             description: response.data.description || d.description,
             status: 'READY' as const
@@ -222,7 +225,7 @@ const ProductManager: React.FC = () => {
           stock_count: draft.quantity,
           sku: draft.sku,
           category: draft.category,
-          product_type: 'PHYSICAL',
+          product_type: draft.product_type || 'PHYSICAL',
           image_url: draft.image_url,
           is_public: true,
           is_promoted: false,
@@ -855,7 +858,17 @@ const ProductManager: React.FC = () => {
                 {(['PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B'] as const).map((type) => (
                   <button
                     key={type}
-                    onClick={() => setCurrentProduct({ ...currentProduct, product_type: type })}
+                    onClick={() => {
+                      const updated: any = { product_type: type };
+                      if (type === 'B2B' && !['LOGISTICS', 'WHOLESALE', 'INFLUENCER', 'SERVICES', 'RAW_MATERIALS'].includes(currentProduct.category || '')) {
+                        updated.category = 'WHOLESALE';
+                      } else if (type === 'SERVICE' && !currentProduct.category) {
+                        updated.category = 'Consulting';
+                      } else if (type === 'PROPERTY' && !currentProduct.category) {
+                        updated.category = 'Apartment';
+                      }
+                      setCurrentProduct({ ...currentProduct, ...updated });
+                    }}
                     className={`px-6 py-3 rounded-2xl text-xs font-black transition-all ${
                       currentProduct.product_type === type 
                         ? 'bg-indigo-600 text-white shadow-lg' 
@@ -906,13 +919,42 @@ const ProductManager: React.FC = () => {
                         <select
                           value={currentProduct.category || 'WHOLESALE'}
                           onChange={(e) => setCurrentProduct({ ...currentProduct, category: e.target.value })}
-                          className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 font-bold"
                         >
                           <option value="LOGISTICS">🚚 Logistics & Dispatch</option>
                           <option value="WHOLESALE">📦 Wholesale Suppliers</option>
                           <option value="INFLUENCER">📣 Micro-Influencers</option>
                           <option value="SERVICES">💼 Business Services</option>
                           <option value="RAW_MATERIALS">🏭 Raw Materials & Packaging</option>
+                        </select>
+                      ) : currentProduct.product_type === 'SERVICE' ? (
+                        <select
+                          value={currentProduct.category || 'Consulting'}
+                          onChange={(e) => setCurrentProduct({ ...currentProduct, category: e.target.value })}
+                          className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 font-bold"
+                        >
+                          <option value="Consulting">💼 Consulting & Strategy</option>
+                          <option value="Delivery">🚚 Delivery & Transport</option>
+                          <option value="Catering">🍲 Catering & Food Service</option>
+                          <option value="Design">🎨 Design & Creative</option>
+                          <option value="IT Support">💻 IT Support & Tech</option>
+                          <option value="Training">📚 Training & Education</option>
+                          <option value="Cleaning">🧹 Cleaning & Facility</option>
+                          <option value="Others">⚙️ Other Service</option>
+                        </select>
+                      ) : currentProduct.product_type === 'PROPERTY' ? (
+                        <select
+                          value={currentProduct.category || 'Apartment'}
+                          onChange={(e) => setCurrentProduct({ ...currentProduct, category: e.target.value })}
+                          className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 font-bold"
+                        >
+                          <option value="Apartment">🏢 Apartment / Flat</option>
+                          <option value="Self-Contained">🏠 Self-Contained / Room</option>
+                          <option value="Office Space">🏢 Office & Commercial Space</option>
+                          <option value="Land">⛰️ Land & Plots</option>
+                          <option value="Warehouse">🏭 Warehouse / Storage</option>
+                          <option value="Short-Let">🏨 Short-Let Apartment</option>
+                          <option value="Others">🏠 Other Real Estate</option>
                         </select>
                       ) : (
                         <input 
@@ -1186,6 +1228,177 @@ const ProductManager: React.FC = () => {
                             />
                           </div>
                         </div>
+
+                        {/* Subcategory-specific B2B fields */}
+                        {currentProduct.category === 'LOGISTICS' && (
+                          <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in">
+                            <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                              <span>🚚</span> Logistics & Dispatch Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vehicle Type</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.vehicleType || ''}
+                                  onChange={(e) => updateMetadata('vehicleType', e.target.value)}
+                                  placeholder="e.g. Dispatch Bike, 3-Ton Truck"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Coverage Area</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.coverage || ''}
+                                  onChange={(e) => updateMetadata('coverage', e.target.value)}
+                                  placeholder="e.g. Lagos Mainland, West Africa"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Max Weight Capacity</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.maxWeight || ''}
+                                  onChange={(e) => updateMetadata('maxWeight', e.target.value)}
+                                  placeholder="e.g. 50kg, 10 Tons"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {currentProduct.category === 'WHOLESALE' && (
+                          <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in">
+                            <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                              <span>📦</span> Wholesale Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Packaging Type</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.packagingType || ''}
+                                  onChange={(e) => updateMetadata('packagingType', e.target.value)}
+                                  placeholder="e.g. Cartons, Pallets, Bulk Bags"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Bulk Discount Terms</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.bulkDiscount || ''}
+                                  onChange={(e) => updateMetadata('bulkDiscount', e.target.value)}
+                                  placeholder="e.g. 10% off for 500+ units"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {currentProduct.category === 'INFLUENCER' && (
+                          <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in">
+                            <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                              <span>📢</span> Micro-Influencer Channels
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Primary Platform</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.platform || ''}
+                                  onChange={(e) => updateMetadata('platform', e.target.value)}
+                                  placeholder="e.g. Instagram, TikTok, LinkedIn"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Audience Size / Followers</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.followers || ''}
+                                  onChange={(e) => updateMetadata('followers', e.target.value)}
+                                  placeholder="e.g. 15,050"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Niche / Target Industry</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.niche || ''}
+                                  onChange={(e) => updateMetadata('niche', e.target.value)}
+                                  placeholder="e.g. Fashion, Local Foods, AgriTech"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {currentProduct.category === 'SERVICES' && (
+                          <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in">
+                            <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                              <span>💼</span> Business Service Retainer
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Response SLA Guarantee</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.sla || ''}
+                                  onChange={(e) => updateMetadata('sla', e.target.value)}
+                                  placeholder="e.g. 24-Hour Turnaround"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Contract Structure</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.billingType || ''}
+                                  onChange={(e) => updateMetadata('billingType', e.target.value)}
+                                  placeholder="e.g. Monthly Retainer, Milestone rates"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {currentProduct.category === 'RAW_MATERIALS' && (
+                          <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 space-y-4 animate-in fade-in">
+                            <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                              <span>🏭</span> Raw Material Specifications
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Material Grade / Certification</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.materialGrade || ''}
+                                  onChange={(e) => updateMetadata('materialGrade', e.target.value)}
+                                  placeholder="e.g. Food Grade (NAFDAC), Industrial Grade"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Packaging Unit Size</label>
+                                <input 
+                                  type="text" 
+                                  value={currentProduct.metadata?.unitSize || ''}
+                                  onChange={(e) => updateMetadata('unitSize', e.target.value)}
+                                  placeholder="e.g. 50kg Jute Bags, 20L Jerrycans"
+                                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-indigo-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                      </div>
                   )}
 
@@ -1335,186 +1548,217 @@ const ProductManager: React.FC = () => {
             </div>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence>
-              {Array.isArray(products) && products.map((product) => {
-                const stock = product.stock_count || 0;
-                const threshold = product.low_stock_threshold || 5;
-                const isLowStock = stock <= threshold;
-                
-                return (
-                  <motion.div 
-                    key={product.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 group hover:shadow-xl transition-all duration-300 relative"
-                  >
-                    <div className="aspect-[4/3] bg-slate-50 relative overflow-hidden">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-12 h-12 text-slate-200" />
-                        </div>
-                      )}
-                      
-                      {/* Top Badge Overlay */}
-                      <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
-                         <div className="bg-slate-900/95 backdrop-blur-md text-[8px] text-white px-2 py-1 rounded-lg uppercase font-black tracking-widest w-max">{product.product_type}</div>
-                         {product.is_public && <div className="bg-emerald-500/95 backdrop-blur-md text-[8px] text-white px-2 py-1 rounded-lg uppercase font-black tracking-widest w-max">Live Store</div>}
-                         {isLowStock && (
-                           <div className="bg-rose-500/95 backdrop-blur-md text-[8px] text-white px-2.5 py-1 rounded-lg uppercase font-black tracking-widest flex items-center gap-1 w-max shadow-sm shadow-rose-100">
-                             <AlertTriangle className="w-2.5 h-2.5 text-white" /> Low Stock
-                           </div>
-                         )}
-                      </div>
-                    </div>
-                    
-                    <div className="p-6 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div className="max-w-[70%]">
-                          <h4 className="font-bold text-slate-800 line-clamp-1">{product.name}</h4>
-                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{product.location || product.category || 'Local Listing'}</p>
-                          {product.sku && (
-                            <p className="text-[9px] font-bold text-slate-400 font-mono mt-0.5">SKU: {product.sku}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-black text-indigo-600 leading-none">₦{parseFloat(product.price).toLocaleString()}</p>
-                          {product.cost_price && parseFloat(product.cost_price) > 0 && (
-                            <p className="text-[9px] text-emerald-600 font-bold mt-1">COGS: ₦{parseFloat(product.cost_price).toLocaleString()}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Stock stats overlay */}
-                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center text-[10px] text-slate-500 font-medium">
-                        <span>Stock Quantity: <strong className={`font-bold ${isLowStock ? 'text-rose-600' : 'text-slate-800'}`}>{stock} units</strong></span>
-                        <span>Value: <strong className="text-slate-800">₦{(stock * parseFloat(product.price)).toLocaleString()}</strong></span>
-                      </div>
-                      
-                      <div className="flex gap-2 pt-2">
-                         <button 
-                          onClick={() => {
-                            setCurrentProduct({
-                              ...product,
-                              metadata: product.metadata || {}
-                            });
-                            setIsEditing(true);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-600 px-4 py-3 rounded-2xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all"
-                         >
-                           <Edit3 className="w-3.5 h-3.5" /> Manage
-                         </button>
-                         <button 
-                          onClick={() => handleDelete(product.id)}
-                          className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all"
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-
-            {products.length === 0 && !isLoading && (
-              <div className="col-span-full py-20 text-center space-y-6 bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
-                <ShoppingBag className="w-16 h-16 text-slate-200 mx-auto" />
-                <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-slate-800">Your Catalog is Empty</h3>
-                  <p className="text-sm text-slate-400 max-w-xs mx-auto">Start listing Products, Services or Properties to populate your ecosystem.</p>
+          activeTab === 'catalog' ? (
+             <div className="space-y-8 animate-in fade-in w-full">
+                {/* Prominent AI Snap & List Onboarding Banner Card */}
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-[32px] p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl shadow-emerald-100/50">
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-black flex items-center gap-2.5 font-heading">
+                      📸 AI Bulk Onboarding (Snap & List)
+                    </h3>
+                    <p className="text-xs text-emerald-50 max-w-xl leading-relaxed">
+                      Snap pictures of multiple products from your phone or choose images from device files. Our AI will automatically extract product details, estimate pricing, select categories, and draft premium sales descriptions in seconds!
+                    </p>
+                  </div>
+                  <label className="bg-white hover:bg-emerald-50 text-emerald-700 px-7 py-4 rounded-3xl font-black text-xs shadow-lg transition-all active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-2 border-0">
+                    <span>📷</span> Snap Pictures Now
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleBulkSelect} 
+                    />
+                  </label>
                 </div>
-                <button 
-                  onClick={() => setIsEditing(true)}
-                  className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-100"
-                >
-                  List My First Item
-                </button>
-              </div>
-            )}
-          </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <AnimatePresence>
+                    {Array.isArray(products) && products.map((product) => {
+                      const stock = product.stock_count || 0;
+                      const threshold = product.low_stock_threshold || 5;
+                      const isLowStock = stock <= threshold;
+                      
+                      return (
+                        <motion.div 
+                          key={product.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 group hover:shadow-xl transition-all duration-300 relative"
+                        >
+                          <div className="aspect-[4/3] bg-slate-50 relative overflow-hidden">
+                            {product.image_url ? (
+                              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package className="w-12 h-12 text-slate-200" />
+                              </div>
+                            )}
+                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] font-black text-slate-700 shadow-sm flex items-center gap-1.5">
+                              <span>
+                                {product.product_type === 'PHYSICAL' && '🛍️'}
+                                {product.product_type === 'SERVICE' && '🛠️'}
+                                {product.product_type === 'PROPERTY' && '🏠'}
+                                {product.product_type === 'B2B' && '🤝'}
+                              </span>
+                              {product.product_type}
+                            </div>
+                            
+                            {/* Low Stock alert overlay */}
+                            {isLowStock && product.product_type === 'PHYSICAL' && (
+                              <div className="absolute top-4 right-4 bg-rose-500 text-white px-3 py-1 rounded-xl text-[9px] font-black flex items-center gap-1 uppercase tracking-wider animate-pulse">
+                                <AlertTriangle className="w-3 h-3" /> Low Stock
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="p-6 space-y-4 flex flex-col justify-between">
+                            <div className="space-y-1">
+                              <h3 className="font-bold text-slate-800 text-base line-clamp-1 group-hover:text-indigo-600 transition-colors">{product.name}</h3>
+                              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{product.description || 'No description provided.'}</p>
+                            </div>
+
+                            <div className="flex justify-between items-end">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Selling Price</span>
+                                <strong className="text-lg font-black text-slate-850">₦{parseFloat(product.price).toLocaleString()}</strong>
+                              </div>
+                              {product.cost_price && parseFloat(product.cost_price) > 0 && (
+                                <div className="text-right">
+                                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Cost Basis</span>
+                                  <strong className="text-xs font-bold text-emerald-600">₦{parseFloat(product.cost_price).toLocaleString()}</strong>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Stock stats overlay */}
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center text-[10px] text-slate-500 font-medium">
+                              <span>Stock Quantity: <strong className={`font-bold ${isLowStock && product.product_type === 'PHYSICAL' ? 'text-rose-600' : 'text-slate-800'}`}>{stock} units</strong></span>
+                              <span>Value: <strong className="text-slate-800 font-bold">₦{(stock * parseFloat(product.price)).toLocaleString()}</strong></span>
+                            </div>
+                            
+                            <div className="flex gap-2 pt-2">
+                               <button 
+                                 onClick={() => {
+                                   setCurrentProduct({
+                                     ...product,
+                                     metadata: product.metadata || {}
+                                   });
+                                   setIsEditing(true);
+                                 }}
+                                 className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-600 px-4 py-3 rounded-2xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all border-0 cursor-pointer"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Manage
+                                </button>
+                                <button 
+                                 onClick={() => handleDelete(product.id)}
+                                 className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all border-0 cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+
+                  {products.length === 0 && !isLoading && (
+                    <div className="col-span-full py-20 text-center space-y-6 bg-slate-50 rounded-[40px] border-2 border-dashed border-slate-200">
+                      <ShoppingBag className="w-16 h-16 text-slate-200 mx-auto" />
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-bold text-slate-800">Your Catalog is Empty</h3>
+                        <p className="text-sm text-slate-400 max-w-xs mx-auto">Start listing Products, Services or Properties to populate your ecosystem.</p>
+                      </div>
+                      <button 
+                        onClick={() => setIsEditing(true)}
+                        className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-100 border-0 cursor-pointer"
+                      >
+                        List My First Item
+                      </button>
+                    </div>
+                  )}
+                </div>
+             </div>
+          ) : (
+             /* NGO/Investor Audited Transaction Ledger (ledger tab) */
+             <div className="bg-white rounded-[40px] border border-slate-100 p-8 space-y-6 shadow-sm animate-in fade-in w-full">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                      <span>📋</span> NGO / Investor Stock Audit Ledger
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Independent ledger records for Cost of Goods Sold (COGS), supply valuation, and grant auditing standard compliance.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={exportLedgerToCSV}
+                    className="flex items-center gap-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 px-5 py-3 rounded-2xl text-xs font-bold transition-all border-0 cursor-pointer"
+                  >
+                    📥 Export Ledger CSV
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-3xl border border-slate-100">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
+                        <th className="p-4">Timestamp</th>
+                        <th className="p-4">Item Name / SKU</th>
+                        <th className="p-4">Change Type</th>
+                        <th className="p-4 text-center font-bold">Change Qty</th>
+                        <th className="p-4 text-center font-bold">Ending Balance</th>
+                        <th className="p-4 text-right font-bold">Valuation Cost</th>
+                        <th className="p-4">Audit Memo / Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {transactionLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-4 text-slate-400 font-medium whitespace-nowrap">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </td>
+                          <td className="p-4">
+                            <div className="font-bold text-slate-800">{log.productName}</div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{log.sku}</div>
+                          </td>
+                          <td className="p-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                              log.changeType === 'INITIAL' ? 'bg-indigo-50 text-indigo-600' :
+                              log.changeType === 'INBOUND' ? 'bg-emerald-50 text-emerald-650' :
+                              log.changeType === 'OUTBOUND' ? 'bg-rose-50 text-rose-650' :
+                              'bg-amber-50 text-amber-600'
+                            }`}>
+                              {log.changeType}
+                            </span>
+                          </td>
+                          <td className={`p-4 text-center font-extrabold ${
+                            log.quantityChanged > 0 ? 'text-emerald-600' : 
+                            log.quantityChanged < 0 ? 'text-rose-600' : 'text-slate-500'
+                          }`}>
+                            {log.quantityChanged > 0 ? `+${log.quantityChanged}` : log.quantityChanged}
+                          </td>
+                          <td className="p-4 text-center font-bold text-slate-700">
+                            {log.resultingQuantity} units
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="font-bold text-slate-800">₦{parseFloat(log.costPriceAtTime).toLocaleString()}</div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">Retail: ₦{parseFloat(log.retailPriceAtTime).toLocaleString()}</div>
+                          </td>
+                          <td className="p-4 text-slate-500 italic max-w-xs truncate">
+                            {log.notes}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+             </div>
+          )
         )}
       </AnimatePresence>
-
-      {/* NGO/Investor Audited Transaction Ledger */}
-      {!isEditing && !isBulkOnboarding && products.length > 0 && (
-         <div className="bg-white rounded-[40px] border border-slate-100 p-8 space-y-6 shadow-sm animate-in fade-in">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
-              <div>
-                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                  <span>📋</span> NGO / Investor Stock Audit Ledger
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">Independent ledger records for Cost of Goods Sold (COGS), supply valuation, and grant auditing standard compliance.</p>
-              </div>
-              <button
-                type="button"
-                onClick={exportLedgerToCSV}
-                className="flex items-center gap-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 px-5 py-3 rounded-2xl text-xs font-bold transition-all border-0 cursor-pointer"
-              >
-                📥 Export Ledger CSV
-              </button>
-            </div>
-
-            <div className="overflow-x-auto rounded-3xl border border-slate-100">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-4">Timestamp</th>
-                    <th className="p-4">Item Name / SKU</th>
-                    <th className="p-4">Change Type</th>
-                    <th className="p-4 text-center">Change Qty</th>
-                    <th className="p-4 text-center">Ending Balance</th>
-                    <th className="p-4 text-right">Valuation Cost</th>
-                    <th className="p-4">Audit Memo / Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {transactionLogs.slice(0, 10).map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 text-slate-400 font-medium whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </td>
-                      <td className="p-4">
-                        <div className="font-bold text-slate-800">{log.productName}</div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">{log.sku}</div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
-                          log.changeType === 'INITIAL' ? 'bg-indigo-50 text-indigo-650' :
-                          log.changeType === 'INBOUND' ? 'bg-emerald-50 text-emerald-650' :
-                          log.changeType === 'OUTBOUND' ? 'bg-rose-50 text-rose-650' :
-                          'bg-amber-50 text-amber-655'
-                        }`}>
-                          {log.changeType}
-                        </span>
-                      </td>
-                      <td className={`p-4 text-center font-extrabold ${
-                        log.quantityChanged > 0 ? 'text-emerald-600' : 
-                        log.quantityChanged < 0 ? 'text-rose-600' : 'text-slate-500'
-                      }`}>
-                        {log.quantityChanged > 0 ? `+${log.quantityChanged}` : log.quantityChanged}
-                      </td>
-                      <td className="p-4 text-center font-bold text-slate-700">
-                        {log.resultingQuantity} units
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="font-bold text-slate-800">₦{parseFloat(log.costPriceAtTime).toLocaleString()}</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Retail: ₦{parseFloat(log.retailPriceAtTime).toLocaleString()}</div>
-                      </td>
-                      <td className="p-4 text-slate-500 italic max-w-xs truncate">
-                        {log.notes}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-         </div>
-      )}
 
       {/* Unsplash Studio Search Modal */}
       {showStudioModal && (
