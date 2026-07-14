@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, UserStats } from '../types';
 import PaymentModal from './PaymentModal';
 import { billingService, TransactionData, CreditLedgerData } from '../services/billingService';
+import { toast } from 'react-hot-toast';
 
 interface SettingsProps {
   user: User;
@@ -17,6 +18,8 @@ const CREDIT_PACKS = [
   { credits: 1000, price: 3000, label: 'Enterprise Pack', desc: 'Agency level power usage' },
 ];
 
+type SettingsTab = 'profile' | 'billing' | 'preferences' | 'data';
+
 const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdateUser, onTopUpSuccess }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -26,7 +29,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     phone: user.phone || ''
   });
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'billing'>('profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
   // Billing states
   const [showTopUp, setShowTopUp] = useState(false);
@@ -35,7 +38,25 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   const [ledger, setLedger] = useState<CreditLedgerData[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Preferences states
+  const [tractionMode, setTractionMode] = useState(() => localStorage.getItem('sb_idice_traction_mode') === 'true');
+  const [defaultReminderTone, setDefaultReminderTone] = useState(() => localStorage.getItem('sb_default_reminder_tone') || 'POLITE');
+  const [autoDeductStock, setAutoDeductStock] = useState(() => localStorage.getItem('sb_auto_deduct_stock') !== 'false');
+  const [defaultPlatform, setDefaultPlatform] = useState(() => localStorage.getItem('sb_default_platform') || 'Instagram');
+  const [defaultTone, setDefaultTone] = useState(() => localStorage.getItem('sb_default_tone') || 'Exciting');
+  const [invoiceCurrency, setInvoiceCurrency] = useState(() => localStorage.getItem('sb_invoice_currency') || 'NGN');
+  const [invoicePaymentTerms, setInvoicePaymentTerms] = useState(() => localStorage.getItem('sb_invoice_payment_terms') || 'DUE_ON_RECEIPT');
+
+  // Data Management states
+  const [dataStats, setDataStats] = useState({
+    debtors: 0,
+    invoices: 0,
+    products: 0,
+    transactionLogs: 0,
+    brandProfile: false,
+    contentHistory: 0
+  });
 
   // Sync edit form when user changes
   useEffect(() => {
@@ -47,7 +68,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     });
   }, [user]);
 
-  // Load history on mount
+  // Load billing history on mount
   useEffect(() => {
     const fetchHistory = async () => {
       setIsLoadingHistory(true);
@@ -67,6 +88,25 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     fetchHistory();
   }, []);
 
+  // Load data stats
+  useEffect(() => {
+    const debtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
+    const invoices = JSON.parse(localStorage.getItem('sb_invoices_detailed') || '[]');
+    const products = JSON.parse(localStorage.getItem('sb_idice_products') || '[]');
+    const txLogs = JSON.parse(localStorage.getItem('sb_idice_transaction_logs') || '[]');
+    const brand = localStorage.getItem('sb_brand');
+    const contentHistory = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
+
+    setDataStats({
+      debtors: debtors.length,
+      invoices: invoices.length,
+      products: products.length,
+      transactionLogs: txLogs.length,
+      brandProfile: !!brand,
+      contentHistory: contentHistory.length,
+    });
+  }, []);
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     if (onUpdateUser) {
@@ -77,7 +117,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
         email: editForm.email,
         phone: editForm.phone
       });
-      showToast("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
     }
     setIsEditing(false);
   };
@@ -93,7 +133,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     setVerifyingPayment(true);
     try {
       const response = await billingService.verifyPayment(reference, selectedPack.price);
-      showToast(`Success! Added ${selectedPack.credits} credits to your account.`);
+      toast.success(`Success! Added ${selectedPack.credits} credits to your account.`);
       if (onTopUpSuccess) {
         onTopUpSuccess(response.credits);
       }
@@ -105,121 +145,174 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
       setTransactions(txs);
       setLedger(ledgers);
     } catch (err: any) {
-      alert(err?.response?.data?.error || "Payment verification failed. Please contact support.");
+      toast.error(err?.response?.data?.error || "Payment verification failed. Please contact support.");
     } finally {
       setVerifyingPayment(false);
       setSelectedPack(null);
     }
   };
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+  // Save preferences handler
+  const handleSavePreferences = () => {
+    localStorage.setItem('sb_idice_traction_mode', String(tractionMode));
+    localStorage.setItem('sb_default_reminder_tone', defaultReminderTone);
+    localStorage.setItem('sb_auto_deduct_stock', String(autoDeductStock));
+    localStorage.setItem('sb_default_platform', defaultPlatform);
+    localStorage.setItem('sb_default_tone', defaultTone);
+    localStorage.setItem('sb_invoice_currency', invoiceCurrency);
+    localStorage.setItem('sb_invoice_payment_terms', invoicePaymentTerms);
+    toast.success("Preferences saved successfully!");
   };
 
-  return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300">
-      
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-6 right-6 z-50 bg-gray-900 text-white text-sm font-semibold px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-2 border border-gray-800 animate-in slide-in-from-top duration-300">
-          <span>✨</span> {toastMessage}
-        </div>
-      )}
+  // Data export/clear handlers
+  const handleExportAllData = () => {
+    const allData = {
+      debtors: JSON.parse(localStorage.getItem('sb_debtors') || '[]'),
+      invoices: JSON.parse(localStorage.getItem('sb_invoices_detailed') || '[]'),
+      products: JSON.parse(localStorage.getItem('sb_idice_products') || '[]'),
+      transactionLogs: JSON.parse(localStorage.getItem('sb_idice_transaction_logs') || '[]'),
+      brand: JSON.parse(localStorage.getItem('sb_brand') || 'null'),
+      contentHistory: JSON.parse(localStorage.getItem('sb_content_history') || '[]'),
+      user: JSON.parse(localStorage.getItem('sb_user') || '{}'),
+      exportedAt: new Date().toISOString()
+    };
 
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Settings & Wallet</h2>
-          <p className="text-gray-500 text-sm mt-0.5">Manage your profile, wallet, and credit ledger.</p>
-        </div>
-        <button
-          onClick={onLogout}
-          className="text-red-600 font-semibold text-sm hover:text-red-700 transition-colors flex items-center gap-1.5 bg-red-50 hover:bg-red-100/70 px-4 py-2 rounded-xl border border-red-100"
-        >
-          🚪 Sign Out
-        </button>
-      </div>
+    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `smartbiz_full_backup_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Full business data backup exported!");
+  };
+
+  const handleClearSpecificData = (key: string, label: string) => {
+    if (confirm(`Are you sure you want to clear all ${label} data? This action cannot be undone.`)) {
+      localStorage.removeItem(key);
+      toast.success(`${label} data cleared.`);
+      // Refresh data stats
+      setDataStats(prev => ({
+        ...prev,
+        [key === 'sb_debtors' ? 'debtors' : 
+         key === 'sb_invoices_detailed' ? 'invoices' : 
+         key === 'sb_idice_products' ? 'products' : 
+         key === 'sb_idice_transaction_logs' ? 'transactionLogs' : 
+         key === 'sb_content_history' ? 'contentHistory' : 'brandProfile']: 
+         key === 'sb_brand' ? false : 0
+      }));
+    }
+  };
+
+  const settingsTabs = [
+    { id: 'profile' as SettingsTab, label: 'Profile', icon: '👤' },
+    { id: 'billing' as SettingsTab, label: 'Credit Wallet', icon: '💳' },
+    { id: 'preferences' as SettingsTab, label: 'Preferences', icon: '🎛️' },
+    { id: 'data' as SettingsTab, label: 'Data & Backup', icon: '🗄️' },
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300">
 
       {/* Verification Loader Overlay */}
       {verifyingPayment && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center text-center max-w-xs">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center max-w-xs">
             <svg className="animate-spin w-10 h-10 text-green-600 mb-4" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
             </svg>
-            <h4 className="font-bold text-gray-900 text-lg">Verifying Payment</h4>
-            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              We are connecting with Paystack to credit your wallet. Please hold on...
+            <h4 className="font-extrabold text-slate-900 text-lg">Verifying Payment</h4>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              Connecting with Paystack to credit your wallet. Please hold on...
             </p>
           </div>
         </div>
       )}
 
-      {/* Tab Switcher */}
-      <div className="flex border-b border-gray-200">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 font-heading flex items-center gap-2">
+            <span>⚙️</span> Settings & Wallet
+          </h2>
+          <p className="text-slate-500 text-xs mt-1">Manage your profile, billing, platform preferences, and data backups.</p>
+        </div>
         <button
-          onClick={() => setActiveTab('profile')}
-          className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all ${activeTab === 'profile' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+          onClick={onLogout}
+          className="flex items-center gap-1.5 text-red-600 font-bold text-xs bg-red-50 hover:bg-red-100/70 px-5 py-3 rounded-2xl border border-red-100 transition-all active:scale-95 cursor-pointer"
         >
-          👤 Profile Settings
-        </button>
-        <button
-          onClick={() => setActiveTab('billing')}
-          className={`pb-4 px-6 font-bold text-sm border-b-2 transition-all ${activeTab === 'billing' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-        >
-          💳 Credit Wallet & Billing
+          🚪 Sign Out
         </button>
       </div>
 
+      {/* Tab Switcher */}
+      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto">
+        {settingsTabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`pb-3.5 px-5 font-bold text-xs border-b-2 transition-all whitespace-nowrap cursor-pointer border-0 bg-transparent ${
+              activeTab === tab.id 
+                ? 'border-b-2 border-indigo-600 text-indigo-650' 
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ============ PROFILE TAB ============ */}
       {activeTab === 'profile' && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-in fade-in duration-200">
-          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-bold text-gray-800 text-sm uppercase tracking-wider">My Profile</h3>
+        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-200">
+          <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">My Profile</h3>
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="text-xs text-indigo-600 font-bold hover:underline"
+              className="text-xs text-indigo-650 font-bold hover:underline bg-transparent border-0 cursor-pointer"
             >
               {isEditing ? 'Cancel' : 'Edit Profile'}
             </button>
           </div>
 
           {isEditing ? (
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
+            <form onSubmit={handleSaveProfile} className="p-6 sm:p-8 space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
                 <input
                   required
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                   value={editForm.name}
                   onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Business Name</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Name</label>
                 <input
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                   value={editForm.businessName}
                   onChange={e => setEditForm({ ...editForm, businessName: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
                   <input
                     required
                     type="email"
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={editForm.email}
                     onChange={e => setEditForm({ ...editForm, email: e.target.value })}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">WhatsApp / Phone</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp / Phone</label>
                   <input
                     type="tel"
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={editForm.phone}
                     onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                   />
@@ -227,46 +320,47 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </div>
               <button
                 type="submit"
-                className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/10"
+                className="bg-indigo-600 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/10 border-0 cursor-pointer"
               >
                 Save Changes
               </button>
             </form>
           ) : (
-            <div className="p-6 flex items-center gap-5">
-              <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-full flex items-center justify-center text-white text-2xl font-extrabold shadow-inner overflow-hidden uppercase">
+            <div className="p-6 sm:p-8 flex items-center gap-5">
+              <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-full flex items-center justify-center text-white text-2xl font-extrabold shadow-inner overflow-hidden uppercase flex-shrink-0">
                 {user.logo ? <img src={user.logo} className="w-full h-full object-cover" /> : (user.name ? user.name.charAt(0) : 'U')}
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-gray-900">{user.name || 'User'}</h4>
-                <p className="text-gray-500 text-sm">{user.email}</p>
+              <div className="min-w-0">
+                <h4 className="text-lg font-extrabold text-slate-800">{user.name || 'User'}</h4>
+                <p className="text-slate-500 text-xs">{user.email}</p>
                 {user.businessName && (
-                  <p className="text-xs text-indigo-600 font-semibold mt-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 inline-block">
+                  <p className="text-[10px] text-indigo-650 font-bold mt-1.5 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-100 inline-block">
                     🏢 {user.businessName}
                   </p>
                 )}
-                {user.phone && <p className="text-xs text-gray-400 mt-1">📞 {user.phone}</p>}
+                {user.phone && <p className="text-[10px] text-slate-400 mt-1">📞 {user.phone}</p>}
               </div>
             </div>
           )}
         </div>
       )}
 
+      {/* ============ BILLING TAB ============ */}
       {activeTab === 'billing' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           
           {/* Wallet */}
-          <div className="bg-gradient-to-br from-indigo-950 to-indigo-900 rounded-2xl shadow-xl text-white p-6 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-indigo-950 to-indigo-900 rounded-[32px] shadow-xl text-white p-6 sm:p-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full transform translate-x-8 -translate-y-8" />
             <div className="absolute bottom-0 left-0 w-56 h-56 bg-white/5 rounded-full transform -translate-x-12 translate-y-16" />
             
             <div className="relative z-10">
-              <p className="text-indigo-200 text-xs font-semibold uppercase tracking-wider">BizCredits Balance</p>
+              <p className="text-indigo-200 text-[10px] font-black uppercase tracking-widest">BizCredits Balance</p>
               <h3 className="text-4xl font-black mt-1 mb-2">
                 {userStats.bizCredits} <span className="text-lg font-medium text-indigo-300">Credits</span>
               </h3>
               <p className="text-xs text-indigo-300 max-w-sm leading-relaxed mb-6">
-                Use your credits to run advanced tasks like Business Plans (15) or social graphics (2) when you exceed free limits.
+                Use credits for advanced tasks: Business Plans (15), Photo Studio (2), AI Reminders (1), and more.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -274,13 +368,13 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                   <button
                     key={pack.credits}
                     onClick={() => handlePackSelect(pack)}
-                    className={`relative text-left p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between overflow-hidden group active:scale-95
+                    className={`relative text-left p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between overflow-hidden group active:scale-95 cursor-pointer
                       ${pack.popular 
                         ? 'bg-indigo-600 border-indigo-400 shadow-lg hover:bg-indigo-700' 
                         : 'bg-white/10 hover:bg-white/20 border-white/20'}`}
                   >
                     {pack.popular && (
-                      <span className="absolute top-0 right-0 bg-yellow-400 text-yellow-950 text-[9px] font-extrabold px-2 py-0.5 rounded-bl">
+                      <span className="absolute top-0 right-0 bg-yellow-400 text-yellow-950 text-[9px] font-extrabold px-2 py-0.5 rounded-bl-xl">
                         BEST VALUE
                       </span>
                     )}
@@ -302,24 +396,24 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
           <div className="grid md:grid-cols-2 gap-6">
 
             {/* Credit Ledger */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Credit Ledger</h3>
-                <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Usage History</span>
+            <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Credit Ledger</h3>
+                <span className="text-[9px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Usage History</span>
               </div>
-              <div className="divide-y divide-gray-100 overflow-y-auto max-h-[350px] flex-1">
+              <div className="divide-y divide-slate-50 overflow-y-auto max-h-[350px] flex-1">
                 {isLoadingHistory ? (
-                  <div className="p-8 text-center text-sm text-gray-400">Loading ledger...</div>
+                  <div className="p-8 text-center text-xs text-slate-400">Loading ledger...</div>
                 ) : ledger.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-gray-400 italic">No credit activities recorded.</div>
+                  <div className="p-8 text-center text-xs text-slate-400 italic">No credit activities recorded.</div>
                 ) : (
                   ledger.map(item => (
-                    <div key={item.id} className="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
+                    <div key={item.id} className="p-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
                       <div className="min-w-0 pr-3">
-                        <p className="text-xs font-bold text-gray-800 truncate">{item.activity}</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
+                        <p className="text-xs font-bold text-slate-800 truncate">{item.activity}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{new Date(item.created_at).toLocaleString()}</p>
                       </div>
-                      <div className={`text-sm font-black whitespace-nowrap shrink-0 ${item.amount < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                      <div className={`text-xs font-black whitespace-nowrap shrink-0 ${item.amount < 0 ? 'text-red-500' : 'text-green-500'}`}>
                         {item.amount < 0 ? '' : '+'}{item.amount}
                       </div>
                     </div>
@@ -329,26 +423,26 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             </div>
 
             {/* Paystack Transactions */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Payments History</h3>
-                <span className="text-[10px] font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Paystack</span>
+            <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Payments History</h3>
+                <span className="text-[9px] font-black bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Paystack</span>
               </div>
-              <div className="divide-y divide-gray-100 overflow-y-auto max-h-[350px] flex-1">
+              <div className="divide-y divide-slate-50 overflow-y-auto max-h-[350px] flex-1">
                 {isLoadingHistory ? (
-                  <div className="p-8 text-center text-sm text-gray-400">Loading transactions...</div>
+                  <div className="p-8 text-center text-xs text-slate-400">Loading transactions...</div>
                 ) : transactions.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-gray-400 italic">No payments processed yet.</div>
+                  <div className="p-8 text-center text-xs text-slate-400 italic">No payments processed yet.</div>
                 ) : (
                   transactions.map(tx => (
-                    <div key={tx.id} className="p-4 flex justify-between items-start hover:bg-gray-50 transition-colors">
+                    <div key={tx.id} className="p-4 flex justify-between items-start hover:bg-slate-50 transition-colors">
                       <div className="min-w-0 pr-3">
-                        <p className="text-xs font-bold text-gray-800 truncate">{tx.description}</p>
-                        <p className="text-[9px] text-gray-400 mt-1 uppercase font-semibold">Ref: {tx.reference}</p>
-                        <p className="text-[9px] text-gray-400 mt-0.5">{new Date(tx.created_at).toLocaleString()}</p>
+                        <p className="text-xs font-bold text-slate-800 truncate">{tx.description}</p>
+                        <p className="text-[9px] text-slate-400 mt-1 uppercase font-semibold">Ref: {tx.reference}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">{new Date(tx.created_at).toLocaleString()}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-xs font-black text-gray-900">₦{Number(tx.amount).toLocaleString()}</p>
+                        <p className="text-xs font-black text-slate-900">₦{Number(tx.amount).toLocaleString()}</p>
                         <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded mt-1 inline-block uppercase tracking-wider
                           ${tx.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : tx.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                           {tx.status}
@@ -360,6 +454,235 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ============ PREFERENCES TAB ============ */}
+      {activeTab === 'preferences' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+
+          {/* Content Studio Defaults */}
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <span className="text-sm">✍️</span>
+              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Content Studio Defaults</h3>
+            </div>
+            <div className="p-6 sm:p-8 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Platform</label>
+                  <select
+                    value={defaultPlatform}
+                    onChange={(e) => setDefaultPlatform(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-3.5 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="Instagram">📸 Instagram</option>
+                    <option value="TikTok">🎵 TikTok</option>
+                    <option value="Facebook">📘 Facebook</option>
+                    <option value="Twitter">🐦 Twitter/X</option>
+                    <option value="LinkedIn">💼 LinkedIn</option>
+                    <option value="WhatsApp">💬 WhatsApp</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Writing Tone</label>
+                  <select
+                    value={defaultTone}
+                    onChange={(e) => setDefaultTone(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-3.5 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="Exciting">🔥 Exciting</option>
+                    <option value="Professional">💼 Professional</option>
+                    <option value="Friendly">🤝 Friendly</option>
+                    <option value="Humorous">😂 Humorous</option>
+                    <option value="Inspirational">✨ Inspirational</option>
+                    <option value="Persuasive">💡 Persuasive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Gbege Book & Invoice Defaults */}
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <span className="text-sm">📒</span>
+              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Gbege Book & Invoice Defaults</h3>
+            </div>
+            <div className="p-6 sm:p-8 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Reminder Tone</label>
+                  <select
+                    value={defaultReminderTone}
+                    onChange={(e) => setDefaultReminderTone(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-3.5 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="POLITE">😊 Polite</option>
+                    <option value="FIRM">😤 Firm</option>
+                    <option value="STRICT">😠 Strict</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Invoice Currency</label>
+                  <select
+                    value={invoiceCurrency}
+                    onChange={(e) => setInvoiceCurrency(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-3.5 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="NGN">🇳🇬 Nigerian Naira (₦)</option>
+                    <option value="USD">🇺🇸 US Dollar ($)</option>
+                    <option value="GBP">🇬🇧 British Pound (£)</option>
+                    <option value="GHS">🇬🇭 Ghanaian Cedi (₵)</option>
+                    <option value="KES">🇰🇪 Kenyan Shilling (KSh)</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Payment Terms</label>
+                  <select
+                    value={invoicePaymentTerms}
+                    onChange={(e) => setInvoicePaymentTerms(e.target.value)}
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-3.5 text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                  >
+                    <option value="DUE_ON_RECEIPT">Due on Receipt</option>
+                    <option value="NET_15">Net 15 Days</option>
+                    <option value="NET_30">Net 30 Days</option>
+                    <option value="NET_60">Net 60 Days</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Inventory & Catalog Toggles */}
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <span className="text-sm">📦</span>
+              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Inventory & Catalog</h3>
+            </div>
+            <div className="p-6 sm:p-8 space-y-5">
+              <div className="space-y-4">
+                {/* Auto-deduct stock toggle */}
+                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Auto-Deduct Stock on Credit Sale</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Automatically reduce catalog quantities when debts are recorded in Gbege Book.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAutoDeductStock(!autoDeductStock)}
+                    className={`w-12 h-6 rounded-full transition-all relative border-0 cursor-pointer ${autoDeductStock ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${autoDeductStock ? 'left-6' : 'left-0.5'}`} />
+                  </button>
+                </div>
+                
+                {/* Traction mode toggle */}
+                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Traction Mode (Offline Demo)</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Run the platform with local mock data instead of requiring a backend connection.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTractionMode(!tractionMode)}
+                    className={`w-12 h-6 rounded-full transition-all relative border-0 cursor-pointer ${tractionMode ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${tractionMode ? 'left-6' : 'left-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Save Preferences Button */}
+          <button
+            onClick={handleSavePreferences}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-3xl font-black text-xs uppercase tracking-widest active:scale-95 shadow-xl transition-all border-0 cursor-pointer"
+          >
+            Save All Preferences
+          </button>
+
+        </div>
+      )}
+
+      {/* ============ DATA & BACKUP TAB ============ */}
+      {activeTab === 'data' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+
+          {/* Data Overview */}
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📊</span>
+                <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Business Data Overview</h3>
+              </div>
+              <button
+                onClick={handleExportAllData}
+                className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border-0 cursor-pointer"
+              >
+                📥 Export Full Backup
+              </button>
+            </div>
+            <div className="p-6 sm:p-8">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { label: 'Debtor Records', count: dataStats.debtors, icon: '📒', color: 'red', key: 'sb_debtors' },
+                  { label: 'Invoices', count: dataStats.invoices, icon: '🧾', color: 'blue', key: 'sb_invoices_detailed' },
+                  { label: 'Inventory Items', count: dataStats.products, icon: '📦', color: 'emerald', key: 'sb_idice_products' },
+                  { label: 'Audit Logs', count: dataStats.transactionLogs, icon: '📋', color: 'amber', key: 'sb_idice_transaction_logs' },
+                  { label: 'Content History', count: dataStats.contentHistory, icon: '✍️', color: 'indigo', key: 'sb_content_history' },
+                  { label: 'Brand Profile', count: dataStats.brandProfile ? 1 : 0, icon: '✨', color: 'purple', key: 'sb_brand' },
+                ].map(item => (
+                  <div key={item.key} className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-base">{item.icon}</span>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{item.label}</p>
+                      </div>
+                      <p className="text-2xl font-black text-slate-800 font-heading">{item.count}</p>
+                    </div>
+                    {item.count > 0 && (
+                      <button
+                        onClick={() => handleClearSpecificData(item.key, item.label)}
+                        className="w-full text-[9px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 py-1.5 rounded-lg transition-all bg-transparent border border-red-200/50 cursor-pointer"
+                      >
+                        Clear {item.label}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="bg-white rounded-[32px] border border-red-100 shadow-sm overflow-hidden">
+            <div className="bg-red-50 px-6 py-4 border-b border-red-100 flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <h3 className="font-extrabold text-red-800 text-xs uppercase tracking-widest">Danger Zone</h3>
+            </div>
+            <div className="p-6 sm:p-8 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-red-50/50 p-4 rounded-2xl border border-red-100">
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Clear All Local Data</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Remove all locally stored business data (debtors, invoices, products, content). This cannot be undone.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (confirm("⚠️ WARNING: This will delete ALL local business data. Are you absolutely sure?")) {
+                      ['sb_debtors', 'sb_invoices_detailed', 'sb_invoices', 'sb_idice_products', 'sb_idice_transaction_logs', 'sb_content_history', 'sb_brand'].forEach(k => localStorage.removeItem(k));
+                      toast.success("All local data cleared.");
+                      setDataStats({ debtors: 0, invoices: 0, products: 0, transactionLogs: 0, brandProfile: false, contentHistory: 0 });
+                    }
+                  }}
+                  className="flex-shrink-0 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 border-0 cursor-pointer"
+                >
+                  Wipe All Data
+                </button>
+              </div>
+            </div>
           </div>
 
         </div>
