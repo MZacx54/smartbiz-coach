@@ -244,10 +244,20 @@ class TranscribeAudioView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        audio_base64 = request.data.get('audio')
-        mime_type = request.data.get('mimeType') or 'audio/m4a'
+        audio_file = request.FILES.get('audio')
+        mime_type = 'audio/webm'
+        
+        if audio_file:
+            import base64
+            audio_data = audio_file.read()
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+            mime_type = audio_file.content_type or 'audio/webm'
+        else:
+            audio_base64 = request.data.get('audio')
+            mime_type = request.data.get('mimeType') or 'audio/webm'
+            
         if not audio_base64:
-            return Response({'error': 'No audio data'}, status=400)
+            return Response({'error': 'No audio data provided'}, status=400)
             
         try:
             # Use Gemini to transcribe the audio natively
@@ -256,7 +266,10 @@ class TranscribeAudioView(views.APIView):
                 audio_base64=audio_base64,
                 mime_type=mime_type
             )
-            return Response({'transcription': text})
+            return Response({
+                'transcription': text,
+                'text': text
+            })
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
@@ -444,9 +457,27 @@ class ChatWithSmartBizView(views.APIView):
         brand_context = get_brand_context(request.user)
         try:
             messages = []
+            system_prompt = (
+                "You are Antigravity, a highly professional Digital Marketing Strategist, Brand Consultant, and Growth Architect "
+                "for Nigerian MSMEs on the SmartBiz Coach platform. You speak with clear business acumen, confidence, and local context "
+                "(incorporating mild Nigerian professional phrasing and terms like 'bagging the sale', 'Naira cash-liquidity', 'nudge', 'market validation'). "
+                f"User Brand Context: {brand_context}. "
+                "You know all about the SmartBiz Coach platform tools and can guide users on using them to succeed:\n"
+                "- Brand Builder: For custom brand identities (colors, taglines, elevator pitch, logo prompts).\n"
+                "- Content Studio: AI post writer (Instagram/WhatsApp status), Video scripts, and Premium Image Background Editor "
+                "with eye-dropper color sampling, manual eraser brush, and drag-and-scale product placement to create viral flyers.\n"
+                "- Invoice Generator: Bill clients instantly with customized NGN/USD invoices and sync outstanding status directly.\n"
+                "- Gbege Book (Debtor Tracker): Log debtor installments (Cash/POS/Transfer) in a visual ledger, link catalog products "
+                "with auto-deduct stock toggles, and use AI reminder nudges with escalating tone (Polite -> Firm -> Strict).\n"
+                "- Product Manager: Track inventory value, catalog items, and view staff audit logs.\n"
+                "- Broadcast HQ: Send campaign blasts to targeted contacts filtered by tag and schedule them for future releases.\n"
+                "- Find Funding: Connect user profiles to active Nigerian grants, microloans, and incubator options.\n"
+                "- Compliance: Guide on CAC business name search, registrations, TIN setup, and bank compliance.\n"
+                "Provide actionable, premium marketing strategies, growth insights, and clear product guidance to help users scale."
+            )
             messages.append({
                 "role": "system", 
-                "content": f"You are a professional Digital Marketing Consultant for Nigerian MSMEs. Brand Profile: {brand_context}"
+                "content": system_prompt
             })
             if history:
                 messages.extend(history)

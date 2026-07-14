@@ -20,7 +20,7 @@ interface WhatsAppSupportProps {
 const WhatsAppSupport: React.FC<WhatsAppSupportProps> = ({ credits = 0, onUpdateCredits }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 1, text: "Hello! I am SmartBiz AI. Ask me anything about your business or the app!", sender: 'bot' }
+    { id: 1, text: "Welcome to SmartBiz Growth Lab! 🚀 I am Antigravity, your digital marketing strategist and business growth advisor. Ask me how to optimize your brand, create converting content, recover debts, or find grants to scale your business!", sender: 'bot' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -108,14 +108,14 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = ({ credits = 0, onUpdate
       {/* Header */}
       <div className="bg-indigo-900 p-4 flex items-center justify-between text-white">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg">
-            🤖
+          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center font-bold text-lg">
+            🚀
           </div>
           <div>
-            <h2 className="font-bold">SmartBiz AI Assistant</h2>
-            <p className="text-xs text-indigo-200 flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              Always Online
+            <h2 className="font-extrabold text-sm tracking-wide font-heading">Antigravity AI Advisor</h2>
+            <p className="text-[10px] text-emerald-300 flex items-center gap-1 font-bold">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+              Digital Marketing Strategist
             </p>
           </div>
         </div>

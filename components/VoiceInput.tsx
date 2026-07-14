@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { transcribeAudio } from '../services/geminiService';
 import { toast } from 'react-hot-toast';
+import { Mic, Square, Loader2 } from 'lucide-react';
 
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
@@ -16,7 +17,14 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Determine best supported MIME type
+      let options = { mimeType: 'audio/webm' };
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        options = { mimeType: 'audio/mp4' };
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -27,10 +35,9 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' }); // Chrome/Firefox usually use webm
+        const audioBlob = new Blob(chunksRef.current, { type: options.mimeType });
         // Stop all tracks to release microphone
         stream.getTracks().forEach(track => track.stop());
-
         await processAudio(audioBlob);
       };
 
@@ -52,16 +59,16 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
   const processAudio = async (blob: Blob) => {
     setIsProcessing(true);
     try {
-        try {
-          const text = await transcribeAudio(blob);
-          onTranscript(text);
-        } catch (error) {
-          console.error(error);
-          toast.error("Could not transcribe voice. Please try typing your input.");
-        } finally {
-          setIsProcessing(false);
-        }
-    } catch (e) {
+      const text = await transcribeAudio(blob);
+      if (text && text.trim()) {
+        onTranscript(text);
+      } else {
+        toast.error("No speech detected. Please speak clearly into the mic.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not transcribe voice. Please try typing your input.");
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -81,16 +88,19 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
         type="button"
         onClick={toggleRecording}
         disabled={isProcessing}
-        className={`p-3 rounded-full transition-all duration-300 flex items-center justify-center shadow-sm relative z-10 ${isRecording
-            ? 'bg-red-500 text-white shadow-red-200'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        title="Tap to speak (English, Pidgin, Hausa, Yoruba, Igbo)"
+        className={`w-10 h-10 rounded-full transition-all duration-300 flex items-center justify-center shadow-md relative z-10 cursor-pointer border-0 ${
+          isRecording
+            ? 'bg-red-500 text-white shadow-red-200 scale-105'
+            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+        }`}
+        title="Tap to speak (Pidgin, English, Hausa, Yoruba, Igbo supported)"
       >
         {isProcessing ? (
-          <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : isRecording ? (
+          <Square className="w-4 h-4 fill-white" />
         ) : (
-          <span className="text-xl">{isRecording ? '⏹' : '🎙️'}</span>
+          <Mic className="w-5 h-5" />
         )}
       </button>
 
@@ -100,9 +110,16 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript }) => {
       )}
 
       {isRecording && (
-        <span className="absolute left-full ml-2 text-xs text-red-500 font-bold whitespace-nowrap animate-pulse">
-          Recording...
-        </span>
+        <div className="absolute left-full ml-3 flex items-center gap-1.5 bg-slate-900/90 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap shadow-lg">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+          <span>Listening...</span>
+          {/* Wave animation dots */}
+          <div className="flex gap-0.5 ml-1">
+            <span className="w-1 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+            <span className="w-1 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+            <span className="w-1 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></span>
+          </div>
+        </div>
       )}
     </div>
   );
