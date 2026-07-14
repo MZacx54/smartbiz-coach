@@ -63,6 +63,9 @@ export interface GrantSearchParams {
     industry?: string;
     yearsInBusiness?: string;
     gender?: string;
+    cacRegistration?: string;
+    hasCorporateAccount?: string;
+    targetAmount?: string;
 }
 
 export interface VendorSearchResponse {

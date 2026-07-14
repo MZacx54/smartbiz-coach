@@ -117,37 +117,42 @@ class FindGrantsView(views.APIView):
     def post(self, request):
         profile = request.data.get('profile', {}) or request.data
         
-        prompt = f"""Find highly relevant funding opportunities (grants, low-interest government loans, accelerators) for this Nigerian business profile:
+        prompt = f"""Find highly relevant, real active or recurring funding opportunities (grants, low-interest government loans, equity, accelerators) for this Nigerian business profile:
         Name: {profile.get('businessName')}
-        Location: {profile.get('location')}
+        Location: {profile.get('location')} State, Nigeria
         Industry: {profile.get('industry')}
         Years Operational: {profile.get('yearsInBusiness')}
         Owner Gender: {profile.get('gender')}
+        CAC Registration Status: {profile.get('cacRegistration', 'Unregistered')}
+        Has Corporate Bank Account: {profile.get('hasCorporateAccount', 'No')}
+        Target Funding Amount: {profile.get('targetAmount', 'Under ₦1M')}
         
-        You MUST focus on real active or recurring opportunities in the Nigerian ecosystem, such as:
-        - Tony Elumelu Foundation (TEF) Entrepreneurship Programme
-        - Bank of Industry (BOI) SME Loans
-        - Lagos State Employment Trust Fund (LSETF)
-        - CBN Creative Industry Financing Initiative (CIFI)
-        - SMEDAN Grants/Loans
-        - USAID/DFID Nigerian Agri-Grants
-        - Youth Entrepreneurship Support (YES) Programme
+        You MUST focus on real active or recurring opportunities in the Nigerian ecosystem, matching them intelligently:
+        - FGN Presidential Grants & Loans Scheme (₦50k grants for nano businesses, ₦1M single-digit interest loans for MSMEs)
+        - Lagos State Employment Trust Fund (LSETF) Loans (Highly active for Lagos-based businesses; requires CAC/Tax ID)
+        - Tony Elumelu Foundation (TEF) Programme (₦2M / $5,000 equity-free seed capital; targets startups under 3 years)
+        - SMEDAN Matching Fund Loan (Requires SMEDAN registration number, low-interest microfinance partner loans)
+        - Bank of Industry (BOI) Micro-business and SME funds (Requires CAC, corporate accounts, and tax clearance)
+        - NIRSAL MFB AGSMEIS / TCF Loans (Agriculture and SME sectors; requires certification or training)
+        - Development Bank of Nigeria (DBN) SME loans (disbursed through commercial banks)
+        - CcHUB / Lagos Innovates / Growth Lab Accelerators (targets tech, services, creative sectors)
         
-        Provide 3-4 highly tailored opportunities.
+        Provide 3-4 highly tailored opportunities. Evaluate their eligibility criteria strictly: if the user lacks a CAC registration or corporate bank account, explain this in 'matchReason' and 'eligibility_checklist' (indicating they must get registered first to qualify for programs requiring registration).
+        
         Return a JSON list of objects matching this structure EXACTLY:
         [
             {{
                 "id": "unique-id-1",
                 "name": "Name of the Program",
                 "provider": "Provider Name (e.g., Bank of Industry)",
-                "amountRange": "e.g., ₦5,000,000 - ₦10,000,000",
+                "amountRange": "e.g., ₦1,000,000 - ₦5,000,000",
                 "matchScore": 85,
-                "matchReason": "Why this business matches (mention location/industry specificity).",
-                "requirements": ["Requirement 1", "Requirement 2", "Requirement 3"],
+                "matchReason": "Detailed reason why this business matches based on location, CAC status, bank account, and amount range.",
+                "requirements": ["Requirement 1 (e.g., CAC Certificate)", "Requirement 2", "Requirement 3"],
                 "deadline": "e.g., October 30, 2026 or Rolling",
                 "type": "GRANT or LOAN or EQUITY",
-                "eligibility_checklist": ["Checklist item 1", "Checklist item 2"],
-                "application_steps": ["Step 1 description", "Step 2 description"],
+                "eligibility_checklist": ["CAC Registered (Yes/No status match)", "Corporate Account status match", "Sector Match"],
+                "application_steps": ["Step 1: Get CAC certificate", "Step 2: Submit application on portal"],
                 "is_currently_open": true
             }}
         ]
