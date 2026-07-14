@@ -115,7 +115,18 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
     if (!formData.name || !finalNiche || !formData.vibe) return;
 
-    const usage = usageLimiter.checkUsage('brand_builder', credits);
+    let usage = usageLimiter.checkUsage('brand_builder', credits);
+    
+    // If regenerating an existing brand kit, bypass free daily limit and require credits
+    if (savedBrand) {
+      const creditCost = 5; // brand_builder cost
+      if (credits >= creditCost) {
+        usage = { allowed: true, useCredits: true, cost: creditCost };
+      } else {
+        usage = { allowed: false, useCredits: false, cost: creditCost, reason: 'insufficient_credits' };
+      }
+    }
+
     if (!usage.allowed) {
       setDeductOnConfirm(null); // Just opens to show "insufficient credits"
       setShowCreditPrompt(true);
@@ -179,16 +190,31 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
   const handleGenerateLogo = async () => {
     if (!localBrandData) return;
+    const logoCost = 2;
+    if (credits < logoCost) {
+      toast.error(`Insufficient credits. Generating an AI logo requires ${logoCost} BizCredits.`);
+      return;
+    }
+
+    if (!confirm(`Generate a custom AI logo vector? This will deduct ${logoCost} BizCredits from your wallet.`)) {
+      return;
+    }
+
     const prompt = localBrandData.logoPrompt || `A minimalist, professional logo icon for ${localBrandData.businessName || 'a business'} (${localBrandData.niche || 'retail'}), vector style, clean shapes, branding accent`;
     setIsGeneratingLogo(true);
     try {
+      // Deduct credits
+      const billingResponse = await billingService.deductCredits(logoCost, "AI Logo Generation");
+      onUpdateCredits(billingResponse.credits);
+
       const logoUrl = await generateBrandLogo(prompt);
       const updatedBrand = mapDbToBrand({ ...localBrandData, logoUrl });
       setLocalBrandData(updatedBrand);
       onSave(updatedBrand);
-      toast.success("Logo visual generated!");
-    } catch (e) {
-      setError("Failed to generate logo visual. Try again.");
+      toast.success(`AI Logo generated! (${logoCost} credits debited)`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.response?.data?.error || "Failed to generate logo. Try again.");
     } finally {
       setIsGeneratingLogo(false);
     }
