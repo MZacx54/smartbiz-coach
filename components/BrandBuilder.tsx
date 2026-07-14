@@ -1132,7 +1132,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
               </div>
             )}
             {/* Logo Section */}
-            <div className="p-8 border-b border-gray-100 bg-gray-50 text-center">
+            <div className="p-8 border-b border-gray-100 bg-gray-50 text-center flex flex-col items-center">
               {localBrandData.logoUrl ? (
                 <div className="flex flex-col items-center animate-in zoom-in">
                   <img src={localBrandData.logoUrl} alt="Generated Logo" className="w-32 h-32 rounded-full shadow-lg object-contain mb-4 border-4 border-white bg-white" />
@@ -1164,6 +1164,20 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                     )}
                   </button>
                   <p className="text-xs text-gray-500 mt-2 max-w-xs">Uses Gemini Image Model to create a unique vector icon based on your brand vibe.</p>
+                </div>
+              )}
+
+              {isEditing && (
+                <div className="w-full max-w-sm mt-5 p-4 bg-white rounded-xl border border-gray-200 text-left shadow-sm">
+                  <label className="text-[10px] font-bold text-gray-450 uppercase tracking-wide block mb-1">Or Add Custom Logo URL</label>
+                  <input
+                    type="text"
+                    placeholder="https://example.com/logo.png"
+                    value={localBrandData.logoUrl || ''}
+                    onChange={e => updateField('logoUrl', e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-400 outline-none"
+                  />
+                  <p className="text-[9px] text-gray-400 mt-1">Paste any logo image URL to update your brand kit identity instantly.</p>
                 </div>
               )}
             </div>
