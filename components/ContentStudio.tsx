@@ -611,10 +611,26 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     };
 
     const handleUseTrend = (trendTitle: string) => {
-        if (activeTab === 'Post Writer') setPostTopic(`Incorporate the trend: ${trendTitle}. `);
-        if (activeTab === 'Video Script') setVideoTopic(`Incorporate the trend: ${trendTitle}. `);
-        if (activeTab === 'Blog Writer') setBlogTopic(`Write about the trend: ${trendTitle}. `);
-        if (activeTab === 'Photo Studio') setPhotoDesc(`A scene representing: ${trendTitle}. `);
+        if (!trendTitle) {
+            toast.error("No trend topic selected.");
+            return;
+        }
+
+        if (activeTab === 'Post Writer') {
+            setPostTopic(`Incorporate the trend: ${trendTitle}. `);
+            toast.success(`Jacked trend into Post Writer! ✍️`);
+        } else if (activeTab === 'Video Script') {
+            setVideoTopic(`Incorporate the trend: ${trendTitle}. `);
+            toast.success(`Jacked trend into Video Script! 🎬`);
+        } else if (activeTab === 'Blog Writer') {
+            setBlogTopic(`Write about the trend: ${trendTitle}. `);
+            toast.success(`Jacked trend into Blog Writer! 📝`);
+        } else if (activeTab === 'Photo Studio') {
+            setPhotoDesc(`A scene representing: ${trendTitle}. `);
+            toast.success(`Jacked trend into Photo Studio! 📸`);
+        } else {
+            toast.error(`Select Post, Video, Blog, or Photo tab to jack this trend!`);
+        }
     };
 
     const tabs: { id: TabType; icon: string }[] = [
@@ -1965,13 +1981,18 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 <div className="text-center py-6 text-xs text-slate-400">Loading trend jack ideas...</div>
                             ) : (
                                 trends.map((trend) => (
-                                    <div key={trend.id || trend.title} className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl transition-all border border-slate-100 group">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-wider">{trend.category || "General"}</span>
+                                    <div key={trend.id || trend.trendName || trend.title} className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl transition-all border border-slate-100 group space-y-2">
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-[9px] font-black text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-md uppercase tracking-wider">{trend.category || "General"}</span>
                                         </div>
-                                        <h5 className="font-extrabold text-xs text-slate-850 group-hover:text-indigo-600 transition-colors line-clamp-1">{trend.title}</h5>
-                                        <p className="text-[10px] text-slate-400 mt-1">{trend.volume || "Trending fast"}</p>
-                                        <button onClick={() => handleUseTrend(trend.title)} className="mt-2.5 w-full bg-white group-hover:bg-indigo-600 group-hover:text-white border border-slate-200 group-hover:border-indigo-600 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1">
+                                        <h5 className="font-extrabold text-xs text-slate-850 group-hover:text-indigo-650 transition-colors leading-snug">{trend.trendName || trend.title}</h5>
+                                        {trend.description && (
+                                            <p className="text-[10px] text-slate-500 leading-normal">{trend.description}</p>
+                                        )}
+                                        {trend.application && (
+                                            <p className="text-[9px] text-emerald-600 font-bold bg-emerald-50/50 px-2 py-1.5 rounded border border-emerald-100/50">💡 {trend.application}</p>
+                                        )}
+                                        <button onClick={() => handleUseTrend(trend.trendName || trend.title)} className="w-full bg-white group-hover:bg-indigo-650 group-hover:text-white border border-slate-200 group-hover:border-indigo-650 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer">
                                             Jack This Trend <ArrowRight className="w-2.5 h-2.5" />
                                         </button>
                                     </div>

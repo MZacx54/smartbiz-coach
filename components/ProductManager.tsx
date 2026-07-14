@@ -152,6 +152,7 @@ const ProductManager: React.FC = () => {
     status: 'LOADING' | 'READY' | 'ERROR';
   }[]>([]);
   const [isBulkOnboarding, setIsBulkOnboarding] = useState(false);
+  const [activeTab, setActiveTab] = useState<'catalog' | 'ledger'>('catalog');
 
   const handleBulkSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

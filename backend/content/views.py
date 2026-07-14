@@ -181,7 +181,37 @@ class GenerateTrendIdeasView(views.APIView):
         
         try:
             trends = gemini_utils.generate_json_content(prompt, system_instruction=system_instruction)
-            return Response(trends)
+            
+            # Normalize response to a structured list of trend objects
+            trends_list = []
+            if isinstance(trends, dict):
+                if 'trends' in trends:
+                    trends_list = trends['trends']
+                elif 'ideas' in trends:
+                    trends_list = trends['ideas']
+                elif 'data' in trends:
+                    trends_list = trends['data']
+                else:
+                    trends_list = [trends]
+            elif isinstance(trends, list):
+                trends_list = trends
+                
+            normalized = []
+            for idx, item in enumerate(trends_list):
+                if isinstance(item, dict):
+                    name = item.get('trendName') or item.get('title') or item.get('name') or "Naija Trend Idea"
+                    desc = item.get('description') or item.get('application') or "Trending fast in Nigeria"
+                    app = item.get('application') or item.get('description') or "Incorporate this into your marketing campaign today."
+                    normalized.append({
+                        'id': item.get('id') or idx + 1,
+                        'trendName': name,
+                        'title': name,
+                        'description': desc,
+                        'application': app,
+                        'volume': 'Trending fast'
+                    })
+            
+            return Response(normalized)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
             
