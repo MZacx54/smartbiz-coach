@@ -115,6 +115,30 @@ class DeductCreditsView(APIView):
             return Response({"error": "Valid positive credit amount required"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.user
+        
+        # Calculate daily limit
+        daily_limit = 50 if getattr(user, 'plan', 'Free') == 'Free' else 200
+        
+        # Calculate today's spent credits
+        from django.utils import timezone
+        from django.db.models import Sum
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        spent_today_sum = CreditLedger.objects.filter(
+            user=user,
+            amount__lt=0,
+            created_at__gte=today_start
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        spent_today = abs(spent_today_sum)
+        
+        if spent_today + credit_cost > daily_limit:
+            return Response({
+                "error": f"Daily usage limit reached. You can only spend up to {daily_limit} credits per day on your {getattr(user, 'plan', 'Free')} plan.",
+                "daily_limit": daily_limit,
+                "spent_today": spent_today,
+                "credits": user.credits
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         if user.credits < credit_cost:
             return Response({
                 "error": "Insufficient credits",
@@ -144,3 +168,37 @@ class PaystackConfigView(APIView):
         return Response({
             "publicKey": getattr(settings, 'PAYSTACK_PUBLIC_KEY', '') or ''
         })
+
+class AdminTransactionsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if not (request.user.is_staff or request.user.is_superuser or request.user.email == 'meshachzax@gmail.com'):
+            return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
+
+        from django.db.models import Sum
+        all_transactions = Transaction.objects.all().order_by('-created_at')
+        total_revenue = all_transactions.filter(status='SUCCESS').aggregate(total=Sum('amount'))['total'] or 0
+        
+        txs_data = []
+        for tx in all_transactions[:200]:
+            txs_data.append({
+                'id': tx.id,
+                'username': tx.user.username,
+                'email': tx.user.email,
+                'business_name': getattr(tx.user, 'business_name', ''),
+                'amount': float(tx.amount),
+                'description': tx.description,
+                'status': tx.status,
+                'reference': tx.reference,
+                'created_at': tx.created_at.isoformat()
+            })
+
+        return Response({
+            'total_revenue': float(total_revenue),
+            'total_count': all_transactions.count(),
+            'success_count': all_transactions.filter(status='SUCCESS').count(),
+            'failed_count': all_transactions.filter(status='FAILED').count(),
+            'pending_count': all_transactions.filter(status='PENDING').count(),
+            'transactions': txs_data
+        }, status=status.HTTP_200_OK)

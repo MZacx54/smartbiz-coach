@@ -54,4 +54,28 @@ export const billingService = {
     const response = await api.get("billing/config/");
     return response.data;
   },
+
+  getAdminTransactions: async (): Promise<AdminDashboardData> => {
+    const response = await api.get("billing/admin/transactions/");
+    return response.data;
+  },
 };
+
+export interface AdminDashboardData {
+  total_revenue: number;
+  total_count: number;
+  success_count: number;
+  failed_count: number;
+  pending_count: number;
+  transactions: {
+    id: number;
+    username: string;
+    email: string;
+    business_name: string;
+    amount: number;
+    description: string;
+    status: 'SUCCESS' | 'FAILED' | 'PENDING';
+    reference: string;
+    created_at: string;
+  }[];
+}

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import TransactionListView, CreditPurchaseView, VerifyPaymentView, DeductCreditsView, CreditLedgerListView, PaystackConfigView
+from .views import TransactionListView, CreditPurchaseView, VerifyPaymentView, DeductCreditsView, CreditLedgerListView, PaystackConfigView, AdminTransactionsView
 
 urlpatterns = [
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
@@ -8,4 +8,5 @@ urlpatterns = [
     path('verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
     path('deduct-credits/', DeductCreditsView.as_view(), name='deduct-credits'),
     path('config/', PaystackConfigView.as_view(), name='billing-config'),
+    path('admin/transactions/', AdminTransactionsView.as_view(), name='admin-transactions'),
 ]

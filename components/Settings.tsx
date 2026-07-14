@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserStats } from '../types';
 import PaymentModal from './PaymentModal';
-import { billingService, TransactionData, CreditLedgerData } from '../services/billingService';
+import { billingService, TransactionData, CreditLedgerData, AdminDashboardData } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 
 interface SettingsProps {
@@ -18,7 +18,7 @@ const CREDIT_PACKS = [
   { credits: 1000, price: 3000, label: 'Enterprise Pack', desc: 'Agency level power usage' },
 ];
 
-type SettingsTab = 'profile' | 'billing' | 'preferences' | 'data';
+type SettingsTab = 'profile' | 'billing' | 'preferences' | 'data' | 'admin';
 
 const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdateUser, onTopUpSuccess }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -58,6 +58,10 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     contentHistory: 0
   });
 
+  // Admin console states
+  const [adminData, setAdminData] = useState<AdminDashboardData | null>(null);
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
+
   // Sync edit form when user changes
   useEffect(() => {
     setEditForm({
@@ -67,6 +71,25 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
       phone: user.phone || ''
     });
   }, [user]);
+
+  // Load admin transactions data
+  useEffect(() => {
+    if (activeTab === 'admin') {
+      const fetchAdminData = async () => {
+        setLoadingAdmin(true);
+        try {
+          const res = await billingService.getAdminTransactions();
+          setAdminData(res);
+        } catch (err) {
+          toast.error("Failed to load admin transactions ledger");
+          console.error(err);
+        } finally {
+          setLoadingAdmin(false);
+        }
+      };
+      fetchAdminData();
+    }
+  }, [activeTab]);
 
   // Load billing history on mount
   useEffect(() => {
@@ -212,6 +235,10 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     { id: 'preferences' as SettingsTab, label: 'Preferences', icon: '🎛️' },
     { id: 'data' as SettingsTab, label: 'Data & Backup', icon: '🗄️' },
   ];
+
+  if (user.email === 'meshachzax@gmail.com') {
+    settingsTabs.push({ id: 'admin' as SettingsTab, label: 'Admin Ledger', icon: '⚙️' });
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300">
@@ -685,6 +712,75 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* ============ ADMIN TAB ============ */}
+      {activeTab === 'admin' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Admin Stats Overview */}
+          <div className="bg-slate-900 text-white rounded-[32px] p-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full filter blur-2xl" />
+            <div className="relative z-10">
+              <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Admin Control Center</p>
+              <h3 className="text-2xl font-black mt-1 mb-6 font-heading">Payment Revenue Audit Dashboard</h3>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Revenue</p>
+                  <h4 className="text-lg font-black text-emerald-400 mt-1 font-heading">₦{(adminData?.total_revenue || 0).toLocaleString()}</h4>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Payments Sold</p>
+                  <h4 className="text-lg font-black text-slate-100 mt-1 font-heading">{adminData?.success_count || 0} Successful</h4>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Failed Attempts</p>
+                  <h4 className="text-lg font-black text-red-400 mt-1 font-heading">{adminData?.failed_count || 0} Failed</h4>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Pending Checks</p>
+                  <h4 className="text-lg font-black text-yellow-400 mt-1 font-heading">{adminData?.pending_count || 0} Pending</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Master Transaction Ledger */}
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-slate-55 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Master Payment Ledger</h3>
+              <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">All Users Transactions</span>
+            </div>
+
+            <div className="divide-y divide-slate-50 overflow-y-auto max-h-[450px]">
+              {loadingAdmin ? (
+                <div className="p-8 text-center text-xs text-slate-400">Loading master ledger...</div>
+              ) : !adminData || adminData.transactions.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400 italic">No payments recorded across the platform.</div>
+              ) : (
+                adminData.transactions.map(tx => (
+                  <div key={tx.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-slate-50 transition-colors gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black text-slate-800">{tx.business_name || tx.username}</span>
+                        <span className="text-[9px] text-slate-400">({tx.email})</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-1">{tx.description}</p>
+                      <p className="text-[9px] text-slate-400 mt-0.5">Ref: {tx.reference} · {new Date(tx.created_at).toLocaleString()}</p>
+                    </div>
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1.5">
+                      <p className="text-xs font-black text-slate-900">₦{tx.amount.toLocaleString()}</p>
+                      <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider
+                        ${tx.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : tx.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                        {tx.status}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
 
