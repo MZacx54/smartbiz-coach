@@ -28,8 +28,8 @@ class GenerateBusinessPlanView(views.APIView):
             - Business Bio: {brand.social_bio}
             - Taglines: {", ".join(brand.taglines) if isinstance(brand.taglines, list) else ""}
             """
-        except BrandIdentity.DoesNotExist:
-            pass
+        except Exception:
+            brand_context = ""
 
         prompt = f"""Write a comprehensive, investor-ready, bank-quality business plan for "{name}" in the "{niche}" industry.
         {brand_context}
@@ -105,8 +105,7 @@ class GenerateBusinessPlanView(views.APIView):
             if not normalized_plan['executiveSummary'] and not normalized_plan['marketAnalysis']:
                 raise Exception("The generated business plan content was empty or incomplete. Please try again.")
 
-            # Deduct credits
-            deduct_credits(request.user, 'business_plan')
+            # Credits are handled on success by the frontend to prevent charging for failed requests.
             return Response(normalized_plan)
         except Exception as e:
             return Response({'error': f"Business Plan Generation Failed: {str(e)}"}, status=500)
@@ -160,8 +159,7 @@ class FindGrantsView(views.APIView):
         
         try:
             grants = gemini_utils.generate_json_content(prompt)
-            # Deduct credits
-            deduct_credits(request.user, 'grant_search')
+            # Credits are handled on success by the frontend to prevent charging for failed requests.
             return Response(grants)
         except Exception as e:
             return Response({'error': str(e)}, status=500)

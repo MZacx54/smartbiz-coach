@@ -26,12 +26,9 @@ CREDIT_COSTS = {
 
 def deduct_credits(user, action_key):
     """Deduct credits and return (success, remaining). Returns True even if 0 credits (dev-friendly)."""
-    cost = CREDIT_COSTS.get(action_key, 1)
-    if user.credits >= cost:
-        user.credits -= cost
-        user.save(update_fields=['credits'])
-        return True, user.credits
-    return False, user.credits
+    # Credits are managed and deducted on successful response by the frontend React client.
+    # This prevent double-charging and billing users for failed AI generations.
+    return True, user.credits
 
 def get_brand_context(user):
     """Fetch and format brand identity for AI context."""
@@ -46,7 +43,7 @@ def get_brand_context(user):
         - Tagline: {brand.taglines[0] if brand.taglines else 'N/A'}
         - Vibe: {brand.vibe}
         """
-    except BrandIdentity.DoesNotExist:
+    except Exception:
         return "BUSINESS CONTEXT: General Nigerian MSME. No specific brand profile yet."
 
 class GenerateSocialContentView(views.APIView):

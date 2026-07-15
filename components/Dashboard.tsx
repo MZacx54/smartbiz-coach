@@ -234,9 +234,6 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
     setIsCalculatingHealth(true);
     setShowCreditPrompt(false);
     try {
-      const billingResponse = await billingService.deductCredits(5, 'AI Business Health Score');
-      onUpdateCredits(billingResponse.credits);
-
       const savedDebtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
       const savedInventory = JSON.parse(localStorage.getItem('sb_inventory') || '[]');
       const savedInvoices = JSON.parse(localStorage.getItem('sb_invoices') || '[]');
@@ -250,6 +247,10 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
         invoices: savedInvoices,
         compliance: complianceStatus || {}
       });
+
+      // Only deduct credits on success
+      const billingResponse = await billingService.deductCredits(5, 'AI Business Health Score');
+      onUpdateCredits(billingResponse.credits);
 
       setHealthScore(result);
       localStorage.setItem('sb_health_score_data', JSON.stringify(result));

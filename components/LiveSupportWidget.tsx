@@ -45,19 +45,20 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
     setShowCreditPrompt(false);
 
     try {
-      if (deduct) {
-        const billingResponse = await billingService.deductCredits(cost, 'AI Live Support Chat');
-        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
-      } else {
-        usageLimiter.incrementUsage('ai_chat');
-      }
-
       const history = messages.map(m => ({
         role: m.sender === 'user' ? 'user' : 'model' as const,
         parts: [{ text: m.text }]
       }));
 
       const responseText = await chatWithSmartBiz(history, userMsgText);
+
+      // Only charge credits / increment usage if successful
+      if (deduct) {
+        const billingResponse = await billingService.deductCredits(cost, 'AI Live Support Chat');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+      } else {
+        usageLimiter.incrementUsage('ai_chat');
+      }
 
       const botMsg: ChatMessage = {
         id: Date.now() + 1,

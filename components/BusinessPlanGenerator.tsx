@@ -36,8 +36,6 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     setError('');
     setShowCreditPrompt(false);
     try {
-      const billingResponse = await billingService.deductCredits(15, 'AI Business Plan Generator');
-      onUpdateCredits(billingResponse.credits);
       const result = await generateBusinessPlan({
         businessName: name,
         niche,
@@ -50,6 +48,10 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       if (!result || result.error || (!result.executiveSummary && !result.marketAnalysis)) {
         throw new Error(result?.error || 'The AI generator returned an incomplete plan. Please refine your details and try again.');
       }
+      
+      // Only deduct credits if generation successfully completed
+      const billingResponse = await billingService.deductCredits(15, 'AI Business Plan Generator');
+      onUpdateCredits(billingResponse.credits);
       
       setPlan(result);
       setStep('RESULT');

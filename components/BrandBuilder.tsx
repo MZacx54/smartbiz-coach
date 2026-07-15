@@ -145,11 +145,13 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           return;
         }
         try {
+          const resultRaw = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone);
+          const result = mapDbToBrand(resultRaw);
+          
+          // Only deduct credits if generation successfully completed
           const billingResponse = await billingService.deductCredits(usage.cost, "AI Brand Identity Builder");
           onUpdateCredits(billingResponse.credits);
 
-          const resultRaw = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone);
-          const result = mapDbToBrand(resultRaw);
           setLocalBrandData(result);
           onSave(result);
           setStep('RESULT');
@@ -203,12 +205,13 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     const prompt = localBrandData.logoPrompt || `A minimalist, professional logo icon for ${localBrandData.businessName || 'a business'} (${localBrandData.niche || 'retail'}), vector style, clean shapes, branding accent`;
     setIsGeneratingLogo(true);
     try {
-      // Deduct credits
+      const logoUrl = await generateBrandLogo(prompt);
+      const updatedBrand = mapDbToBrand({ ...localBrandData, logoUrl });
+
+      // Only deduct credits if logo successfully generated
       const billingResponse = await billingService.deductCredits(logoCost, "AI Logo Generation");
       onUpdateCredits(billingResponse.credits);
 
-      const logoUrl = await generateBrandLogo(prompt);
-      const updatedBrand = mapDbToBrand({ ...localBrandData, logoUrl });
       setLocalBrandData(updatedBrand);
       onSave(updatedBrand);
       toast.success(`AI Logo generated! (${logoCost} credits debited)`);

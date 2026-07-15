@@ -43,15 +43,17 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
     setError('');
     setShowCreditPrompt(false);
     try {
-      const billingResponse = await billingService.deductCredits(2, 'AI Pricing Assistant');
-      onUpdateCredits(billingResponse.credits);
-
       const data = await getPricingSuggestion({
         productName,
         costPrice: parseFloat(costPrice),
         competitorPrice: competitorPrice || undefined,
         targetMargin: parseFloat(targetMargin),
       });
+
+      // Only deduct credits if generation successfully completed
+      const billingResponse = await billingService.deductCredits(2, 'AI Pricing Assistant');
+      onUpdateCredits(billingResponse.credits);
+
       setResult(data);
     } catch (e: any) {
       setError(e?.response?.data?.error || 'Failed to analyse pricing. Please try again.');

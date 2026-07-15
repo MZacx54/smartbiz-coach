@@ -487,11 +487,6 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         setSpokenText(null);
 
         try {
-            if (deduct) {
-                const billingResponse = await billingService.deductCredits(cost, `AI Content Studio - ${activeTab}`);
-                onUpdateCredits(billingResponse.credits);
-            }
-
             let result;
             const base64Image = imagePreview ? imagePreview.split(',')[1] : null;
             const mimeType = selectedImage?.type || 'image/jpeg';
@@ -525,7 +520,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 throw new Error("AI returned an empty response. Please try a more specific topic.");
             }
 
-            if (!deduct) {
+            // Only charge credits or increment usage on success
+            if (deduct) {
+                const billingResponse = await billingService.deductCredits(cost, `AI Content Studio - ${activeTab}`);
+                onUpdateCredits(billingResponse.credits);
+            } else {
                 usageLimiter.incrementUsage('content_generator');
             }
 

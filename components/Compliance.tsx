@@ -132,13 +132,16 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
     setAnalysisResult(null);
     setShowCreditPrompt(false);
     try {
+      const result = await analyzeBusinessName(nameToAnalyze);
+      
+      // Only deduct credits / increment usage if successful
       if (deduct) {
         const billingResponse = await billingService.deductCredits(cost, 'AI Name Availability Check');
         if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
       } else {
         usageLimiter.incrementUsage('name_check');
       }
-      const result = await analyzeBusinessName(nameToAnalyze);
+
       setAnalysisResult(result);
     } catch {
       // silent

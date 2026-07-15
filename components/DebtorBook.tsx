@@ -337,6 +337,10 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     setShowCreditPrompt(false);
     const balance = getOutstandingBalance(debtor);
     try {
+      // API now returns { english, pidgin } structured response
+      const result = await generateDebtReminder(debtor.name, balance, reminderTone);
+      
+      // Only charge credits / increment usage if successful
       if (deduct) {
         const billingResponse = await billingService.deductCredits(cost, 'AI Debt Reminder');
         if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
@@ -344,9 +348,6 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
         usageLimiter.incrementUsage('debt_reminder');
       }
 
-      // API now returns { english, pidgin } structured response
-      const result = await generateDebtReminder(debtor.name, balance, reminderTone);
-      
       // Update nudge count
       setDebtors(prev => prev.map(d => {
         if (d.id === debtor.id) {

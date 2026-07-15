@@ -43,13 +43,6 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = ({ credits = 0, onUpdate
     setShowCreditPrompt(false);
 
     try {
-      if (deduct) {
-        const billingResponse = await billingService.deductCredits(cost, 'AI Live Support Chat');
-        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
-      } else {
-        usageLimiter.incrementUsage('ai_chat');
-      }
-
       // Prepare history for Gemini
       const history = messages.map(m => ({
         role: m.sender === 'user' ? 'user' : 'model' as const,
@@ -58,6 +51,14 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = ({ credits = 0, onUpdate
 
       // Get AI response
       const responseText = await chatWithSmartBiz(history, userMsgText);
+
+      // Only charge credits / increment usage if successful
+      if (deduct) {
+        const billingResponse = await billingService.deductCredits(cost, 'AI Live Support Chat');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+      } else {
+        usageLimiter.incrementUsage('ai_chat');
+      }
 
       const botMsg: ChatMessage = {
         id: Date.now() + 1,

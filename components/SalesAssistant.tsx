@@ -44,6 +44,12 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
     setIsGenerating(true);
     setShowCreditPrompt(false);
     try {
+      const response = await api.post('/api/content/generate-sales-script/', {
+        context,
+        customer_message: customerMessage
+      });
+
+      // Only deduct credits / increment usage if successful
       if (deduct) {
         const billingResponse = await billingService.deductCredits(cost, 'AI Sales Assistant');
         if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
@@ -51,10 +57,6 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
         usageLimiter.incrementUsage('sales_assistant');
       }
 
-      const response = await api.post('/api/content/generate-sales-script/', {
-        context,
-        customer_message: customerMessage
-      });
       setResult(response.data);
       toast.success("Sales options generated!");
     } catch (error) {

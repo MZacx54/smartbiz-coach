@@ -693,8 +693,8 @@ def ai_suggest_message(request):
         voice = brand.brand_voice or "friendly and professional"
         audience = brand.target_audience or "general public in Nigeria"
         pitch = brand.elevator_pitch or ""
-    except BrandIdentity.DoesNotExist:
-        # Fallback if profile not created
+    except Exception:
+        # Fallback if profile not created or errored
         biz_name = request.user.business_name or "our business"
         niche = "general retail"
         voice = "friendly and professional"

@@ -36,6 +36,12 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
     setShowCreditPrompt(false);
 
     try {
+      const results = await findGrants({
+        businessName,
+        ...formData
+      });
+      
+      // Only deduct credits / increment usage if successful
       if (deduct) {
         const billingResponse = await billingService.deductCredits(cost, 'AI Grant Search');
         if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
@@ -43,10 +49,6 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
         usageLimiter.incrementUsage('grant_search');
       }
 
-      const results = await findGrants({
-        businessName,
-        ...formData
-      });
       setGrants(results);
       setStep('RESULT');
     } catch (err) {
