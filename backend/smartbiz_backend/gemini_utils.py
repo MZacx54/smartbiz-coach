@@ -6,8 +6,8 @@ import time
 import hashlib
 
 # Google Gemini defaults
-DEFAULT_TEXT_MODEL = "gemini-2.5-flash"
-DEFAULT_VISION_MODEL = "gemini-2.5-flash"
+DEFAULT_TEXT_MODEL = "gemini-3.5-flash"
+DEFAULT_VISION_MODEL = "gemini-3.5-flash"
 
 # In-memory prompt cache for free-tier optimization
 PROMPT_CACHE = {}
