@@ -135,7 +135,9 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       { title: "2. Market Analysis", content: plan.marketAnalysis },
       { title: "3. Marketing & Sales Strategy", content: plan.marketingStrategy },
       { title: "4. Operational Plan", content: plan.operationalPlan },
-      { title: "5. Financial Projections", content: plan.financialProjection }
+      { title: "5. Financial Projections", content: plan.financialProjection },
+      { title: "6. SWOT Analysis", content: plan.swotAnalysis },
+      { title: "7. Risk Mitigation Plan", content: plan.riskMitigation }
     ];
     
     sections.forEach((sec, idx) => {
@@ -216,7 +218,9 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       { id: 1, title: "2. Market Analysis", icon: "📈", content: plan.marketAnalysis },
       { id: 2, title: "3. Marketing & Sales Strategy", icon: "📣", content: plan.marketingStrategy },
       { id: 3, title: "4. Operational Plan", icon: "⚙️", content: plan.operationalPlan },
-      { id: 4, title: "5. Financial Projections", icon: "💰", content: plan.financialProjection }
+      { id: 4, title: "5. Financial Projections", icon: "💰", content: plan.financialProjection },
+      { id: 5, title: "6. SWOT Analysis", icon: "⚖️", content: plan.swotAnalysis },
+      { id: 6, title: "7. Risk Mitigation Plan", icon: "🛡️", content: plan.riskMitigation }
     ];
 
     return (

@@ -57,6 +57,8 @@ export interface BusinessPlan {
   marketingStrategy: string;
   financialProjection: string;
   operationalPlan: string;
+  swotAnalysis: string;
+  riskMitigation: string;
 }
 
 export interface Grant {

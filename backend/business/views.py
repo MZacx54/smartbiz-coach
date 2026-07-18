@@ -37,17 +37,18 @@ class GenerateBusinessPlanView(views.APIView):
         Startup Capital: {capital}
         Number of Employees: {employees}
         Revenue Model/Source: {revenue_model}
-        
         Ensure you focus heavily on the Nigerian economic climate (inflation, power challenges, target audience purchasing power, and local marketing strategies like WhatsApp marketing/referrals).
         
         Return a JSON object matching this structure EXACTLY:
-        {{
+        {
             "executiveSummary": "A detailed executive summary covering the business description, value proposition, and vision.",
             "marketAnalysis": "A deep analysis of the target market in Nigeria, competitor landscape, and estimation of TAM, SAM, SOM.",
             "marketingStrategy": "Actionable marketing strategy focusing on Nigerian channels (WhatsApp, Instagram, local markets, referrals).",
             "financialProjection": "A 12-month financial projection in Nigerian Naira (NGN), showing startup costs, estimated monthly revenue, gross margin, and break-even point.",
-            "operationalPlan": "Details on day-to-day operations, sourcing suppliers/materials, logistics, power/generator alternatives, and staffing."
-        }}
+            "operationalPlan": "Details on day-to-day operations, sourcing suppliers/materials, logistics, power/generator alternatives, and staffing.",
+            "swotAnalysis": "A thorough SWOT Analysis table formatted as markdown listing Strengths, Weaknesses, Opportunities, and Threats for this business model in Nigeria.",
+            "riskMitigation": "Risk mitigation plan tackling key Nigerian economic factors (e.g. diesel/fuel cost rises, currency devaluation, transport inflation)."
+        }
         """
         
         try:
@@ -98,6 +99,20 @@ class GenerateBusinessPlanView(views.APIView):
                 plan.get('operationalPlan') or 
                 plan.get('operational_plan') or 
                 plan.get('OperationalPlan') or 
+                ""
+            )
+
+            normalized_plan['swotAnalysis'] = (
+                plan.get('swotAnalysis') or 
+                plan.get('swot_analysis') or 
+                plan.get('SwotAnalysis') or 
+                ""
+            )
+
+            normalized_plan['riskMitigation'] = (
+                plan.get('riskMitigation') or 
+                plan.get('risk_mitigation') or 
+                plan.get('RiskMitigation') or 
                 ""
             )
 
