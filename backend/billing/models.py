@@ -43,3 +43,15 @@ class CreditLedger(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.amount} ({self.activity})"
 
+class DailyFreeUsage(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='free_usage')
+    feature = models.CharField(max_length=50)  # e.g., 'grant_search', 'content_gen', 'debt_reminder', etc.
+    count = models.IntegerField(default=0)
+    last_used = models.DateField(auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'feature')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.feature}: {self.count} (Last used: {self.last_used})"
+

@@ -129,6 +129,11 @@ class FindGrantsView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
+        from billing.utils import check_usage_gatekeeper
+        allowed, remaining_credits = check_usage_gatekeeper(request.user, 'grant_search', 5)
+        if not allowed:
+            return Response({"error": "Insufficient credits. Your free daily limit is exhausted.", "credits": remaining_credits}, status=402)
+
         profile = request.data.get('profile', {}) or request.data
         
         prompt = f"""Find highly relevant, real active or recurring funding opportunities (grants, low-interest government loans, equity, accelerators) for this Nigerian business profile:
@@ -183,6 +188,11 @@ class AnalyzeBusinessNameView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
+        from billing.utils import check_usage_gatekeeper
+        allowed, remaining_credits = check_usage_gatekeeper(request.user, 'name_check', 2)
+        if not allowed:
+            return Response({"error": "Insufficient credits. Your free daily limit is exhausted.", "credits": remaining_credits}, status=402)
+
         name = request.data.get('name')
         
         prompt = f"""Analyze the business name "{name}" for registration with the Corporate Affairs Commission (CAC) in Nigeria.
