@@ -45,6 +45,9 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     # Extract system instruction if present in messages list (OpenAI style)
     if isinstance(messages, list):
         for msg in messages:
+            if "parts" in msg:
+                contents.append(msg)
+                continue
             role = msg.get("role")
             content = msg.get("content")
             if role == "system":
