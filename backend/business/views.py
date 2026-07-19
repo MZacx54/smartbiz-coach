@@ -49,6 +49,8 @@ class GenerateBusinessPlanView(views.APIView):
             "swotAnalysis": "A thorough SWOT Analysis table formatted as markdown listing Strengths, Weaknesses, Opportunities, and Threats for this business model in Nigeria.",
             "riskMitigation": "Risk mitigation plan tackling key Nigerian economic factors (e.g. diesel/fuel cost rises, currency devaluation, transport inflation)."
         }}
+        
+        CRITICAL: The output MUST be a valid JSON dictionary. Inside the text and markdown string values, NEVER use raw double quotes ("). If you need quotes inside the text, use single quotes (') instead to avoid breaking the JSON format.
         """
         
         try:
