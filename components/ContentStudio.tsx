@@ -152,8 +152,142 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         if (file) {
             setSelectedImage(file);
             const reader = new FileReader();
-            reader.onloadend = () => setImagePreview(reader.result as string);
+            reader.onloadend = () => {
+                const result = reader.result as string;
+                setImagePreview(result);
+                setImageHistory([result]);
+                setHistoryIndex(0);
+                toast.success("Image uploaded to workspace!");
+            };
             reader.readAsDataURL(file);
+        }
+    };
+
+    // AI Photo Studio Overhaul States
+    const [imageHistory, setImageHistory] = useState<string[]>([]);
+    const [historyIndex, setHistoryIndex] = useState<number>(-1);
+    const [photoPrompt, setPhotoPrompt] = useState<string>('');
+    const [studioAspectRatio, setStudioAspectRatio] = useState<'1:1' | '9:16' | '16:9'>('1:1');
+    const [customText, setCustomText] = useState<string>('');
+    const [showTextModal, setShowTextModal] = useState<boolean>(false);
+    const [showPromptModal, setShowPromptModal] = useState<boolean>(false);
+    
+    // Saved Projects state
+    interface SavedPhotoProject {
+        id: string;
+        image: string;
+        studioAspectRatio: '1:1' | '9:16' | '16:9';
+        isFlyerMode: boolean;
+        flyerPrice: string;
+        flyerPromo: string;
+        flyerPhone: string;
+        selectedTrustBadges: string[];
+        timestamp: number;
+    }
+    const [savedProjects, setSavedProjects] = useState<SavedPhotoProject[]>(() => {
+        const saved = localStorage.getItem('sb_saved_photo_projects');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const handleLoadProject = (proj: SavedPhotoProject) => {
+        setImagePreview(proj.image);
+        setImageHistory([proj.image]);
+        setHistoryIndex(0);
+        setStudioAspectRatio(proj.studioAspectRatio);
+        setIsFlyerMode(proj.isFlyerMode);
+        setFlyerPrice(proj.flyerPrice);
+        setFlyerPromo(proj.flyerPromo);
+        setFlyerPhone(proj.flyerPhone);
+        setSelectedTrustBadges(proj.selectedTrustBadges);
+        toast.success("Loaded project successfully!");
+    };
+
+    const handleSaveProject = () => {
+        const currentImg = historyIndex >= 0 ? imageHistory[historyIndex] : imagePreview;
+        if (!currentImg) {
+            toast.error("No image to save!");
+            return;
+        }
+        const newProj: SavedPhotoProject = {
+            id: Date.now().toString(),
+            image: currentImg,
+            studioAspectRatio,
+            isFlyerMode,
+            flyerPrice,
+            flyerPromo,
+            flyerPhone,
+            selectedTrustBadges,
+            timestamp: Date.now()
+        };
+        const updated = [newProj, ...savedProjects];
+        setSavedProjects(updated);
+        localStorage.setItem('sb_saved_photo_projects', JSON.stringify(updated));
+        toast.success("Project saved successfully!");
+    };
+
+    const handleDeleteProject = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const updated = savedProjects.filter(p => p.id !== id);
+        setSavedProjects(updated);
+        localStorage.setItem('sb_saved_photo_projects', JSON.stringify(updated));
+        toast.success("Project deleted.");
+    };
+
+    const handleUndo = () => {
+        if (historyIndex > 0) {
+            setHistoryIndex(historyIndex - 1);
+            toast.success("Undo applied");
+        }
+    };
+
+    const handleRedo = () => {
+        if (historyIndex < imageHistory.length - 1) {
+            setHistoryIndex(historyIndex + 1);
+            toast.success("Redo applied");
+        }
+    };
+
+    const performImageEdit = async (prompt: string) => {
+        const currentImg = historyIndex >= 0 ? imageHistory[historyIndex] : imagePreview;
+        if (!currentImg) {
+            toast.error("Please upload a product photo first!");
+            return;
+        }
+        
+        const cost = 5;
+        if (credits < cost) {
+            toast.error(`Insufficient credits. AI Photo edits require ${cost} BizCredits.`);
+            return;
+        }
+
+        setIsApplyingAiEdit(true);
+        toast.loading("Applying AI Image processing...", { id: 'image-edit' });
+        try {
+            const mimeType = selectedImage?.type || 'image/png';
+            const result = await geminiService.editProductImage(currentImg, mimeType, prompt);
+            
+            if (result && result.image_base64) {
+                // Deduct credits on success
+                const billingResponse = await billingService.deductCredits(cost, "AI Photo Studio Edit");
+                onUpdateCredits(billingResponse.credits);
+                
+                const newImg = `data:${mimeType};base64,${result.image_base64}`;
+                const nextHistory = imageHistory.slice(0, historyIndex + 1);
+                nextHistory.push(newImg);
+                setImageHistory(nextHistory);
+                setHistoryIndex(nextHistory.length - 1);
+                
+                toast.success("AI Edit applied successfully!", { id: 'image-edit' });
+            } else {
+                throw new Error("No image data returned from editor.");
+            }
+        } catch (err: any) {
+            console.error("AI edit error:", err);
+            toast.error(err.response?.data?.error || err.message || "Failed to edit image.", { id: 'image-edit' });
+        } finally {
+            setIsApplyingAiEdit(false);
+            setShowTextModal(false);
+            setShowPromptModal(false);
         }
     };
 
@@ -935,43 +1069,70 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                     <div className="space-y-6">
                                         
                                         {/* Top Action Bar */}
-                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex items-center justify-between gap-4 overflow-x-auto hide-scrollbar">
-                                            <div className="flex gap-1">
+                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col md:flex-row items-center justify-between gap-4">
+                                            <div className="flex flex-wrap gap-2 items-center">
+                                                {/* History Undo/Redo */}
+                                                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850 gap-0.5">
+                                                    <button 
+                                                        disabled={historyIndex <= 0 || isApplyingAiEdit}
+                                                        onClick={handleUndo}
+                                                        title="Undo Edit"
+                                                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 text-slate-300 hover:bg-slate-800"
+                                                    >
+                                                        ↩️
+                                                    </button>
+                                                    <button 
+                                                        disabled={historyIndex >= imageHistory.length - 1 || isApplyingAiEdit}
+                                                        onClick={handleRedo}
+                                                        title="Redo Edit"
+                                                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 text-slate-300 hover:bg-slate-800"
+                                                    >
+                                                        ↪️
+                                                    </button>
+                                                </div>
+
                                                 <button 
-                                                    onClick={() => { setIsFlyerMode(!isFlyerMode); }} 
-                                                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${isFlyerMode ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 text-slate-400'}`}
+                                                    disabled={isApplyingAiEdit}
+                                                    onClick={() => performImageEdit('[ACTION] no_bg')}
+                                                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-955 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md"
                                                 >
-                                                    🪄 Auto-Brander
+                                                    ✂️ Remove BG
                                                 </button>
                                                 <button 
-                                                    onClick={() => { setBgRemovalActive(!bgRemovalActive); }} 
-                                                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${bgRemovalActive ? 'bg-amber-500 text-slate-955' : 'hover:bg-slate-800 text-slate-400'}`}
+                                                    disabled={isApplyingAiEdit}
+                                                    onClick={() => performImageEdit('[ACTION] hd_enhance')}
+                                                    className="px-3.5 py-2 bg-slate-950 hover:bg-slate-850 disabled:opacity-50 text-indigo-400 border border-indigo-950 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5"
                                                 >
-                                                    ✂️ BG Remover
+                                                    ✨ HD Enhance
                                                 </button>
                                                 <button 
-                                                    onClick={() => { setActiveAccordion('badges'); }} 
-                                                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${activeAccordion === 'badges' ? 'bg-slate-800 text-white' : 'hover:bg-slate-800 text-slate-400'}`}
+                                                    disabled={isApplyingAiEdit}
+                                                    onClick={() => setShowTextModal(true)}
+                                                    className="px-3.5 py-2 bg-slate-950 hover:bg-slate-850 disabled:opacity-50 text-slate-200 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                                                 >
-                                                    🎨 Backdrops
+                                                    T+ Add Text
                                                 </button>
                                                 <button 
-                                                    onClick={() => { setActiveAccordion('badges'); }} 
-                                                    className="px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 transition-all flex items-center gap-1.5"
+                                                    disabled={isApplyingAiEdit}
+                                                    onClick={() => setShowPromptModal(true)}
+                                                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-705 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md"
                                                 >
-                                                    🏷️ Badges
-                                                </button>
-                                                <button 
-                                                    onClick={() => { setActiveAccordion('generation'); }} 
-                                                    className="px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-800 transition-all flex items-center gap-1.5"
-                                                >
-                                                    📝 AI Caption
+                                                    🤵 AI Edit
                                                 </button>
                                             </div>
-                                            
-                                            <button onClick={() => { setImagePreview(null); setProcessedImage(null); }} className="text-xs text-red-400 font-bold hover:text-red-300 px-3 py-2 hover:bg-red-500/10 rounded-xl transition-all">
-                                                Exit Studio
-                                            </button>
+
+                                            {/* Aspect Ratio Croppers */}
+                                            <div className="flex bg-slate-955 p-1 rounded-xl border border-slate-850 gap-1">
+                                                {(['1:1', '9:16', '16:9'] as const).map(ratio => (
+                                                    <button
+                                                        key={ratio}
+                                                        onClick={() => setStudioAspectRatio(ratio)}
+                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${studioAspectRatio === ratio ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
+                                                    >
+                                                        {ratio === '1:1' ? '⬛ 1:1' : ratio === '9:16' ? '📱 9:16' : '🖥️ 16:9'}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         {/* Main Workspace Area */}
@@ -980,7 +1141,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             {/* Left Column: Interactive Canvas Editor */}
                                             <div className="lg:col-span-2 flex flex-col items-center">
                                                 <div 
-                                                    className="w-full max-w-[480px] aspect-square rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl relative select-none" 
+                                                    className={`w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl relative select-none flex items-center justify-center ${
+                                                        studioAspectRatio === '9:16' ? 'aspect-[9/16] max-w-[340px]' : 
+                                                        studioAspectRatio === '16:9' ? 'aspect-[16/9] max-w-[560px]' : 
+                                                        'aspect-square max-w-[480px]'
+                                                    }`}
                                                     ref={flyerRef}
                                                     style={
                                                         selectedBackdrop === 'white' ? { backgroundColor: '#ffffff' } :
@@ -1015,7 +1180,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                     )}
 
                                                     {/* Dynamic Product Image (Draggable & Transformable Wrapper) */}
-                                                    {processedImage && (
+                                                    {imageHistory[historyIndex] && (
                                                         <div 
                                                             className="absolute inset-0 flex items-center justify-center pointer-events-auto"
                                                             style={{
@@ -1054,7 +1219,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         >
                                                             <img 
                                                                 ref={imgRef}
-                                                                src={processedImage} 
+                                                                src={imageHistory[historyIndex]} 
                                                                 alt="Product canvas" 
                                                                 draggable={false}
                                                                 className={`max-w-full max-h-full transition-all duration-300 ${zoomFit ? 'object-contain' : 'object-cover'} select-none`} 
@@ -1595,8 +1760,130 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                                                         </div>
                                                     )}
-                                                </div>
+                                                </div>                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
+                                {/* Workspace Action Buttons */}
+                                {imagePreview && (
+                                    <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-800">
+                                        <button 
+                                            onClick={handleSaveProject}
+                                            className="px-6 py-3 bg-black hover:bg-slate-900 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-slate-800 shadow-xl"
+                                        >
+                                            💾 Save Project
+                                        </button>
+                                        <button 
+                                            onClick={handleDownloadFlyer}
+                                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-xl"
+                                        >
+                                            ⬇️ Download
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                if (confirm("Clear active project workspace?")) {
+                                                    setImagePreview(null);
+                                                    setImageHistory([]);
+                                                    setHistoryIndex(-1);
+                                                }
+                                            }}
+                                            className="px-5 py-3 bg-rose-955 hover:bg-rose-900 text-rose-200 rounded-xl font-bold text-sm transition-all"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* My Projects Registry Gallery */}
+                                <div className="space-y-4 pt-6 border-t border-slate-855">
+                                    <h3 className="font-bold text-base text-slate-200">My Projects</h3>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                        <div 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="border-2 border-dashed border-slate-800 hover:border-indigo-500 rounded-2xl aspect-square flex flex-col items-center justify-center cursor-pointer bg-slate-900/40 hover:bg-slate-900/70 transition-all text-center p-3"
+                                        >
+                                            <span className="text-2xl font-bold text-slate-400 mb-1">＋</span>
+                                            <span className="text-[10px] font-bold text-slate-400">New Project</span>
+                                        </div>
+
+                                        {savedProjects.map((proj) => (
+                                            <div 
+                                                key={proj.id}
+                                                onClick={() => handleLoadProject(proj)}
+                                                className="relative rounded-2xl overflow-hidden border border-slate-800 aspect-square group bg-slate-950 cursor-pointer shadow-lg hover:scale-[1.02] transition-all"
+                                            >
+                                                <img src={proj.image} className="w-full h-full object-cover" alt="Saved project" />
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                                                    <button 
+                                                        onClick={(e) => handleDeleteProject(proj.id, e)}
+                                                        className="bg-red-650 hover:bg-red-705 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg shadow-md transition-all"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                                <div className="absolute bottom-0 left-0 right-0 bg-black/70 py-1 px-2 text-[9px] text-slate-350 truncate">
+                                                    {proj.studioAspectRatio} • {new Date(proj.timestamp).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {savedProjects.length === 0 && (
+                                            <div className="col-span-full py-6 text-center">
+                                                <p className="text-xs text-slate-550 italic">Saved projects will appear here.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Modals for Text Input and Prompt Input */}
+                                {showTextModal && (
+                                    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
+                                            <h3 className="font-bold text-lg text-white mb-2">T+ Add Text to Image</h3>
+                                            <p className="text-xs text-slate-400 mb-4">The AI will professionally overlay this text onto your product photo.</p>
+                                            <textarea 
+                                                rows={3}
+                                                value={customText}
+                                                onChange={(e) => setCustomText(e.target.value)}
+                                                placeholder="e.g. FLASH SALE - 50% OFF THIS WEEKEND!"
+                                                className="w-full bg-slate-955 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium mb-4"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setShowTextModal(false)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs">Cancel</button>
+                                                <button 
+                                                    onClick={() => performImageEdit(`[TEXT] ${customText}`)}
+                                                    disabled={!customText.trim()}
+                                                    className="flex-1 py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl font-bold text-xs"
+                                                >
+                                                    Add Text
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {showPromptModal && (
+                                    <div className="fixed inset-0 bg-black/75 z-55 flex items-center justify-center p-4 backdrop-blur-sm">
+                                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
+                                            <h3 className="font-bold text-lg text-white mb-2">🤵 Custom AI Edit Prompt</h3>
+                                            <p className="text-xs text-slate-450 mb-4">Enter a direct instruction for what you want the AI to edit in this photo.</p>
+                                            <textarea 
+                                                rows={3}
+                                                value={photoPrompt}
+                                                onChange={(e) => setPhotoPrompt(e.target.value)}
+                                                placeholder="e.g. Add red rose petals scattered around the base of the product"
+                                                className="w-full bg-slate-955 border border-slate-850 rounded-xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium mb-4"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setShowPromptModal(false)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-750 text-slate-355 rounded-xl font-bold text-xs">Cancel</button>
+                                                <button 
+                                                    onClick={() => performImageEdit(photoPrompt)}
+                                                    disabled={!photoPrompt.trim()}
+                                                    className="flex-1 py-2 bg-indigo-650 hover:bg-indigo-750 text-white rounded-xl font-bold text-xs"
+                                                >
+                                                    Apply AI Edit
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
