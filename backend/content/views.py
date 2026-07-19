@@ -251,8 +251,48 @@ class EditImageView(views.APIView):
             
             width, height = img.size
             
+            # 0. Integrated Auto Studio Filter
+            if prompt_text.startswith('[ACTION] auto_studio'):
+                # Step A: Background removal
+                datas = img.getdata()
+                newData = []
+                ref_color = datas[0] # (r, g, b, a)
+                for item in datas:
+                    dist = sum((item[i] - ref_color[i]) ** 2 for i in range(3)) ** 0.5
+                    if dist < 45 or (item[0] > 235 and item[1] > 235 and item[2] > 235):
+                        newData.append((255, 255, 255, 0)) # transparent
+                    else:
+                        newData.append(item)
+                img.putdata(newData)
+                
+                # Step B: HD Enhance
+                enhancer = ImageEnhance.Contrast(img)
+                img = enhancer.enhance(1.25)
+                enhancer = ImageEnhance.Color(img)
+                img = enhancer.enhance(1.15)
+                enhancer = ImageEnhance.Sharpness(img)
+                img = enhancer.enhance(1.3)
+                
+                # Step C: Virtual Marble backdrop composition
+                bg = Image.new("RGBA", (width, height), (255, 255, 255, 255))
+                draw = ImageDraw.Draw(bg)
+                for y in range(height):
+                    color = int(240 + (15 * y / height))
+                    draw.line([(0, y), (width, y)], fill=(color, color, color, 255))
+                for i in range(0, width + height, 100):
+                    draw.line([(i, 0), (i - height, height)], fill=(210, 210, 210, 80), width=2)
+                
+                prod_w = int(width * 0.75)
+                prod_h = int(prod_w * (height / width))
+                prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
+                
+                offset_x = (width - prod_w) // 2
+                offset_y = (height - prod_h) // 2
+                bg.paste(prod_resized, (offset_x, offset_y), prod_resized)
+                img = bg
+                
             # 1. Background removal filter
-            if prompt_text.startswith('[ACTION] no_bg'):
+            elif prompt_text.startswith('[ACTION] no_bg'):
                 datas = img.getdata()
                 newData = []
                 ref_color = datas[0] # (r, g, b, a)

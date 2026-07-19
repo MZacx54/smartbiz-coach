@@ -152,12 +152,16 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         if (file) {
             setSelectedImage(file);
             const reader = new FileReader();
-            reader.onloadend = () => {
+            reader.onloadend = async () => {
                 const result = reader.result as string;
                 setImagePreview(result);
                 setImageHistory([result]);
                 setHistoryIndex(0);
-                toast.success("Image uploaded to workspace!");
+                setIsFlyerMode(true); // Automatically show price tag and discount stickers!
+                toast.success("Image uploaded!");
+                
+                // Automatically run background removal and image enhancements!
+                await performImageEdit('[ACTION] auto_studio', result);
             };
             reader.readAsDataURL(file);
         }
@@ -247,8 +251,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         }
     };
 
-    const performImageEdit = async (prompt: string) => {
-        const currentImg = historyIndex >= 0 ? imageHistory[historyIndex] : imagePreview;
+    const performImageEdit = async (prompt: string, overrideImage?: string) => {
+        const currentImg = overrideImage || (historyIndex >= 0 ? imageHistory[historyIndex] : imagePreview);
         if (!currentImg) {
             toast.error("Please upload a product photo first!");
             return;
@@ -272,7 +276,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 onUpdateCredits(billingResponse.credits);
                 
                 const newImg = `data:${mimeType};base64,${result.image_base64}`;
-                const nextHistory = imageHistory.slice(0, historyIndex + 1);
+                const nextHistory = (overrideImage ? [overrideImage] : imageHistory).slice(0, (overrideImage ? 0 : historyIndex) + 1);
                 nextHistory.push(newImg);
                 setImageHistory(nextHistory);
                 setHistoryIndex(nextHistory.length - 1);
