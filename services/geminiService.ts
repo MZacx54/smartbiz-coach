@@ -25,7 +25,11 @@ export const generateBrandLogo = async (prompt: string) => {
 export const transcribeAudio = async (audioBlob: Blob) => {
     const formData = new FormData();
     formData.append('audio', audioBlob);
-    const response = await api.post('/api/content/transcribe/', formData);
+    const response = await api.post('/api/content/transcribe/', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
     return response.data.text;
 };
 
