@@ -29,6 +29,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     children
 }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const navigate = useNavigate();
     const [tractionMode, setTractionMode] = useState(() => localStorage.getItem('sb_idice_traction_mode') === 'true');
 
@@ -99,13 +100,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     }) => (
         <button
             onClick={() => handleNavigate(view)}
-            className={`flex items-center space-x-3 w-full p-2.5 rounded-xl transition-all duration-200 ${currentView === view
+            className={`flex items-center w-full p-2.5 rounded-xl transition-all duration-200 ${
+                isCollapsed ? "justify-center space-x-0" : "space-x-3"
+            } ${currentView === view
                 ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
                 : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
                 }`}
+            title={isCollapsed ? label : undefined}
         >
             <span className="text-base">{icon}</span>
-            <span className="text-sm">{label}</span>
+            {!isCollapsed && <span className="text-sm">{label}</span>}
         </button>
     );
 
@@ -158,27 +162,42 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div
                 className={`
           fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          md:relative md:translate-x-0 transition-transform duration-300 ease-in-out
-          w-64 bg-slate-950 border-r border-emerald-950/20 z-30 flex flex-col h-screen text-slate-100
+          md:relative md:translate-x-0 transition-all duration-300 ease-in-out
+          ${isCollapsed ? "md:w-20" : "md:w-64"} w-64 bg-slate-950 border-r border-emerald-950/20 z-30 flex flex-col h-screen text-slate-100
         `}
             >
                 <div
-                    className="p-6 border-b border-emerald-950/60 hidden md:flex items-center gap-2 cursor-pointer"
-                    onClick={() => handleNavigate(AppView.DASHBOARD)}
+                    className="p-5 border-b border-emerald-950/60 hidden md:flex items-center justify-between gap-2"
                 >
-                    <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-extrabold shadow-md">S</div>
-                    <span className="font-extrabold text-lg text-white font-heading">SmartBiz Coach</span>
+                    <div
+                        className="flex items-center gap-2 cursor-pointer min-w-0"
+                        onClick={() => handleNavigate(AppView.DASHBOARD)}
+                    >
+                        <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-extrabold shadow-md flex-shrink-0">S</div>
+                        {!isCollapsed && (
+                            <span className="font-extrabold text-lg text-white font-heading truncate">SmartBiz Coach</span>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-slate-900 transition-all hidden md:block flex-shrink-0"
+                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        {isCollapsed ? "▶" : "◀"}
+                    </button>
                 </div>
 
                 {/* User Mini Profile */}
-                <div className="px-6 pt-6 pb-2">
-                    <p className="text-[10px] font-black text-emerald-550 uppercase tracking-widest">
-                        Business
-                    </p>
-                    <p className="font-bold text-white truncate mt-1 text-sm">
-                        {user.businessName}
-                    </p>
-                </div>
+                {!isCollapsed && (
+                    <div className="px-6 pt-6 pb-2">
+                        <p className="text-[10px] font-black text-emerald-550 uppercase tracking-widest">
+                            Business
+                        </p>
+                        <p className="font-bold text-white truncate mt-1 text-sm">
+                            {user.businessName}
+                        </p>
+                    </div>
+                )}
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
@@ -189,11 +208,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory" icon="📦" />
                     <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
 
-                    <div className="pt-4 pb-1 px-3">
-                        <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
-                            Marketplace Ecosystem
-                        </p>
-                    </div>
+                    {!isCollapsed ? (
+                        <div className="pt-4 pb-1 px-3">
+                            <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
+                                Marketplace Ecosystem
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="border-t border-slate-800/40 my-3" />
+                    )}
+                    
                     <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🏛️" />
                     <NavItem view={AppView.LEAD_MANAGER} label="Lead Inbox" icon="📬" />
                     <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
@@ -206,14 +230,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
                                 : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
                                 }`}
+                            title={isCollapsed ? "Cart" : undefined}
                         >
                             <div className="flex items-center gap-3">
                                 <span>🛍️</span>
-                                <span className="text-sm">Cart</span>
+                                {!isCollapsed && <span className="text-sm">Cart</span>}
                             </div>
-                            <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                                {cartItems.length}
-                            </span>
+                            {!isCollapsed && (
+                                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                    {cartItems.length}
+                                </span>
+                            )}
                         </button>
                     )}
 
@@ -222,39 +249,58 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
                     <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
 
-                    <div className="pt-4 pb-1 px-3">
-                        <p className="text-[9px] font-black text-pink-500/70 uppercase tracking-widest">
-                            Marketing
-                        </p>
-                    </div>
+                    {!isCollapsed ? (
+                        <div className="pt-4 pb-1 px-3">
+                            <p className="text-[9px] font-black text-pink-500/70 uppercase tracking-widest">
+                                Marketing
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="border-t border-slate-800/40 my-3" />
+                    )}
                     <NavItem view={AppView.MARKETING_AGENT} label="Broadcast HQ" icon="📣" />
 
-                    <div className="pt-4 pb-1 px-3">
-                        <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
-                            Help
-                        </p>
-                    </div>
+                    {!isCollapsed ? (
+                        <div className="pt-4 pb-1 px-3">
+                            <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
+                                Help
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="border-t border-slate-800/40 my-3" />
+                    )}
                     <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
                     <NavItem view={AppView.WHATSAPP_SUPPORT} label="Live Support" icon="🎧" />
                     <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
                 </nav>
 
-                <div className="p-4 border-t border-emerald-950/60">
-                    <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 rounded-2xl text-white text-center shadow-lg relative overflow-hidden border border-emerald-900/40">
-                        <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
-                            Available Credits
-                        </p>
-                        <p className="text-3xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
-                            {userStats.bizCredits}
-                        </p>
+                <div className="p-2 border-t border-emerald-950/60">
+                    {!isCollapsed ? (
+                        <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 rounded-2xl text-white text-center shadow-lg relative overflow-hidden border border-emerald-900/40">
+                            <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
+                                Available Credits
+                            </p>
+                            <p className="text-3xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
+                                {userStats.bizCredits}
+                            </p>
+                            <button
+                                onClick={() => handleNavigate(AppView.SETTINGS)}
+                                className="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+                            >
+                                ⚡ Top Up Balance
+                            </button>
+                        </div>
+                    ) : (
                         <button
                             onClick={() => handleNavigate(AppView.SETTINGS)}
-                            className="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+                            className="w-full bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-2 rounded-xl text-center shadow-md border border-emerald-900/40 flex flex-col items-center justify-center gap-1 hover:border-emerald-500/60 transition-all"
+                            title="Available Credits. Click to Top Up."
                         >
-                            ⚡ Top Up Balance
+                            <span className="text-[9px] font-bold text-emerald-450">⚡</span>
+                            <span className="text-xs font-black text-green-400">{userStats.bizCredits}</span>
                         </button>
-                    </div>
+                    )}
                 </div>
             </div>
 
