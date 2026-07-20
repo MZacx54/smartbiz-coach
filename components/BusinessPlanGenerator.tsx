@@ -130,14 +130,51 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     const width = 170;
     let pageCount = 2;
     
+    const cleanTextForPDF = (text: string) => {
+      if (!text) return "";
+      
+      // Replace Naira symbols and common broken encodings with NGN
+      let clean = text.replace(/[₦]|[â‚¦]/g, 'NGN ');
+      
+      // Process line by line to format markdown tables and bold text cleanly
+      const lines = clean.split('\n');
+      const processedLines = lines.map(line => {
+        let trimmed = line.trim();
+        
+        // Skip markdown table divider lines like |---|---|
+        if (trimmed.startsWith('|') && (trimmed.includes('---') || trimmed.includes('-:-'))) {
+          return null;
+        }
+        
+        // Format table data rows to descriptive bullet points
+        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+          const cols = trimmed.split('|').map(c => c.trim()).filter(c => c !== '');
+          if (cols.length === 2) {
+            // Strip bold markers from columns if present
+            const col1 = cols[0].replace(/\*\*/g, '');
+            const col2 = cols[1].replace(/\*\*/g, '');
+            return `• ${col1}: ${col2}`;
+          }
+          return cols.map(c => c.replace(/\*\*/g, '')).join(' - ');
+        }
+        
+        // Strip markdown bold markers **
+        trimmed = trimmed.replace(/\*\*/g, '');
+        
+        return trimmed;
+      }).filter(line => line !== null);
+      
+      return processedLines.join('\n');
+    };
+
     const sections = [
-      { title: "1. Executive Summary", content: plan.executiveSummary },
-      { title: "2. Market Analysis", content: plan.marketAnalysis },
-      { title: "3. Marketing & Sales Strategy", content: plan.marketingStrategy },
-      { title: "4. Operational Plan", content: plan.operationalPlan },
-      { title: "5. Financial Projections", content: plan.financialProjection },
-      { title: "6. SWOT Analysis", content: plan.swotAnalysis },
-      { title: "7. Risk Mitigation Plan", content: plan.riskMitigation }
+      { title: "1. Executive Summary", content: cleanTextForPDF(plan.executiveSummary) },
+      { title: "2. Market Analysis", content: cleanTextForPDF(plan.marketAnalysis) },
+      { title: "3. Marketing & Sales Strategy", content: cleanTextForPDF(plan.marketingStrategy) },
+      { title: "4. Operational Plan", content: cleanTextForPDF(plan.operationalPlan) },
+      { title: "5. Financial Projections", content: cleanTextForPDF(plan.financialProjection) },
+      { title: "6. SWOT Analysis", content: cleanTextForPDF(plan.swotAnalysis) },
+      { title: "7. Risk Mitigation Plan", content: cleanTextForPDF(plan.riskMitigation) }
     ];
     
     sections.forEach((sec, idx) => {
