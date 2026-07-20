@@ -419,7 +419,10 @@ class EditImageView(views.APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=500)
 
+from rest_framework.parsers import MultiPartParser, FormParser
+
 class TranscribeAudioView(views.APIView):
+    parser_classes = (MultiPartParser, FormParser)
     
     def post(self, request):
         audio_file = request.FILES.get('audio')
