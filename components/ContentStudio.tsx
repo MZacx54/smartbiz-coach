@@ -1043,13 +1043,14 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                         {activeTab === 'Photo Studio' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-slate-100 bg-slate-900/60 p-6 rounded-3xl border border-slate-800">
                                 
+                                <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+
                                 {/* Upload Box always visible first if no image */}
                                 {!imagePreview ? (
                                     <div className="space-y-6">
-                                        <div className="border-2 border-dashed border-slate-800 hover:border-indigo-500 rounded-2xl p-12 text-center transition-all cursor-pointer bg-slate-950/40 hover:bg-slate-950/80"
+                                        <div className="border-2 border-dashed border-slate-800 hover:border-indigo-500 rounded-2xl p-12 text-center transition-all cursor-pointer bg-slate-955/40 hover:bg-slate-955/80"
                                             onClick={() => fileInputRef.current?.click()}
                                         >
-                                            <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
                                             <div>
                                                 <span className="text-5xl block mb-4">📸</span>
                                                 <p className="text-base font-black text-slate-200">Snap & Upload Your Product</p>
