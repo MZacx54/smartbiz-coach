@@ -253,13 +253,20 @@ class EditImageView(views.APIView):
             
             # 0. Integrated Auto Studio Filter
             if prompt_text.startswith('[ACTION] auto_studio'):
-                # Step A: Background removal
+                # Step A: Background removal (Enhanced smart threshold + white space remover)
                 datas = img.getdata()
                 newData = []
                 ref_color = datas[0] # (r, g, b, a)
+                # Calculate dynamic tolerance based on standard deviation or set a higher tolerance threshold
                 for item in datas:
+                    # Calculate Euclidean distance from top-left pixel color
                     dist = sum((item[i] - ref_color[i]) ** 2 for i in range(3)) ** 0.5
-                    if dist < 45 or (item[0] > 235 and item[1] > 235 and item[2] > 235):
+                    # Also match close-to-white or light grey shades typical of bedsheets / backgrounds
+                    is_light_bg = (item[0] > 185 and item[1] > 185 and item[2] > 185)
+                    # Check dark/shadow borders that frequently cluster around beds or tables
+                    is_shadow_bg = (item[0] < 85 and item[1] < 85 and item[2] < 85 and abs(item[0]-item[1]) < 12 and abs(item[1]-item[2]) < 12)
+                    
+                    if dist < 85 or is_light_bg or is_shadow_bg:
                         newData.append((255, 255, 255, 0)) # transparent
                     else:
                         newData.append(item)
