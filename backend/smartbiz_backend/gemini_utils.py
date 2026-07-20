@@ -222,7 +222,7 @@ def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_typ
     if audio_base64:
         parts.append({
             "inlineData": {
-                "mimeType": mime_type or "audio/m4a",
+                "mimeType": mime_type or "audio/webm",
                 "data": audio_base64
             }
         })

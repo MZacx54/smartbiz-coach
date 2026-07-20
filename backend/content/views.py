@@ -429,10 +429,13 @@ class TranscribeAudioView(views.APIView):
             import base64
             audio_data = audio_file.read()
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-            mime_type = audio_file.content_type or 'audio/webm'
+            # Normalize mime type for Gemini API support
+            raw_mime = audio_file.content_type or 'audio/webm'
+            mime_type = 'audio/webm' if 'webm' in raw_mime else 'audio/wav' if 'wav' in raw_mime else 'audio/mp3' if 'mp3' in raw_mime or 'mpeg' in raw_mime else 'audio/webm'
         else:
             audio_base64 = request.data.get('audio')
-            mime_type = request.data.get('mimeType') or 'audio/webm'
+            raw_mime = request.data.get('mimeType') or 'audio/webm'
+            mime_type = 'audio/webm' if 'webm' in raw_mime else 'audio/wav' if 'wav' in raw_mime else 'audio/mp3' if 'mp3' in raw_mime or 'mpeg' in raw_mime else 'audio/webm'
             
         if not audio_base64:
             return Response({'error': 'No audio data provided'}, status=400)
