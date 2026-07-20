@@ -1041,852 +1041,162 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                         {/* PHOTO STUDIO */}
                         {activeTab === 'Photo Studio' && (
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-slate-100 bg-slate-955 p-6 rounded-3xl border border-slate-800">
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 text-slate-100 bg-slate-900/60 p-6 rounded-3xl border border-slate-800">
                                 
                                 {/* Upload Box always visible first if no image */}
                                 {!imagePreview ? (
                                     <div className="space-y-6">
-                                        <div className="border-2 border-dashed border-slate-800 rounded-2xl p-10 text-center hover:border-indigo-500 transition-colors relative cursor-pointer bg-slate-900/50"
+                                        <div className="border-2 border-dashed border-slate-800 hover:border-indigo-500 rounded-2xl p-12 text-center transition-all cursor-pointer bg-slate-950/40 hover:bg-slate-950/80"
                                             onClick={() => fileInputRef.current?.click()}
                                         >
                                             <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
                                             <div>
-                                                <span className="text-4xl">📸</span>
-                                                <p className="text-sm font-bold text-slate-200 mt-3">Upload your product or service photo</p>
-                                                <p className="text-xs text-slate-400 mt-1">We'll load it into your Nano Banana Pro Studio workspace instantly</p>
-                                                <p className="text-[10px] text-slate-450 mt-4 bg-indigo-500/10 text-indigo-300 font-semibold px-3.5 py-1.5 rounded-full inline-block border border-indigo-500/20">Supports PNG, JPG, JPEG (Max 5MB)</p>
+                                                <span className="text-5xl block mb-4">📸</span>
+                                                <p className="text-base font-black text-slate-200">Snap & Upload Your Product</p>
+                                                <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">We will automatically remove any messy background, enhance the product colors, and format it for social media instantly!</p>
+                                                <p className="text-[10px] text-slate-500 mt-4">Supports PNG, JPG, JPEG (Max 5MB)</p>
                                             </div>
-                                        </div>
-                                        
-                                        <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Or describe an art style to generate prompt suggestions:</label>
-                                            <textarea rows={2} className="w-full rounded-xl border border-slate-700 p-3.5 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-slate-950 text-xs"
-                                                placeholder="e.g. A gorgeous luxury product box on polished marble table..." value={photoDesc} onChange={(e) => setPhotoDesc(e.target.value)}
-                                            ></textarea>
-                                            <button onClick={handleGenerate} disabled={isGenerating || !photoDesc.trim()} className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-xs mt-2 transition-all border border-slate-700">
-                                                {isGenerating ? "Analyzing..." : "Generate Creative Prompt Suggestions 💡"}
-                                            </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    /* Nano Banana Pro Studio Workspace */
-                                    <div className="space-y-6">
+                                    /* Clean Simplified Studio Workspace */
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                                         
-                                        {/* Top Action Bar */}
-                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col md:flex-row items-center justify-between gap-4">
-                                            <div className="flex flex-wrap gap-2 items-center">
-                                                {/* History Undo/Redo */}
-                                                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850 gap-0.5">
-                                                    <button 
-                                                        disabled={historyIndex <= 0 || isApplyingAiEdit}
-                                                        onClick={handleUndo}
-                                                        title="Undo Edit"
-                                                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 text-slate-300 hover:bg-slate-800"
-                                                    >
-                                                        ↩️
-                                                    </button>
-                                                    <button 
-                                                        disabled={historyIndex >= imageHistory.length - 1 || isApplyingAiEdit}
-                                                        onClick={handleRedo}
-                                                        title="Redo Edit"
-                                                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 text-slate-300 hover:bg-slate-800"
-                                                    >
-                                                        ↪️
-                                                    </button>
-                                                </div>
-
-                                                <button 
-                                                    disabled={isApplyingAiEdit}
-                                                    onClick={() => performImageEdit('[ACTION] no_bg')}
-                                                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-slate-955 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md"
-                                                >
-                                                    ✂️ Remove BG
-                                                </button>
-                                                <button 
-                                                    disabled={isApplyingAiEdit}
-                                                    onClick={() => performImageEdit('[ACTION] hd_enhance')}
-                                                    className="px-3.5 py-2 bg-slate-950 hover:bg-slate-850 disabled:opacity-50 text-indigo-400 border border-indigo-950 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5"
-                                                >
-                                                    ✨ HD Enhance
-                                                </button>
-                                                <button 
-                                                    disabled={isApplyingAiEdit}
-                                                    onClick={() => setShowTextModal(true)}
-                                                    className="px-3.5 py-2 bg-slate-950 hover:bg-slate-850 disabled:opacity-50 text-slate-200 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                                                >
-                                                    T+ Add Text
-                                                </button>
-                                                <button 
-                                                    disabled={isApplyingAiEdit}
-                                                    onClick={() => setShowPromptModal(true)}
-                                                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-705 disabled:opacity-50 text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md"
-                                                >
-                                                    🤵 AI Edit
-                                                </button>
-                                            </div>
-
-                                            {/* Aspect Ratio Croppers */}
-                                            <div className="flex bg-slate-955 p-1 rounded-xl border border-slate-850 gap-1">
-                                                {(['1:1', '9:16', '16:9'] as const).map(ratio => (
-                                                    <button
-                                                        key={ratio}
-                                                        onClick={() => setStudioAspectRatio(ratio)}
-                                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${studioAspectRatio === ratio ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
-                                                    >
-                                                        {ratio === '1:1' ? '⬛ 1:1' : ratio === '9:16' ? '📱 9:16' : '🖥️ 16:9'}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Main Workspace Area */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                                            
-                                            {/* Left Column: Interactive Canvas Editor */}
-                                            <div className="lg:col-span-2 flex flex-col items-center">
-                                                <div 
-                                                    className={`w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl relative select-none flex items-center justify-center ${
-                                                        studioAspectRatio === '9:16' ? 'aspect-[9/16] max-w-[340px]' : 
-                                                        studioAspectRatio === '16:9' ? 'aspect-[16/9] max-w-[560px]' : 
-                                                        'aspect-square max-w-[480px]'
-                                                    }`}
-                                                    ref={flyerRef}
-                                                    style={
-                                                        selectedBackdrop === 'white' ? { backgroundColor: '#ffffff' } :
-                                                        selectedBackdrop === 'grey' ? { backgroundColor: '#f3f4f6' } :
-                                                        selectedBackdrop === 'gradient-warm' ? { backgroundImage: 'linear-gradient(to bottom right, #ffedd5, #fee2e2)' } :
-                                                        selectedBackdrop === 'gradient-cool' ? { backgroundImage: 'linear-gradient(to bottom right, #e0e7ff, #fae8ff)' } :
-                                                        selectedBackdrop === 'wood' ? { backgroundImage: 'linear-gradient(to bottom, #7c2d12, #451a03)' } :
-                                                        selectedBackdrop === 'marble' ? { backgroundImage: 'linear-gradient(to bottom right, #f8fafc, #e2e8f0)' } :
-                                                        { backgroundColor: '#ffffff' }
-                                                    }
-                                                >
-                                                    {/* Version Dropdown Overlay top-left */}
-                                                    <div className="absolute top-3 left-3 z-10">
-                                                        <select 
-                                                            value={flyerVersion} 
-                                                            onChange={(e) => {
-                                                                setFlyerVersion(e.target.value);
-                                                                setBgRemovalActive(e.target.value === 'Transparent');
-                                                            }}
-                                                            className="bg-black/60 border border-slate-700/50 backdrop-blur-md rounded-lg px-2.5 py-1 text-[10px] font-bold text-white outline-none cursor-pointer"
-                                                        >
-                                                            <option value="Original">Version Original</option>
-                                                            <option value="Transparent">Version Transparent</option>
-                                                        </select>
-                                                    </div>
-
-                                                    {/* CAC Watermark Overlay */}
-                                                    {flyerWatermark && isFlyerMode && (
-                                                        <div className="absolute top-3 left-40 z-10 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[8px] font-bold text-white tracking-wider flex items-center gap-1 border border-white/10 uppercase">
-                                                            <ShieldCheck size={9} className="text-emerald-400 animate-pulse" />CAC Verified Business
-                                                        </div>
-                                                    )}
-
-                                                    {/* Dynamic Product Image (Draggable & Transformable Wrapper) */}
-                                                    {imageHistory[historyIndex] && (
-                                                        <div 
-                                                            className="absolute inset-0 flex items-center justify-center pointer-events-auto"
-                                                            style={{
-                                                                transform: `translate(${productPos.x}px, ${productPos.y}px) scale(${productScale / 100}) rotate(${productRotation}deg)`,
-                                                                cursor: activeTool === 'move' ? (isDraggingProduct ? 'grabbing' : 'grab') : activeTool === 'picker' ? 'crosshair' : 'crosshair',
-                                                                transition: isDraggingProduct ? 'none' : 'transform 0.1s ease-out'
-                                                            }}
-                                                            onMouseDown={(e) => {
-                                                                if (activeTool === 'move') handleDragStart(e);
-                                                                else if (activeTool === 'eraser') handleEraserStart(e);
-                                                            }}
-                                                            onMouseMove={(e) => {
-                                                                if (activeTool === 'move') handleDragMove(e);
-                                                                else if (activeTool === 'eraser') handleEraserMove(e);
-                                                            }}
-                                                            onMouseUp={() => {
-                                                                if (activeTool === 'move') handleDragEnd();
-                                                                else if (activeTool === 'eraser') handleEraserEnd();
-                                                            }}
-                                                            onMouseLeave={() => {
-                                                                if (activeTool === 'move') handleDragEnd();
-                                                                else if (activeTool === 'eraser') handleEraserEnd();
-                                                            }}
-                                                            onTouchStart={(e) => {
-                                                                if (activeTool === 'move') handleDragStart(e);
-                                                                else if (activeTool === 'eraser') handleEraserStart(e);
-                                                            }}
-                                                            onTouchMove={(e) => {
-                                                                if (activeTool === 'move') handleDragMove(e);
-                                                                else if (activeTool === 'eraser') handleEraserMove(e);
-                                                            }}
-                                                            onTouchEnd={() => {
-                                                                if (activeTool === 'move') handleDragEnd();
-                                                                else if (activeTool === 'eraser') handleEraserEnd();
-                                                            }}
-                                                        >
-                                                            <img 
-                                                                ref={imgRef}
-                                                                src={imageHistory[historyIndex]} 
-                                                                alt="Product canvas" 
-                                                                draggable={false}
-                                                                className={`max-w-full max-h-full transition-all duration-300 ${zoomFit ? 'object-contain' : 'object-cover'} select-none`} 
-                                                                onClick={handleImageClick}
-                                                            />
-                                                        </div>
-                                                    )}
-
-                                                    {/* Version navigation arrows overlay */}
-                                                    <button 
-                                                        onClick={() => {
-                                                            const next = flyerVersion === 'Original' ? 'Transparent' : 'Original';
-                                                            setFlyerVersion(next);
-                                                            setBgRemovalActive(next === 'Transparent');
-                                                            toast.success(`Switched to ${next} layout`);
-                                                        }}
-                                                        className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 flex items-center justify-center border border-white/10 text-white transition-all shadow-md"
-                                                    >
-                                                        &lt;
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => {
-                                                            const next = flyerVersion === 'Original' ? 'Transparent' : 'Original';
-                                                            setFlyerVersion(next);
-                                                            setBgRemovalActive(next === 'Transparent');
-                                                            toast.success(`Switched to ${next} layout`);
-                                                        }}
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 flex items-center justify-center border border-white/10 text-white transition-all shadow-md"
-                                                    >
-                                                        &gt;
-                                                    </button>
-
-                                                    {/* Promo Badge Overlay */}
-                                                    {isFlyerMode && flyerPromo && (
-                                                        <div className={`absolute top-3 right-3 px-3 py-1.5 rounded-full font-black text-xs text-white uppercase shadow-lg select-none tracking-wider z-10 ${
-                                                            flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
-                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-655' :
-                                                            flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900' :
-                                                            flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
-                                                        }`}>
-                                                            💥 {flyerPromo}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Trust Badges Overlay */}
-                                                    {isFlyerMode && (
-                                                        <div className="absolute bottom-16 left-3 flex flex-col gap-1.5 select-none pointer-events-none z-10">
-                                                            {selectedTrustBadges.includes('POD') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    🚚 <span className="text-amber-400 font-extrabold">PAY ON DELIVERY</span> AVAILABLE
-                                                                </div>
-                                                            )}
-                                                            {selectedTrustBadges.includes('FAST') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    ⚡ <span className="text-sky-400 font-extrabold">FAST NATIONWIDE</span> DELIVERY
-                                                                </div>
-                                                            )}
-                                                            {selectedTrustBadges.includes('QUAL') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    ⭐ <span className="text-yellow-400 font-extrabold">100% PREMIUM</span> QUALITY
-                                                                </div>
-                                                            )}
-                                                            {selectedTrustBadges.includes('CAC') && (
-                                                                <div className="bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-black text-white flex items-center gap-1 border border-white/5 shadow-md w-max">
-                                                                    ✅ <span className="text-emerald-400 font-extrabold">CAC REGISTERED</span> SME
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Price Overlay */}
-                                                    {isFlyerMode && flyerPrice && (
-                                                        <div className={`absolute bottom-16 right-3 px-4 py-2 rounded-xl text-white font-black text-base shadow-2xl tracking-tight border border-white/10 z-10 ${
-                                                            flyerBadgeColor === 'indigo' ? 'bg-indigo-600' :
-                                                            flyerBadgeColor === 'emerald' ? 'bg-emerald-655' :
-                                                            flyerBadgeColor === 'amber' ? 'bg-amber-500 text-slate-900 border-amber-600' :
-                                                            flyerBadgeColor === 'rose' ? 'bg-rose-600' : 'bg-slate-750'
-                                                        }`}>
-                                                            ₦{flyerPrice}
-                                                        </div>
-                                                    )}
-
-                                                    {/* WhatsApp Bottom Bar */}
-                                                    {isFlyerMode && flyerPhone && (
-                                                        <div className="absolute bottom-0 left-0 right-0 bg-black/85 backdrop-blur-md py-3 px-4 border-t border-white/10 flex justify-between items-center text-white z-10">
-                                                            <span className="text-[10px] font-bold text-slate-350 uppercase tracking-wider">Order via WhatsApp</span>
-                                                            <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
-                                                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex items-center justify-center"><Phone size={6} className="text-white fill-white" /></span>
-                                                                {flyerPhone}
-                                                            </span>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Floating Vertical Toolbar overlay (Right aligned) */}
-                                                    <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 bg-black/60 border border-slate-700/50 backdrop-blur-md p-1.5 rounded-xl">
-                                                        <button 
-                                                            onClick={() => setZoomFit(!zoomFit)} 
-                                                            title="Toggle Zoom Mode"
-                                                            className={`p-1.5 rounded-lg transition-colors hover:bg-slate-800 ${!zoomFit ? 'text-indigo-400' : 'text-white'}`}
-                                                        >
-                                                            <HelpCircle size={14} className="rotate-180" />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => setActiveAccordion('generation')} 
-                                                            title="Open Prompt Details"
-                                                            className="p-1.5 rounded-lg hover:bg-slate-800 text-white transition-colors"
-                                                        >
-                                                            <Wand2 size={14} />
-                                                        </button>
-                                                        <button 
-                                                            onClick={handleDownloadFlyer} 
-                                                            title="Quick Download"
-                                                            className="p-1.5 rounded-lg hover:bg-slate-800 text-white transition-colors"
-                                                        >
-                                                            <Download size={14} />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => { setImagePreview(null); setProcessedImage(null); }} 
-                                                            title="Remove Product"
-                                                            className="p-1.5 rounded-lg hover:bg-red-950 text-red-400 transition-colors"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => { setIsStarred(!isStarred); toast.success(isStarred ? "Removed from Favorites" : "Saved to Favorites!"); }} 
-                                                            title="Favorite Design"
-                                                            className={`p-1.5 rounded-lg transition-colors hover:bg-slate-800 ${isStarred ? 'text-amber-400' : 'text-white'}`}
-                                                        >
-                                                            <Check size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Interactive Workspace Control Toolbar (Below Canvas) */}
-                                                <div className="w-full max-w-[480px] bg-slate-900 border border-slate-800 p-4 rounded-2xl mt-4 space-y-4">
-                                                    {/* Tool selector buttons */}
-                                                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Workspace Tool:</span>
-                                                        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-850 gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => { setActiveTool('move'); toast("Drag image to position, use sliders to scale & rotate."); }}
-                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTool === 'move' ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
-                                                            >
-                                                                🖱️ Transform
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => { setActiveTool('picker'); toast("Click background color on image to remove it."); }}
-                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTool === 'picker' ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
-                                                            >
-                                                                🧪 Color Picker
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => { setActiveTool('eraser'); toast("Drag brush over parts of image to manually erase."); }}
-                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeTool === 'eraser' ? 'bg-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200'}`}
-                                                            >
-                                                                🪥 Eraser Brush
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Tool settings panels */}
-                                                    {activeTool === 'move' && (
-                                                        <div className="space-y-3 animate-fade-in text-slate-350">
-                                                            <div>
-                                                                <div className="flex justify-between text-[10px] font-bold text-slate-450 mb-1">
-                                                                    <span>Scale Product</span>
-                                                                    <span>{productScale}%</span>
-                                                                </div>
-                                                                <input 
-                                                                    type="range" min="10" max="200" value={productScale} 
-                                                                    onChange={(e) => setProductScale(Number(e.target.value))}
-                                                                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <div className="flex justify-between text-[10px] font-bold text-slate-450 mb-1">
-                                                                    <span>Rotate Product</span>
-                                                                    <span>{productRotation}°</span>
-                                                                </div>
-                                                                <input 
-                                                                    type="range" min="-180" max="180" value={productRotation} 
-                                                                    onChange={(e) => setProductRotation(Number(e.target.value))}
-                                                                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                                                />
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setProductPos({ x: 0, y: 0 });
-                                                                    setProductScale(100);
-                                                                    setProductRotation(0);
-                                                                    toast.success("Canvas layout reset!");
-                                                                }}
-                                                                className="w-full py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-800 transition-all"
-                                                            >
-                                                                Reset Position & Size
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {activeTool === 'picker' && (
-                                                        <div className="space-y-3 animate-fade-in text-slate-350">
-                                                            <div className="flex justify-between items-center text-[10px] text-slate-400">
-                                                                <span>Sampled Color:</span>
-                                                                {keyColor ? (
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: `rgb(${keyColor.r}, ${keyColor.g}, ${keyColor.b})` }} />
-                                                                        <span className="font-mono text-[9px]">RGB({keyColor.r}, {keyColor.g}, {keyColor.b})</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="italic text-slate-500 text-[9px]">Auto (top-left pixel)</span>
-                                                                )}
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setKeyColor(null);
-                                                                    toast.success("Reset to auto key color!");
-                                                                }}
-                                                                className="w-full py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-800 transition-all"
-                                                            >
-                                                                Reset Sampled Color
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {activeTool === 'eraser' && (
-                                                        <div className="space-y-3 animate-fade-in text-slate-350">
-                                                            <div>
-                                                                <div className="flex justify-between text-[10px] font-bold text-slate-450 mb-1">
-                                                                    <span>Brush Size</span>
-                                                                    <span>{eraserBrushSize}px</span>
-                                                                </div>
-                                                                <input 
-                                                                    type="range" min="10" max="100" value={eraserBrushSize} 
-                                                                    onChange={(e) => setEraserBrushSize(Number(e.target.value))}
-                                                                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                                                />
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    if (maskCanvasRef.current) {
-                                                                        const ctx = maskCanvasRef.current.getContext('2d');
-                                                                        if (ctx) {
-                                                                            ctx.fillStyle = '#ffffff';
-                                                                            ctx.fillRect(0, 0, maskCanvasRef.current.width, maskCanvasRef.current.height);
-                                                                        }
-                                                                        setTriggerProcess(prev => prev + 1);
-                                                                        toast.success("Erase strokes reset!");
-                                                                    }
-                                                                }}
-                                                                className="w-full py-1.5 bg-slate-950 hover:bg-slate-850 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-800 transition-all"
-                                                            >
-                                                                Reset Eraser Mask
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Right Column: Accordion Panels (Reference Editor Sidebar) */}
-                                            <div className="space-y-4">
-                                                
-                                                {/* Panel 1: Save & Share */}
-                                                <div className="border border-slate-800 bg-slate-900/60 rounded-2xl overflow-hidden">
-                                                    <button 
-                                                        onClick={() => setActiveAccordion(activeAccordion === 'save' ? 'badges' : 'save')}
-                                                        className="w-full px-5 py-3.5 flex justify-between items-center text-xs font-bold uppercase tracking-wider text-slate-350 hover:bg-slate-800/40 transition-all border-b border-slate-800/50"
-                                                    >
-                                                        <span className="flex items-center gap-1.5">📤 Save & Share</span>
-                                                        <span>{activeAccordion === 'save' ? '▲' : '▼'}</span>
-                                                    </button>
-                                                    {activeAccordion === 'save' && (
-                                                        <div className="p-4 space-y-3 bg-slate-900/40 border-t border-slate-800/20">
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <button 
-                                                                    onClick={() => toast.success("Flyer queued for Albums folder!")}
-                                                                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg border border-slate-700 transition-all"
-                                                                >
-                                                                    Move To Albums
-                                                                </button>
-                                                                <button 
-                                                                    onClick={handleDownloadFlyer}
-                                                                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg border border-slate-700 transition-all flex items-center justify-center gap-1"
-                                                                >
-                                                                    Download As PNG
-                                                                </button>
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <button 
-                                                                    onClick={() => toast.success("Flyer published directly to Shop catalog!")}
-                                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg transition-all"
-                                                                >
-                                                                    Publish Flyer
-                                                                </button>
-                                                                <button 
-                                                                    onClick={() => toast.success("Link generated to share flyer on WhatsApp!")}
-                                                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-lg transition-all"
-                                                                >
-                                                                    Share Flyer
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Panel 2: Generation Details / Nano Banana AI Prompter */}
-                                                <div className="border border-slate-800 bg-slate-900/60 rounded-2xl overflow-hidden">
-                                                    <button 
-                                                        onClick={() => setActiveAccordion(activeAccordion === 'generation' ? 'badges' : 'generation')}
-                                                        className="w-full px-5 py-3.5 flex justify-between items-center text-xs font-bold uppercase tracking-wider text-slate-355 hover:bg-slate-800/40 transition-all border-b border-slate-800/50"
-                                                    >
-                                                        <span className="flex items-center gap-1.5">💡 Generation Details</span>
-                                                        <span>{activeAccordion === 'generation' ? '▲' : '▼'}</span>
-                                                    </button>
-                                                    {activeAccordion === 'generation' && (
-                                                        <div className="p-4 space-y-4 bg-slate-900/40">
-                                                            <div className="flex justify-between items-center text-xs text-slate-400">
-                                                                <span>AI Model:</span>
-                                                                <span className="text-indigo-400 font-extrabold">Nano Banana Pro v2</span>
-                                                            </div>
-                                                            
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Image Prompt / Instruction</label>
-                                                                <textarea 
-                                                                    value={aiPrompterText} 
-                                                                    onChange={(e) => setAiPrompterText(e.target.value)}
-                                                                    rows={3} 
-                                                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium"
-                                                                />
-                                                            </div>
-
-                                                            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-850 flex justify-between text-[10px] text-slate-500">
-                                                                <span>Seed: <b className="text-slate-400">{generationSeed}</b></span>
-                                                                <span>Size: <b>1024 x 1024</b></span>
-                                                            </div>
-
-                                                            <button 
-                                                                onClick={() => handleApplyAiEdit('edit')} 
-                                                                disabled={isApplyingAiEdit}
-                                                                className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-700 disabled:bg-indigo-800/50 text-white font-bold text-xs rounded-lg transition-all border border-indigo-700"
-                                                            >
-                                                                {isApplyingAiEdit ? "Processing AI Edit..." : "Apply AI Image Enhancements"}
-                                                            </button>
-
-                                                            <div className="border-t border-slate-800/50 pt-3">
-                                                                <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Create Variations</p>
-                                                                <div className="grid grid-cols-2 gap-2">
-                                                                    <button 
-                                                                        onClick={() => handleApplyAiEdit('subtle')}
-                                                                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg border border-slate-700 transition-all"
-                                                                    >
-                                                                        Vary Subtle
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => handleApplyAiEdit('strong')}
-                                                                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 rounded-lg border border-slate-700 transition-all"
-                                                                    >
-                                                                        Vary Strong
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Panel 3: Naija Business Badges (Flyer Controls) */}
-                                                <div className="border border-slate-800 bg-slate-900/60 rounded-2xl overflow-hidden">
-                                                    <button 
-                                                        onClick={() => setActiveAccordion(activeAccordion === 'badges' ? 'generation' : 'badges')}
-                                                        className="w-full px-5 py-3.5 flex justify-between items-center text-xs font-bold uppercase tracking-wider text-slate-355 hover:bg-slate-800/40 transition-all border-b border-slate-800/50"
-                                                    >
-                                                        <span className="flex items-center gap-1.5">🏷️ Naija Business Badges</span>
-                                                        <span>{activeAccordion === 'badges' ? '▲' : '▼'}</span>
-                                                    </button>
-                                                    {activeAccordion === 'badges' && (
-                                                        <div className="p-4 space-y-4 bg-slate-900/40">
-                                                            
-                                                            {/* Background Replacer Module */}
-                                                            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">✂️ Background Removal</span>
-                                                                    <input 
-                                                                        type="checkbox" 
-                                                                        checked={bgRemovalActive}
-                                                                        onChange={(e) => setBgRemovalActive(e.target.checked)}
-                                                                        className="w-3.5 h-3.5 text-indigo-650 rounded bg-slate-900 border-slate-800"
-                                                                    />
-                                                                </div>
-                                                                
-                                                                {bgRemovalActive && (
-                                                                    <div className="space-y-3 pt-2 border-t border-slate-800/60">
-                                                                        <div>
-                                                                            <div className="flex justify-between text-[9px] font-bold text-slate-500 mb-1">
-                                                                                <span>Edge Tolerance</span>
-                                                                                <span>{tolerance}%</span>
-                                                                            </div>
-                                                                            <input 
-                                                                                type="range" 
-                                                                                min="0" 
-                                                                                max="100" 
-                                                                                value={tolerance} 
-                                                                                onChange={(e) => setTolerance(Number(e.target.value))}
-                                                                                className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                                                            />
-                                                                        </div>
-
-                                                                        <div>
-                                                                            <label className="block text-[9px] font-bold text-slate-500 mb-1.5">Backdrop Studio</label>
-                                                                            <div className="grid grid-cols-3 gap-1.5">
-                                                                                {[
-                                                                                    { id: 'white', label: '⚪ White' },
-                                                                                    { id: 'grey', label: '🔘 Soft Studio' },
-                                                                                    { id: 'gradient-warm', label: '🌅 Sunset' },
-                                                                                    { id: 'gradient-cool', label: '🌆 Cool Tech' },
-                                                                                    { id: 'wood', label: '🪵 Wood' },
-                                                                                    { id: 'marble', label: '🏛️ Marble' },
-                                                                                ].map((bg) => (
-                                                                                    <button
-                                                                                        key={bg.id}
-                                                                                        type="button"
-                                                                                        onClick={() => setSelectedBackdrop(bg.id)}
-                                                                                        className={`py-1 px-1 rounded text-[8px] font-extrabold transition-all border ${
-                                                                                            selectedBackdrop === bg.id
-                                                                                                ? 'bg-indigo-600 text-white border-indigo-700'
-                                                                                                : 'bg-slate-900 border-slate-750 text-slate-400 hover:bg-slate-800'
-                                                                                        }`}
-                                                                                    >
-                                                                                        {bg.label}
-                                                                                    </button>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                <div>
-                                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Naira Price (₦)</label>
-                                                                    <input 
-                                                                        type="text" 
-                                                                        value={flyerPrice} 
-                                                                        onChange={(e) => setFlyerPrice(e.target.value)}
-                                                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
-                                                                    />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Promo Sticker</label>
-                                                                    <input 
-                                                                        type="text" 
-                                                                        value={flyerPromo} 
-                                                                        onChange={(e) => setFlyerPromo(e.target.value)}
-                                                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">WhatsApp Call Contact</label>
-                                                                <input 
-                                                                    type="text" 
-                                                                    value={flyerPhone} 
-                                                                    onChange={(e) => setFlyerPhone(e.target.value)}
-                                                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
-                                                                />
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-505 uppercase mb-1.5">Accent Badge color</label>
-                                                                <div className="flex gap-2.5">
-                                                                    {['indigo', 'emerald', 'amber', 'rose', 'slate'].map((color) => (
-                                                                        <button
-                                                                            key={color}
-                                                                            type="button"
-                                                                            onClick={() => setFlyerBadgeColor(color)}
-                                                                            className={`w-5 h-5 rounded-full border-2 transition-all ${
-                                                                                color === 'indigo' ? 'bg-indigo-600' :
-                                                                                color === 'emerald' ? 'bg-emerald-600' :
-                                                                                color === 'amber' ? 'bg-amber-500' :
-                                                                                color === 'rose' ? 'bg-rose-600' : 'bg-slate-700'
-                                                                            } ${flyerBadgeColor === color ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`}
-                                                                        />
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="block text-[10px] font-bold text-slate-505 uppercase mb-1.5">Naija Trust stamps</label>
-                                                                <div className="grid grid-cols-2 gap-1.5">
-                                                                    {[
-                                                                        { id: 'POD', label: '🚚 Pay on Delivery' },
-                                                                        { id: 'FAST', label: '⚡ Fast Shipping' },
-                                                                        { id: 'QUAL', label: '⭐ Premium Quality' },
-                                                                        { id: 'CAC', label: '✅ CAC Registered' },
-                                                                    ].map((badge) => (
-                                                                        <button
-                                                                            key={badge.id}
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                if (selectedTrustBadges.includes(badge.id)) {
-                                                                                    setSelectedTrustBadges(selectedTrustBadges.filter(id => id !== badge.id));
-                                                                                } else {
-                                                                                    setSelectedTrustBadges([...selectedTrustBadges, badge.id]);
-                                                                                }
-                                                                            }}
-                                                                            className={`py-1.5 px-2 rounded-lg text-left text-[9px] font-black border transition-all ${
-                                                                                selectedTrustBadges.includes(badge.id)
-                                                                                    ? 'bg-indigo-900 border-indigo-700 text-indigo-200'
-                                                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'
-                                                                            }`}
-                                                                        >
-                                                                            {badge.label}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex items-center justify-between bg-slate-955 p-2.5 rounded-lg border border-slate-850">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <ShieldCheck className="text-emerald-500" size={14} />
-                                                                    <div>
-                                                                        <p className="text-[10px] font-bold text-slate-350">CAC Trust Watermark</p>
-                                                                        <p className="text-[8px] text-slate-500">Overlay verification Seal</p>
-                                                                    </div>
-                                                                </div>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={flyerWatermark}
-                                                                    onChange={(e) => setFlyerWatermark(e.target.checked)}
-                                                                    className="w-3.5 h-3.5 text-indigo-650 rounded bg-slate-900 border-slate-800"
-                                                                />
-                                                            </div>
-
-                                                        </div>
-                                                    )}
-                                                </div>                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Workspace Action Buttons */}
-                                {imagePreview && (
-                                    <div className="flex flex-wrap gap-3 pt-6 border-t border-slate-800">
-                                        <button 
-                                            onClick={handleSaveProject}
-                                            className="px-6 py-3 bg-black hover:bg-slate-900 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-slate-800 shadow-xl"
-                                        >
-                                            💾 Save Project
-                                        </button>
-                                        <button 
-                                            onClick={handleDownloadFlyer}
-                                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-xl"
-                                        >
-                                            ⬇️ Download
-                                        </button>
-                                        <button 
-                                            onClick={() => {
-                                                if (confirm("Clear active project workspace?")) {
-                                                    setImagePreview(null);
-                                                    setImageHistory([]);
-                                                    setHistoryIndex(-1);
-                                                }
-                                            }}
-                                            className="px-5 py-3 bg-rose-955 hover:bg-rose-900 text-rose-200 rounded-xl font-bold text-sm transition-all"
-                                        >
-                                            Clear
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* My Projects Registry Gallery */}
-                                <div className="space-y-4 pt-6 border-t border-slate-855">
-                                    <h3 className="font-bold text-base text-slate-200">My Projects</h3>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                        <div 
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="border-2 border-dashed border-slate-800 hover:border-indigo-500 rounded-2xl aspect-square flex flex-col items-center justify-center cursor-pointer bg-slate-900/40 hover:bg-slate-900/70 transition-all text-center p-3"
-                                        >
-                                            <span className="text-2xl font-bold text-slate-400 mb-1">＋</span>
-                                            <span className="text-[10px] font-bold text-slate-400">New Project</span>
-                                        </div>
-
-                                        {savedProjects.map((proj) => (
+                                        {/* Left 2 Columns: Large Interactive Preview Canvas */}
+                                        <div className="lg:col-span-2 flex flex-col items-center">
                                             <div 
-                                                key={proj.id}
-                                                onClick={() => handleLoadProject(proj)}
-                                                className="relative rounded-2xl overflow-hidden border border-slate-800 aspect-square group bg-slate-950 cursor-pointer shadow-lg hover:scale-[1.02] transition-all"
+                                                className="w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl relative select-none flex items-center justify-center aspect-square max-w-[450px]"
+                                                ref={flyerRef}
+                                                style={
+                                                    selectedBackdrop === 'white' ? { backgroundColor: '#ffffff' } :
+                                                    selectedBackdrop === 'grey' ? { backgroundColor: '#f3f4f6' } :
+                                                    selectedBackdrop === 'gradient-warm' ? { backgroundImage: 'linear-gradient(to bottom right, #ffedd5, #fee2e2)' } :
+                                                    selectedBackdrop === 'gradient-cool' ? { backgroundImage: 'linear-gradient(to bottom right, #e0e7ff, #fae8ff)' } :
+                                                    selectedBackdrop === 'wood' ? { backgroundImage: 'linear-gradient(to bottom, #7c2d12, #451a03)' } :
+                                                    selectedBackdrop === 'marble' ? { backgroundImage: 'linear-gradient(to bottom right, #f8fafc, #e2e8f0)' } :
+                                                    { backgroundColor: '#ffffff' }
+                                                }
                                             >
-                                                <img src={proj.image} className="w-full h-full object-cover" alt="Saved project" />
-                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
-                                                    <button 
-                                                        onClick={(e) => handleDeleteProject(proj.id, e)}
-                                                        className="bg-red-650 hover:bg-red-705 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg shadow-md transition-all"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                                <div className="absolute bottom-0 left-0 right-0 bg-black/70 py-1 px-2 text-[9px] text-slate-350 truncate">
-                                                    {proj.studioAspectRatio} • {new Date(proj.timestamp).toLocaleDateString()}
-                                                </div>
-                                            </div>
-                                        ))}
+                                                {/* Live Background Process Spinner */}
+                                                {isApplyingAiEdit && (
+                                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-3">
+                                                        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                                        <p className="text-[11px] font-black text-white tracking-widest uppercase">AI Magic Processing...</p>
+                                                    </div>
+                                                )}
 
-                                        {savedProjects.length === 0 && (
-                                            <div className="col-span-full py-6 text-center">
-                                                <p className="text-xs text-slate-550 italic">Saved projects will appear here.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                                {/* Clean Product Overlay Layer */}
+                                                {imageHistory[historyIndex] && (
+                                                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                                                        <img 
+                                                            ref={imgRef}
+                                                            src={imageHistory[historyIndex]} 
+                                                            alt="Product" 
+                                                            className="max-w-[85%] max-h-[85%] object-contain select-none shadow-lg rounded-lg" 
+                                                        />
+                                                    </div>
+                                                )}
 
-                                {/* Modals for Text Input and Prompt Input */}
-                                {showTextModal && (
-                                    <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
-                                            <h3 className="font-bold text-lg text-white mb-2">T+ Add Text to Image</h3>
-                                            <p className="text-xs text-slate-400 mb-4">The AI will professionally overlay this text onto your product photo.</p>
-                                            <textarea 
-                                                rows={3}
-                                                value={customText}
-                                                onChange={(e) => setCustomText(e.target.value)}
-                                                placeholder="e.g. FLASH SALE - 50% OFF THIS WEEKEND!"
-                                                className="w-full bg-slate-955 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium mb-4"
-                                            />
-                                            <div className="flex gap-2">
-                                                <button onClick={() => setShowTextModal(false)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs">Cancel</button>
-                                                <button 
-                                                    onClick={() => performImageEdit(`[TEXT] ${customText}`)}
-                                                    disabled={!customText.trim()}
-                                                    className="flex-1 py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl font-bold text-xs"
-                                                >
-                                                    Add Text
-                                                </button>
+                                                {/* Promo Discount Tag */}
+                                                {flyerPromo && (
+                                                    <div className="absolute top-4 right-4 bg-rose-600 px-3 py-1.5 rounded-full font-black text-xs text-white uppercase shadow-lg z-10 tracking-wider">
+                                                        💥 {flyerPromo}
+                                                    </div>
+                                                )}
+
+                                                {/* Price Sticker */}
+                                                {flyerPrice && (
+                                                    <div className="absolute bottom-4 right-4 bg-indigo-600 px-4 py-2 rounded-xl text-white font-black text-sm shadow-2xl z-10 border border-indigo-550">
+                                                        ₦{flyerPrice}
+                                                    </div>
+                                                )}
                                             </div>
+
+                                            {/* Swap Product Image option */}
+                                            <button 
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="mt-4 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                                            >
+                                                🔄 Upload different photo
+                                            </button>
                                         </div>
-                                    </div>
-                                )}
 
-                                {showPromptModal && (
-                                    <div className="fixed inset-0 bg-black/75 z-55 flex items-center justify-center p-4 backdrop-blur-sm">
-                                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95">
-                                            <h3 className="font-bold text-lg text-white mb-2">🤵 Custom AI Edit Prompt</h3>
-                                            <p className="text-xs text-slate-450 mb-4">Enter a direct instruction for what you want the AI to edit in this photo.</p>
-                                            <textarea 
-                                                rows={3}
-                                                value={photoPrompt}
-                                                onChange={(e) => setPhotoPrompt(e.target.value)}
-                                                placeholder="e.g. Add red rose petals scattered around the base of the product"
-                                                className="w-full bg-slate-955 border border-slate-850 rounded-xl p-3 text-xs text-white outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium mb-4"
-                                            />
-                                            <div className="flex gap-2">
-                                                <button onClick={() => setShowPromptModal(false)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-750 text-slate-355 rounded-xl font-bold text-xs">Cancel</button>
+                                        {/* Right Sidebar: Simple Workspace Action Controls */}
+                                        <div className="space-y-6 bg-slate-900/40 p-5 rounded-2xl border border-slate-800/80">
+                                            
+                                            {/* Style Selector */}
+                                            <div className="space-y-2.5">
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">1. SELECT BACKDROP STYLE</label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {[
+                                                        { id: 'marble', label: '🏛️ Luxury Marble' },
+                                                        { id: 'grey', label: '🏢 Clean Office' },
+                                                        { id: 'wood', label: '🪵 Rustic Wood' },
+                                                        { id: 'gradient-warm', label: '🌅 Sunset Warmth' }
+                                                    ].map((bg) => (
+                                                        <button
+                                                            key={bg.id}
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                setSelectedBackdrop(bg.id);
+                                                                if (imageHistory[0]) {
+                                                                    // Request same background composition on backend
+                                                                    await performImageEdit(`[SCENE] ${bg.id === 'grey' ? 'studio' : bg.id}`);
+                                                                }
+                                                            }}
+                                                            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all border text-center ${
+                                                                selectedBackdrop === bg.id
+                                                                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-md shadow-indigo-600/10'
+                                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'
+                                                            }`}
+                                                        >
+                                                            {bg.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Price Input */}
+                                            <div className="space-y-1.5">
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">2. PRICE TAG (₦)</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={flyerPrice} 
+                                                    onChange={(e) => setFlyerPrice(e.target.value)}
+                                                    placeholder="e.g. 15,000"
+                                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                />
+                                            </div>
+
+                                            {/* Discount Input */}
+                                            <div className="space-y-1.5">
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">3. DISCOUNT LABEL (%)</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={flyerPromo} 
+                                                    onChange={(e) => setFlyerPromo(e.target.value)}
+                                                    placeholder="e.g. 20% OFF"
+                                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                />
+                                            </div>
+
+                                            {/* Main Download Button */}
+                                            <div className="pt-4 border-t border-slate-800/80 space-y-2">
                                                 <button 
-                                                    onClick={() => performImageEdit(photoPrompt)}
-                                                    disabled={!photoPrompt.trim()}
-                                                    className="flex-1 py-2 bg-indigo-650 hover:bg-indigo-750 text-white rounded-xl font-bold text-xs"
+                                                    onClick={handleDownloadFlyer}
+                                                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/20"
                                                 >
-                                                    Apply AI Edit
+                                                    📥 Save & Download Flyer
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        setImagePreview(null);
+                                                        setImageHistory([]);
+                                                        setHistoryIndex(-1);
+                                                    }}
+                                                    className="w-full py-2 bg-slate-950 hover:bg-slate-900 text-rose-400/80 rounded-xl font-extrabold text-[10px] uppercase tracking-wider transition-all"
+                                                >
+                                                    Clear Workspace
                                                 </button>
                                             </div>
                                         </div>
