@@ -27,7 +27,6 @@ const Marketplace = lazy(() => import("./components/Marketplace"));
 const Cart = lazy(() => import("./components/Cart"));
 const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
-const ProductMagic = lazy(() => import("./components/ProductMagic"));
 const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
 const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
@@ -134,7 +133,6 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.PRODUCT_MANAGER);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
-    else if (path.includes('/dashboard/product-magic')) setCurrentView(AppView.PRODUCT_MAGIC);
     else if (path.includes('/dashboard/marketing')) setCurrentView(AppView.MARKETING_AGENT);
     else setCurrentView(AppView.DASHBOARD);
   }, [location]);
@@ -163,7 +161,6 @@ const App: React.FC = () => {
       case AppView.WHATSAPP_SUPPORT: return 'WhatsApp Live Support';
       case AppView.SALES_ASSISTANT: return 'AI Sales Assistant';
       case AppView.HUB: return 'SmartBiz Hub';
-      case AppView.PRODUCT_MAGIC: return 'Product Magic - AI Photo Enhancement';
       case AppView.LEAD_MANAGER: return 'Lead Manager';
       case AppView.MARKETING_AGENT: return 'Marketing Agent — Broadcast HQ';
       default: return 'SmartBiz Coach';
@@ -190,7 +187,6 @@ const App: React.FC = () => {
       case AppView.DIGITAL_ROADMAP: return 'Gain an actionable, step-by-step digital roadmap for marketing.';
       case AppView.SALES_ASSISTANT: return 'Leverage AI to close more deals and manage customer relationships.';
       case AppView.HUB: return 'Access the exclusive SmartBiz business network and community.';
-      case AppView.PRODUCT_MAGIC: return 'Transform phone photos into professional product shots with AI analysis.';
       default: return 'The all-in-one AI platform for Nigerian SMEs.';
     }
   };
@@ -315,7 +311,6 @@ const App: React.FC = () => {
       case AppView.PRODUCT_MANAGER: navigate('/dashboard/inventory'); break;
       case AppView.SETTINGS: navigate('/dashboard/settings'); break;
       case AppView.HUB: navigate('/dashboard/hub'); break;
-      case AppView.PRODUCT_MAGIC: navigate('/dashboard/product-magic'); break;
       case AppView.PRICING_ASSISTANT: navigate('/dashboard/pricing-assistant'); break;
       case AppView.MARKETING_AGENT: navigate('/dashboard/marketing'); break;
       case AppView.LEAD_MANAGER: navigate('/dashboard/leads'); break;
@@ -624,7 +619,6 @@ const App: React.FC = () => {
                   <Route path="support" element={<WhatsAppSupport credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="sales-assistant" element={<SalesAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onUpdateUser={handleUpdateUser} onTopUpSuccess={handleUpdateCredits} />} />
-                  <Route path="product-magic" element={<ProductMagic />} />
                   <Route path="order-gen" element={<OrderGenerator />} />
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
