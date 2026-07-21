@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, UserStats } from '../types';
 import PaymentModal from './PaymentModal';
 import { billingService, TransactionData, CreditLedgerData, AdminDashboardData } from '../services/billingService';
+import { marketingService } from '../services/marketingService';
 import { toast } from 'react-hot-toast';
 
 interface SettingsProps {
@@ -18,7 +19,7 @@ const CREDIT_PACKS = [
   { credits: 1000, price: 3000, label: 'Enterprise Pack', desc: 'Agency level power usage' },
 ];
 
-type SettingsTab = 'profile' | 'billing' | 'preferences' | 'data' | 'admin';
+type SettingsTab = 'profile' | 'billing' | 'social' | 'preferences' | 'data' | 'admin';
 
 const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdateUser, onTopUpSuccess }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -57,6 +58,52 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     brandProfile: false,
     contentHistory: 0
   });
+
+  // Social Connect states
+  const [socialConnect, setSocialConnect] = useState({
+    meta_access_token: '',
+    instagram_account_id: '',
+    facebook_page_id: '',
+    is_connected: false
+  });
+  const [loadingSocial, setLoadingSocial] = useState(false);
+  const [savingSocial, setSavingSocial] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'social') {
+      const fetchSocial = async () => {
+        setLoadingSocial(true);
+        try {
+          const res = await marketingService.getSocialConnect();
+          setSocialConnect({
+            meta_access_token: res.meta_access_token || '',
+            instagram_account_id: res.instagram_account_id || '',
+            facebook_page_id: res.facebook_page_id || '',
+            is_connected: res.is_connected || false
+          });
+        } catch (err) {
+          console.error("Failed to load social connection:", err);
+        } finally {
+          setLoadingSocial(false);
+        }
+      };
+      fetchSocial();
+    }
+  }, [activeTab]);
+
+  const handleSaveSocial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSocial(true);
+    try {
+      const res = await marketingService.saveSocialConnect(socialConnect);
+      toast.success(res.message || "Social media accounts connected!");
+      setSocialConnect(prev => ({ ...prev, is_connected: res.is_connected }));
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to save social connection");
+    } finally {
+      setSavingSocial(false);
+    }
+  };
 
   // Admin console states
   const [adminData, setAdminData] = useState<AdminDashboardData | null>(null);
@@ -232,6 +279,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   const settingsTabs = [
     { id: 'profile' as SettingsTab, label: 'Profile', icon: '👤' },
     { id: 'billing' as SettingsTab, label: 'Credit Wallet', icon: '💳' },
+    { id: 'social' as SettingsTab, label: 'Social & Meta', icon: '📸' },
     { id: 'preferences' as SettingsTab, label: 'Preferences', icon: '🎛️' },
     { id: 'data' as SettingsTab, label: 'Data & Backup', icon: '🗄️' },
   ];
@@ -482,6 +530,83 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* ============ SOCIAL & META TAB ============ */}
+      {activeTab === 'social' && (
+        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                <span>📸</span> Meta & Instagram Auto-Publishing Integration
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Connect your Meta Developer Access Token to auto-publish AI posts directly to Instagram and Facebook.
+              </p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+              socialConnect.is_connected ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+            }`}>
+              {socialConnect.is_connected ? '🟢 Connected' : '🟡 Setup Required'}
+            </span>
+          </div>
+
+          <form onSubmit={handleSaveSocial} className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Meta User / Page Access Token <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={socialConnect.meta_access_token}
+                onChange={e => setSocialConnect({ ...socialConnect, meta_access_token: e.target.value })}
+                placeholder="EAA..."
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Generated from Meta Developer Portal (Graph API Explorer) with <code>instagram_basic</code>, <code>instagram_content_publish</code>, <code>pages_show_list</code> permissions.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Instagram Professional Account ID
+                </label>
+                <input
+                  type="text"
+                  value={socialConnect.instagram_account_id}
+                  onChange={e => setSocialConnect({ ...socialConnect, instagram_account_id: e.target.value })}
+                  placeholder="178414..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Facebook Page ID
+                </label>
+                <input
+                  type="text"
+                  value={socialConnect.facebook_page_id}
+                  onChange={e => setSocialConnect({ ...socialConnect, facebook_page_id: e.target.value })}
+                  placeholder="1098..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <button
+                type="submit"
+                disabled={savingSocial}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+              >
+                {savingSocial ? 'Saving...' : '💾 Save Social Connection'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

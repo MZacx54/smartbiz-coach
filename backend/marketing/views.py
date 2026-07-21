@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Contact, Campaign, MessageLog
+from .models import Contact, Campaign, MessageLog, SocialConnect
 from billing.models import CreditLedger  # For deducting credits on SMS sending
 
 def get_plan_limits(user):
@@ -737,3 +737,112 @@ def ai_suggest_message(request):
         return Response({'suggestion': suggestion})
     except Exception as e:
         return Response({'error': f"Failed to generate suggestion: {str(e)}"}, status=500)
+
+
+from rest_framework.views import APIView
+
+class SocialConnectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        connect, _ = SocialConnect.objects.get_or_create(user=request.user)
+        return Response({
+            'meta_access_token': connect.meta_access_token,
+            'instagram_account_id': connect.instagram_account_id,
+            'facebook_page_id': connect.facebook_page_id,
+            'is_connected': bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
+        })
+
+    def post(self, request):
+        connect, _ = SocialConnect.objects.get_or_create(user=request.user)
+        connect.meta_access_token = request.data.get('meta_access_token', connect.meta_access_token).strip()
+        connect.instagram_account_id = request.data.get('instagram_account_id', connect.instagram_account_id).strip()
+        connect.facebook_page_id = request.data.get('facebook_page_id', connect.facebook_page_id).strip()
+        connect.save()
+
+        return Response({
+            'message': 'Meta & Instagram social accounts connected successfully!',
+            'is_connected': bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
+        })
+
+
+class PublishToMetaView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        caption = request.data.get('caption', '')
+        image_url = request.data.get('image_url', '')
+        platforms = request.data.get('platforms', ['instagram', 'facebook'])
+
+        try:
+            connect = SocialConnect.objects.get(user=request.user)
+        except SocialConnect.DoesNotExist:
+            return Response({'error': 'Please connect your Meta/Instagram credentials in Settings first.'}, status=400)
+
+        token = connect.meta_access_token
+        ig_id = connect.instagram_account_id
+        fb_id = connect.facebook_page_id
+
+        if not token:
+            return Response({'error': 'No Meta Access Token found. Please configure social connection in Settings.'}, status=400)
+
+        results = []
+        errors = []
+
+        # 1. Post to Instagram
+        if 'instagram' in platforms and ig_id:
+            try:
+                # Step A: Create Media Container
+                container_url = f"https://graph.facebook.com/v19.0/{ig_id}/media"
+                c_res = requests.post(container_url, params={
+                    'image_url': image_url,
+                    'caption': caption,
+                    'access_token': token
+                })
+                c_data = c_res.json()
+
+                if 'id' in c_data:
+                    creation_id = c_data['id']
+                    # Step B: Publish Container
+                    pub_url = f"https://graph.facebook.com/v19.0/{ig_id}/media_publish"
+                    p_res = requests.post(pub_url, params={
+                        'creation_id': creation_id,
+                        'access_token': token
+                    })
+                    p_data = p_res.json()
+                    if 'id' in p_data:
+                        results.append("Instagram Post Published Successfully!")
+                    else:
+                        errors.append(f"Instagram Publish Failed: {p_data.get('error', {}).get('message', 'Unknown error')}")
+                else:
+                    errors.append(f"Instagram Container Failed: {c_data.get('error', {}).get('message', 'Invalid image URL or permissions')}")
+            except Exception as e:
+                errors.append(f"Instagram Request Error: {str(e)}")
+
+        # 2. Post to Facebook Page
+        if 'facebook' in platforms and fb_id:
+            try:
+                fb_photo_url = f"https://graph.facebook.com/v19.0/{fb_id}/photos"
+                fb_res = requests.post(fb_photo_url, params={
+                    'url': image_url,
+                    'caption': caption,
+                    'access_token': token
+                })
+                fb_data = fb_res.json()
+                if 'id' in fb_data:
+                    results.append("Facebook Page Photo Published Successfully!")
+                else:
+                    errors.append(f"Facebook Publish Failed: {fb_data.get('error', {}).get('message', 'Unknown error')}")
+            except Exception as e:
+                errors.append(f"Facebook Request Error: {str(e)}")
+
+        if results:
+            return Response({
+                'success': True,
+                'message': " • ".join(results),
+                'warnings': errors
+            })
+        else:
+            return Response({
+                'error': errors[0] if errors else 'No valid Instagram Account ID or Facebook Page ID connected.'
+            }, status=400)

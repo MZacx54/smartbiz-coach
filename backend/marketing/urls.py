@@ -24,4 +24,8 @@ urlpatterns = [
 
     # AI Message suggestion
     path('ai-suggest/', views.ai_suggest_message, name='marketing-ai-suggest'),
+
+    # Social Media Connections & Auto-Publishing
+    path('social-connect/', views.SocialConnectView.as_view(), name='marketing-social-connect'),
+    path('publish-meta/', views.PublishToMetaView.as_view(), name='marketing-publish-meta'),
 ]

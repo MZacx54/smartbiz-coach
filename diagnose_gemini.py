@@ -29,13 +29,13 @@ def diagnose():
     except Exception as e:
         print(f"Error with gemini-1.5-flash: {e}")
 
-    print("\n--- Testing Content Generation (models/gemini-1.5-flash) ---")
+    print("\n--- Testing Content Generation (gemini-3.5-flash) ---")
     try:
-        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-3.5-flash')
         response = model.generate_content("Hello")
         print(f"Response: {response.text}")
     except Exception as e:
-        print(f"Error with models/gemini-1.5-flash: {e}")
+        print(f"Error with gemini-3.5-flash: {e}")
 
 if __name__ == "__main__":
     diagnose()

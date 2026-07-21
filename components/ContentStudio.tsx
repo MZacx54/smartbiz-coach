@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as geminiService from '../services/geminiService';
 import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
+import { marketingService } from '../services/marketingService';
 import CreditPromptModal from './CreditPromptModal';
 import { toast } from 'react-hot-toast';
 import { toPng } from 'html-to-image';
@@ -616,6 +617,30 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [spokenText, setSpokenText] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [publishingMeta, setPublishingMeta] = useState(false);
+
+    const handlePublishToMeta = async () => {
+        if (!generatedContent) return;
+        setPublishingMeta(true);
+        try {
+            const captionText = typeof generatedContent === 'string' 
+                ? generatedContent 
+                : (generatedContent.caption || generatedContent.post || generatedContent.blogPost || JSON.stringify(generatedContent));
+            
+            const imageUrl = generatedContent?.image_url || generatedContent?.photoUrl || (typeof generatedContent === 'object' ? generatedContent?.url : '') || '';
+
+            const res = await marketingService.publishToMeta({
+                caption: captionText,
+                image_url: imageUrl,
+                platforms: ['instagram', 'facebook']
+            });
+            toast.success(res.message || "Published to Meta successfully! 🎉");
+        } catch (err: any) {
+            toast.error(err?.response?.data?.error || "Failed to publish. Check Meta settings in Settings & Wallet.");
+        } finally {
+            setPublishingMeta(false);
+        }
+    };
 
     const executeGeneration = async (deduct: boolean, cost: number) => {
         setIsGenerating(true);
@@ -1374,16 +1399,25 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                     <span>💾</span> Saved to your <span className="underline cursor-pointer" onClick={() => setActiveTab('Creations History')}>Creations History</span> tab
                                                 </p>
                                             </div>
-                                            <button
-                                                onClick={() => {
-                                                    const text = JSON.stringify(generatedContent, null, 2);
-                                                    navigator.clipboard.writeText(text);
-                                                    toast.success("Copied to clipboard!");
-                                                }}
-                                                className="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full font-bold transition-all border border-white/10"
-                                            >
-                                                Copy Content
-                                            </button>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    onClick={handlePublishToMeta}
+                                                    disabled={publishingMeta}
+                                                    className="text-xs bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white px-4 py-2 rounded-full font-bold transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                                                >
+                                                    {publishingMeta ? 'Publishing...' : '🚀 Publish to Meta (IG & FB)'}
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        const text = typeof generatedContent === 'string' ? generatedContent : JSON.stringify(generatedContent, null, 2);
+                                                        navigator.clipboard.writeText(text);
+                                                        toast.success("Copied to clipboard!");
+                                                    }}
+                                                    className="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full font-bold transition-all border border-white/10 cursor-pointer"
+                                                >
+                                                    Copy Content
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div className="space-y-8 text-slate-300 text-sm leading-relaxed">
