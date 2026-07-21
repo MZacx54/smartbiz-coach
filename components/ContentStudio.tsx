@@ -1318,8 +1318,41 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                         {(generatedContent || error) && (
                             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-10 pt-10 border-t border-slate-100">
                                 {error ? (
-                                    <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-red-700 text-sm font-medium">
-                                        ⚠️ {error}
+                                    <div className="bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-emerald-500/10 border border-amber-500/20 p-6 rounded-3xl text-slate-800 shadow-sm relative overflow-hidden">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center text-xl flex-shrink-0 font-bold">
+                                                {error.includes("Traffic") || error.includes("Busy") || error.includes("429") ? "🚀" : "✨"}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-bold text-base text-slate-900 mb-1">
+                                                    {error.includes("Traffic") || error.includes("Busy") || error.includes("429") 
+                                                        ? "AI High Traffic Peak" 
+                                                        : "AI Assistant Notice"}
+                                                </h4>
+                                                <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                                                    {error.includes("429") || error.includes("Busy") || error.includes("Traffic") || error.includes("quota")
+                                                        ? "Our AI servers are experiencing high request volume. Backup processing keys have been rotated automatically. Tap 'Try Again Now' below to run your request!"
+                                                        : error.replace(/\{.*?\}/g, '').replace(/AI Provider Error.*?:/g, '')}
+                                                </p>
+                                                <div className="mt-4 flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            setError(null);
+                                                            executeGeneration(false, 0);
+                                                        }}
+                                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                                                    >
+                                                        🔄 Try Again Now
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setError(null)}
+                                                        className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                                                    >
+                                                        Dismiss
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl">

@@ -22,12 +22,41 @@ def get_cache_key(messages, model, response_format, system_instruction):
     }, sort_keys=True)
     return hashlib.sha256(key_data.encode('utf-8')).hexdigest()
 
-def get_gemini_api_key():
-    return os.environ.get("GEMINI_API_KEY")
+KEY_INDEX = 0
+
+def get_gemini_api_keys():
+    """
+    Returns a list of all configured Gemini API keys from environment variables.
+    Supports:
+    1. Comma-separated string in GEMINI_API_KEYS (e.g. "key1,key2,key3")
+    2. Individual environment variables: GEMINI_API_KEY, GEMINI_API_KEY_2, GEMINI_API_KEY_3, GEMINI_API_KEY_4, GEMINI_API_KEY_5
+    """
+    keys = []
+    raw_keys = os.environ.get("GEMINI_API_KEYS", "")
+    if raw_keys:
+        for k in raw_keys.split(","):
+            k_clean = k.strip()
+            if k_clean and k_clean not in keys:
+                keys.append(k_clean)
+
+    for env_var in ["GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GEMINI_API_KEY_4", "GEMINI_API_KEY_5"]:
+        val = os.environ.get(env_var, "").strip()
+        if val and val not in keys:
+            keys.append(val)
+
+    return keys
+
+def get_next_gemini_api_key(attempt_offset=0):
+    global KEY_INDEX
+    keys = get_gemini_api_keys()
+    if not keys:
+        return None
+    index = (KEY_INDEX + attempt_offset) % len(keys)
+    return keys[index]
 
 def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None):
-    api_key = get_gemini_api_key()
-    if not api_key:
+    keys = get_gemini_api_keys()
+    if not keys:
         raise Exception("Configuration Error: GEMINI_API_KEY not found in environment.")
 
     # 1. In-memory cache lookup
@@ -91,9 +120,6 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
             "parts": [{"text": str(messages)}]
         }]
 
-    # Format the endpoint URL
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-    
     # Build payload
     payload = {
         "contents": contents
@@ -120,17 +146,20 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         "Content-Type": "application/json"
     }
 
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode('utf-8'),
-        headers=headers,
-        method='POST'
-    )
-
-    max_retries = 5
-    backoff_delay = 2.0
+    max_retries = max(6, len(keys) * 2)
+    backoff_delay = 1.5
 
     for attempt in range(max_retries):
+        current_key = get_next_gemini_api_key(attempt_offset=attempt)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={current_key}"
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers=headers,
+            method='POST'
+        )
+
         try:
             with urllib.request.urlopen(req, timeout=30) as response:
                 result = json.loads(response.read().decode())
@@ -138,6 +167,10 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                     candidate = result['candidates'][0]
                     text_response = candidate['content']['parts'][0]['text']
                     
+                    # Update global index to working key for round-robin load balancing
+                    global KEY_INDEX
+                    KEY_INDEX = (KEY_INDEX + attempt) % len(keys)
+
                     # Cache successful response
                     PROMPT_CACHE[cache_key] = (time.time(), text_response)
                     return text_response
@@ -147,28 +180,21 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         except urllib.error.HTTPError as e:
             error_msg = e.read().decode()
             if e.code == 429:
-                # Try to parse exact retryDelay from Google's response
-                try:
-                    err_json = json.loads(error_msg)
-                    details = err_json.get('error', {}).get('details', [])
-                    for d in details:
-                        if 'retryDelay' in d:
-                            delay_str = str(d['retryDelay']).rstrip('s')
-                            parsed_delay = float(delay_str) + 1.0
-                            backoff_delay = max(backoff_delay, parsed_delay)
-                except Exception:
-                    pass
+                if len(keys) > 1 and attempt < max_retries - 1:
+                    print(f"Gemini API 429 on Key #{attempt % len(keys) + 1}. Instant rotation to Key #{(attempt + 1) % len(keys) + 1}...")
+                    time.sleep(0.5)
+                    continue
 
                 if attempt < max_retries - 1:
                     print(f"Gemini API 429 Quota Exceeded. Waiting {backoff_delay:.1f}s before retry... (Attempt {attempt+1}/{max_retries})")
-                    time.sleep(min(backoff_delay, 15.0)) # Cap single sleep at 15s
+                    time.sleep(min(backoff_delay, 10.0))
                     backoff_delay *= 1.5
                     continue
                 else:
-                    raise Exception("AI Rate Limit Reached: The AI engine is experiencing high traffic. Please wait 30 seconds and try again.")
+                    raise Exception("AI System Busy: Our AI capacity is currently at maximum. Please wait 15 seconds and try again.")
             
             print(f"Gemini API Error: {e.code} - {error_msg}")
-            raise Exception(f"AI Provider Error ({e.code}): Please try again shortly.")
+            raise Exception(f"AI Provider Error ({e.code}): Request failed. Please try again shortly.")
         except Exception as exc:
             if attempt < max_retries - 1:
                 print(f"Gemini request failed: {exc}. Retrying in {backoff_delay}s... (Attempt {attempt+1}/{max_retries})")
