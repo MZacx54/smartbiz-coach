@@ -147,13 +147,28 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         except urllib.error.HTTPError as e:
             error_msg = e.read().decode()
             if e.code == 429:
+                # Try to parse exact retryDelay from Google's response
+                try:
+                    err_json = json.loads(error_msg)
+                    details = err_json.get('error', {}).get('details', [])
+                    for d in details:
+                        if 'retryDelay' in d:
+                            delay_str = str(d['retryDelay']).rstrip('s')
+                            parsed_delay = float(delay_str) + 1.0
+                            backoff_delay = max(backoff_delay, parsed_delay)
+                except Exception:
+                    pass
+
                 if attempt < max_retries - 1:
-                    print(f"Gemini API 429 Quota Exceeded. Retrying in {backoff_delay}s... (Attempt {attempt+1}/{max_retries})")
-                    time.sleep(backoff_delay)
-                    backoff_delay *= 2
+                    print(f"Gemini API 429 Quota Exceeded. Waiting {backoff_delay:.1f}s before retry... (Attempt {attempt+1}/{max_retries})")
+                    time.sleep(min(backoff_delay, 15.0)) # Cap single sleep at 15s
+                    backoff_delay *= 1.5
                     continue
+                else:
+                    raise Exception("AI Rate Limit Reached: The AI engine is experiencing high traffic. Please wait 30 seconds and try again.")
+            
             print(f"Gemini API Error: {e.code} - {error_msg}")
-            raise Exception(f"AI Provider Error: {e.code} - {error_msg}")
+            raise Exception(f"AI Provider Error ({e.code}): Please try again shortly.")
         except Exception as exc:
             if attempt < max_retries - 1:
                 print(f"Gemini request failed: {exc}. Retrying in {backoff_delay}s... (Attempt {attempt+1}/{max_retries})")
