@@ -1088,12 +1088,12 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                                                 {/* Clean Product Overlay Layer */}
                                                 {imageHistory[historyIndex] && (
-                                                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                                                    <div className="absolute inset-0 flex items-center justify-center p-2">
                                                         <img 
                                                             ref={imgRef}
                                                             src={imageHistory[historyIndex]} 
                                                             alt="Product" 
-                                                            className="max-w-[85%] max-h-[85%] object-contain select-none shadow-lg rounded-lg" 
+                                                            className="w-full h-full object-contain select-none" 
                                                         />
                                                     </div>
                                                 )}

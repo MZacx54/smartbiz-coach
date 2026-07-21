@@ -307,8 +307,8 @@ class EditImageView(views.APIView):
                     for i in range(0, w + h, 90):
                         draw.line([(i, 0), (i - h, h)], fill=(215, 215, 215, 75), width=2)
                     
-                    # Center product nicely inside canvas
-                    prod_w = int(w * 0.78)
+                    # Scale product to fill maximum canvas dimensions (95%)
+                    prod_w = int(w * 0.95)
                     prod_h = int(prod_w * (h / w))
                     prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
                     
