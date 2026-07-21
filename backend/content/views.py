@@ -251,52 +251,71 @@ class EditImageView(views.APIView):
             
             width, height = img.size
             
-            # 0. Integrated Auto Studio Filter
-            if prompt_text.startswith('[ACTION] auto_studio'):
-                # Step A: Background removal (Enhanced smart threshold + white space remover)
+            # 0. Integrated Auto Studio Filter (AI Clean Background Matting & Backdrop Compositing)
+            if prompt_text.startswith('[ACTION] auto_studio') or prompt_text.startswith('[ACTION] no_bg'):
+                # Convert to RGB array for intelligent edge & background detection
+                rgb_img = img.convert('RGB')
+                w, h = img.size
+                
+                # Sample corners (top-left, top-right, bottom-left, bottom-right) to determine multi-point background palette
+                corners = [
+                    rgb_img.getpixel((5, 5)),
+                    rgb_img.getpixel((w - 5, 5)),
+                    rgb_img.getpixel((5, h - 5)),
+                    rgb_img.getpixel((w - 5, h - 5))
+                ]
+                
                 datas = img.getdata()
                 newData = []
-                ref_color = datas[0] # (r, g, b, a)
-                # Calculate dynamic tolerance based on standard deviation or set a higher tolerance threshold
-                for item in datas:
-                    # Calculate Euclidean distance from top-left pixel color
-                    dist = sum((item[i] - ref_color[i]) ** 2 for i in range(3)) ** 0.5
-                    # Also match close-to-white or light grey shades typical of bedsheets / backgrounds
-                    is_light_bg = (item[0] > 185 and item[1] > 185 and item[2] > 185)
-                    # Check dark/shadow borders that frequently cluster around beds or tables
-                    is_shadow_bg = (item[0] < 85 and item[1] < 85 and item[2] < 85 and abs(item[0]-item[1]) < 12 and abs(item[1]-item[2]) < 12)
-                    
-                    if dist < 85 or is_light_bg or is_shadow_bg:
-                        newData.append((255, 255, 255, 0)) # transparent
-                    else:
-                        newData.append(item)
+                
+                for y in range(h):
+                    for x in range(w):
+                        item = datas[y * w + x]
+                        r, g, b, a = item[0], item[1], item[2], item[3] if len(item) > 3 else 255
+                        
+                        # Distance to any background sample point
+                        min_bg_dist = min(
+                            sum((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2 for c in corners) ** 0.5
+                            for c in corners
+                        )
+                        
+                        # Detect light bedsheets, ground surfaces, and ambient shadows
+                        is_white_sheet = (r > 175 and g > 175 and b > 175)
+                        is_shadow_crease = (abs(r - g) < 15 and abs(g - b) < 15 and (r < 110 or r > 160) and min_bg_dist < 120)
+                        is_edge = (x < 15 or x > w - 15 or y < 15 or y > h - 15) and min_bg_dist < 140
+                        
+                        if min_bg_dist < 90 or is_white_sheet or is_shadow_crease or is_edge:
+                            newData.append((255, 255, 255, 0)) # Make pixel transparent
+                        else:
+                            newData.append((r, g, b, 255))
+                            
                 img.putdata(newData)
                 
-                # Step B: HD Enhance
+                # Step B: Auto HD Enhance foreground subject
                 enhancer = ImageEnhance.Contrast(img)
-                img = enhancer.enhance(1.25)
+                img = enhancer.enhance(1.2)
                 enhancer = ImageEnhance.Color(img)
-                img = enhancer.enhance(1.15)
-                enhancer = ImageEnhance.Sharpness(img)
-                img = enhancer.enhance(1.3)
+                img = enhancer.enhance(1.1)
                 
-                # Step C: Virtual Marble backdrop composition
-                bg = Image.new("RGBA", (width, height), (255, 255, 255, 255))
-                draw = ImageDraw.Draw(bg)
-                for y in range(height):
-                    color = int(240 + (15 * y / height))
-                    draw.line([(0, y), (width, y)], fill=(color, color, color, 255))
-                for i in range(0, width + height, 100):
-                    draw.line([(i, 0), (i - height, height)], fill=(210, 210, 210, 80), width=2)
-                
-                prod_w = int(width * 0.75)
-                prod_h = int(prod_w * (height / width))
-                prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
-                
-                offset_x = (width - prod_w) // 2
-                offset_y = (height - prod_h) // 2
-                bg.paste(prod_resized, (offset_x, offset_y), prod_resized)
-                img = bg
+                if prompt_text.startswith('[ACTION] auto_studio'):
+                    # Step C: Composite isolated subject onto selected backdrop (Marble Studio)
+                    bg = Image.new("RGBA", (w, h), (255, 255, 255, 255))
+                    draw = ImageDraw.Draw(bg)
+                    for py in range(h):
+                        color = int(242 + (13 * py / h))
+                        draw.line([(0, py), (w, py)], fill=(color, color, color, 255))
+                    for i in range(0, w + h, 90):
+                        draw.line([(i, 0), (i - h, h)], fill=(215, 215, 215, 75), width=2)
+                    
+                    # Center product nicely inside canvas
+                    prod_w = int(w * 0.78)
+                    prod_h = int(prod_w * (h / w))
+                    prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
+                    
+                    offset_x = (w - prod_w) // 2
+                    offset_y = (h - prod_h) // 2
+                    bg.paste(prod_resized, (offset_x, offset_y), prod_resized)
+                    img = bg
                 
             # 1. Background removal filter
             elif prompt_text.startswith('[ACTION] no_bg'):
@@ -329,6 +348,34 @@ class EditImageView(views.APIView):
                 
             # 4. Backdrop Composition (Virtual Studio)
             elif prompt_text.startswith('[SCENE]'):
+                # First execute clean background matting on the input product
+                rgb_img = img.convert('RGB')
+                w, h = img.size
+                corners = [
+                    rgb_img.getpixel((5, 5)),
+                    rgb_img.getpixel((w - 5, 5)),
+                    rgb_img.getpixel((5, h - 5)),
+                    rgb_img.getpixel((w - 5, h - 5))
+                ]
+                datas = img.getdata()
+                newData = []
+                for y in range(h):
+                    for x in range(w):
+                        item = datas[y * w + x]
+                        r, g, b, a = item[0], item[1], item[2], item[3] if len(item) > 3 else 255
+                        min_bg_dist = min(
+                            sum((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2 for c in corners) ** 0.5
+                            for c in corners
+                        )
+                        is_white_sheet = (r > 175 and g > 175 and b > 175)
+                        is_shadow_crease = (abs(r - g) < 15 and abs(g - b) < 15 and (r < 110 or r > 160) and min_bg_dist < 120)
+                        is_edge = (x < 15 or x > w - 15 or y < 15 or y > h - 15) and min_bg_dist < 140
+                        if min_bg_dist < 90 or is_white_sheet or is_shadow_crease or is_edge:
+                            newData.append((255, 255, 255, 0))
+                        else:
+                            newData.append((r, g, b, 255))
+                img.putdata(newData)
+
                 scene_type = prompt_text.replace('[SCENE]', '').strip().lower()
                 bg = Image.new("RGBA", (width, height), (255, 255, 255, 255))
                 draw = ImageDraw.Draw(bg)
@@ -351,14 +398,12 @@ class EditImageView(views.APIView):
                         draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
                     for i in range(20, height, 40):
                         draw.line([(0, i), (width, i + 4)], fill=(45, 20, 8, 40), width=2)
-                elif scene_type == 'nature':
+                elif scene_type == 'nature' or scene_type == 'gradient-warm':
                     for y in range(height):
-                        r = int(35 + (20 * y / height))
-                        g = int(115 - (45 * y / height))
-                        b = int(55 - (25 * y / height))
+                        r = int(255 - (35 * y / height))
+                        g = int(220 - (45 * y / height))
+                        b = int(190 - (55 * y / height))
                         draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
-                    draw.ellipse([width - 90, 30, width - 10, 110], fill=(20, 75, 35, 70))
-                    draw.ellipse([30, height - 120, 120, height - 30], fill=(25, 80, 40, 70))
                 elif scene_type == 'city':
                     for y in range(height):
                         r = int(65 + (30 * y / height))
@@ -368,16 +413,13 @@ class EditImageView(views.APIView):
                     draw.rectangle([30, height - 140, 100, height], fill=(45, 55, 65, 110))
                     draw.rectangle([120, height - 210, 200, height], fill=(40, 50, 60, 90))
                     draw.rectangle([width - 130, height - 170, width - 30, height], fill=(50, 60, 70, 110))
-                elif scene_type == 'neon':
+                else:
                     for y in range(height):
-                        r = int(12 + (15 * y / height))
-                        g = int(8 + (10 * y / height))
-                        b = int(30 + (5 * y / height))
-                        draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
-                    draw.arc([width // 4, height // 4, 3 * width // 4, 3 * height // 4], 0, 360, fill=(255, 20, 147, 180), width=6)
+                        color = int(245 + (10 * y / height))
+                        draw.line([(0, y), (width, y)], fill=(color, color, color, 255))
                 
                 # Resizing product to fit composition
-                prod_w = int(width * 0.75)
+                prod_w = int(width * 0.78)
                 prod_h = int(prod_w * (height / width))
                 prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
                 
