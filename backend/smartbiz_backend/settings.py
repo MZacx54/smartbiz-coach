@@ -147,6 +147,24 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS/CSRF Settings
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.smartbizcoach\.com\.ng$",
+    r"^https://smartbizcoach\.com\.ng$",
+]
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000,https://*.railway.app,https://smartbizcoach.com.ng,https://www.smartbizcoach.com.ng,https://api.smartbizcoach.com.ng').split(',')
