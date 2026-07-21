@@ -157,11 +157,12 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 setImagePreview(result);
                 setImageHistory([result]);
                 setHistoryIndex(0);
-                setIsFlyerMode(true); // Automatically show price tag and discount stickers!
-                toast.success("Image uploaded!");
+                setIsFlyerMode(true);
+                setSelectedBackdrop('white'); // Leave plain white by default!
+                toast.success("Image uploaded! Removing background...");
                 
-                // Automatically run background removal and image enhancements!
-                await performImageEdit('[ACTION] auto_studio', result);
+                // Automatically run pure background removal on upload
+                await performImageEdit('[ACTION] no_bg', result);
             };
             reader.readAsDataURL(file);
         }
@@ -1113,13 +1114,22 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 )}
                                             </div>
 
-                                            {/* Swap Product Image option */}
-                                            <button 
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="mt-4 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
-                                            >
-                                                🔄 Upload different photo
-                                            </button>
+                                            {/* Swap Product Image & Undo Controls */}
+                                            <div className="flex items-center gap-4 mt-4">
+                                                <button 
+                                                    disabled={historyIndex <= 0 || isApplyingAiEdit}
+                                                    onClick={handleUndo}
+                                                    className="text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 transition-all flex items-center gap-1 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800"
+                                                >
+                                                    ↩️ Undo Last Edit
+                                                </button>
+                                                <button 
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                                                >
+                                                    🔄 Upload different photo
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {/* Right Sidebar: Simple Workspace Action Controls */}
