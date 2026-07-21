@@ -182,8 +182,8 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
             error_msg = e.read().decode()
             if e.code == 429:
                 if len(keys) > 1 and attempt < max_retries - 1:
-                    print(f"Gemini API 429 on Key #{attempt % len(keys) + 1}. Instant rotation to Key #{(attempt + 1) % len(keys) + 1}...")
-                    time.sleep(0.5)
+                    print(f"Gemini API 429 on Key #{(KEY_INDEX + attempt) % len(keys) + 1}. Instant rotation to Key #{((KEY_INDEX + attempt + 1) % len(keys)) + 1}...")
+                    # Immediately rotate and try again without sleep
                     continue
 
                 if attempt < max_retries - 1:
@@ -195,12 +195,15 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                     raise Exception("AI System Busy: Our AI capacity is currently at maximum. Please wait 15 seconds and try again.")
             
             print(f"Gemini API Error: {e.code} - {error_msg}")
+            # If we hit an auth or bad key error, immediately rotate keys and try
+            if (e.code == 400 or e.code == 403 or e.code == 401) and len(keys) > 1 and attempt < max_retries - 1:
+                print(f"Gemini API error {e.code} on current key. Rotating to next key...")
+                continue
             raise Exception(f"AI Provider Error ({e.code}): Request failed. Please try again shortly.")
         except Exception as exc:
             if attempt < max_retries - 1:
-                print(f"Gemini request failed: {exc}. Retrying in {backoff_delay}s... (Attempt {attempt+1}/{max_retries})")
-                time.sleep(backoff_delay)
-                backoff_delay *= 2
+                print(f"Gemini request failed: {exc}. Rotating keys and retrying... (Attempt {attempt+1}/{max_retries})")
+                time.sleep(0.2)
                 continue
             raise exc
 
