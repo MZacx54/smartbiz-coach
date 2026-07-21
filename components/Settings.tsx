@@ -64,6 +64,8 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     meta_access_token: '',
     instagram_account_id: '',
     facebook_page_id: '',
+    whatsapp_phone_number_id: '',
+    whatsapp_access_token: '',
     is_connected: false
   });
   const [loadingSocial, setLoadingSocial] = useState(false);
@@ -79,6 +81,8 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             meta_access_token: res.meta_access_token || '',
             instagram_account_id: res.instagram_account_id || '',
             facebook_page_id: res.facebook_page_id || '',
+            whatsapp_phone_number_id: res.whatsapp_phone_number_id || '',
+            whatsapp_access_token: res.whatsapp_access_token || '',
             is_connected: res.is_connected || false
           });
         } catch (err) {
@@ -594,6 +598,40 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                   placeholder="1098..."
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
+              </div>
+            </div>
+
+            {/* WhatsApp Cloud API Section */}
+            <div className="pt-4 border-t border-slate-100 space-y-4">
+              <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                <span>💬</span> WhatsApp Cloud API Automation Settings
+              </h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    WhatsApp Phone Number ID
+                  </label>
+                  <input
+                    type="text"
+                    value={socialConnect.whatsapp_phone_number_id}
+                    onChange={e => setSocialConnect({ ...socialConnect, whatsapp_phone_number_id: e.target.value })}
+                    placeholder="105492..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    WhatsApp Access Token (Optional if Meta Token used)
+                  </label>
+                  <input
+                    type="password"
+                    value={socialConnect.whatsapp_access_token}
+                    onChange={e => setSocialConnect({ ...socialConnect, whatsapp_access_token: e.target.value })}
+                    placeholder="Leave blank to use Meta Access Token above"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
               </div>
             </div>
 

@@ -4,6 +4,8 @@ export interface SocialConnectData {
   meta_access_token: string;
   instagram_account_id: string;
   facebook_page_id: string;
+  whatsapp_phone_number_id?: string;
+  whatsapp_access_token?: string;
   is_connected?: boolean;
 }
 
@@ -20,6 +22,11 @@ export const marketingService = {
 
   publishToMeta: async (payload: { caption: string; image_url: string; platforms?: string[] }): Promise<{ success: boolean; message: string; warnings?: string[] }> => {
     const response = await api.post('marketing/publish-meta/', payload);
+    return response.data;
+  },
+
+  sendWhatsAppCloudMessage: async (payload: { phone: string; message: string; template_name?: string }): Promise<{ success: boolean; message: string; whatsapp_message_id?: string }> => {
+    const response = await api.post('marketing/send-whatsapp-cloud/', payload);
     return response.data;
   }
 };

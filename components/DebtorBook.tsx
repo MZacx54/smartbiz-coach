@@ -12,6 +12,7 @@ import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { marketingService } from '../services/marketingService';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface DebtorBookProps {
@@ -53,6 +54,24 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
 
   // Reminder Modal State
   const [reminder, setReminder] = useState<{ text: { english: string; pidgin: string }; debtor: Debtor } | null>(null);
+  const [sendingCloudReminder, setSendingCloudReminder] = useState(false);
+
+  const handleSendCloudWAReminder = async () => {
+    if (!reminder) return;
+    setSendingCloudReminder(true);
+    try {
+      const msgText = reminder.text[activeTab];
+      const res = await marketingService.sendWhatsAppCloudMessage({
+        phone: reminder.debtor.phone,
+        message: msgText
+      });
+      toast.success(res.message || "WhatsApp debt reminder sent via Cloud API! ⚡");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to send WhatsApp Cloud message. Check Settings & Wallet.");
+    } finally {
+      setSendingCloudReminder(false);
+    }
+  };
 
   // Credit modal state
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
@@ -1029,13 +1048,21 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={handleSendCloudWAReminder}
+                disabled={sendingCloudReminder}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/15 disabled:opacity-50 cursor-pointer"
+              >
+                <span>⚡</span> {sendingCloudReminder ? 'Sending...' : 'Auto-Send via WhatsApp API'}
+              </button>
+
               <a
                 href={`https://wa.me/${reminder.debtor.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(reminder.text[activeTab])}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full bg-green-600 hover:bg-green-700 text-white text-center py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-green-600/15 hover:-translate-y-0.5 active:scale-95 text-decoration-none"
+                className="w-full bg-slate-800 hover:bg-slate-900 text-white text-center py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-decoration-none cursor-pointer"
               >
-                <span>💬</span> Send to WhatsApp
+                <span>💬</span> Send via WhatsApp App
               </a>
               
               <ShareActions text={reminder.text[activeTab]} title="Debt Reminder" />

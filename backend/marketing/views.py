@@ -746,11 +746,15 @@ class SocialConnectView(APIView):
 
     def get(self, request):
         connect, _ = SocialConnect.objects.get_or_create(user=request.user)
+        has_meta = bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
+        has_wa = bool((connect.whatsapp_access_token or connect.meta_access_token) and connect.whatsapp_phone_number_id)
         return Response({
             'meta_access_token': connect.meta_access_token,
             'instagram_account_id': connect.instagram_account_id,
             'facebook_page_id': connect.facebook_page_id,
-            'is_connected': bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
+            'whatsapp_phone_number_id': connect.whatsapp_phone_number_id,
+            'whatsapp_access_token': connect.whatsapp_access_token,
+            'is_connected': has_meta or has_wa
         })
 
     def post(self, request):
@@ -758,11 +762,16 @@ class SocialConnectView(APIView):
         connect.meta_access_token = request.data.get('meta_access_token', connect.meta_access_token).strip()
         connect.instagram_account_id = request.data.get('instagram_account_id', connect.instagram_account_id).strip()
         connect.facebook_page_id = request.data.get('facebook_page_id', connect.facebook_page_id).strip()
+        connect.whatsapp_phone_number_id = request.data.get('whatsapp_phone_number_id', connect.whatsapp_phone_number_id).strip()
+        connect.whatsapp_access_token = request.data.get('whatsapp_access_token', connect.whatsapp_access_token).strip()
         connect.save()
 
+        has_meta = bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
+        has_wa = bool((connect.whatsapp_access_token or connect.meta_access_token) and connect.whatsapp_phone_number_id)
+
         return Response({
-            'message': 'Meta & Instagram social accounts connected successfully!',
-            'is_connected': bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
+            'message': 'Meta, Instagram, and WhatsApp Cloud API credentials updated successfully!',
+            'is_connected': has_meta or has_wa
         })
 
 
@@ -846,3 +855,84 @@ class PublishToMetaView(APIView):
             return Response({
                 'error': errors[0] if errors else 'No valid Instagram Account ID or Facebook Page ID connected.'
             }, status=400)
+
+
+class SendWhatsAppCloudMessageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        recipient_phone = request.data.get('phone', '')
+        message_text = request.data.get('message', '')
+        template_name = request.data.get('template_name')
+
+        if not recipient_phone or not message_text:
+            return Response({'error': 'Recipient phone number and message text are required.'}, status=400)
+
+        # Normalize phone number to international format (e.g. 2348012345678)
+        clean_phone = recipient_phone.replace('+', '').replace('-', '').replace(' ', '').strip()
+        if clean_phone.startswith('0') and len(clean_phone) == 11:
+            clean_phone = '234' + clean_phone[1:]
+
+        try:
+            connect = SocialConnect.objects.get(user=request.user)
+        except SocialConnect.DoesNotExist:
+            connect = None
+
+        token = (connect.whatsapp_access_token if connect and connect.whatsapp_access_token else connect.meta_access_token) if connect else ''
+        phone_number_id = connect.whatsapp_phone_number_id if connect else ''
+
+        # Fallback to system environment variables if user has not configured custom keys
+        if not token:
+            token = os.environ.get('WHATSAPP_CLOUD_ACCESS_TOKEN', '')
+        if not phone_number_id:
+            phone_number_id = os.environ.get('WHATSAPP_CLOUD_PHONE_NUMBER_ID', '')
+
+        if not token or not phone_number_id:
+            return Response({
+                'error': 'WhatsApp Cloud API credentials not configured. Please add your Phone Number ID and Access Token in Settings & Wallet.'
+            }, status=400)
+
+        url = f"https://graph.facebook.com/v19.0/{phone_number_id}/messages"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+
+        if template_name:
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": clean_phone,
+                "type": "template",
+                "template": {
+                    "name": template_name,
+                    "language": {"code": "en_US"}
+                }
+            }
+        else:
+            payload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": clean_phone,
+                "type": "text",
+                "text": {
+                    "preview_url": True,
+                    "body": message_text
+                }
+            }
+
+        try:
+            res = requests.post(url, headers=headers, json=payload, timeout=15)
+            res_data = res.json()
+
+            if res.status_code in [200, 201] and 'messages' in res_data:
+                msg_id = res_data['messages'][0]['id']
+                return Response({
+                    'success': True,
+                    'message': f'WhatsApp message dispatched successfully to {clean_phone}!',
+                    'whatsapp_message_id': msg_id
+                })
+            else:
+                err_msg = res_data.get('error', {}).get('message', 'Failed to dispatch WhatsApp message.')
+                return Response({'error': f'WhatsApp Cloud API Error: {err_msg}'}, status=400)
+        except Exception as e:
+            return Response({'error': f'Network error contacting WhatsApp Cloud API: {str(e)}'}, status=500)

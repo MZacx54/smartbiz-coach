@@ -87,11 +87,13 @@ class MessageLog(models.Model):
 
 
 class SocialConnect(models.Model):
-    """Connected social media account credentials for auto-publishing."""
+    """Connected social media account credentials for auto-publishing and WhatsApp Cloud API."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='social_connect')
     meta_access_token = models.TextField(blank=True, default='')
     instagram_account_id = models.CharField(max_length=200, blank=True, default='')
     facebook_page_id = models.CharField(max_length=200, blank=True, default='')
+    whatsapp_phone_number_id = models.CharField(max_length=200, blank=True, default='')
+    whatsapp_access_token = models.TextField(blank=True, default='')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

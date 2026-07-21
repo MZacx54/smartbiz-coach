@@ -28,4 +28,5 @@ urlpatterns = [
     # Social Media Connections & Auto-Publishing
     path('social-connect/', views.SocialConnectView.as_view(), name='marketing-social-connect'),
     path('publish-meta/', views.PublishToMetaView.as_view(), name='marketing-publish-meta'),
+    path('send-whatsapp-cloud/', views.SendWhatsAppCloudMessageView.as_view(), name='marketing-send-whatsapp-cloud'),
 ]

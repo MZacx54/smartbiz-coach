@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { User } from '../types';
 import api from '../services/api';
+import { marketingService } from '../services/marketingService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -329,6 +330,34 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
       next.has(phone) ? next.delete(phone) : next.add(phone);
       return next;
     });
+  };
+
+  const [sendingCloudWA, setSendingCloudWA] = useState(false);
+
+  const handleAutoSendCloudWA = async () => {
+    if (!selectedCampaign || waBatch.length === 0) return toast.error('Generate a batch first');
+    setSendingCloudWA(true);
+    let sentCount = 0;
+    let failCount = 0;
+
+    for (const item of waBatch) {
+      try {
+        await marketingService.sendWhatsAppCloudMessage({
+          phone: item.phone,
+          message: item.message
+        });
+        sentCount++;
+        toggleSent(item.phone);
+      } catch (err: any) {
+        failCount++;
+      }
+    }
+
+    setSendingCloudWA(false);
+    toast.success(`⚡ Dispatched ${sentCount} messages via WhatsApp Cloud API! ${failCount > 0 ? `(${failCount} failed)` : ''}`);
+    if (sentCount > 0) {
+      handleMarkAllSent();
+    }
   };
 
   // ─── SMS Batch ────────────────────────────────────────────────────────────
@@ -980,10 +1009,17 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
                         {sentPhones.size} sent · {waBatch.length - sentPhones.size} remaining · {batchRemaining} more after this
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={handleAutoSendCloudWA}
+                        disabled={sendingCloudWA}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        {sendingCloudWA ? 'Sending...' : '⚡ Auto-Send via WhatsApp API'}
+                      </button>
                       <button
                         onClick={handleMarkAllSent}
-                        className="bg-green-600 hover:bg-green-500 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors"
+                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors cursor-pointer"
                       >
                         ✅ Mark All Sent
                       </button>
