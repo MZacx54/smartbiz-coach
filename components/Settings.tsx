@@ -5,6 +5,8 @@ import { billingService, TransactionData, CreditLedgerData, AdminDashboardData }
 import { marketingService } from '../services/marketingService';
 import { toast } from 'react-hot-toast';
 
+import { useLocation } from 'react-router-dom';
+
 interface SettingsProps {
   user: User;
   userStats: UserStats;
@@ -22,6 +24,7 @@ const CREDIT_PACKS = [
 type SettingsTab = 'profile' | 'billing' | 'social' | 'preferences' | 'data' | 'admin';
 
 const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdateUser, onTopUpSuccess }) => {
+  const location = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: user.name || '',
@@ -31,6 +34,15 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   });
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+
+  // Switch activeTab based on search parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'billing') {
+      setActiveTab('billing');
+    }
+  }, [location]);
 
   // Billing states
   const [showTopUp, setShowTopUp] = useState(false);

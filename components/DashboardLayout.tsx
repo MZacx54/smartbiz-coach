@@ -11,7 +11,7 @@ interface DashboardLayoutProps {
     actions: ActionCard[];
     cartItems: CartItem[];
     currentView: AppView;
-    onNavigate: (view: AppView) => void;
+    onNavigate: (view: AppView, params?: string) => void;
     onUpdateUser?: (user: User) => void;
     onUpdateCredits?: (credits: number) => void;
     children: React.ReactNode;
@@ -83,8 +83,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         window.location.reload();
     };
 
-    const handleNavigate = (view: AppView) => {
-        onNavigate(view);
+    const handleNavigate = (view: AppView, params?: string) => {
+        onNavigate(view, params);
         setIsMenuOpen(false);
         window.scrollTo(0, 0);
     };
@@ -285,7 +285,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 {userStats.bizCredits}
                             </p>
                             <button
-                                onClick={() => handleNavigate(AppView.SETTINGS)}
+                                onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
                                 className="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
                             >
                                 ⚡ Top Up Balance
@@ -293,7 +293,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         </div>
                     ) : (
                         <button
-                            onClick={() => handleNavigate(AppView.SETTINGS)}
+                            onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
                             className="w-full bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-2 rounded-xl text-center shadow-md border border-emerald-900/40 flex flex-col items-center justify-center gap-1 hover:border-emerald-500/60 transition-all"
                             title="Available Credits. Click to Top Up."
                         >
@@ -317,7 +317,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                     onClick={toggleTraction}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all ${
                                         tractionMode
-                                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-emerald-400 shadow-sm shadow-emerald-100'
+                                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-emerald-450 shadow-sm shadow-emerald-100'
                                             : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border-slate-200 hover:text-slate-700'
                                     }`}
                                 >
@@ -326,7 +326,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 </button>
                             )}
                             <div
-                              onClick={() => handleNavigate(AppView.SETTINGS)}
+                              onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
                               className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"
                             >
                                 <span className="text-sm">⚡</span>

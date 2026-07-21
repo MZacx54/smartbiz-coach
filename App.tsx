@@ -287,34 +287,35 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleNavigate = (view: AppView) => {
+  const handleNavigate = (view: AppView, params?: string) => {
     setCurrentView(view);
+    const query = params ? `?${params}` : '';
     switch (view) {
-      case AppView.DASHBOARD: navigate('/dashboard'); break;
-      case AppView.BRAND_BUILDER: navigate('/dashboard/brand'); break;
-      case AppView.CONTENT_GENERATOR: navigate('/dashboard/content'); break;
-      case AppView.INVOICE_GENERATOR: navigate('/dashboard/invoices'); break;
-      case AppView.INVENTORY: navigate('/dashboard/inventory'); break;
-      case AppView.DEBTOR_BOOK: navigate('/dashboard/debtor'); break;
-      case AppView.MARKETPLACE: navigate('/dashboard/marketplace'); break;
-      case AppView.SMARTHOME_FINDER: navigate('/dashboard/smarthome'); break;
-      case AppView.CART: navigate('/dashboard/cart'); break;
-      case AppView.BUSINESS_PLAN: navigate('/dashboard/business-plan'); break;
-      case AppView.GRANT_MATCHER: navigate('/dashboard/grants'); break;
-      case AppView.DIGITAL_ROADMAP: navigate('/dashboard/roadmap'); break;
-      case AppView.LEARNING_HUB: navigate('/dashboard/learning'); break;
-      case AppView.COMPLIANCE: navigate('/dashboard/compliance'); break;
-      case AppView.WHATSAPP_SUPPORT: navigate('/dashboard/support'); break;
-      case AppView.SALES_ASSISTANT: navigate('/dashboard/sales-assistant'); break;
-      case AppView.ORDER_GENERATOR: navigate('/dashboard/order-gen'); break;
-      case AppView.STOREFRONT: navigate('/dashboard/store-preview'); break;
-      case AppView.PRODUCT_MANAGER: navigate('/dashboard/inventory'); break;
-      case AppView.SETTINGS: navigate('/dashboard/settings'); break;
-      case AppView.HUB: navigate('/dashboard/hub'); break;
-      case AppView.PRICING_ASSISTANT: navigate('/dashboard/pricing-assistant'); break;
-      case AppView.MARKETING_AGENT: navigate('/dashboard/marketing'); break;
-      case AppView.LEAD_MANAGER: navigate('/dashboard/leads'); break;
-      default: navigate('/dashboard');
+      case AppView.DASHBOARD: navigate(`/dashboard${query}`); break;
+      case AppView.BRAND_BUILDER: navigate(`/dashboard/brand${query}`); break;
+      case AppView.CONTENT_GENERATOR: navigate(`/dashboard/content${query}`); break;
+      case AppView.INVOICE_GENERATOR: navigate(`/dashboard/invoices${query}`); break;
+      case AppView.INVENTORY: navigate(`/dashboard/inventory${query}`); break;
+      case AppView.DEBTOR_BOOK: navigate(`/dashboard/debtor${query}`); break;
+      case AppView.MARKETPLACE: navigate(`/dashboard/marketplace${query}`); break;
+      case AppView.SMARTHOME_FINDER: navigate(`/dashboard/smarthome${query}`); break;
+      case AppView.CART: navigate(`/dashboard/cart${query}`); break;
+      case AppView.BUSINESS_PLAN: navigate(`/dashboard/business-plan${query}`); break;
+      case AppView.GRANT_MATCHER: navigate(`/dashboard/grants${query}`); break;
+      case AppView.DIGITAL_ROADMAP: navigate(`/dashboard/roadmap${query}`); break;
+      case AppView.LEARNING_HUB: navigate(`/dashboard/learning${query}`); break;
+      case AppView.COMPLIANCE: navigate(`/dashboard/compliance${query}`); break;
+      case AppView.WHATSAPP_SUPPORT: navigate(`/dashboard/support${query}`); break;
+      case AppView.SALES_ASSISTANT: navigate(`/dashboard/sales-assistant${query}`); break;
+      case AppView.ORDER_GENERATOR: navigate(`/dashboard/order-gen${query}`); break;
+      case AppView.STOREFRONT: navigate(`/dashboard/store-preview${query}`); break;
+      case AppView.PRODUCT_MANAGER: navigate(`/dashboard/inventory${query}`); break;
+      case AppView.SETTINGS: navigate(`/dashboard/settings${query}`); break;
+      case AppView.HUB: navigate(`/dashboard/hub${query}`); break;
+      case AppView.PRICING_ASSISTANT: navigate(`/dashboard/pricing-assistant${query}`); break;
+      case AppView.MARKETING_AGENT: navigate(`/dashboard/marketing${query}`); break;
+      case AppView.LEAD_MANAGER: navigate(`/dashboard/leads${query}`); break;
+      default: navigate(`/dashboard${query}`);
     }
   };
 
