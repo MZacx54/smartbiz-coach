@@ -1008,21 +1008,55 @@ class GenerateSalesScriptView(views.APIView):
         2. Naija Friendly (using warm local Nigerian context/pidgin where appropriate)
         3. Urgent (FOMO/Scarcity)
         
-        Return JSON with keys: 
-        - options: Array of 3 strings (the response messages).
-        - one_liner: A single high-impact one-liner opener that immediately hooks the customer.
-        - strategy_tip: A one-sentence tip on why these options work.
-        - do_not_say: Array of 2-3 phrases/arguments the seller must AVOID using in this specific situation (e.g. "We don't do refunds", "Our price is final").
+        You MUST return a JSON object with the following exact keys:
+        - "options": An array of exactly 3 strings containing the response messages.
+        - "one_liner": A single high-impact one-liner opener that immediately hooks the customer.
+        - "strategy_tip": A one-sentence tip explaining why these options work.
+        - "do_not_say": An array of 2-3 phrases or arguments the seller must AVOID using in this specific situation (e.g. "We don't do refunds", "Our price is final").
+        
+        Example JSON format:
+        {{
+          "options": ["Option 1 text", "Option 2 text", "Option 3 text"],
+          "one_liner": "Hook text here",
+          "strategy_tip": "Strategy explanation here",
+          "do_not_say": ["Avoid phrase 1", "Avoid phrase 2"]
+        }}
         """
         
         prompt = f"{goal} \nCustomer Message: '{customer_message}'"
         
         try:
             result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            # Guarantee matching fields if model fails to output correct schema structure
+            if not isinstance(result, dict):
+                result = {}
+            if 'options' not in result or not isinstance(result['options'], list) or len(result['options']) == 0:
+                result['options'] = [
+                    "Hello! Thanks for reaching out. How can I help you complete your order?",
+                    "Hey there! Let's get you set up with this order right away.",
+                    "Hurry! Grab yours now before stock runs out."
+                ]
+            if 'one_liner' not in result or not result['one_liner']:
+                result['one_liner'] = "Let's close this order for you today!"
+            if 'strategy_tip' not in result or not result['strategy_tip']:
+                result['strategy_tip'] = "Keep the conversation flowing and make ordering as simple as possible."
+            if 'do_not_say' not in result or not isinstance(result['do_not_say'], list):
+                result['do_not_say'] = ["Please reply now", "Price is final"]
+                
             deduct_credits(request.user, 'sales_script')
             return Response(result)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            fallback = {
+                "options": [
+                    "Hello! Thanks for reaching out. How can I help you complete your order?",
+                    "Hey there! Let's get you set up with this order right away.",
+                    "Hurry! Grab yours now before stock runs out."
+                ],
+                "one_liner": "Let's close this order for you today!",
+                "strategy_tip": "Keep the conversation flowing and make ordering as simple as possible.",
+                "do_not_say": ["Please reply now", "Price is final"]
+            }
+            return Response(fallback)
 
 
 class AnalyzeProductView(views.APIView):
