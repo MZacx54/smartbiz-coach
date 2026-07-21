@@ -29,7 +29,7 @@ def get_gemini_api_keys():
     Returns a list of all configured Gemini API keys from environment variables.
     Supports:
     1. Comma-separated string in GEMINI_API_KEYS (e.g. "key1,key2,key3")
-    2. Individual environment variables: GEMINI_API_KEY, GEMINI_API_KEY_2, GEMINI_API_KEY_3, GEMINI_API_KEY_4, GEMINI_API_KEY_5
+    2. Dynamic scanning for any env variable starting with GEMINI_API_KEY (e.g., GEMINI_API_KEY, GEMINI_API_KEY_2, GEMINI_API_KEY_3, GEMINI_API_KEY_4, etc.)
     """
     keys = []
     raw_keys = os.environ.get("GEMINI_API_KEYS", "")
@@ -39,10 +39,11 @@ def get_gemini_api_keys():
             if k_clean and k_clean not in keys:
                 keys.append(k_clean)
 
-    for env_var in ["GEMINI_API_KEY", "GEMINI_API_KEY_2", "GEMINI_API_KEY_3", "GEMINI_API_KEY_4", "GEMINI_API_KEY_5"]:
-        val = os.environ.get(env_var, "").strip()
-        if val and val not in keys:
-            keys.append(val)
+    for env_var, val in os.environ.items():
+        if env_var.startswith("GEMINI_API_KEY"):
+            v = val.strip()
+            if v and v not in keys:
+                keys.append(v)
 
     return keys
 
