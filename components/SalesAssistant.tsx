@@ -227,7 +227,7 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
                 )}
 
                 {/* Do Not Say Warnings */}
-                {result.do_not_say && result.do_not_say.length > 0 && (
+                {result && Array.isArray(result.do_not_say) && result.do_not_say.length > 0 && (
                   <div className="bg-red-50 border border-red-100 text-red-800 p-5 rounded-[24px]">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg">⚠️</span>
@@ -250,7 +250,7 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
                 </div>
 
                 <div className="space-y-4">
-                  {result.options.map((option, idx) => (
+                  {result && Array.isArray(result.options) && result.options.map((option, idx) => (
                     <div key={idx} className="group relative">
                        <div className="absolute -left-2 top-4 w-4 h-4 bg-white rotate-45 border-l border-b border-slate-100 hidden md:block"></div>
                        <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 relative group-hover:shadow-md transition-all">
