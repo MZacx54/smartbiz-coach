@@ -35,7 +35,7 @@ interface ContentStudioProps {
 
 const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateCredits }) => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<TabType>('Photo Studio');
+    const [activeTab, setActiveTab] = useState<TabType>('Post Writer');
 
     // Credit limits modal state
     const [showCreditPrompt, setShowCreditPrompt] = useState(false);
@@ -797,8 +797,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     };
 
     const tabs: { id: TabType; icon: string }[] = [
-        { id: 'Photo Studio', icon: '📸' },
         { id: 'Post Writer', icon: '✍️' },
+        { id: 'Photo Studio', icon: '📸' },
         { id: 'Video Script', icon: '🎬' },
         { id: 'Weekly Plan', icon: '📅' },
         { id: 'Blog Writer', icon: '📝' },

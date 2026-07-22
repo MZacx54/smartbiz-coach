@@ -250,7 +250,17 @@ def get_dynamic_json_fallback(messages):
             "estimated_duration": 45
         })
 
-    # 3. Default fallback values
+    # 3. Dynamic Marketing Trend Ideas Fallback
+    if "trend" in prompt_str or "marketing concept" in prompt_str:
+        import random
+        vibe_ideas = [
+            {"trendName": "Naija Pop Culture Vibe", "description": "Leverage current trending Afrobeats rhythms & catchy slangs", "application": "Create quick WhatsApp status posts using current music trends."},
+            {"trendName": "Inflation Relief Offers", "description": "Offer pocket-friendly, bundled packaging to customers", "application": "Highlight budget combo deals on your product listings today."},
+            {"trendName": "WhatsApp Referral Loops", "description": "Encourage status repost shares with instant freebies", "application": "Give a 5% discount on next purchase when customers repost your flyer."}
+        ]
+        return json.dumps({"trends": vibe_ideas})
+
+    # 4. Default fallback values
     return json.dumps({
         "options": [
             "Hello! Thanks for reaching out. How can I help you complete your order?",
