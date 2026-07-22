@@ -31,20 +31,41 @@ def deduct_credits(user, action_key):
     return True, user.credits
 
 def get_brand_context(user):
-    """Fetch and format brand identity for AI context."""
+    """Fetch and format dynamic, hyper-personalized brand & catalog identity for AI context."""
     try:
+        from brand.models import BrandIdentity
+        from marketplace.models import Product
+
         brand = BrandIdentity.objects.get(user=user)
+        
+        # Query top products/services for this user's business
+        products = Product.objects.filter(brand=brand)[:5]
+        catalog_summary = []
+        for p in products:
+            price_str = f"₦{p.price:,.2f}"
+            if p.price_max:
+                price_str += f" - ₦{p.price_max:,.2f}"
+            catalog_summary.append(f"• {p.name} ({p.product_type}): {price_str} - {p.description[:80] if p.description else 'Quality offer'}")
+
+        catalog_text = "\n".join(catalog_summary) if catalog_summary else "No catalog items logged yet."
+        tagline_text = brand.taglines[0] if (brand.taglines and isinstance(brand.taglines, list) and len(brand.taglines) > 0) else 'Elevating Nigerian Excellence'
+
         return f"""
-        BUSINESS CONTEXT:
-        - Name: {brand.business_name}
-        - Niche: {brand.niche}
-        - Target Audience: {brand.target_audience}
-        - Brand Voice/Tone: {brand.brand_voice}
-        - Tagline: {brand.taglines[0] if brand.taglines else 'N/A'}
-        - Vibe: {brand.vibe}
+        HYPER-PERSONALIZED BUSINESS PROFILE:
+        - Business Name: {brand.business_name}
+        - Industry Niche: {brand.niche or 'General Retail & Services'}
+        - Primary Tagline: "{tagline_text}"
+        - Target Audience: {brand.target_audience or 'Nigerian Consumers & Business Owners'}
+        - Preferred Brand Voice & Tone: {brand.brand_voice or 'Warm, Professional, and Persuasive'}
+        - Elevator Pitch / Mission: {brand.elevator_pitch or 'Providing premium value and reliable products across Nigeria.'}
+        
+        LIVE CATALOG PRODUCTS & PRICING:
+        {catalog_text}
+        
+        INSTRUCTION TO AI: Every generated output MUST directly reflect this specific business ({brand.business_name}), its actual products, target audience, and brand tone. NEVER produce generic placeholders.
         """
-    except Exception:
-        return "BUSINESS CONTEXT: General Nigerian MSME. No specific brand profile yet."
+    except Exception as e:
+        return f"BUSINESS CONTEXT: SmartBiz Coach Merchant ({user.username or user.email}). Focus on high-converting Nigerian business strategies."
 
 class GenerateSocialContentView(views.APIView):
     permission_classes = [IsAuthenticated]

@@ -5,9 +5,11 @@ import urllib.error
 import time
 import hashlib
 
-# Google Gemini defaults
-DEFAULT_TEXT_MODEL = "gemini-2.0-flash"
-DEFAULT_VISION_MODEL = "gemini-2.0-flash"
+# Google Gemini defaults (Using Google's latest Gemini 3.6 Flash & 3.5 Flash-Lite engines)
+DEFAULT_TEXT_MODEL = "gemini-3.6-flash"
+DEFAULT_FAST_MODEL = "gemini-3.5-flash-lite"
+DEFAULT_FALLBACK_MODEL = "gemini-2.0-flash"
+DEFAULT_VISION_MODEL = "gemini-3.6-flash"
 
 # In-memory prompt cache for free-tier optimization
 PROMPT_CACHE = {}
@@ -152,9 +154,13 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     max_retries = max(6, len(keys) * 2)
     backoff_delay = 1.5
 
+    # Target model cascade: Try requested model (gemini-3.6-flash), fallback to 3.5-flash-lite, then 2.0-flash
+    model_cascade = [model, DEFAULT_FAST_MODEL, DEFAULT_FALLBACK_MODEL]
+
     for attempt in range(max_retries):
         current_key = get_next_gemini_api_key(attempt_offset=attempt)
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={current_key}"
+        active_model = model_cascade[attempt % len(model_cascade)]
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{active_model}:generateContent?key={current_key}"
 
         req = urllib.request.Request(
             url,
