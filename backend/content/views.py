@@ -984,77 +984,111 @@ class GenerateSalesScriptView(views.APIView):
         if not allowed:
             return Response({"error": "Insufficient credits. Your free daily limit is exhausted.", "credits": remaining_credits}, status=402)
 
-        context = request.data.get('context', 'CLOSING') # CLOSING, OBJECTION, FOLLOW_UP, GREETING
-        customer_message = request.data.get('customer_message', '')
-        
+        context = request.data.get('context', 'CLOSING') # CLOSING, OBJECTION, FOLLOW_UP, GREETING, PRICE_ISSUE
+        customer_message = request.data.get('customer_message', '').strip()
+        closing_style = request.data.get('closing_style', 'MIXED').strip().upper() # PIDGIN, CORPORATE, FOMO, SOFT_PULL, MIXED
+        mode = request.data.get('mode', 'SUGGEST').upper() # SUGGEST or ROLEPLAY_REPLY
+        chat_history = request.data.get('chat_history', [])
+
         brand_context = get_brand_context(request.user)
-        
+        import random
+        random_seed = random.randint(1000, 9999)
+
+        if mode == 'ROLEPLAY_REPLY':
+            # Roleplay simulator mode: AI acts as the buyer responding to the seller's reply
+            system_prompt = f"""
+            {brand_context}
+            
+            You are playing the role of a realistic, sharp Nigerian customer on WhatsApp negotiating with this seller.
+            Analyze the seller's latest message and reply naturally as the buyer. 
+            Maintain a realistic, conversational tone (asking for discount, checking payment options, asking for trust proof, or agreeing to buy).
+            
+            Return JSON with keys:
+            - "buyer_reply": String containing the buyer's response message.
+            - "deal_closed": Boolean (true if buyer agrees to pay, false if still negotiating/hesitating).
+            - "feedback": Brief single-sentence tip on how effective the seller's reply was.
+            """
+            prompt = f"Seller's latest message: '{customer_message}'. Previous chat history: {json.dumps(chat_history[-4:] if chat_history else [])}. Seed: {random_seed}"
+            try:
+                result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+                return Response(result)
+            except Exception as e:
+                return Response({
+                    "buyer_reply": "Okay, that sounds fair! Send me your bank details so I can transfer right away.",
+                    "deal_closed": True,
+                    "feedback": "Great job! You clearly addressed their concern and gave a clear payment directive."
+                })
+
         mode_prompts = {
-            'CLOSING': "Help me close this sale. The customer is interested but hasn't paid yet.",
-            'OBJECTION': f"The customer has an objection: '{customer_message}'. Help me handle it professionally.",
-            'FOLLOW_UP': "Generate a polite but firm follow-up message for a customer who stopped replying.",
-            'GREETING': "Create a warm, professional first-contact message for a new inquiry.",
-            'PRICE_ISSUE': "The customer says the price is too high. Help me explain the value professionally.",
+            'CLOSING': "Help me close this sale right now. The customer is warm but needs a confident push.",
+            'OBJECTION': f"The customer raised an objection: '{customer_message}'. Help me resolve their hesitation and close.",
+            'FOLLOW_UP': "Generate a high-converting re-engagement message for a customer who went quiet.",
+            'GREETING': "Create a welcoming first-contact message that immediately qualifies and hooks the lead.",
+            'PRICE_ISSUE': "The customer says the price is high. Help me reframe the value and justify the price.",
         }
-        
+
+        style_prompts = {
+            'PIDGIN': "Use authentic Nigerian Pidgin and local warm customer rapport (e.g. 'My boss', 'I fit slice small shipping give you').",
+            'CORPORATE': "Use professional, executive B2B tone with clear value proposition and structure.",
+            'FOMO': "Use high urgency, limited stock availability, and time-sensitive discount incentive.",
+            'SOFT_PULL': "Use gentle, consultative sales closing that focuses on helping the customer make a decision.",
+            'MIXED': "Provide 3 distinct angles: 1. Direct & Professional, 2. Naija Pidgin/Friendly, 3. Urgent FOMO."
+        }
+
         goal = mode_prompts.get(context, mode_prompts['CLOSING'])
-        
+        style_instruction = style_prompts.get(closing_style, style_prompts['MIXED'])
+
         system_prompt = f"""
         {brand_context}
         
-        You are a Master Sales Closer and Digital Marketer for Nigerian businesses. 
-        Your goal is to provide 3 different response options for the business owner to send on WhatsApp:
-        1. Professional & Direct
-        2. Naija Friendly (using warm local Nigerian context/pidgin where appropriate)
-        3. Urgent (FOMO/Scarcity)
+        You are a Master Sales Closer and Negotiation Strategist for Nigerian MSMEs. 
+        Analyze the customer's sentiment and generate 3 tailored response options.
+        
+        Closing Style Focus: {style_instruction}
+        Randomization Token: {random_seed}
         
         You MUST return a JSON object with the following exact keys:
-        - "options": An array of exactly 3 strings containing the response messages.
-        - "one_liner": A single high-impact one-liner opener that immediately hooks the customer.
-        - "strategy_tip": A one-sentence tip explaining why these options work.
-        - "do_not_say": An array of 2-3 phrases or arguments the seller must AVOID using in this specific situation (e.g. "We don't do refunds", "Our price is final").
-        
-        Example JSON format:
-        {{
-          "options": ["Option 1 text", "Option 2 text", "Option 3 text"],
-          "one_liner": "Hook text here",
-          "strategy_tip": "Strategy explanation here",
-          "do_not_say": ["Avoid phrase 1", "Avoid phrase 2"]
-        }}
+        - "intent_analysis": A single sentence analyzing the customer's mindset (e.g. "Customer has budget hesitation and needs trust assurance").
+        - "options": An array of exactly 3 different, non-generic response messages for WhatsApp.
+        - "one_liner": A single high-impact hook line to grab attention immediately.
+        - "strategy_tip": A strategic tip explaining why these options will convert this specific lead.
+        - "do_not_say": An array of 2-3 phrases or mistakes to avoid in this exact situation.
         """
         
         prompt = f"{goal} \nCustomer Message: '{customer_message}'"
         
         try:
             result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
-            # Guarantee matching fields if model fails to output correct schema structure
             if not isinstance(result, dict):
                 result = {}
             if 'options' not in result or not isinstance(result['options'], list) or len(result['options']) == 0:
                 result['options'] = [
-                    "Hello! Thanks for reaching out. How can I help you complete your order?",
-                    "Hey there! Let's get you set up with this order right away.",
-                    "Hurry! Grab yours now before stock runs out."
+                    "Hello! We can get this dispatched to you today. Would you prefer transfer or card payment?",
+                    "My boss! Make we slice small discount on shipping give you so you fit complete order now.",
+                    "We have only 2 slots remaining for today's batch. Grab yours now before price increases tomorrow!"
                 ]
             if 'one_liner' not in result or not result['one_liner']:
-                result['one_liner'] = "Let's close this order for you today!"
+                result['one_liner'] = "Let's lock in your order right away!"
             if 'strategy_tip' not in result or not result['strategy_tip']:
-                result['strategy_tip'] = "Keep the conversation flowing and make ordering as simple as possible."
+                result['strategy_tip'] = "Always ask a closing question at the end to make it effortless for the buyer to say yes."
             if 'do_not_say' not in result or not isinstance(result['do_not_say'], list):
-                result['do_not_say'] = ["Please reply now", "Price is final"]
-                
+                result['do_not_say'] = ["Our price is non-negotiable", "You can check elsewhere if you like"]
+            if 'intent_analysis' not in result or not result['intent_analysis']:
+                result['intent_analysis'] = "Customer is evaluating value vs price and needs a clear call to action."
+
             deduct_credits(request.user, 'sales_script')
             return Response(result)
         except Exception as e:
             fallback = {
+                "intent_analysis": "Customer needs value assurance and a smooth checkout option.",
                 "options": [
-                    "Hello! Thanks for reaching out. How can I help you complete your order?",
-                    "Hey there! Let's get you set up with this order right away.",
-                    "Hurry! Grab yours now before stock runs out."
+                    "Hello! We can get this dispatched to you today. Would you prefer transfer or card payment?",
+                    "My boss! Make we slice small discount on shipping give you so you fit complete order now.",
+                    "We have only 2 slots remaining for today's batch. Grab yours now before price increases tomorrow!"
                 ],
-                "one_liner": "Let's close this order for you today!",
-                "strategy_tip": "Keep the conversation flowing and make ordering as simple as possible.",
-                "do_not_say": ["Please reply now", "Price is final"]
+                "one_liner": "Let's lock in your order right away!",
+                "strategy_tip": "Always ask a closing question at the end to make it effortless for the buyer to say yes.",
+                "do_not_say": ["Our price is non-negotiable", "You can check elsewhere if you like"]
             }
             return Response(fallback)
 
