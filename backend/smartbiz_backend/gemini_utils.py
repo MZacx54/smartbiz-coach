@@ -195,16 +195,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                     # Return graceful simulated fallback text instead of throwing hard 500 error
                     print("API Quota Exhausted and Retries Failed. Executing Local AI Fallback Engine.")
                     if response_format and response_format.get("type") == "json_object":
-                        return json.dumps({
-                            "options": [
-                                "Hello! Thanks for reaching out. How can I help you complete your order?",
-                                "Hey there! Let's get you set up with this order right away.",
-                                "Hurry! Grab yours now before stock runs out."
-                            ],
-                            "one_liner": "Let's close this order for you today!",
-                            "strategy_tip": "Keep the conversation flowing and make ordering as simple as possible.",
-                            "do_not_say": ["Please reply now", "Price is final"]
-                        })
+                        return get_dynamic_json_fallback(messages)
                     return "Here is a high-engaging, professional post tailored for your business audience: Leverage modern technology to scale up operations and close deals effortlessly today! #smartbusiness"
             
             print(f"Gemini API Error: {e.code} - {error_msg}")
@@ -215,16 +206,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
             
             # Local fallback for standard auth / rate limit block
             if response_format and response_format.get("type") == "json_object":
-                return json.dumps({
-                    "options": [
-                        "Hello! Thanks for reaching out. How can I help you complete your order?",
-                        "Hey there! Let's get you set up with this order right away.",
-                        "Hurry! Grab yours now before stock runs out."
-                    ],
-                    "one_liner": "Let's close this order for you today!",
-                    "strategy_tip": "Keep the conversation flowing and make ordering as simple as possible.",
-                    "do_not_say": ["Please reply now", "Price is final"]
-                })
+                return get_dynamic_json_fallback(messages)
             return "Here is a high-engaging, professional post tailored for your business audience: Leverage modern technology to scale up operations and close deals effortlessly today! #smartbusiness"
         except Exception as exc:
             if attempt < max_retries - 1:
@@ -233,17 +215,52 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                 continue
             
             if response_format and response_format.get("type") == "json_object":
-                return json.dumps({
-                    "options": [
-                        "Hello! Thanks for reaching out. How can I help you complete your order?",
-                        "Hey there! Let's get you set up with this order right away.",
-                        "Hurry! Grab yours now before stock runs out."
-                    ],
-                    "one_liner": "Let's close this order for you today!",
-                    "strategy_tip": "Keep the conversation flowing and make ordering as simple as possible.",
-                    "do_not_say": ["Please reply now", "Price is final"]
-                })
+                return get_dynamic_json_fallback(messages)
             return "Here is a high-engaging, professional post tailored for your business audience: Leverage modern technology to scale up operations and close deals effortlessly today! #smartbusiness"
+
+def get_dynamic_json_fallback(messages):
+    """
+    Scans the prompt/messages context to return the correct JSON structure for the calling feature.
+    """
+    prompt_str = str(messages).lower()
+    
+    # 1. Social post content creator
+    if "caption" in prompt_str or "hashtags" in prompt_str or "carousel" in prompt_str:
+        return json.dumps({
+            "caption": "Looking for the best way to handle daily operations and scale your business? SmartBiz Coach has got you covered! Let our AI tools automate your marketing, brand building, and growth roadmap starting today. 🚀📈",
+            "hashtags": ["SmartBizCoach", "NigeriaBusiness", "SMEGrowth", "LagosBiz", "NaijaTech"],
+            "callToAction": "Click the link in bio to build your free brand identity and start generating posts!",
+            "imageText": "Empowering Nigerian Businesses with AI",
+            "dmReply": "Hello! Thanks for your interest. Send us a message or click the link in our bio to get started right away!",
+            "slides": [
+                {"title": "Step 1: Build Your Brand", "content": "Establish a strong identity instantly."},
+                {"title": "Step 2: Automate Posts", "content": "Create beautiful content with one click."}
+            ]
+        })
+        
+    # 2. Video Script generator
+    if "script" in prompt_str or "hook" in prompt_str or "audio_suggestions" in prompt_str:
+        return json.dumps({
+            "title": "Closing WhatsApp Deals in 3 Easy Steps",
+            "hook": "Objection handling is the secret weapon to double your sales today!",
+            "body": "First, align with the customer's doubt. Second, explain the unique value of your service. Third, offer an easy, direct checkout option.",
+            "visual_cues": ["Show close-up of phone screen", "Transition to happy customer review"],
+            "audio_suggestions": ["Upbeat high-energy background music", "Notification ping sound effect"],
+            "callToAction": "Try the WhatsApp Sales Closer in our bio right now!",
+            "estimated_duration": 45
+        })
+
+    # 3. Default fallback values
+    return json.dumps({
+        "options": [
+            "Hello! Thanks for reaching out. How can I help you complete your order?",
+            "Hey there! Let's get you set up with this order right away.",
+            "Hurry! Grab yours now before stock runs out."
+        ],
+        "one_liner": "Let's close this order for you today!",
+        "strategy_tip": "Keep the conversation flowing and make ordering as simple as possible.",
+        "do_not_say": ["Please reply now", "Price is final"]
+    })
 
 
 
