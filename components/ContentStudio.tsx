@@ -69,6 +69,90 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [hookStyle, setHookStyle] = useState<HookStyle>('Educational');
     const [videoLength, setVideoLength] = useState<VideoLength>('30s');
 
+    // Teleprompter Camera Recorder States
+    const [showTeleprompter, setShowTeleprompter] = useState(false);
+    const [isTeleprompterRecording, setIsTeleprompterRecording] = useState(false);
+    const [teleprompterSpeed, setTeleprompterSpeed] = useState(2);
+    const [teleprompterRecordedBlob, setTeleprompterRecordedBlob] = useState<Blob | null>(null);
+    const [teleprompterRecordedUrl, setTeleprompterRecordedUrl] = useState<string | null>(null);
+    const teleprompterVideoRef = useRef<HTMLVideoElement>(null);
+    const teleprompterTextRef = useRef<HTMLDivElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const recordedChunksRef = useRef<Blob[]>([]);
+
+    const startTeleprompterCamera = async () => {
+        setShowTeleprompter(true);
+        setTeleprompterRecordedBlob(null);
+        setTeleprompterRecordedUrl(null);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (teleprompterVideoRef.current) {
+                teleprompterVideoRef.current.srcObject = stream;
+            }
+        } catch (err) {
+            console.error("Camera error:", err);
+            toast.error("Could not access camera/microphone. Please allow browser permissions.");
+        }
+    };
+
+    const stopTeleprompterCamera = () => {
+        if (teleprompterVideoRef.current && teleprompterVideoRef.current.srcObject) {
+            const stream = teleprompterVideoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+            teleprompterVideoRef.current.srcObject = null;
+        }
+        setShowTeleprompter(false);
+        setIsTeleprompterRecording(false);
+    };
+
+    const startRecordingTeleprompter = () => {
+        if (!teleprompterVideoRef.current || !teleprompterVideoRef.current.srcObject) {
+            toast.error("Camera feed not ready.");
+            return;
+        }
+        const stream = teleprompterVideoRef.current.srcObject as MediaStream;
+        recordedChunksRef.current = [];
+        try {
+            const recorder = new MediaRecorder(stream);
+            recorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                    recordedChunksRef.current.push(e.data);
+                }
+            };
+            recorder.onstop = () => {
+                const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+                setTeleprompterRecordedBlob(blob);
+                setTeleprompterRecordedUrl(URL.createObjectURL(blob));
+                toast.success("Teleprompter video recorded successfully!");
+            };
+            recorder.start();
+            mediaRecorderRef.current = recorder;
+            setIsTeleprompterRecording(true);
+        } catch (e) {
+            console.error("MediaRecorder error:", e);
+            toast.error("Recording not supported on this browser.");
+        }
+    };
+
+    const stopRecordingTeleprompter = () => {
+        if (mediaRecorderRef.current && isTeleprompterRecording) {
+            mediaRecorderRef.current.stop();
+            setIsTeleprompterRecording(false);
+        }
+    };
+
+    useEffect(() => {
+        let interval: any;
+        if (isTeleprompterRecording && teleprompterTextRef.current) {
+            interval = setInterval(() => {
+                if (teleprompterTextRef.current) {
+                    teleprompterTextRef.current.scrollTop += teleprompterSpeed;
+                }
+            }, 50);
+        }
+        return () => clearInterval(interval);
+    }, [isTeleprompterRecording, teleprompterSpeed]);
+
     // Photo Studio State
     const [photoDesc, setPhotoDesc] = useState('');
 
@@ -1595,9 +1679,20 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                                             {activeTab === 'Video Script' && (
                                                 <div className="space-y-6">
-                                                    <div className="flex items-center justify-between">
-                                                        <h4 className="text-indigo-400 font-extrabold text-2xl font-heading">{generatedContent.title}</h4>
-                                                        <span className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-[10px] font-bold">⏱️ {generatedContent.estimated_duration}s</span>
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-red-600/20 via-pink-600/20 to-purple-600/20 p-5 rounded-2xl border border-pink-500/30">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="text-white font-extrabold text-xl font-heading">{generatedContent.title}</h4>
+                                                                <span className="bg-pink-500/20 text-pink-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">⏱️ {generatedContent.estimated_duration || 30}s</span>
+                                                            </div>
+                                                            <p className="text-xs text-slate-300">Record yourself live reading this script with our scrolling camera teleprompter.</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={startTeleprompterCamera}
+                                                            className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white font-bold text-xs px-5 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-pink-500/20 active:scale-95 transition-all whitespace-nowrap cursor-pointer"
+                                                        >
+                                                            <span>🎥 Launch Teleprompter Recorder</span>
+                                                        </button>
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1772,6 +1867,135 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 currentCredits={credits}
                 onConfirm={deductOnConfirm || (() => {})}
             />
+            {/* Teleprompter Camera Recorder Modal Overlay */}
+            {showTeleprompter && (
+                <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4 sm:p-6">
+                    <div className="bg-slate-900 border border-white/10 rounded-3xl max-w-4xl w-full h-[90vh] flex flex-col overflow-hidden shadow-2xl relative">
+                        {/* Header */}
+                        <div className="p-4 sm:p-6 bg-slate-800/80 border-b border-white/10 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">🎥</span>
+                                <div>
+                                    <h3 className="text-white font-extrabold text-lg">In-App Camera Teleprompter</h3>
+                                    <p className="text-slate-400 text-xs">Look directly into your camera while reading the scrolling script.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={stopTeleprompterCamera}
+                                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-full text-xs font-bold transition-all cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Main Studio View (Camera + Teleprompter Split) */}
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:p-6 bg-slate-950 overflow-hidden">
+                            {/* Left: Camera Feed */}
+                            <div className="relative bg-black rounded-2xl overflow-hidden flex items-center justify-center border border-white/10 shadow-inner min-h-[250px]">
+                                <video
+                                    ref={teleprompterVideoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className="w-full h-full object-cover transform -scale-x-100"
+                                />
+
+                                {/* Recording Status Overlay */}
+                                {isTeleprompterRecording && (
+                                    <div className="absolute top-4 left-4 bg-red-600/90 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2 animate-pulse shadow-lg z-10">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                                        <span>RECORDING LIVE</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right: Scrolling Teleprompter Box */}
+                            <div className="flex flex-col bg-slate-900/90 rounded-2xl border border-white/10 p-5 overflow-hidden relative min-h-[250px]">
+                                <div className="flex justify-between items-center pb-3 border-b border-white/10 mb-3">
+                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">📜 Teleprompter Script</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold text-slate-400">Scroll Speed:</span>
+                                        {[1, 2, 3, 4, 5].map((speed) => (
+                                            <button
+                                                key={speed}
+                                                onClick={() => setTeleprompterSpeed(speed)}
+                                                className={`w-6 h-6 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                                    teleprompterSpeed === speed ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                                                }`}
+                                            >
+                                                {speed}x
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Scrolling Script Text Container */}
+                                <div
+                                    ref={teleprompterTextRef}
+                                    className="flex-1 overflow-y-auto pr-2 space-y-6 scroll-smooth text-white text-base sm:text-lg font-medium leading-relaxed"
+                                >
+                                    {generatedContent?.hook && (
+                                        <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 space-y-1">
+                                            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">🪝 The Hook</span>
+                                            <p className="font-bold text-indigo-100 italic">"{generatedContent.hook}"</p>
+                                        </div>
+                                    )}
+
+                                    {generatedContent?.body && (
+                                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">📄 Script Body</span>
+                                            <p className="whitespace-pre-wrap text-slate-200">{generatedContent.body}</p>
+                                        </div>
+                                    )}
+
+                                    {generatedContent?.callToAction && (
+                                        <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 space-y-1">
+                                            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">📣 Call to Action</span>
+                                            <p className="font-bold text-emerald-100">"{generatedContent.callToAction}"</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Bottom Controls Bar */}
+                        <div className="p-4 sm:p-6 bg-slate-900 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                {!isTeleprompterRecording ? (
+                                    <button
+                                        onClick={startRecordingTeleprompter}
+                                        className="flex-1 sm:flex-initial bg-red-600 hover:bg-red-500 text-white font-bold text-xs px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+                                    >
+                                        <span className="w-3 h-3 rounded-full bg-white"></span>
+                                        <span>Start Recording</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={stopRecordingTeleprompter}
+                                        className="flex-1 sm:flex-initial bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer animate-bounce"
+                                    >
+                                        <span className="w-3 h-3 rounded-sm bg-white"></span>
+                                        <span>Stop Recording</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Playback & Download Recorded Clip */}
+                            {teleprompterRecordedUrl && (
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    <a
+                                        href={teleprompterRecordedUrl}
+                                        download={`SmartBiz_Product_Reel_${Date.now()}.webm`}
+                                        className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                                    >
+                                        <span>⬇️ Download Recorded Video</span>
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
