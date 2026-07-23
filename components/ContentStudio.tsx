@@ -153,17 +153,14 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         if (file) {
             setSelectedImage(file);
             const reader = new FileReader();
-            reader.onloadend = async () => {
+            reader.onloadend = () => {
                 const result = reader.result as string;
                 setImagePreview(result);
                 setImageHistory([result]);
                 setHistoryIndex(0);
                 setIsFlyerMode(true);
-                setSelectedBackdrop('white'); // Leave plain white by default!
-                toast.success("Image uploaded! Removing background...");
-                
-                // Automatically run pure background removal on upload
-                await performImageEdit('[ACTION] no_bg', result);
+                setSelectedBackdrop('raw'); // Keep raw photo untouched on upload!
+                toast.success("Photo uploaded! Click 'Remove Background' or select an enhancement below.");
             };
             reader.readAsDataURL(file);
         }
@@ -1079,8 +1076,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                         >
                                             <div>
                                                 <span className="text-5xl block mb-4">📸</span>
-                                                <p className="text-base font-black text-slate-200">Snap & Upload Your Product</p>
-                                                <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">We will automatically remove any messy background, enhance the product colors, and format it for social media instantly!</p>
+                                                <p className="text-base font-black text-slate-200">Upload Your Raw Product Photo</p>
+                                                <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">Your photo will be loaded in its pure raw state. You can then isolate the product with 1-click background removal or overlay studio backdrops!</p>
                                                 <p className="text-[10px] text-slate-500 mt-4">Supports PNG, JPG, JPEG (Max 5MB)</p>
                                             </div>
                                         </div>
@@ -1095,12 +1092,19 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 className="w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl relative select-none flex items-center justify-center aspect-square max-w-[450px]"
                                                 ref={flyerRef}
                                                 style={
+                                                    selectedBackdrop === 'raw' ? { backgroundColor: '#0f172a' } :
+                                                    selectedBackdrop === 'transparent' ? {
+                                                        backgroundImage: 'radial-gradient(#475569 1px, transparent 1px), radial-gradient(#475569 1px, #0f172a 1px)',
+                                                        backgroundSize: '16px 16px',
+                                                        backgroundPosition: '0 0, 8px 8px'
+                                                    } :
                                                     selectedBackdrop === 'white' ? { backgroundColor: '#ffffff' } :
                                                     selectedBackdrop === 'grey' ? { backgroundColor: '#f3f4f6' } :
                                                     selectedBackdrop === 'gradient-warm' ? { backgroundImage: 'linear-gradient(to bottom right, #ffedd5, #fee2e2)' } :
                                                     selectedBackdrop === 'gradient-cool' ? { backgroundImage: 'linear-gradient(to bottom right, #e0e7ff, #fae8ff)' } :
                                                     selectedBackdrop === 'wood' ? { backgroundImage: 'linear-gradient(to bottom, #7c2d12, #451a03)' } :
                                                     selectedBackdrop === 'marble' ? { backgroundImage: 'linear-gradient(to bottom right, #f8fafc, #e2e8f0)' } :
+                                                    selectedBackdrop === 'dark' ? { backgroundImage: 'linear-gradient(to bottom right, #0f172a, #1e1b4b)' } :
                                                     { backgroundColor: '#ffffff' }
                                                 }
                                             >
@@ -1108,7 +1112,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 {isApplyingAiEdit && (
                                                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-3">
                                                         <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                                        <p className="text-[11px] font-black text-white tracking-widest uppercase">AI Magic Processing...</p>
+                                                        <p className="text-[11px] font-black text-white tracking-widest uppercase">AI Processing Product...</p>
                                                     </div>
                                                 )}
 
@@ -1140,17 +1144,17 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             </div>
 
                                             {/* Swap Product Image & Undo Controls */}
-                                            <div className="flex items-center gap-4 mt-4">
+                                            <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
                                                 <button 
                                                     disabled={historyIndex <= 0 || isApplyingAiEdit}
                                                     onClick={handleUndo}
-                                                    className="text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 transition-all flex items-center gap-1 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800"
+                                                    className="text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 transition-all flex items-center gap-1 bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-800 cursor-pointer"
                                                 >
-                                                    ↩️ Undo Last Edit
+                                                    ↩️ Undo
                                                 </button>
                                                 <button 
                                                     onClick={() => fileInputRef.current?.click()}
-                                                    className="text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                                                    className="text-xs font-bold text-slate-300 hover:text-white transition-colors bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-800 cursor-pointer"
                                                 >
                                                     🔄 Upload different photo
                                                 </button>
@@ -1160,27 +1164,60 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                         {/* Right Sidebar: Simple Workspace Action Controls */}
                                         <div className="space-y-6 bg-slate-900/40 p-5 rounded-2xl border border-slate-800/80">
                                             
-                                            {/* Style Selector */}
+                                            {/* Step 1: Background Removal */}
                                             <div className="space-y-2.5">
-                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">1. SELECT BACKDROP STYLE</label>
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">1. BACKGROUND ISOLATION</label>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={isApplyingAiEdit}
+                                                        onClick={async () => {
+                                                            const rawImg = imageHistory[0] || imagePreview;
+                                                            setSelectedBackdrop('transparent');
+                                                            await performImageEdit('[ACTION] no_bg', rawImg);
+                                                        }}
+                                                        className="w-full py-3 px-4 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/20 hover:from-indigo-500 hover:to-violet-500 transition-all flex items-center justify-center gap-2 cursor-pointer border border-indigo-500/30"
+                                                    >
+                                                        <span>✂️ Remove Background (Transparent)</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedBackdrop('raw');
+                                                            setHistoryIndex(0);
+                                                        }}
+                                                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
+                                                            selectedBackdrop === 'raw'
+                                                                ? 'bg-slate-800 text-white border-slate-700'
+                                                                : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'
+                                                        }`}
+                                                    >
+                                                        📷 Keep Raw Original
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Step 2: Instant Background Overlay */}
+                                            <div className="space-y-2.5">
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">2. INSTANT BACKDROP OVERLAY</label>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     {[
+                                                        { id: 'transparent', label: '🏁 Transparent' },
+                                                        { id: 'white', label: '⬜ Pure White' },
+                                                        { id: 'grey', label: '🏢 Studio Grey' },
                                                         { id: 'marble', label: '🏛️ Luxury Marble' },
-                                                        { id: 'grey', label: '🏢 Clean Office' },
                                                         { id: 'wood', label: '🪵 Rustic Wood' },
-                                                        { id: 'gradient-warm', label: '🌅 Sunset Warmth' }
+                                                        { id: 'gradient-warm', label: '🌅 Sunset Warmth' },
+                                                        { id: 'dark', label: '🌃 Dark Lux' }
                                                     ].map((bg) => (
                                                         <button
                                                             key={bg.id}
                                                             type="button"
-                                                            onClick={async () => {
+                                                            onClick={() => {
                                                                 setSelectedBackdrop(bg.id);
-                                                                if (imageHistory[0]) {
-                                                                    // Request same background composition on backend
-                                                                    await performImageEdit(`[SCENE] ${bg.id === 'grey' ? 'studio' : bg.id}`);
-                                                                }
+                                                                toast.success(`Applied ${bg.label} backdrop!`);
                                                             }}
-                                                            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all border text-center ${
+                                                            className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
                                                                 selectedBackdrop === bg.id
                                                                     ? 'bg-indigo-600 text-white border-indigo-700 shadow-md shadow-indigo-600/10'
                                                                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'
@@ -1192,45 +1229,66 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 </div>
                                             </div>
 
-                                            {/* Price Input */}
-                                            <div className="space-y-1.5">
-                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">2. PRICE TAG (₦)</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={flyerPrice} 
-                                                    onChange={(e) => setFlyerPrice(e.target.value)}
-                                                    placeholder="e.g. 15,000"
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
-                                                />
+                                            {/* Step 3: Optional AI Enhancements */}
+                                            <div className="space-y-2.5">
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">3. OPTIONAL AI ENHANCEMENTS</label>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={isApplyingAiEdit}
+                                                        onClick={() => performImageEdit('[ACTION] enhance_details')}
+                                                        className="w-full py-2 px-3 rounded-xl text-xs font-bold bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                                    >
+                                                        <span>✨ Enhance Colors & Details</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        disabled={isApplyingAiEdit}
+                                                        onClick={() => performImageEdit('[ACTION] add_shadows')}
+                                                        className="w-full py-2 px-3 rounded-xl text-xs font-bold bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-900 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                                    >
+                                                        <span>🌟 Add Studio Lighting & Shadows</span>
+                                                    </button>
+                                                </div>
                                             </div>
 
-                                            {/* Discount Input */}
-                                            <div className="space-y-1.5">
-                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">3. DISCOUNT LABEL (%)</label>
-                                                <input 
-                                                    type="text" 
-                                                    value={flyerPromo} 
-                                                    onChange={(e) => setFlyerPromo(e.target.value)}
-                                                    placeholder="e.g. 20% OFF"
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
-                                                />
+                                            {/* Step 4: Price & Discount Flyer Tag */}
+                                            <div className="space-y-2 pt-2 border-t border-slate-800/60">
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">4. PROMO TAGS (OPTIONAL)</label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <input 
+                                                        type="text" 
+                                                        value={flyerPrice} 
+                                                        onChange={(e) => setFlyerPrice(e.target.value)}
+                                                        placeholder="Price ₦"
+                                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                    />
+                                                    <input 
+                                                        type="text" 
+                                                        value={flyerPromo} 
+                                                        onChange={(e) => setFlyerPromo(e.target.value)}
+                                                        placeholder="Discount %"
+                                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                                                    />
+                                                </div>
                                             </div>
 
-                                            {/* Main Download Button */}
+                                            {/* Save & Download */}
                                             <div className="pt-4 border-t border-slate-800/80 space-y-2">
                                                 <button 
                                                     onClick={handleDownloadFlyer}
-                                                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/20"
+                                                    className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/20 cursor-pointer"
                                                 >
-                                                    📥 Save & Download Flyer
+                                                    📥 Save & Download Image
                                                 </button>
                                                 <button 
                                                     onClick={() => {
                                                         setImagePreview(null);
                                                         setImageHistory([]);
                                                         setHistoryIndex(-1);
+                                                        setSelectedBackdrop('raw');
                                                     }}
-                                                    className="w-full py-2 bg-slate-950 hover:bg-slate-900 text-rose-400/80 rounded-xl font-extrabold text-[10px] uppercase tracking-wider transition-all"
+                                                    className="w-full py-2 bg-slate-950 hover:bg-slate-900 text-rose-400/80 rounded-xl font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
                                                 >
                                                     Clear Workspace
                                                 </button>
