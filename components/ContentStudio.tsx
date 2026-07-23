@@ -576,21 +576,38 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
     const handleDownloadFlyer = async () => {
         if (!flyerRef.current) return;
-        toast.loading("Exporting your premium flyer...", { id: "flyer-download" });
+        toast.loading("Exporting your product photo...", { id: "flyer-download" });
         try {
+            const isTransparentBg = selectedBackdrop === 'transparent';
+            const originalBgImage = flyerRef.current.style.backgroundImage;
+            const originalBgColor = flyerRef.current.style.backgroundColor;
+
+            // If transparent mode, temporarily remove checkerboard preview grid during export
+            if (isTransparentBg) {
+                flyerRef.current.style.backgroundImage = 'none';
+                flyerRef.current.style.backgroundColor = 'transparent';
+            }
+
             const dataUrl = await toPng(flyerRef.current, {
                 quality: 0.98,
-                pixelRatio: 2, // Retains high-res sharpness
+                pixelRatio: 2, // High resolution sharpness
                 cacheBust: true,
             });
+
+            // Restore preview styling
+            if (isTransparentBg) {
+                flyerRef.current.style.backgroundImage = originalBgImage;
+                flyerRef.current.style.backgroundColor = originalBgColor;
+            }
+
             const link = document.createElement('a');
-            link.download = `smartbiz_flyer_${Date.now()}.png`;
+            link.download = `smartbiz_product_${selectedBackdrop}_${Date.now()}.png`;
             link.href = dataUrl;
             link.click();
-            toast.success("Flyer exported successfully! Post it to your WhatsApp Status! 🚀", { id: "flyer-download" });
+            toast.success("Photo exported successfully! 🚀", { id: "flyer-download" });
         } catch (err) {
             console.error("Flyer export failed:", err);
-            toast.error("Failed to export flyer. Please try again.", { id: "flyer-download" });
+            toast.error("Failed to export photo. Please try again.", { id: "flyer-download" });
         }
     };
 
@@ -1213,9 +1230,16 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         <button
                                                             key={bg.id}
                                                             type="button"
-                                                            onClick={() => {
+                                                            onClick={async () => {
                                                                 setSelectedBackdrop(bg.id);
-                                                                toast.success(`Applied ${bg.label} backdrop!`);
+                                                                // Auto-isolate product if still in raw state so backdrop shows cleanly behind product
+                                                                if (historyIndex === 0 && imageHistory.length === 1 && bg.id !== 'raw') {
+                                                                    const rawImg = imageHistory[0] || imagePreview;
+                                                                    toast("Isolating product to display backdrop...", { icon: '✂️' });
+                                                                    await performImageEdit('[ACTION] no_bg', rawImg);
+                                                                } else {
+                                                                    toast.success(`Applied ${bg.label} backdrop!`);
+                                                                }
                                                             }}
                                                             className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
                                                                 selectedBackdrop === bg.id

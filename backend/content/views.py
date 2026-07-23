@@ -272,18 +272,18 @@ class EditImageView(views.APIView):
             
             width, height = img.size
             
-            # 0. Integrated Auto Studio Filter (AI Clean Background Matting & Backdrop Compositing)
+            # 0. High-Fidelity Background Removal & Matting
             if prompt_text.startswith('[ACTION] auto_studio') or prompt_text.startswith('[ACTION] no_bg'):
-                # Convert to RGB array for intelligent edge & background detection
                 rgb_img = img.convert('RGB')
                 w, h = img.size
                 
-                # Sample corners (top-left, top-right, bottom-left, bottom-right) to determine multi-point background palette
+                # Multi-point background color sampling
                 corners = [
                     rgb_img.getpixel((5, 5)),
                     rgb_img.getpixel((w - 5, 5)),
                     rgb_img.getpixel((5, h - 5)),
-                    rgb_img.getpixel((w - 5, h - 5))
+                    rgb_img.getpixel((w - 5, h - 5)),
+                    rgb_img.getpixel((w // 2, 5))
                 ]
                 
                 datas = img.getdata()
@@ -292,34 +292,35 @@ class EditImageView(views.APIView):
                 for y in range(h):
                     for x in range(w):
                         item = datas[y * w + x]
-                        r, g, b, a = item[0], item[1], item[2], item[3] if len(item) > 3 else 255
+                        r, g, b = item[0], item[1], item[2]
+                        orig_a = item[3] if len(item) > 3 else 255
                         
-                        # Distance to any background sample point
                         min_bg_dist = min(
-                            sum((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2 for c in corners) ** 0.5
+                            sum((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2) ** 0.5
                             for c in corners
                         )
                         
-                        # Detect light bedsheets, ground surfaces, and ambient shadows
-                        is_white_sheet = (r > 175 and g > 175 and b > 175)
-                        is_shadow_crease = (abs(r - g) < 15 and abs(g - b) < 15 and (r < 110 or r > 160) and min_bg_dist < 120)
-                        is_edge = (x < 15 or x > w - 15 or y < 15 or y > h - 15) and min_bg_dist < 140
+                        is_white_sheet = (r > 195 and g > 195 and b > 195)
+                        is_edge_border = (x < 12 or x > w - 12 or y < 12 or y > h - 12) and min_bg_dist < 130
                         
-                        if min_bg_dist < 90 or is_white_sheet or is_shadow_crease or is_edge:
-                            newData.append((255, 255, 255, 0)) # Make pixel transparent
+                        if min_bg_dist < 65 or (is_white_sheet and min_bg_dist < 110) or is_edge_border:
+                            newData.append((255, 255, 255, 0))
+                        elif min_bg_dist < 95:
+                            # Soft alpha feathering on borders for ultra-smooth edges
+                            alpha_val = int(255 * ((min_bg_dist - 65) / 30))
+                            newData.append((r, g, b, min(orig_a, alpha_val)))
                         else:
-                            newData.append((r, g, b, 255))
+                            newData.append((r, g, b, orig_a))
                             
                 img.putdata(newData)
                 
-                # Step B: Auto HD Enhance foreground subject
+                # HD Enhance foreground subject
                 enhancer = ImageEnhance.Contrast(img)
-                img = enhancer.enhance(1.2)
+                img = enhancer.enhance(1.18)
                 enhancer = ImageEnhance.Color(img)
-                img = enhancer.enhance(1.1)
+                img = enhancer.enhance(1.12)
                 
                 if prompt_text.startswith('[ACTION] auto_studio'):
-                    # Step C: Composite isolated subject onto selected backdrop (Marble Studio)
                     bg = Image.new("RGBA", (w, h), (255, 255, 255, 255))
                     draw = ImageDraw.Draw(bg)
                     for py in range(h):
@@ -328,7 +329,6 @@ class EditImageView(views.APIView):
                     for i in range(0, w + h, 90):
                         draw.line([(i, 0), (i - h, h)], fill=(215, 215, 215, 75), width=2)
                     
-                    # Scale product to fill maximum canvas dimensions (95%)
                     prod_w = int(w * 0.95)
                     prod_h = int(prod_w * (h / w))
                     prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
@@ -337,19 +337,6 @@ class EditImageView(views.APIView):
                     offset_y = (h - prod_h) // 2
                     bg.paste(prod_resized, (offset_x, offset_y), prod_resized)
                     img = bg
-                
-            # 1. Background removal filter
-            elif prompt_text.startswith('[ACTION] no_bg'):
-                datas = img.getdata()
-                newData = []
-                ref_color = datas[0] # (r, g, b, a)
-                for item in datas:
-                    dist = sum((item[i] - ref_color[i]) ** 2 for i in range(3)) ** 0.5
-                    if dist < 45 or (item[0] > 235 and item[1] > 235 and item[2] > 235):
-                        newData.append((255, 255, 255, 0)) # transparent
-                    else:
-                        newData.append(item)
-                img.putdata(newData)
                 
             # 2. HD Enhance filter
             elif prompt_text.startswith('[ACTION] hd_enhance'):
