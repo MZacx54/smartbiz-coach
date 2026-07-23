@@ -23,6 +23,8 @@ interface Product {
   cost_price?: string;
   sku?: string;
   low_stock_threshold?: number;
+  video_url?: string;
+  video_data?: string;
 }
 
 const mockProducts: Product[] = [
@@ -1526,6 +1528,60 @@ const ProductManager: React.FC = () => {
                          >
                            <span>🎨</span> Photo Studio
                          </button>
+                       </div>
+
+                       {/* Product Video Section */}
+                       <div className="space-y-3 pt-4 border-t border-slate-100">
+                         <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                           <span>🎥</span> Product Video Clip (Optional)
+                         </label>
+                         
+                         {currentProduct.video_data || currentProduct.video_url ? (
+                           <div className="relative rounded-3xl overflow-hidden border border-slate-100 bg-black aspect-[4/3]">
+                             <video
+                               src={currentProduct.video_data || currentProduct.video_url}
+                               controls
+                               className="w-full h-full object-contain"
+                             />
+                             <button
+                               type="button"
+                               onClick={() => setCurrentProduct(prev => ({ ...prev, video_data: '', video_url: '' }))}
+                               className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white rounded-xl px-3 py-1.5 text-xs shadow-md transition-all font-bold border-0 cursor-pointer"
+                             >
+                               Remove Video
+                             </button>
+                           </div>
+                         ) : (
+                           <div className="border-2 border-dashed border-slate-200 rounded-3xl p-5 text-center bg-slate-50/50 flex flex-col items-center justify-center gap-2">
+                             <span className="text-xl">🎬</span>
+                             <p className="text-xs font-bold text-slate-700">No Product Video Uploaded</p>
+                             <p className="text-[10px] text-slate-400">Record a short 15-30s video demonstration of your item</p>
+                           </div>
+                         )}
+
+                         <label className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white cursor-pointer px-4 py-3 rounded-2xl text-xs font-bold transition-all shadow-md">
+                           <span>🎥</span> Upload / Record Product Video Clip
+                           <input
+                             type="file"
+                             accept="video/*"
+                             className="hidden"
+                             onChange={(e) => {
+                               const file = e.target.files?.[0];
+                               if (file) {
+                                 if (file.size > 50 * 1024 * 1024) {
+                                   toast.error('Video is too large (max 50MB)');
+                                   return;
+                                 }
+                                 const reader = new FileReader();
+                                 reader.onloadend = () => {
+                                   setCurrentProduct(prev => ({ ...prev, video_data: reader.result as string }));
+                                   toast.success('Product video clip attached!');
+                                 };
+                                 reader.readAsDataURL(file);
+                               }
+                             }}
+                           />
+                         </label>
                        </div>
                     </div>
 

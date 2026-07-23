@@ -217,6 +217,8 @@ export interface Product {
   quantity: number;
   sku?: string;
   image_url?: string;
+  video_url?: string;
+  video_data?: string;
   location?: string;
   metadata?: Record<string, any>;
   brand_name?: string;

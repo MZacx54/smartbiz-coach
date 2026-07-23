@@ -32,6 +32,7 @@ const PublicStorefront: React.FC = () => {
   // Cart & Checkout State
   const [cart, setCart] = useState<{ product: any; quantity: number }[]>([]);
   const [showCartModal, setShowCartModal] = useState(false);
+  const [selectedVideoProduct, setSelectedVideoProduct] = useState<any | null>(null);
   const [checkoutForm, setCheckoutForm] = useState({
     name: '',
     phone: '',
@@ -421,6 +422,20 @@ const PublicStorefront: React.FC = () => {
                               <ShoppingBag className="w-12 h-12 text-slate-200" />
                             </div>
                           )}
+
+                          {/* Video Preview Badge */}
+                          {(product.video_url || product.video_data) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedVideoProduct(product);
+                              }}
+                              className="absolute top-3 left-3 bg-gradient-to-r from-red-600 to-pink-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 hover:scale-105 transition-all z-20 cursor-pointer"
+                            >
+                              <span>▶️ Watch Product Video</span>
+                            </button>
+                          )}
+
                           <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg flex justify-between items-center z-10">
                             <span className="text-xs font-black text-slate-800">₦{parseFloat(product.price).toLocaleString()}</span>
                             {product.location && (
@@ -600,6 +615,44 @@ const PublicStorefront: React.FC = () => {
                 <MessageCircle className="w-4 h-4" /> Place Order via WhatsApp Checkout
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Product Video Modal Overlay */}
+      {selectedVideoProduct && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 text-white rounded-3xl max-w-lg w-full p-5 relative space-y-4 shadow-2xl border border-white/10">
+            <button
+              onClick={() => setSelectedVideoProduct(null)}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white rounded-full p-2 text-xs font-bold transition-all z-10"
+            >
+              ✕
+            </button>
+            <div className="space-y-1">
+              <span className="text-[9px] font-black text-pink-400 uppercase tracking-widest">Product Video Demonstration</span>
+              <h3 className="text-lg font-bold">{selectedVideoProduct.name}</h3>
+            </div>
+            <div className="rounded-2xl overflow-hidden bg-black max-h-[60vh] flex items-center justify-center">
+              <video
+                src={selectedVideoProduct.video_data || selectedVideoProduct.video_url}
+                controls
+                autoPlay
+                className="w-full max-h-[60vh] object-contain rounded-2xl"
+              />
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xl font-black text-emerald-400">₦{parseFloat(selectedVideoProduct.price).toLocaleString()}</span>
+              <button
+                onClick={() => {
+                  addToCart(selectedVideoProduct);
+                  setSelectedVideoProduct(null);
+                }}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-lg"
+              >
+                <ShoppingBag className="w-4 h-4" /> Add to Order
+              </button>
+            </div>
           </div>
         </div>
       )}

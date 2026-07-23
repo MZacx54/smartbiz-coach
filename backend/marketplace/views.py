@@ -198,14 +198,15 @@ class ProductSnapAndListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        image_base64 = request.data.get('image_base64')
+        image_base64 = request.data.get('image_base64') or request.data.get('video_snapshot_base64') or request.data.get('image')
         mime_type = request.data.get('mime_type', 'image/jpeg')
+        is_video = request.data.get('is_video', False)
 
         if not image_base64:
-            return Response({'error': 'No image provided'}, status=400)
+            return Response({'error': 'No image or video frame provided'}, status=400)
 
-        prompt = """
-        Analyze this product image and suggest details for creating a new digital inventory listing in a Nigerian small business.
+        prompt = f"""
+        Analyze this product {"video frame" if is_video else "image"} and suggest details for creating a new digital inventory listing for a Nigerian small business.
         Identify what the item is and suggest:
         1. A clear, professional Name (under 50 characters).
         2. A suggested Retail Selling Price in Nigerian Naira (₦, as an integer e.g., 15000). Make it realistic for the Nigerian market.
@@ -216,7 +217,7 @@ class ProductSnapAndListView(views.APIView):
            - If product_type is 'SERVICE', category can be: 'Consulting', 'Delivery', 'Catering', 'Design', 'IT Support', 'Training', 'Cleaning', 'Others'.
            - If product_type is 'PROPERTY', category can be: 'Apartment', 'Self-Contained', 'Office Space', 'Land', 'Warehouse', 'Short-Let', 'Others'.
            - If product_type is 'PHYSICAL', category should be a general niche name e.g. 'Fashion', 'Groceries', 'Electronics', 'Beauty', etc.
-        6. A high-converting description (2-3 sentences) suitable for Instagram or WhatsApp sales copy.
+        6. A high-converting description (2-3 sentences) suitable for Instagram or WhatsApp sales copy, emphasizing the video demonstration features.
         
         You must respond STRICTLY with a JSON object containing these keys:
         - name: string
@@ -237,10 +238,10 @@ class ProductSnapAndListView(views.APIView):
             return Response(content)
         except Exception as e:
             return Response({
-                'name': 'Scanned Product',
+                'name': 'Scanned Video Item' if is_video else 'Scanned Product',
                 'price': 5000,
                 'cost_price': 3000,
                 'product_type': 'PHYSICAL',
                 'category': 'General Goods',
-                'description': 'Scanned item description. Please edit to add details.'
+                'description': 'Scanned product video item description. Please edit to add details.'
             })

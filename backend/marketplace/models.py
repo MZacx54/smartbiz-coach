@@ -88,6 +88,8 @@ class Product(models.Model):
     price_max = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     
     image_url = models.TextField(blank=True, null=True)
+    video_url = models.TextField(blank=True, null=True)
+    video_data = models.TextField(blank=True, null=True)
     category = models.CharField(max_length=100, blank=True)
     product_type = models.CharField(max_length=20, choices=PRODUCT_TYPES, default='PHYSICAL')
     
