@@ -296,7 +296,7 @@ class EditImageView(views.APIView):
                         orig_a = item[3] if len(item) > 3 else 255
                         
                         min_bg_dist = min(
-                            sum((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2) ** 0.5
+                            ((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2) ** 0.5
                             for c in corners
                         )
                         
@@ -372,7 +372,7 @@ class EditImageView(views.APIView):
                         item = datas[y * w + x]
                         r, g, b, a = item[0], item[1], item[2], item[3] if len(item) > 3 else 255
                         min_bg_dist = min(
-                            sum((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2 for c in corners) ** 0.5
+                            ((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2) ** 0.5
                             for c in corners
                         )
                         is_white_sheet = (r > 175 and g > 175 and b > 175)
