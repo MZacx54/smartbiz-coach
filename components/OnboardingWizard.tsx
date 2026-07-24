@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '../types';
+import { NIGERIAN_STATES } from '../constants';
 
 interface OnboardingWizardProps {
   user: User;
@@ -126,13 +127,19 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Your Location</label>
-              <input
-                className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-slate-50 text-slate-800"
-                placeholder="e.g. Ikeja, Lagos"
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Your Location / State</label>
+              <select
+                className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-slate-50 text-slate-800 font-medium"
                 value={formData.location}
                 onChange={e => setFormData({ ...formData, location: e.target.value })}
-              />
+              >
+                <option value="" disabled>Select State / Location</option>
+                {NIGERIAN_STATES.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1.5">WhatsApp Business Number</label>

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { User } from '../types';
 import { authService } from '../services/authService';
+import { NIGERIAN_STATES } from '../constants';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -31,7 +32,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState('Lagos');
   const [currency, setCurrency] = useState('NGN');
 
   // Password Recovery State
@@ -232,14 +233,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Location</label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
-                      placeholder="Lagos"
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Location / State</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm font-medium text-slate-800"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                    />
+                    >
+                      <option value="" disabled>Select State / Location</option>
+                      {NIGERIAN_STATES.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
