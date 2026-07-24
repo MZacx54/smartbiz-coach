@@ -272,53 +272,82 @@ class EditImageView(views.APIView):
             
             width, height = img.size
             
-            # 0. High-Fidelity Background Removal & Matting
-            if prompt_text.startswith('[ACTION] auto_studio') or prompt_text.startswith('[ACTION] no_bg'):
-                rgb_img = img.convert('RGB')
-                w, h = img.size
+            # Helper: Border-connected BFS Floodfill Matting Engine
+            def isolate_product_subject(input_img):
+                import collections
+                if input_img.mode != 'RGBA':
+                    input_img = input_img.convert('RGBA')
+                rgb_img = input_img.convert('RGB')
+                w, h = input_img.size
+                pixels = rgb_img.load()
                 
-                # Multi-point background color sampling
-                corners = [
-                    rgb_img.getpixel((5, 5)),
-                    rgb_img.getpixel((w - 5, 5)),
-                    rgb_img.getpixel((5, h - 5)),
-                    rgb_img.getpixel((w - 5, h - 5)),
-                    rgb_img.getpixel((w // 2, 5))
-                ]
+                # Perimeter border seeds
+                border_seeds = []
+                step_x = max(1, w // 40)
+                step_y = max(1, h // 40)
+                for x in range(0, w, step_x):
+                    border_seeds.append((x, 0))
+                    border_seeds.append((x, h - 1))
+                for y in range(0, h, step_y):
+                    border_seeds.append((0, y))
+                    border_seeds.append((w - 1, y))
+                    
+                seed_colors = [pixels[sx, sy] for sx, sy in border_seeds]
+                visited = [[False] * w for _ in range(h)]
+                is_bg = [[False] * w for _ in range(h)]
+                queue = collections.deque()
                 
-                datas = img.getdata()
+                for sx, sy in border_seeds:
+                    if not visited[sy][sx]:
+                        visited[sy][sx] = True
+                        queue.append((sx, sy))
+                        
+                COLOR_TOLERANCE = 48.0
+                
+                while queue:
+                    cx, cy = queue.popleft()
+                    is_bg[cy][cx] = True
+                    cur_color = pixels[cx, cy]
+                    
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        nx, ny = cx + dx, cy + dy
+                        if 0 <= nx < w and 0 <= ny < h and not visited[ny][nx]:
+                            nr, ng, nb = pixels[nx, ny]
+                            adj_dist = ((nr - cur_color[0])**2 + (ng - cur_color[1])**2 + (nb - cur_color[2])**2) ** 0.5
+                            min_seed_dist = min(
+                                ((nr - sc[0])**2 + (ng - sc[1])**2 + (nb - sc[2])**2) ** 0.5
+                                for sc in seed_colors[::4]
+                            )
+                            if adj_dist < 30.0 and min_seed_dist < COLOR_TOLERANCE:
+                                visited[ny][nx] = True
+                                queue.append((nx, ny))
+                                
+                datas = input_img.getdata()
                 newData = []
-                
                 for y in range(h):
                     for x in range(w):
                         item = datas[y * w + x]
                         r, g, b = item[0], item[1], item[2]
                         orig_a = item[3] if len(item) > 3 else 255
                         
-                        min_bg_dist = min(
-                            ((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2) ** 0.5
-                            for c in corners
-                        )
-                        
-                        is_white_sheet = (r > 195 and g > 195 and b > 195)
-                        is_edge_border = (x < 12 or x > w - 12 or y < 12 or y > h - 12) and min_bg_dist < 130
-                        
-                        if min_bg_dist < 65 or (is_white_sheet and min_bg_dist < 110) or is_edge_border:
-                            newData.append((255, 255, 255, 0))
-                        elif min_bg_dist < 95:
-                            # Soft alpha feathering on borders for ultra-smooth edges
-                            alpha_val = int(255 * ((min_bg_dist - 65) / 30))
-                            newData.append((r, g, b, min(orig_a, alpha_val)))
+                        if is_bg[y][x]:
+                            newData.append((255, 255, 255, 0)) # Background transparent
                         else:
-                            newData.append((r, g, b, orig_a))
+                            newData.append((r, g, b, orig_a)) # Protected product item
                             
-                img.putdata(newData)
+                res_img = Image.new("RGBA", (w, h))
+                res_img.putdata(newData)
                 
-                # HD Enhance foreground subject
-                enhancer = ImageEnhance.Contrast(img)
-                img = enhancer.enhance(1.18)
-                enhancer = ImageEnhance.Color(img)
-                img = enhancer.enhance(1.12)
+                enhancer = ImageEnhance.Contrast(res_img)
+                res_img = enhancer.enhance(1.15)
+                enhancer = ImageEnhance.Color(res_img)
+                res_img = enhancer.enhance(1.10)
+                return res_img
+
+            # 0. High-Fidelity Background Removal & Matting
+            if prompt_text.startswith('[ACTION] auto_studio') or prompt_text.startswith('[ACTION] no_bg'):
+                img = isolate_product_subject(img)
+                w, h = img.size
                 
                 if prompt_text.startswith('[ACTION] auto_studio'):
                     bg = Image.new("RGBA", (w, h), (255, 255, 255, 255))
@@ -356,33 +385,7 @@ class EditImageView(views.APIView):
                 
             # 4. Backdrop Composition (Virtual Studio)
             elif prompt_text.startswith('[SCENE]'):
-                # First execute clean background matting on the input product
-                rgb_img = img.convert('RGB')
-                w, h = img.size
-                corners = [
-                    rgb_img.getpixel((5, 5)),
-                    rgb_img.getpixel((w - 5, 5)),
-                    rgb_img.getpixel((5, h - 5)),
-                    rgb_img.getpixel((w - 5, h - 5))
-                ]
-                datas = img.getdata()
-                newData = []
-                for y in range(h):
-                    for x in range(w):
-                        item = datas[y * w + x]
-                        r, g, b, a = item[0], item[1], item[2], item[3] if len(item) > 3 else 255
-                        min_bg_dist = min(
-                            ((r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2) ** 0.5
-                            for c in corners
-                        )
-                        is_white_sheet = (r > 175 and g > 175 and b > 175)
-                        is_shadow_crease = (abs(r - g) < 15 and abs(g - b) < 15 and (r < 110 or r > 160) and min_bg_dist < 120)
-                        is_edge = (x < 15 or x > w - 15 or y < 15 or y > h - 15) and min_bg_dist < 140
-                        if min_bg_dist < 90 or is_white_sheet or is_shadow_crease or is_edge:
-                            newData.append((255, 255, 255, 0))
-                        else:
-                            newData.append((r, g, b, 255))
-                img.putdata(newData)
+                img = isolate_product_subject(img)
 
                 scene_type = prompt_text.replace('[SCENE]', '').strip().lower()
                 bg = Image.new("RGBA", (width, height), (255, 255, 255, 255))

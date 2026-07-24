@@ -380,8 +380,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
     // Nano Banana Flyer Mode States
     const [isFlyerMode, setIsFlyerMode] = useState(false);
-    const [flyerPrice, setFlyerPrice] = useState('15,000');
-    const [flyerPromo, setFlyerPromo] = useState('20% OFF');
+    const [flyerPrice, setFlyerPrice] = useState('');
+    const [flyerPromo, setFlyerPromo] = useState('');
     const [flyerPhone, setFlyerPhone] = useState('0801 234 5678');
     const [selectedTrustBadges, setSelectedTrustBadges] = useState<string[]>(['POD', 'FAST']);
     const [flyerBadgeColor, setFlyerBadgeColor] = useState('indigo'); // indigo, emerald, amber, rose, slate
