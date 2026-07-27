@@ -272,56 +272,105 @@ class EditImageView(views.APIView):
             
             width, height = img.size
             
-            # Helper: Border-connected BFS Floodfill Matting Engine
-            def isolate_product_subject(input_img):
+            # Helper: Gemini 3.6 Vision AI Bounding Box + Guided BFS Matting Engine
+            def isolate_product_subject(input_img, clean_b64=None, mime_t=None):
                 import collections
                 if input_img.mode != 'RGBA':
                     input_img = input_img.convert('RGBA')
                 rgb_img = input_img.convert('RGB')
                 w, h = input_img.size
                 pixels = rgb_img.load()
-                
-                # Perimeter border seeds
-                border_seeds = []
-                step_x = max(1, w // 40)
-                step_y = max(1, h // 40)
-                for x in range(0, w, step_x):
-                    border_seeds.append((x, 0))
-                    border_seeds.append((x, h - 1))
-                for y in range(0, h, step_y):
-                    border_seeds.append((0, y))
-                    border_seeds.append((w - 1, y))
-                    
-                seed_colors = [pixels[sx, sy] for sx, sy in border_seeds]
-                visited = [[False] * w for _ in range(h)]
+
+                # Default bounding box: Central 88% region
+                ymin, xmin, ymax, xmax = int(0.06 * h), int(0.06 * w), int(0.94 * h), int(0.94 * w)
+
+                # Query Gemini 3.6 Vision API for object bounding box detection
+                if clean_b64:
+                    try:
+                        v_prompt = (
+                            "Locate the primary commercial product item in this image. "
+                            "Return JSON with key 'box_2d': [ymin, xmin, ymax, xmax] as normalized integers from 0 to 1000 "
+                            "representing the tight bounding box around the product object."
+                        )
+                        v_res = gemini_utils.generate_json_content(
+                            v_prompt,
+                            image_base64=clean_b64,
+                            mime_type=mime_t or "image/jpeg"
+                        )
+                        if isinstance(v_res, dict) and "box_2d" in v_res and isinstance(v_res["box_2d"], list) and len(v_res["box_2d"]) == 4:
+                            b = v_res["box_2d"]
+                            pad_y = int(0.02 * h)
+                            pad_x = int(0.02 * w)
+                            ymin = max(0, int((b[0] / 1000.0) * h) - pad_y)
+                            xmin = max(0, int((b[1] / 1000.0) * w) - pad_x)
+                            ymax = min(h, int((b[2] / 1000.0) * h) + pad_y)
+                            xmax = min(w, int((b[3] / 1000.0) * w) + pad_x)
+                    except Exception as err:
+                        print(f"Gemini Vision Bounding Box Detection Note: {err}")
+
                 is_bg = [[False] * w for _ in range(h)]
-                queue = collections.deque()
+
+                # Step 1: Mark everything OUTSIDE product bounding box as background
+                for y in range(h):
+                    for x in range(w):
+                        if x < xmin or x >= xmax or y < ymin or y >= ymax:
+                            is_bg[y][x] = True
+
+                # Step 2: Sample border seeds along the bounding box margins
+                border_seeds = []
+                step_x = max(1, (xmax - xmin) // 30)
+                step_y = max(1, (ymax - ymin) // 30)
                 
+                for x in range(xmin, xmax, step_x):
+                    border_seeds.append((x, ymin))
+                    border_seeds.append((x, max(ymin, ymax - 1)))
+                for y in range(ymin, ymax, step_y):
+                    border_seeds.append((xmin, y))
+                    border_seeds.append((max(xmin, xmax - 1), y))
+
+                seed_colors = [pixels[sx, sy] for sx, sy in border_seeds if 0 <= sx < w and 0 <= sy < h]
+                if not seed_colors:
+                    seed_colors = [(255, 255, 255)]
+
+                visited = [[False] * w for _ in range(h)]
+                queue = collections.deque()
+
+                # Core product protection zone (center 55% of the bounding box)
+                core_ymin = ymin + int(0.22 * (ymax - ymin))
+                core_ymax = ymax - int(0.22 * (ymax - ymin))
+                core_xmin = xmin + int(0.22 * (xmax - xmin))
+                core_xmax = xmax - int(0.22 * (xmax - xmin))
+
                 for sx, sy in border_seeds:
-                    if not visited[sy][sx]:
+                    if 0 <= sx < w and 0 <= sy < h and not visited[sy][sx]:
                         visited[sy][sx] = True
                         queue.append((sx, sy))
-                        
-                COLOR_TOLERANCE = 48.0
-                
+
+                COLOR_TOLERANCE = 45.0
+
                 while queue:
                     cx, cy = queue.popleft()
                     is_bg[cy][cx] = True
                     cur_color = pixels[cx, cy]
-                    
+
                     for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                         nx, ny = cx + dx, cy + dy
-                        if 0 <= nx < w and 0 <= ny < h and not visited[ny][nx]:
+                        if xmin <= nx < xmax and ymin <= ny < ymax and not visited[ny][nx]:
+                            # Never flood-fill inside protected core product zone
+                            if core_xmin <= nx <= core_xmax and core_ymin <= ny <= core_ymax:
+                                continue
+
                             nr, ng, nb = pixels[nx, ny]
                             adj_dist = ((nr - cur_color[0])**2 + (ng - cur_color[1])**2 + (nb - cur_color[2])**2) ** 0.5
                             min_seed_dist = min(
                                 ((nr - sc[0])**2 + (ng - sc[1])**2 + (nb - sc[2])**2) ** 0.5
                                 for sc in seed_colors[::4]
                             )
-                            if adj_dist < 30.0 and min_seed_dist < COLOR_TOLERANCE:
+
+                            if adj_dist < 28.0 and min_seed_dist < COLOR_TOLERANCE:
                                 visited[ny][nx] = True
                                 queue.append((nx, ny))
-                                
+
                 datas = input_img.getdata()
                 newData = []
                 for y in range(h):
@@ -329,24 +378,24 @@ class EditImageView(views.APIView):
                         item = datas[y * w + x]
                         r, g, b = item[0], item[1], item[2]
                         orig_a = item[3] if len(item) > 3 else 255
-                        
+
                         if is_bg[y][x]:
                             newData.append((255, 255, 255, 0)) # Background transparent
                         else:
-                            newData.append((r, g, b, orig_a)) # Protected product item
-                            
+                            newData.append((r, g, b, orig_a)) # 100% Protected product item!
+
                 res_img = Image.new("RGBA", (w, h))
                 res_img.putdata(newData)
-                
+
                 enhancer = ImageEnhance.Contrast(res_img)
-                res_img = enhancer.enhance(1.15)
+                res_img = enhancer.enhance(1.08)
                 enhancer = ImageEnhance.Color(res_img)
-                res_img = enhancer.enhance(1.10)
+                res_img = enhancer.enhance(1.05)
                 return res_img
 
             # 0. High-Fidelity Background Removal & Matting
             if prompt_text.startswith('[ACTION] auto_studio') or prompt_text.startswith('[ACTION] no_bg'):
-                img = isolate_product_subject(img)
+                img = isolate_product_subject(img, clean_b64=clean_base64, mime_t=mime_type)
                 w, h = img.size
                 
                 if prompt_text.startswith('[ACTION] auto_studio'):
@@ -385,7 +434,7 @@ class EditImageView(views.APIView):
                 
             # 4. Backdrop Composition (Virtual Studio)
             elif prompt_text.startswith('[SCENE]'):
-                img = isolate_product_subject(img)
+                img = isolate_product_subject(img, clean_b64=clean_base64, mime_t=mime_type)
 
                 scene_type = prompt_text.replace('[SCENE]', '').strip().lower()
                 bg = Image.new("RGBA", (width, height), (255, 255, 255, 255))
