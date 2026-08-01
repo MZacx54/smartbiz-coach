@@ -151,9 +151,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
 
           <div className="relative z-10 text-center max-w-md">
-            <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center text-emerald-800 text-3xl font-extrabold shadow-2xl mb-8">
-              S
-            </div>
+            <img src="/logo-square.png" alt="SmartBiz Coach" className="w-20 h-20 rounded-2xl mx-auto object-cover shadow-2xl mb-8 border border-white/20" />
             <h2 className="text-3xl font-heading font-extrabold mb-4 tracking-tight">SmartBiz Coach</h2>
             <p className="text-emerald-100 leading-relaxed text-base font-light">
               The professional AI-powered operating system for Nigerian entrepreneurs. Manage invoices, plan strategies, match grants, and close sales with confidence.

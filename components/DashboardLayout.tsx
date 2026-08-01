@@ -122,7 +122,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     className="flex items-center gap-2 cursor-pointer"
                     onClick={() => handleNavigate(AppView.DASHBOARD)}
                 >
-                    <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-white font-extrabold text-sm shadow-md">S</div>
+                    <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
                     <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -173,7 +173,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         className="flex items-center gap-2 cursor-pointer min-w-0"
                         onClick={() => handleNavigate(AppView.DASHBOARD)}
                     >
-                        <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-extrabold shadow-md flex-shrink-0">S</div>
+                        <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
                         {!isCollapsed && (
                             <span className="font-extrabold text-lg text-white font-heading truncate">SmartBiz Coach</span>
                         )}
