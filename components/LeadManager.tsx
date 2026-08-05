@@ -30,9 +30,14 @@ const LeadManager: React.FC = () => {
         setIsLoading(true);
         try {
             const response = await api.get('/api/marketplace/leads/');
-            setLeads(response.data);
+            const data = Array.isArray(response.data) ? response.data : (response.data?.results || []);
+            setLeads(data);
+            if (data.length > 0) {
+                localStorage.setItem('sb_local_leads', JSON.stringify(data));
+            }
         } catch (err) {
-            toast.error('Failed to load leads');
+            const savedLeads = JSON.parse(localStorage.getItem('sb_local_leads') || '[]');
+            setLeads(savedLeads);
         } finally {
             setIsLoading(false);
         }

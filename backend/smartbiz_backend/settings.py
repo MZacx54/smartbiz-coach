@@ -263,12 +263,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '200/day',       # Global: 200 requests/user/day
-        'brand_gen': '5/hour',   # Brand generation
-        'content_gen': '20/hour',# Content generation
-        'business_plan': '3/day',# Business plan
-        'video_gen': '5/day',    # Video script generation
-        'image_edit': '10/day',  # Image editing
+        'user': '100000/day',
     }
 }
 

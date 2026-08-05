@@ -11,21 +11,26 @@ class LeadListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        # Business owners see their leads
         if self.request.user.is_authenticated:
             return Lead.objects.filter(brand__user=self.request.user).order_by('-created_at')
         return Lead.objects.none()
 
     def perform_create(self, serializer):
-        # If public, we need to find the brand from the product
+        from brand.models import BrandIdentity
         product_id = self.request.data.get('product')
         if product_id:
-            product = Product.objects.get(id=product_id)
-            serializer.save(brand=product.brand)
-        else:
-            # General inquiry to the user's own brand (if authenticated)
-            from brand.models import BrandIdentity
-            brand = BrandIdentity.objects.get(user=self.request.user)
+            try:
+                product = Product.objects.get(id=product_id)
+                serializer.save(brand=product.brand)
+                return
+            except Product.DoesNotExist:
+                pass
+
+        if self.request.user.is_authenticated:
+            brand, _ = BrandIdentity.objects.get_or_create(
+                user=self.request.user,
+                defaults={'business_name': getattr(self.request.user, 'business_name', '') or 'My Business'}
+            )
             serializer.save(brand=brand)
 
 class LeadDetailView(generics.RetrieveUpdateDestroyAPIView):
