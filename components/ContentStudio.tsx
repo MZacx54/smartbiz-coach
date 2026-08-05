@@ -837,6 +837,12 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
     const handleGenerateVideo = async () => {
         if (!generatedContent || activeTab !== 'Video Script') return;
+        const videoCost = 3;
+        if (credits < videoCost) {
+            setDeductOnConfirm(null);
+            setShowCreditPrompt(true);
+            return;
+        }
 
         setIsGeneratingVideo(true);
         try {
@@ -844,6 +850,10 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             const response = await geminiService.generateMarketingVideo(generatedContent, visualStyle, (msg) => {
                 toast.loading(msg, { id: 'vid-gen' });
             });
+
+            const billingResponse = await billingService.deductCredits(videoCost, "AI Video Storyboard & Voiceover");
+            onUpdateCredits(billingResponse.credits);
+
             setStoryboard(response.storyboard);
             
             if (response.audio_base64) {

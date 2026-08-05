@@ -110,84 +110,52 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     }
   }, [savedBrand]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
-    if (!formData.name || !finalNiche || !formData.vibe) return;
-
-    let usage = usageLimiter.checkUsage('brand_builder', credits);
-    
-    // If regenerating an existing brand kit, bypass free daily limit and require credits
-    if (savedBrand) {
-      const creditCost = 5; // brand_builder cost
-      if (credits >= creditCost) {
-        usage = { allowed: true, useCredits: true, cost: creditCost };
-      } else {
-        usage = { allowed: false, useCredits: false, cost: creditCost, reason: 'insufficient_credits' };
-      }
-    }
-
-    if (!usage.allowed) {
-      setDeductOnConfirm(null); // Just opens to show "insufficient credits"
-      setShowCreditPrompt(true);
-      return;
-    }
-
-    if (usage.useCredits) {
-      setDeductOnConfirm(() => async () => {
-        setStep('LOADING');
-        setError('');
-        setShowCreditPrompt(false);
-        const token = localStorage.getItem('sb_auth_token');
-        if (!token) {
-          setError("You must be logged in to generate a brand.");
-          setStep('INPUT');
-          return;
-        }
-        try {
-          const resultRaw = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone);
-          const result = mapDbToBrand(resultRaw);
-          
-          // Only deduct credits if generation successfully completed
-          const billingResponse = await billingService.deductCredits(usage.cost, "AI Brand Identity Builder");
-          onUpdateCredits(billingResponse.credits);
-
-          setLocalBrandData(result);
-          onSave(result);
-          setStep('RESULT');
-          setActiveTab('IDENTITY');
-          setWaLinkMessage(`Hello ${result.businessName}, I would like to make an enquiry.`);
-        } catch (err: any) {
-          setError(err?.response?.data?.error || "Failed to generate brand. Please try again.");
-          setStep('INPUT');
-        }
-      });
-      setShowCreditPrompt(true);
-      return;
-    }
-
-    // Free Generation
+  const executeBrandGenerate = async () => {
     setStep('LOADING');
     setError('');
+    setShowCreditPrompt(false);
     const token = localStorage.getItem('sb_auth_token');
     if (!token) {
       setError("You must be logged in to generate a brand.");
       setStep('INPUT');
       return;
     }
+    const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
     try {
       const resultRaw = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone);
       const result = mapDbToBrand(resultRaw);
-      usageLimiter.incrementUsage('brand_builder');
+      
+      // Only deduct credits if generation successfully completed
+      const billingResponse = await billingService.deductCredits(5, "AI Brand Identity Builder");
+      onUpdateCredits(billingResponse.credits);
+
       setLocalBrandData(result);
       onSave(result);
       setStep('RESULT');
       setActiveTab('IDENTITY');
       setWaLinkMessage(`Hello ${result.businessName}, I would like to make an enquiry.`);
-    } catch (err) {
-      setError("Failed to generate brand. Please try again.");
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to generate brand. Please try again.");
       setStep('INPUT');
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
+    if (!formData.name || !finalNiche || !formData.vibe) return;
+
+    const brandCost = 5;
+    if (credits < brandCost) {
+      setDeductOnConfirm(null);
+      setShowCreditPrompt(true);
+      return;
+    }
+
+    setDeductOnConfirm(() => async () => {
+      await executeBrandGenerate();
+    });
+    setShowCreditPrompt(true);
   };
 
   const handleGenerateLogo = async () => {

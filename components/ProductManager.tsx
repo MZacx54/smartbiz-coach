@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Plus, Trash2, Edit3, Sparkles, Globe, Megaphone, DollarSign, Package, Tag, ArrowRight, Save, X, Download, ShieldAlert, TrendingUp, AlertTriangle, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 
 interface Product {
@@ -196,6 +197,8 @@ const ProductManager: React.FC = () => {
             image_base64: base64Clean,
             mime_type: file.type
           });
+
+          await billingService.deductCredits(1, 'AI Snap & List Scanner');
 
           setBulkDrafts(prev => prev.map(d => d.id === draftId ? {
             ...d,
@@ -500,8 +503,9 @@ const ProductManager: React.FC = () => {
         platform: 'Instagram',
         tone: 'Persuasive'
       });
+      await billingService.deductCredits(1, 'AI Product Sales Copy');
       setCurrentProduct(prev => ({ ...prev, description: response.data.caption || response.data.text }));
-      toast.success('AI Copy applied!', { id: toastId });
+      toast.success('AI Copy applied! (1 credit debited)', { id: toastId });
     } catch (err) {
       toast.error('AI craft failed. Make sure you have credits.', { id: toastId });
     }

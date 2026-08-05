@@ -1,4 +1,16 @@
-export type FeatureKey = 'brand_builder' | 'content_generator' | 'name_check' | 'business_plan' | 'grant_search' | 'debt_reminder' | 'ai_chat' | 'sales_assistant' | 'health_score' | 'pricing_assistant';
+export type FeatureKey = 
+  | 'brand_builder' 
+  | 'content_generator' 
+  | 'name_check' 
+  | 'business_plan' 
+  | 'grant_search' 
+  | 'debt_reminder' 
+  | 'ai_chat' 
+  | 'sales_assistant' 
+  | 'health_score' 
+  | 'pricing_assistant'
+  | 'snap_and_list'
+  | 'logo_generation';
 
 interface FeatureConfig {
   freeLimit: number;
@@ -7,16 +19,18 @@ interface FeatureConfig {
 }
 
 export const FEATURE_CONFIGS: Record<FeatureKey, FeatureConfig> = {
-  brand_builder: { freeLimit: 1, creditCost: 5, label: 'AI Brand Builder' },
-  content_generator: { freeLimit: 3, creditCost: 2, label: 'AI Content Generator' },
-  name_check: { freeLimit: 2, creditCost: 1, label: 'AI Name Availability Check' },
+  brand_builder: { freeLimit: 0, creditCost: 5, label: 'AI Brand Identity Builder' },
+  content_generator: { freeLimit: 0, creditCost: 2, label: 'AI Content Studio' },
+  name_check: { freeLimit: 0, creditCost: 1, label: 'AI Name Availability Check' },
   business_plan: { freeLimit: 0, creditCost: 15, label: 'AI Business Plan Generator' },
-  grant_search: { freeLimit: 2, creditCost: 2, label: 'AI Grant Search' },
-  debt_reminder: { freeLimit: 3, creditCost: 1, label: 'AI Debt Reminder' },
-  ai_chat: { freeLimit: 5, creditCost: 1, label: 'AI Live Support Chat' },
-  sales_assistant: { freeLimit: 2, creditCost: 1, label: 'AI Sales Assistant' },
-  health_score: { freeLimit: 1, creditCost: 5, label: 'AI Business Health Score' },
-  pricing_assistant: { freeLimit: 2, creditCost: 2, label: 'AI Pricing Assistant' },
+  grant_search: { freeLimit: 0, creditCost: 2, label: 'AI Grant Search' },
+  debt_reminder: { freeLimit: 0, creditCost: 1, label: 'AI Debt Reminder' },
+  ai_chat: { freeLimit: 0, creditCost: 1, label: 'AI Live Support Chat' },
+  sales_assistant: { freeLimit: 0, creditCost: 2, label: 'AI Sales Assistant' },
+  health_score: { freeLimit: 0, creditCost: 5, label: 'AI Business Health Score' },
+  pricing_assistant: { freeLimit: 0, creditCost: 2, label: 'AI Pricing Assistant' },
+  snap_and_list: { freeLimit: 0, creditCost: 1, label: 'AI Snap & List Scanner' },
+  logo_generation: { freeLimit: 0, creditCost: 2, label: 'AI Logo Generation' },
 };
 
 interface UsageRecord {
