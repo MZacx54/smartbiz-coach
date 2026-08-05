@@ -219,6 +219,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     )}
                     
                     <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🏛️" />
+                    <NavItem view={AppView.MARKETING_AGENT} label="Broadcast HQ" icon="📣" />
                     <NavItem view={AppView.LEAD_MANAGER} label="Lead Inbox" icon="📬" />
                     <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
                     <NavItem view={AppView.SALES_ASSISTANT} label="Sales Closer" icon="💬" />
@@ -248,17 +249,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.GRANT_MATCHER} label="Find Funding" icon="💰" />
                     <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
                     <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
-
-                    {!isCollapsed ? (
-                        <div className="pt-4 pb-1 px-3">
-                            <p className="text-[9px] font-black text-pink-500/70 uppercase tracking-widest">
-                                Marketing
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="border-t border-slate-800/40 my-3" />
-                    )}
-                    <NavItem view={AppView.MARKETING_AGENT} label="Broadcast HQ" icon="📣" />
 
                     {!isCollapsed ? (
                         <div className="pt-4 pb-1 px-3">

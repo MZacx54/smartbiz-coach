@@ -5,6 +5,8 @@ import { toast } from 'react-hot-toast';
 import { User } from '../types';
 import api from '../services/api';
 import { marketingService } from '../services/marketingService';
+import { billingService } from '../services/billingService';
+import CreditPromptModal from './CreditPromptModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -60,6 +62,8 @@ interface MarketingStats {
 
 interface Props {
   user: User | null;
+  credits?: number;
+  onUpdateCredits?: (credits: number) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +93,7 @@ const MESSAGE_TEMPLATES = [
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MarketingAgent: React.FC<Props> = ({ user }) => {
+const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'contacts' | 'whatsapp' | 'sms' | 'campaigns'>('overview');
   const [stats, setStats] = useState<MarketingStats | null>(null);
@@ -98,6 +102,9 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [contactsTotal, setContactsTotal] = useState(0);
   const [contactSearch, setContactSearch] = useState('');
+
+  // Credit modal state
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
 
   // Campaign creation
   const [newCampaignName, setNewCampaignName] = useState('');
@@ -235,6 +242,13 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
       toast.error('Please enter a goal or topic for the campaign');
       return;
     }
+
+    const aiCost = 2;
+    if (credits < aiCost) {
+      setShowCreditPrompt(true);
+      return;
+    }
+
     setGeneratingSuggestion(true);
     try {
       const response = await api.post('marketing/ai-suggest/', {
@@ -242,8 +256,11 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
         channel: newCampaignChannel
       });
       if (response.data.suggestion) {
+        const billingResponse = await billingService.deductCredits(aiCost, 'AI Broadcast Message Craft');
+        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+
         setNewCampaignTemplate(response.data.suggestion);
-        toast.success('AI Message suggestion generated!');
+        toast.success(`AI Message suggestion generated! (${aiCost} credits debited)`);
         setShowAiSuggestModal(false);
         setAiPromptObjective('');
       } else if (response.data.error) {
@@ -1304,6 +1321,20 @@ const MarketingAgent: React.FC<Props> = ({ user }) => {
             </form>
           </div>
         </div>
+      )}
+
+      {showCreditPrompt && (
+        <CreditPromptModal
+          isOpen={showCreditPrompt}
+          onClose={() => setShowCreditPrompt(false)}
+          onConfirm={() => {
+            setShowCreditPrompt(false);
+            navigate('/dashboard/settings');
+          }}
+          creditCost={2}
+          featureLabel="AI Broadcast Message Craft"
+          currentCredits={credits}
+        />
       )}
     </div>
   );

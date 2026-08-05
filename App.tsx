@@ -624,7 +624,7 @@ const App: React.FC = () => {
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="marketing" element={<MarketingAgent user={user} />} />
+                  <Route path="marketing" element={<MarketingAgent user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="audit" element={<PublicAuditReport />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Search, Filter, MapPin, Star, ArrowRight, Tag, ShieldCheck, Zap, Home, Briefcase, Globe, X } from 'lucide-react';
+import { ShoppingBag, Search, Filter, MapPin, Star, ArrowRight, Tag, ShieldCheck, Zap, Home, Briefcase, Globe, X, Megaphone } from 'lucide-react';
 import { UnifiedItem, User } from '../types';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
@@ -12,6 +13,7 @@ interface MarketplaceProps {
 }
 
 const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'PHYSICAL' }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'>(initialType);
   const [items, setItems] = useState<UnifiedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,8 +63,16 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         
         <div className="relative z-10 max-w-3xl space-y-5">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-[0.2em] mb-3">
-                <ShieldCheck className="w-3.5 h-3.5" /> Verified MSME Network
+             <div className="flex flex-wrap items-center gap-2 mb-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-[0.2em]">
+                   <ShieldCheck className="w-3.5 h-3.5" /> Verified MSME Network
+                </div>
+                <button
+                  onClick={() => navigate('/dashboard/marketing')}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/30 text-pink-300 text-[10px] font-bold transition-all shadow-sm cursor-pointer"
+                >
+                   <Megaphone className="w-3 h-3 text-pink-400 animate-pulse" /> Launch Broadcast HQ 📣
+                </button>
              </div>
              <h1 className="text-3xl md:text-5xl font-black font-heading tracking-tight leading-tight">
                The <span className="text-indigo-400">Unified</span> Market Square
