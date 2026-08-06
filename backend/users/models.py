@@ -4,7 +4,7 @@ from django.utils import timezone
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    credits = models.IntegerField(default=50)
+    credits = models.IntegerField(default=200)
     
     # Business Profile Fields
     business_name = models.CharField(max_length=255, blank=True)

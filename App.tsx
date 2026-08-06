@@ -199,6 +199,9 @@ const App: React.FC = () => {
         try {
           const profile = await authService.getProfile();
           setUser(normalizeUser(profile));
+          if (profile && typeof profile.credits === 'number') {
+            setUserStats((prev) => ({ ...prev, bizCredits: profile.credits }));
+          }
 
           const [brand, txs, stats, userActions] = await Promise.allSettled([
             brandService.getBrand(),
@@ -319,8 +322,14 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = (userData: User) => {
+  const handleLogin = (userData: any) => {
     setUser(normalizeUser(userData));
+    if (userData && typeof userData.credits === 'number') {
+      setUserStats((prev) => ({ ...prev, bizCredits: userData.credits }));
+    }
+    authService.getStats().then(stats => {
+      if (stats) setUserStats(stats);
+    }).catch(() => {});
     navigate('/dashboard');
   };
 
