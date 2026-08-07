@@ -134,6 +134,36 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         }
     };
 
+    const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+
+    const toggleSpeechVoiceover = () => {
+        if (!('speechSynthesis' in window)) {
+            toast.error("Voice synthesis is not supported on this browser.");
+            return;
+        }
+
+        if (isPlayingVoice) {
+            window.speechSynthesis.cancel();
+            setIsPlayingVoice(false);
+            toast("Voiceover playback stopped.", { icon: "ℹ️" });
+        } else {
+            const scriptText = `${generatedContent?.hook || ''}. ${generatedContent?.body || ''}. ${generatedContent?.callToAction || ''}`;
+            if (!scriptText.trim()) {
+                toast.error("No script text to read.");
+                return;
+            }
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(scriptText);
+            utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+            utterance.onend = () => setIsPlayingVoice(false);
+            utterance.onerror = () => setIsPlayingVoice(false);
+            window.speechSynthesis.speak(utterance);
+            setIsPlayingVoice(true);
+            toast.success("Playing AI Voiceover speech!");
+        }
+    };
+
     const stopRecordingTeleprompter = () => {
         if (mediaRecorderRef.current && isTeleprompterRecording) {
             mediaRecorderRef.current.stop();
@@ -1921,8 +1951,19 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                             {/* Right: Scrolling Teleprompter Box */}
                             <div className="flex flex-col bg-slate-900/90 rounded-2xl border border-white/10 p-5 overflow-hidden relative min-h-[250px]">
-                                <div className="flex justify-between items-center pb-3 border-b border-white/10 mb-3">
-                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">📜 Teleprompter Script</span>
+                                <div className="flex justify-between items-center pb-3 border-b border-white/10 mb-3 gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">📜 Teleprompter Script</span>
+                                        <button
+                                            type="button"
+                                            onClick={toggleSpeechVoiceover}
+                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                                                isPlayingVoice ? 'bg-red-600 text-white animate-pulse' : 'bg-indigo-600/40 text-indigo-200 hover:bg-indigo-600/60'
+                                            }`}
+                                        >
+                                            <span>{isPlayingVoice ? '⏹️ Stop Voice' : '🔊 Listen Voiceover'}</span>
+                                        </button>
+                                    </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-[10px] font-bold text-slate-400">Scroll Speed:</span>
                                         {[1, 2, 3, 4, 5].map((speed) => (

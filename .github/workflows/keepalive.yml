@@ -1,0 +1,15 @@
+name: Keep-Alive Supabase Ping
+
+on:
+  schedule:
+    # Runs every 12 hours to ensure Supabase database never pauses due to inactivity
+    - cron: '0 */12 * * *'
+  workflow_dispatch: # Allows manual trigger anytime from GitHub Actions tab
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping SmartBiz Backend Database Health Endpoint
+        run: |
+          curl -s -X GET "https://smartbiz-backend-qj3r.onrender.com/api/health/" | grep -q "connected" && echo "Supabase database ping successful!" || echo "Ping completed."
