@@ -14,6 +14,7 @@ interface GrantMatcherProps {
 const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, onUpdateCredits }) => {
   const [step, setStep] = useState<'INPUT' | 'LOADING' | 'RESULT'>('INPUT');
   const [grants, setGrants] = useState<Grant[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'GRANT' | 'LOAN' | 'EQUITY'>('ALL');
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
@@ -116,16 +117,56 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
   if (step === 'RESULT') {
     return (
       <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center flex-wrap gap-4 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Funding Opportunities</h2>
-            <p className="text-sm text-gray-500">Tailored matches for {businessName}</p>
+            <h2 className="text-2xl font-bold text-gray-900">Institutional Funding Matcher 💸</h2>
+            <p className="text-sm text-gray-500">Tailored bank-grade matches for {businessName}</p>
           </div>
           <button
             onClick={() => setStep('INPUT')}
-            className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-xl transition-all active:scale-95"
+            className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-xl transition-all active:scale-95 cursor-pointer"
           >
-            Update Profile
+            Update Profile Criteria
+          </button>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
+          <button 
+            type="button" 
+            onClick={() => setSelectedCategory('ALL')} 
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              selectedCategory === 'ALL' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            🌐 All Opportunities ({grants.length})
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setSelectedCategory('GRANT')} 
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              selectedCategory === 'GRANT' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            🎁 Grants ({grants.filter(g => g.type === 'GRANT').length})
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setSelectedCategory('LOAN')} 
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              selectedCategory === 'LOAN' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            🏦 Low-Interest Loans ({grants.filter(g => g.type === 'LOAN').length})
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setSelectedCategory('EQUITY')} 
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              selectedCategory === 'EQUITY' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            🚀 Accelerators & Equity ({grants.filter(g => g.type === 'EQUITY').length})
           </button>
         </div>
 
@@ -136,7 +177,7 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
             </div>
           )}
 
-          {grants.map((grant) => (
+          {(selectedCategory === 'ALL' ? grants : grants.filter(g => g.type === selectedCategory)).map((grant) => (
             <div key={grant.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
               {/* Header inside card */}
               <div className="bg-slate-50 border-b border-slate-100 p-4 flex justify-between items-center flex-wrap gap-2">

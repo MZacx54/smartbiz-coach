@@ -24,51 +24,54 @@ const DigitalRoadmap: React.FC<DigitalRoadmapProps> = ({ onNavigate }) => {
   const [brand, setBrand] = useState<BrandIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [complianceDone, setComplianceDone] = useState(false);
+  const [hasInvoices, setHasInvoices] = useState(false);
+
   const getInitialSteps = (): RoadmapStep[] => {
     return [
       { 
         id: '1', 
-        title: 'Define Your Brand Voice', 
-        description: 'Use the Brand Builder to establish your target niche, generate taglines, and set custom colors.', 
-        tool: 'Brand Builder', 
-        targetView: AppView.BRAND_BUILDER,
+        title: 'CAC Business Registration & Tax Identification (TIN)', 
+        description: 'Get officially recognized by CAC and FIRS to satisfy bank pre-underwriting rules.', 
+        tool: 'Compliance Hub', 
+        targetView: AppView.COMPLIANCE,
         platform: 'Branding',
         isCompleted: false 
       },
       { 
         id: '2', 
-        title: 'Add Products to Inventory', 
-        description: 'Upload your items with pricing and details to automatically build your web catalog.', 
-        tool: 'Inventory Manager', 
-        targetView: AppView.PRODUCT_MANAGER,
+        title: 'Audit-Ready Revenue Log & Invoice Records', 
+        description: 'Log invoices and track debts (Gbege Book) to build a verified cashflow statement.', 
+        tool: 'Invoice Manager', 
+        targetView: AppView.INVOICE_GENERATOR,
         platform: 'Inventory',
         isCompleted: false 
       },
       { 
         id: '3', 
-        title: 'Generate Marketing Copy', 
-        description: 'Use AI Content Studio to draft high-converting WhatsApp status updates or Instagram copy.', 
-        tool: 'Content Studio', 
-        targetView: AppView.CONTENT_GENERATOR,
-        platform: 'Marketing',
-        isCompleted: false 
-      },
-      { 
-        id: '4', 
-        title: 'Draft Pitch & Business Plan', 
-        description: 'Prepare for grants, loans, and partnership opportunities with a structured business plan.', 
+        title: 'Bankable Feasibility Business Plan & Financial Projections', 
+        description: 'Draft a standard 3-year P&L, balance sheet, and SWOT analysis for bank loan officers.', 
         tool: 'Business Plan Gen', 
         targetView: AppView.BUSINESS_PLAN,
         platform: 'Finance',
         isCompleted: false 
       },
       { 
-        id: '5', 
-        title: 'Preview & Share Web Storefront', 
-        description: 'Check out your customer-facing digital storefront link and share it on social media.', 
+        id: '4', 
+        title: 'Commercial Digital Storefront & Product Catalog', 
+        description: 'Build an active web catalog so loan officers can inspect your product inventory line.', 
         tool: 'Public Store', 
         targetView: AppView.STOREFRONT,
         platform: 'Web Catalog',
+        isCompleted: false 
+      },
+      { 
+        id: '5', 
+        title: 'AI Video Reel & Brand Identity Dossier', 
+        description: 'Showcase corporate brand standards and product video scripts for grant underwriters.', 
+        tool: 'Content Studio', 
+        targetView: AppView.CONTENT_GENERATOR,
+        platform: 'Marketing',
         isCompleted: false 
       },
     ];

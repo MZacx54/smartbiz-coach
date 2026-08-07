@@ -41,10 +41,18 @@ const CHECKLIST = [
   {
     id: 'bank_account_completed' as keyof ComplianceStatus,
     title: 'Open Corporate Bank Account',
-    description: 'Separate personal funds from business funds. Required for grants.',
+    description: 'Separate personal funds from business funds. Required for loans & grants.',
     icon: '🏦',
-    link: null,
-    linkLabel: null,
+    link: 'https://www.cbn.gov.ng/',
+    linkLabel: 'CBN Corporate Rules →',
+  },
+  {
+    id: 'scuml_completed' as keyof ComplianceStatus,
+    title: 'SCUML Anti-Money Laundering Certificate',
+    description: 'Mandatory EFCC registration for logistics, retail, real estate, and corporate accounts.',
+    icon: '🛡️',
+    link: 'https://scuml.org/',
+    linkLabel: 'SCUML Portal →',
   },
 ];
 

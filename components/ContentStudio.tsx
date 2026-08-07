@@ -1419,6 +1419,18 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
                                                     />
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const storeUrl = `https://smartbizcoach.com.ng/dashboard/store-preview`;
+                                                        const promoText = `🔥 SPECIAL PROMO OFFER! 🔥\n\n📌 Product: ${brand?.businessName || 'Merchant Entity'} Product\n💰 Price: ${flyerPrice ? `₦${flyerPrice}` : 'Contact for Pricing'}\n${flyerPromo ? `🎁 Discount: ${flyerPromo}\n` : ''}✅ Pay on Delivery / Verified Nigerian Vendor\n\n👉 Tap link to order directly:\n${storeUrl}`;
+                                                        navigator.clipboard.writeText(promoText);
+                                                        toast.success("Direct WhatsApp Promo Link & Text Copied! Ready to post on Status 🚀");
+                                                    }}
+                                                    className="w-full mt-2 py-2.5 px-4 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-900/30 transition-all"
+                                                >
+                                                    <span>📲 Copy Direct WhatsApp Shortlink & Promo Text</span>
+                                                </button>
                                             </div>
 
                                             {/* Save & Download */}

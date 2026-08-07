@@ -264,6 +264,11 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'user': '100000/day',
+        'brand_gen': '100000/day',
+        'content_gen': '100000/day',
+        'business_plan': '100000/day',
+        'video_gen': '100000/day',
+        'image_edit': '100000/day',
     }
 }
 

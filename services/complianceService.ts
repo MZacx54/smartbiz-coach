@@ -5,6 +5,7 @@ export interface ComplianceStatus {
   business_reg_completed: boolean;
   tin_obtained_completed: boolean;
   bank_account_completed: boolean;
+  scuml_completed?: boolean;
   updated_at?: string;
 }
 

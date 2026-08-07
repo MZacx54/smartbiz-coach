@@ -378,89 +378,110 @@ const InvoiceGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* Professional Auditable Invoice Template */}
-        <div id="invoice-preview" className="bg-white border border-slate-200 shadow-xl rounded-2xl p-8 md:p-12 mb-6 print:border-none print:shadow-none print:p-0 relative overflow-hidden">
-          {/* Audit Watermark badge */}
-          <div className="absolute top-8 right-8 flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Audited & Verified</span>
-          </div>
+        {/* Print Styles for Single Page Output */}
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            #invoice-preview, #invoice-preview * { visibility: visible; }
+            #invoice-preview {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              padding: 20px !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+            .no-print { display: none !important; }
+            @page { size: A4 portrait; margin: 8mm; }
+          }
+        `}</style>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-slate-100 pb-8 mb-8">
-            <div className="space-y-2">
-              <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider ${
-                selectedInvoice.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-700' :
-                selectedInvoice.paymentStatus === 'SENT' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
-              }`}>
-                Invoice: {selectedInvoice.paymentStatus}
-              </span>
-              <h1 className="text-3xl font-black text-slate-900 font-heading mt-2">INVOICE</h1>
-              <p className="text-sm font-bold text-slate-400">Reference: #{selectedInvoice.id}</p>
-              <p className="text-xs text-slate-500">Terms: {selectedInvoice.paymentTerms?.replace('_', ' ')}</p>
+        {/* Professional Auditable Invoice Template */}
+        <div id="invoice-preview" className="bg-white border border-slate-200 shadow-xl rounded-2xl p-6 md:p-10 mb-6 print:border-none print:shadow-none print:p-0 relative overflow-hidden">
+          
+          {/* Header Row */}
+          <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-100 pb-6 mb-6 gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                  selectedInvoice.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-700' :
+                  selectedInvoice.paymentStatus === 'SENT' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                }`}>
+                  Invoice: {selectedInvoice.paymentStatus}
+                </span>
+                <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                  <CheckCircle className="w-3 h-3 text-emerald-600" />
+                  <span>Audited & Verified</span>
+                </span>
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 font-heading">INVOICE</h1>
+              <p className="text-xs font-bold text-slate-400">Reference: #{selectedInvoice.id}</p>
+              <p className="text-[11px] text-slate-500">Terms: {selectedInvoice.paymentTerms?.replace('_', ' ')}</p>
             </div>
             
-            <div className="md:text-right space-y-1">
-              <h2 className="text-lg font-bold text-slate-850 font-heading">{selectedInvoice.bankAccountName || 'Business Entity Name'}</h2>
+            <div className="sm:text-right space-y-1">
+              <h2 className="text-base font-extrabold text-slate-900 font-heading">{selectedInvoice.bankAccountName || 'Business Entity Name'}</h2>
               <p className="text-xs text-slate-500">{selectedInvoice.senderAddress}</p>
-              <p className="text-xs text-slate-500">{selectedInvoice.senderPhone}</p>
-              <p className="text-xs text-slate-500">{selectedInvoice.senderEmail}</p>
+              <p className="text-xs text-slate-500">{selectedInvoice.senderPhone} | {selectedInvoice.senderEmail}</p>
               {selectedInvoice.senderTin && (
-                <p className="text-[10px] font-bold text-indigo-600 uppercase mt-1">TIN: {selectedInvoice.senderTin}</p>
+                <p className="text-[10px] font-bold text-indigo-600 uppercase mt-0.5">TIN: {selectedInvoice.senderTin}</p>
               )}
             </div>
           </div>
 
           {/* Metadata Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Invoice Date</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Invoice Date</p>
               <p className="text-xs font-bold text-slate-700">{selectedInvoice.date}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Due Date</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Due Date</p>
               <p className="text-xs font-bold text-slate-700">{selectedInvoice.dueDate || 'Upon Receipt'}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Billed To</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Billed To</p>
               <p className="text-xs font-bold text-slate-800">{selectedInvoice.clientName}</p>
               <p className="text-[11px] text-slate-500 leading-none mt-0.5">{selectedInvoice.clientPhone}</p>
             </div>
           </div>
 
           {/* Items Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full mb-8">
+          <div className="overflow-x-auto mb-6">
+            <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  <th className="pb-3 text-left">Description</th>
-                  <th className="pb-3 text-center w-16">Qty</th>
-                  <th className="pb-3 text-right w-24">Unit Price</th>
-                  <th className="pb-3 text-right w-28">Amount</th>
+                <tr className="border-b border-slate-200 text-left text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50/30">
+                  <th className="py-2 px-3 text-left">Description</th>
+                  <th className="py-2 px-3 text-center w-16">Qty</th>
+                  <th className="py-2 px-3 text-right w-24">Unit Price</th>
+                  <th className="py-2 px-3 text-right w-28">Amount</th>
                 </tr>
               </thead>
-              <tbody className="text-xs text-slate-700 divide-y divide-slate-50">
-                {selectedInvoice.items.map((item, idx) => (
-                  <tr key={item.id} className="py-4">
-                    <td className="py-3.5 font-semibold text-slate-800">{item.description}</td>
-                    <td className="py-3.5 text-center font-bold text-slate-600">{item.quantity}</td>
-                    <td className="py-3.5 text-right font-medium text-slate-650">₦{item.price.toLocaleString()}</td>
-                    <td className="py-3.5 text-right font-bold text-slate-900">₦{(item.quantity * item.price).toLocaleString()}</td>
+              <tbody className="text-xs text-slate-700 divide-y divide-slate-100">
+                {selectedInvoice.items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="py-2.5 px-3 font-semibold text-slate-800">{item.description}</td>
+                    <td className="py-2.5 px-3 text-center font-bold text-slate-600">{item.quantity}</td>
+                    <td className="py-2.5 px-3 text-right font-medium text-slate-650">₦{item.price.toLocaleString()}</td>
+                    <td className="py-2.5 px-3 text-right font-bold text-slate-900">₦{(item.quantity * item.price).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* Financial Totals */}
-          <div className="flex flex-col md:flex-row justify-between items-start gap-6 border-t border-slate-100 pt-6">
-            <div className="w-full md:w-1/2 p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Payment Instructions</h4>
-              <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Bank:</span> {selectedInvoice.bankName || 'Access Bank'}</p>
+          {/* Financial Totals & Payment Details */}
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-t border-slate-100 pt-5">
+            <div className="w-full sm:w-1/2 p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 space-y-1">
+              <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Payment Instructions</h4>
+              <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Bank:</span> {selectedInvoice.bankName || 'Access Bank PLC'}</p>
               <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Account Name:</span> {selectedInvoice.bankAccountName}</p>
               <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Account Number:</span> {selectedInvoice.bankAccountNumber}</p>
             </div>
             
-            <div className="w-full md:w-1/3 space-y-2">
+            <div className="w-full sm:w-1/3 space-y-1.5">
               <div className="flex justify-between text-xs text-slate-500 font-medium">
                 <span>Subtotal</span>
                 <span>₦{subtotal.toLocaleString()}</span>
@@ -477,14 +498,14 @@ const InvoiceGenerator: React.FC = () => {
                   <span>+ ₦{((subtotal - (subtotal * (selectedInvoice.discount / 100))) * (selectedInvoice.taxRate / 100)).toLocaleString()}</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-black text-slate-900 border-t border-slate-150 pt-2.5 mt-1.5">
+              <div className="flex justify-between text-sm font-black text-slate-900 border-t border-slate-200 pt-2 mt-1">
                 <span>Total Due</span>
                 <span>₦{total.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-12 pt-6 border-t border-slate-100 text-center text-[10px] text-slate-400 italic">
+          <div className="mt-8 pt-4 border-t border-slate-100 text-center text-[10px] text-slate-400 italic">
             {selectedInvoice.note}
           </div>
         </div>
