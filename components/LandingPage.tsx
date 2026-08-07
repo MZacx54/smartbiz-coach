@@ -291,14 +291,14 @@ const LandingPage: React.FC = () => {
                                 </span>
                             </motion.div>
 
-                            <h1 className="text-5xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.05] mb-6">
+                            <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.08] mb-6">
                                 The AI Business
                                 <br />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
                                     Operating System
                                 </span>
                                 <br />
-                                <span className="text-slate-300 text-4xl sm:text-5xl font-bold">for every Nigerian SME</span>
+                                <span className="text-slate-300 text-2xl sm:text-4xl font-bold">for every Nigerian SME</span>
                             </h1>
 
                             <p className="text-lg text-slate-400 max-w-xl leading-relaxed mb-8">
@@ -448,11 +448,11 @@ const LandingPage: React.FC = () => {
                         <p className="text-lg text-slate-500 max-w-2xl mx-auto">Explore what makes SmartBiz Coach different from every other app you've tried.</p>
                     </motion.div>
 
-                    {/* Tab Buttons */}
-                    <div className="flex flex-wrap justify-center gap-2 mb-10">
+                    {/* Tab Buttons - Horizontally Scrollable on Mobile */}
+                    <div className="flex overflow-x-auto no-scrollbar gap-2 mb-10 pb-2 px-1 scroll-smooth">
                         {featureTabs.map((tab, i) => (
                             <button key={i} onClick={() => setActiveFeatureTab(i)}
-                                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${activeFeatureTab === i ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-900'}`}>
+                                className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all flex-shrink-0 ${activeFeatureTab === i ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:text-slate-900'}`}>
                                 {tab.label}
                             </button>
                         ))}
@@ -769,7 +769,7 @@ const LandingPage: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {packs.map((p, i) => (
-                            <motion.div key={i} className={`relative bg-white rounded-2xl p-8 border-2 ${p.color} ${p.popular ? 'shadow-2xl shadow-green-500/20 scale-105' : 'shadow-sm'} transition-all hover:shadow-lg`}
+                            <motion.div key={i} className={`relative bg-white rounded-2xl p-6 sm:p-8 border-2 ${p.color} ${p.popular ? 'shadow-2xl shadow-green-500/20 md:scale-105' : 'shadow-sm'} transition-all hover:shadow-lg`}
                                 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                                 {p.tag && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-bold px-4 py-1 rounded-full shadow">{p.tag}</div>}
                                 <div className="text-center mb-6">
@@ -861,7 +861,7 @@ const LandingPage: React.FC = () => {
                                         <h3 className="text-xl font-bold text-white mb-1">Partnership Inquiry</h3>
                                         <p className="text-xs text-slate-400 mb-6">Let's discuss how we can work together to scale SmartBiz Coach across Nigeria and Africa.</p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Name</label>
                                             <input type="text" required value={partnerName} onChange={e => setPartnerName(e.target.value)}
@@ -1034,6 +1034,20 @@ const LandingPage: React.FC = () => {
                     </div>
                 </div>
             </footer>
+
+            {/* ═══════════ STICKY MOBILE FLOATING CTA BAR ═══════════ */}
+            <div className="md:hidden fixed bottom-0 inset-x-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/80 p-3 z-40 flex items-center justify-between shadow-2xl">
+                <div className="flex items-center gap-2.5">
+                    <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
+                    <div>
+                        <div className="text-white text-xs font-bold font-heading leading-tight">SmartBiz Coach</div>
+                        <div className="text-[9px] text-green-400 font-semibold">10,000+ Nigerian SMEs</div>
+                    </div>
+                </div>
+                <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-lg shadow-green-600/30 active:scale-95 transition-all">
+                    🚀 Start Free →
+                </button>
+            </div>
         </div>
     );
 };
