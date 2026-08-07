@@ -499,7 +499,7 @@ const PublicStorefront: React.FC = () => {
           onClick={() => setShowCartModal(true)}
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-2xl flex items-center justify-center z-45 border-4 border-white"
+          className="fixed bottom-24 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-2xl flex items-center justify-center z-45 border-4 border-white"
         >
           <ShoppingCart className="w-6 h-6" />
           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] w-5 h-5 rounded-full flex items-center justify-center font-black">
