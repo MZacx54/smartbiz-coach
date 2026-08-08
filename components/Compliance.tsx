@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import api from '../services/api';
 import { analyzeBusinessName } from '../services/geminiService';
 import { getComplianceStatus, updateComplianceStatus, submitHireRequest, ComplianceStatus } from '../services/complianceService';
 import { usageLimiter } from '../utils/usageLimiter';
@@ -104,38 +105,36 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
     setCacVerificationResult(null);
     try {
       const cleanNum = cacNumberInput.trim().toUpperCase();
-      const isValidFormat = cleanNum.startsWith('BN') || cleanNum.startsWith('RC') || cleanNum.startsWith('TIN') || cleanNum.length >= 6;
-      
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const res = await api.post('/api/users/compliance/verify-cac/', {
+        cac_number: cleanNum
+      });
 
-      if (isValidFormat) {
-        const entity = brand?.businessName || user?.businessName || 'Waizon Digital Ventures';
+      if (res.data?.verified) {
         setCacVerificationResult({
           isValid: true,
           registrationNumber: cleanNum,
-          entityName: entity,
-          status: 'ACTIVE & VERIFIED (CAC PORTAL)',
-          message: 'Official CAC Business Registration Record verified and active.'
+          entityName: res.data.company_name,
+          status: res.data.status || 'ACTIVE & VERIFIED (CAC DATABASE)',
+          message: `Official Government Registration Record verified on ${res.data.source || 'CAC Database'}.`
         });
-        
-        // Auto-mark Business Reg & TIN completed
-        if (!compliance.business_reg_completed) {
-          toggleItem('business_reg_completed');
-        }
-        if (!compliance.tin_obtained_completed) {
-          toggleItem('tin_obtained_completed');
-        }
-        toast.success("CAC Registration Record verified! Compliance score updated.");
+
+        setCompliance(prev => ({
+          ...prev,
+          business_reg_completed: true,
+          tin_obtained_completed: true
+        }));
+
+        toast.success(`Verified: ${res.data.company_name} (Active on CAC Database)`);
       } else {
         setCacVerificationResult({
           isValid: false,
           registrationNumber: cleanNum,
-          message: 'Registration number not found in current database. Please ensure you include BN- or RC- prefix (e.g. BN-928401).'
+          message: 'Registration record not found. Please double check your RC/BN Number.'
         });
-        toast.error("Could not verify CAC registration number format.");
+        toast.error("Could not verify CAC registration record.");
       }
-    } catch (err) {
-      toast.error("Verification system busy. Please try again.");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "CAC Verification API query failed. Try again.");
     } finally {
       setIsVerifyingCac(false);
     }
@@ -505,27 +504,55 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
             )}
           </div>
 
-          {/* Partner links */}
-          <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-            <h4 className="font-bold text-gray-800 text-sm mb-3">Trusted Registration Partners</h4>
-            <div className="space-y-2">
+          {/* Partner & Accreditation Hub */}
+          <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm space-y-3.5">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Trusted Registration Partners & Portals</h4>
+              <span className="bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-indigo-100">
+                Official Desks
+              </span>
+            </div>
+
+            {/* Direct Platform Owner WhatsApp Contact */}
+            <a
+              href="https://wa.me/234906456107?text=Hello%20Meshach,%20I%20need%20assistance%20with%20CAC%20Business%20Registration/TIN%20for%20my%20business."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-3.5 rounded-xl font-bold text-xs hover:shadow-lg transition-all active:scale-95 group"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-lg">💬</span>
+                <div>
+                  <p className="font-extrabold text-white text-xs">Direct Platform Owner Concierge (CAC Desk)</p>
+                  <p className="text-[10px] text-emerald-100 font-normal">Contact Meshach Zachariah for fast-track CAC & TIN filing</p>
+                </div>
+              </div>
+              <span className="bg-white text-emerald-800 px-3 py-1 rounded-lg text-[10px] font-black group-hover:bg-emerald-50 shrink-0">
+                Chat on WhatsApp →
+              </span>
+            </a>
+
+            <div className="space-y-2 pt-1">
               {[
-                { name: 'Sidebrief', price: '₦18,000', url: 'https://sidebrief.com' },
-                { name: 'DIYLaw', price: '₦20,000', url: 'https://diylaw.ng' },
-                { name: 'Lawyered', price: '₦25,000', url: 'https://lawyered.ng' },
+                { name: 'Corporate Affairs Commission (Official CAC Portal)', type: 'Government', url: 'https://pre.cac.gov.ng' },
+                { name: 'FIRS Tax ID (TIN Verification Portal)', type: 'Government', url: 'https://apps.firs.gov.ng/tinverification' },
+                { name: 'SCUML Anti-Money Laundering (EFCC)', type: 'Government', url: 'https://scuml.org' },
+                { name: 'Sidebrief Corporate Services', type: 'Partner', url: 'https://sidebrief.com' },
+                { name: 'DIYLaw Corporate Desk', type: 'Partner', url: 'https://diylaw.ng' },
               ].map(p => (
                 <a
                   key={p.name}
                   href={p.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-200 hover:border-green-400 hover:shadow-sm transition-all group"
+                  className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-200/80 hover:border-indigo-500 hover:bg-white transition-all group"
                 >
-                  <span className="text-sm font-semibold text-gray-700 group-hover:text-green-700">{p.name}</span>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">{p.price}</span>
+                  <span className="text-xs font-bold text-slate-700 group-hover:text-indigo-600">{p.name}</span>
+                  <span className="text-[10px] bg-slate-200/70 text-slate-700 px-2.5 py-0.5 rounded-full font-bold group-hover:bg-indigo-50 group-hover:text-indigo-700">
+                    {p.type} ↗
+                  </span>
                 </a>
               ))}
-              <p className="text-[10px] text-gray-400 text-center mt-1">Consultations from ₦2,000</p>
             </div>
           </div>
         </div>
