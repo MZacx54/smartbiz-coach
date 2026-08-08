@@ -254,3 +254,26 @@ class ProductSnapAndListView(views.APIView):
                 'category': 'General Goods',
                 'description': 'Scanned product video item description. Please edit to add details.'
             })
+
+
+class RelatedEcosystemProductsView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        category = request.query_params.get('category', '').strip()
+        exclude_brand_id = request.query_params.get('exclude_brand_id', '').strip()
+
+        qs = Product.objects.all().order_by('-created_at')
+
+        if exclude_brand_id:
+            qs = qs.exclude(brand_id=exclude_brand_id)
+
+        if category:
+            qs_cat = qs.filter(category__iexact=category)
+            if qs_cat.exists():
+                qs = qs_cat
+
+        # Return up to 6 items for ecosystem cross-discovery
+        products = qs[:6]
+        serializer = ProductSerializer(products, many=True, context={'request': request})
+        return Response(serializer.data)

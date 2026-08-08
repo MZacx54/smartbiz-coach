@@ -26,6 +26,7 @@ const PublicStorefront: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [brand, setBrand] = useState<BrandIdentity | null>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,6 +127,23 @@ const PublicStorefront: React.FC = () => {
     };
     fetchData();
   }, [slug, isTractionMode]);
+
+  useEffect(() => {
+    const fetchRelated = async () => {
+      try {
+        const res = await api.get('/api/marketplace/products/related/', {
+          params: {
+            category: products?.[0]?.category || '',
+            exclude_brand_id: brand?.id || ''
+          }
+        });
+        setRelatedProducts(res.data || []);
+      } catch (err) {
+        console.error("Failed to load ecosystem related products", err);
+      }
+    };
+    if (brand) fetchRelated();
+  }, [brand, products]);
 
   if (isLoading) {
     return (
@@ -547,6 +565,72 @@ const PublicStorefront: React.FC = () => {
                 </div>
              </div>
           </section>
+
+          {/* Ecosystem Related Products Recommendation */}
+          {relatedProducts.length > 0 && (
+            <section className="space-y-6 pt-6 border-t border-slate-200/80">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <span>🔥</span> Explore More on SmartBiz Marketplace
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Top verified items from other merchants in the ecosystem</p>
+                </div>
+                <Link to="/marketplace" className="text-xs font-bold text-indigo-650 hover:underline">
+                  View All Marketplace →
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {relatedProducts.map(rel => (
+                  <div key={rel.id} className="bg-white rounded-2xl p-3 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group">
+                    <div className="space-y-2">
+                      <div className="aspect-square bg-slate-100 rounded-xl overflow-hidden relative">
+                        {rel.image_url ? (
+                          <img src={rel.image_url} alt={rel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-300 font-black text-xs uppercase">
+                            SmartBiz
+                          </div>
+                        )}
+                      </div>
+                      <h5 className="font-bold text-xs text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                        {rel.name}
+                      </h5>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between">
+                      <span className="text-xs font-black text-emerald-600 font-mono">
+                        ₦{Number(rel.price).toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => addToCart(rel)}
+                        className="bg-slate-900 hover:bg-indigo-600 text-white p-1.5 rounded-lg text-[10px] font-bold transition-colors cursor-pointer border-0"
+                        title="Add to Cart"
+                      >
+                        + Cart
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Powered by SmartBiz Coach Footer Banner */}
+          <footer className="bg-slate-950 text-white rounded-3xl p-6 text-center space-y-3 border border-slate-800 mt-8">
+            <p className="text-xs text-slate-400 font-medium">
+              Are you a business owner in Nigeria? Launch your own 24/7 digital storefront with Paystack bank payouts today!
+            </p>
+            <a
+              href={`/register${brand?.businessName ? `?ref=${encodeURIComponent(brand.businessName)}` : ''}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95 text-decoration-none"
+            >
+              <span>⚡ Powered by SmartBiz Coach — Create Your Free Store</span>
+            </a>
+          </footer>
         </div>
       </main>
 

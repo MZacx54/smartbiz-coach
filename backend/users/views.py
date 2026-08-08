@@ -23,6 +23,19 @@ class RegisterView(generics.CreateAPIView):
             user.set_password(serializer.validated_data['password'])
             user.credits = 200
             user.save()
+
+            # Handle Referral Credit Bonus
+            ref_code = request.data.get('ref', '').strip()
+            if ref_code:
+                try:
+                    referrer = User.objects.filter(username__iexact=ref_code).first() or User.objects.filter(email__iexact=ref_code).first()
+                    if referrer and referrer != user:
+                        referrer.credits += 50
+                        referrer.save()
+                        print(f"Referral Success: {referrer.username} earned +50 credits from {user.username}")
+                except Exception as ex:
+                    print(f"Referral credit notice: {ex}")
+
             token, _ = Token.objects.get_or_create(user=user)
             return Response({
                 'token': token.key, 

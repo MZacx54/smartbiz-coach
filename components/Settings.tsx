@@ -644,6 +644,46 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                   <span className="text-sm font-bold text-slate-800">{user.phone || 'Not set'}</span>
                 </div>
               </div>
+
+              {/* Peer Referral & Organic Growth Hub */}
+              <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-6 rounded-2xl border border-indigo-800 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                      Earn +50 AI Credits Per Referral
+                    </span>
+                    <h4 className="text-lg font-black text-white mt-2">Invite Merchants & Promote Platform</h4>
+                    <p className="text-xs text-slate-300">Share your unique referral link with fellow business owners. Earn +50 AI Credits for every new store created!</p>
+                  </div>
+                  <span className="text-3xl">🎁</span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    readOnly
+                    className="flex-1 bg-slate-950/80 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-emerald-400 outline-none"
+                    value={`https://smartbizcoach.com.ng/register?ref=${encodeURIComponent(user.name || user.email || 'vendor')}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`https://smartbizcoach.com.ng/register?ref=${encodeURIComponent(user.name || user.email || 'vendor')}`);
+                      toast.success("Referral link copied to clipboard!");
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 border-0 cursor-pointer shrink-0"
+                  >
+                    📋 Copy Link
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`Hi! Register your business on SmartBiz Coach to launch a 24/7 digital storefront with direct Paystack bank payouts: https://smartbizcoach.com.ng/register?ref=${encodeURIComponent(user.name || user.email || 'vendor')}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 border-0 cursor-pointer flex items-center justify-center gap-1.5 text-decoration-none shrink-0"
+                  >
+                    <span>💬 Share on WhatsApp</span>
+                  </a>
+                </div>
+              </div>
             </div>
           )}
         </div>

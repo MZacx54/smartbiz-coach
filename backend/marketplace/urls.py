@@ -11,7 +11,8 @@ from .views import (
     LeadDetailView,
     EcosystemAnalyticsView,
     OrderCreateView,
-    ProductSnapAndListView
+    ProductSnapAndListView,
+    RelatedEcosystemProductsView
 )
 
 from .payout_views import (
@@ -34,6 +35,7 @@ urlpatterns = [
     path('listings/', MarketplaceListingListView.as_view(), name='marketplace_listings'),
     path('products/', ProductListCreateView.as_view(), name='product_list_create'),
     path('products/snap-and-list/', ProductSnapAndListView.as_view(), name='product_snap_and_list'),
+    path('products/related/', RelatedEcosystemProductsView.as_view(), name='products_related'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product_detail'),
     path('products/u/<slug:slug>/', PublicBrandProductListView.as_view(), name='public_brand_products'),
     path('global/', GlobalMarketplaceListView.as_view(), name='global_marketplace'),
