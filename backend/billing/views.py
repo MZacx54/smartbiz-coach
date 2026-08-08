@@ -216,21 +216,32 @@ class AdminTransactionsView(APIView):
             })
 
         # 3. Merchant Subaccount Settlement Directory
-        vendors = VendorVerification.objects.all().order_by('-created_at')
         vendors_data = []
-        for v in vendors:
-            vendors_data.append({
-                'id': v.id,
-                'business_name': v.business_name,
-                'business_type': v.business_type,
-                'whatsapp_number': v.whatsapp_number,
-                'bank_name': v.bank_name or 'Not Connected',
-                'account_number': v.account_number or 'N/A',
-                'account_name': v.account_name or 'N/A',
-                'paystack_subaccount_code': v.paystack_subaccount_code or 'Pending Link',
-                'is_verified': v.is_verified,
-                'created_at': v.created_at.isoformat()
-            })
+        active_subaccounts_count = 0
+        try:
+            vendors = VendorVerification.objects.all().order_by('-created_at')
+            for v in vendors:
+                bank_name = getattr(v, 'bank_name', '') or 'Not Connected'
+                acc_num = getattr(v, 'account_number', '') or 'N/A'
+                acc_name = getattr(v, 'account_name', '') or 'N/A'
+                sub_code = getattr(v, 'paystack_subaccount_code', '') or 'Pending Link'
+                if sub_code and sub_code != 'Pending Link':
+                    active_subaccounts_count += 1
+
+                vendors_data.append({
+                    'id': v.id,
+                    'business_name': v.business_name,
+                    'business_type': v.business_type,
+                    'whatsapp_number': v.whatsapp_number,
+                    'bank_name': bank_name,
+                    'account_number': acc_num,
+                    'account_name': acc_name,
+                    'paystack_subaccount_code': sub_code,
+                    'is_verified': v.is_verified,
+                    'created_at': v.created_at.isoformat()
+                })
+        except Exception as e:
+            print(f"Warning: vendor payout directory query notice: {e}")
 
         return Response({
             'total_revenue': float(total_credit_revenue), # AI Wallet Credit Purchases Revenue
@@ -240,7 +251,7 @@ class AdminTransactionsView(APIView):
             'success_count': all_transactions.filter(status='SUCCESS').count() + all_orders.count(),
             'failed_count': all_transactions.filter(status='FAILED').count(),
             'pending_count': all_transactions.filter(status='PENDING').count(),
-            'active_subaccounts_count': vendors.filter(paystack_subaccount_code__isnull=False).exclude(paystack_subaccount_code='').count(),
+            'active_subaccounts_count': active_subaccounts_count,
             'transactions': credit_txs_data, # Backward compatibility
             'credit_transactions': credit_txs_data,
             'storefront_orders': order_txs_data,
