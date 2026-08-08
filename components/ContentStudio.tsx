@@ -13,9 +13,9 @@ import { toPng } from 'html-to-image';
 
 // Types
 type TabType = 'Post Writer' | 'Video Script' | 'Photo Studio' | 'Weekly Plan' | 'Blog Writer' | 'Partnership Pitch' | 'Creations History';
-type Platform = 'Instagram' | 'Facebook' | 'Twitter' | 'LinkedIn' | 'TikTok';
-type Tone = 'Exciting' | 'Professional' | 'Funny' | 'Informative';
-type Format = 'Single Post' | 'Carousel' | 'Story' | 'Reel';
+type Platform = 'Instagram' | 'WhatsApp Status' | 'TikTok' | 'Facebook' | 'LinkedIn' | 'Twitter';
+type Tone = 'Exciting' | 'Naija Promo' | 'Authentic Pidgin' | 'Professional' | 'Funny' | 'Informative';
+type Format = 'Single Post' | 'Carousel' | 'Story' | 'Reel' | 'Broadcast';
 
 type VideoPlatform = 'TikTok' | 'Instagram Reel' | 'YouTube Shorts';
 type HookStyle = 'Educational' | 'Controversial' | 'Storytelling';
@@ -54,11 +54,20 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         const loadTrends = async () => {
             try {
                 const data = await geminiService.generateTrendIdeas(brand?.niche || "Small Business");
-                setTrends(Array.isArray(data) ? data : []);
+                if (Array.isArray(data) && data.length > 0) {
+                    setTrends(data);
+                    return;
+                }
             } catch (e) {
                 console.error("Failed to load trends:", e);
-                setTrends([]);
             }
+
+            setTrends([
+                { topic: "Weekend Flash Sales Promo", angle: "Offer a 24-hour discount on fast-moving items with urgent WhatsApp order CTA.", tag: "#NaijaSales #FlashSale" },
+                { topic: "Inflation Price Freeze Promise", angle: "Assure customers your prices remain steady despite market inflation.", tag: "#PriceFreeze #SMETrust" },
+                { topic: "Customer Unboxing & Review", angle: "Share authentic customer feedback to build trust on social media.", tag: "#CustomerReview #VerifiedMerchant" },
+                { topic: "Behind The Scenes (BTS) Hustle", angle: "Show the care and effort that goes into packaging customer orders.", tag: "#NaijaHustle #BehindTheScenes" }
+            ]);
         };
         loadTrends();
     }, [brand]);
@@ -1001,8 +1010,29 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             <span>✨</span><span>{isLoadingMagicPost ? "Generating..." : "Get Magic Ideas"}</span>
                                         </button>
                                     </div>
+
+                                    {/* Quick Topic Starter Chips */}
+                                    <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1 mb-2">
+                                        {[
+                                            '⚡ 50% Weekend Flash Sale',
+                                            '📦 New Stock Unboxing Arrival',
+                                            '🌟 Customer Testimonial Spotlight',
+                                            '💡 3 Business Tips for Customers',
+                                            '🚚 Fast Nationwide Delivery Offer'
+                                        ].map((chip, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setPostTopic(chip)}
+                                                className="bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0"
+                                            >
+                                                {chip}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <div className="relative">
-                                        <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm"
+                                        <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm font-medium"
                                             placeholder="e.g. 50% discount on all wigs this weekend" value={postTopic} onChange={(e) => setPostTopic(e.target.value)}
                                         ></textarea>
                                     </div>
@@ -1030,33 +1060,105 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Platform</label>
-                                        <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
-                                            <option value="Instagram">📸 Instagram</option>
-                                            <option value="TikTok">🎵 TikTok</option>
-                                            <option value="Facebook">👥 Facebook</option>
-                                            <option value="Twitter">🐦 Twitter</option>
-                                            <option value="LinkedIn">💼 LinkedIn</option>
-                                        </select>
+                                {/* Visual Interactive Selection Controls */}
+                                <div className="space-y-5 bg-slate-50/70 p-5 rounded-2xl border border-slate-200/80">
+                                    
+                                    {/* 1. Target Platform Pills */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">
+                                            1. Target Platform
+                                        </label>
+                                        <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1">
+                                            {[
+                                                { id: 'Instagram', label: 'Instagram', icon: '📸' },
+                                                { id: 'WhatsApp Status', label: 'WhatsApp Status', icon: '💬' },
+                                                { id: 'TikTok', label: 'TikTok', icon: '🎵' },
+                                                { id: 'Facebook', label: 'Facebook', icon: '👥' },
+                                                { id: 'LinkedIn', label: 'LinkedIn', icon: '💼' },
+                                                { id: 'Twitter', label: 'X (Twitter)', icon: '🐦' }
+                                            ].map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    type="button"
+                                                    onClick={() => setPlatform(p.id as Platform)}
+                                                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border shrink-0 ${
+                                                        platform === p.id 
+                                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20 active:scale-95' 
+                                                            : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300'
+                                                    }`}
+                                                >
+                                                    <span>{p.icon}</span>
+                                                    <span>{p.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Tone</label>
-                                        <select value={tone} onChange={(e) => setTone(e.target.value as Tone)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
-                                            <option value="Exciting">🤩 Exciting</option><option value="Professional">💼 Professional</option><option value="Funny">😂 Funny</option><option value="Informative">🧠 Informative</option>
-                                        </select>
+
+                                    {/* 2. Brand Tone Pills */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">
+                                            2. Sales Tone
+                                        </label>
+                                        <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1">
+                                            {[
+                                                { id: 'Exciting', label: 'Exciting Hype', icon: '🤩' },
+                                                { id: 'Naija Promo', label: 'Naija Promo 🔥', icon: '🔥' },
+                                                { id: 'Authentic Pidgin', label: 'Authentic Pidgin 🇳🇬', icon: '🇳🇬' },
+                                                { id: 'Professional', label: 'Corporate Trust', icon: '💼' },
+                                                { id: 'Informative', label: 'Informative 🧠', icon: '🧠' },
+                                                { id: 'Funny', label: 'Humorous 😂', icon: '😂' }
+                                            ].map(t => (
+                                                <button
+                                                    key={t.id}
+                                                    type="button"
+                                                    onClick={() => setTone(t.id as Tone)}
+                                                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border shrink-0 ${
+                                                        tone === t.id 
+                                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20 active:scale-95' 
+                                                            : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300'
+                                                    }`}
+                                                >
+                                                    <span>{t.icon}</span>
+                                                    <span>{t.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Format</label>
-                                        <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className="w-full rounded-lg border border-slate-300 px-4 py-2.5 bg-white text-sm text-slate-700 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
-                                            <option value="Single Post">🖼️ Single Post</option><option value="Carousel">📚 Carousel</option><option value="Story">📱 Story</option><option value="Reel">🎬 Reel</option>
-                                        </select>
+
+                                    {/* 3. Post Format Pills */}
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest">
+                                            3. Post Format
+                                        </label>
+                                        <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1">
+                                            {[
+                                                { id: 'Single Post', label: 'Single Post 🖼️', icon: '🖼️' },
+                                                { id: 'Carousel', label: 'Carousel Slides 📚', icon: '📚' },
+                                                { id: 'Story', label: 'Story / Status 📱', icon: '📱' },
+                                                { id: 'Reel', label: 'Short Video / Reel 🎬', icon: '🎬' },
+                                                { id: 'Broadcast', label: 'Broadcast Message 📢', icon: '📢' }
+                                            ].map(f => (
+                                                <button
+                                                    key={f.id}
+                                                    type="button"
+                                                    onClick={() => setFormat(f.id as Format)}
+                                                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border shrink-0 ${
+                                                        format === f.id 
+                                                            ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20 active:scale-95' 
+                                                            : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300'
+                                                    }`}
+                                                >
+                                                    <span>{f.icon}</span>
+                                                    <span>{f.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
+
                                 </div>
 
-                                <button onClick={handleGenerate} disabled={isGenerating || !postTopic.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Post</span><span>✨</span></>}
+                                <button onClick={handleGenerate} disabled={isGenerating || !postTopic.trim()} className="w-full py-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-500 hover:to-purple-600 disabled:opacity-50 text-white rounded-2xl font-black shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2 text-base mt-4 cursor-pointer active:scale-98">
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Post & Captions</span><span>✨</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -1642,7 +1744,37 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             {activeTab === 'Post Writer' && (
                                                 <div className="space-y-6">
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Main Caption</h4>
+                                                        <div className="flex justify-between items-center">
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Main Caption</h4>
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const caption = generatedContent.caption || generatedContent.post || '';
+                                                                        const tags = (generatedContent.hashtags || generatedContent.tags || []).map((t: string) => `#${t}`).join(' ');
+                                                                        const cta = generatedContent.callToAction || generatedContent.cta || '';
+                                                                        const text = `💬 *${brand?.businessName || 'Special Offer'}*\n\n${caption}\n\n👉 ${cta}\n\n📲 Order on WhatsApp: https://wa.me/${brand?.whatsapp || brand?.phone || ''}\n\n${tags}`;
+                                                                        navigator.clipboard.writeText(text);
+                                                                        toast.success("Formatted & copied for WhatsApp Status!");
+                                                                    }}
+                                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all shadow-md cursor-pointer flex items-center gap-1 border-0"
+                                                                >
+                                                                    <span>💬 Copy for WhatsApp</span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const caption = generatedContent.caption || generatedContent.post || '';
+                                                                        const tags = (generatedContent.hashtags || generatedContent.tags || []).map((t: string) => `#${t}`).join(' ');
+                                                                        const text = `${caption}\n.\n.\n${tags}`;
+                                                                        navigator.clipboard.writeText(text);
+                                                                        toast.success("Copied for Instagram Caption!");
+                                                                    }}
+                                                                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all shadow-md cursor-pointer flex items-center gap-1 border-0"
+                                                                >
+                                                                    <span>📸 Copy for Instagram</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
                                                         <p className="text-white whitespace-pre-wrap">{generatedContent.caption || generatedContent.post}</p>
                                                         <div className="flex flex-wrap gap-2 pt-2">
                                                             {(generatedContent.hashtags || generatedContent.tags)?.map((tag: string) => (
