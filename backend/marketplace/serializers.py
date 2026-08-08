@@ -27,15 +27,14 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_whatsapp_number(self, obj):
         try:
             num = obj.brand.user.vendor_profile.whatsapp_number
-            # Clean number: remove non-digits, e.g. +, -, spaces
             return "".join(c for c in num if c.isdigit())
-        except AttributeError:
+        except Exception:
             return "2348000000000"
 
     def get_paystack_subaccount_code(self, obj):
         try:
-            return obj.brand.user.vendor_profile.paystack_subaccount_code or ""
-        except AttributeError:
+            return getattr(obj.brand.user.vendor_profile, 'paystack_subaccount_code', '') or ""
+        except Exception:
             return ""
 
     def validate(self, attrs):
