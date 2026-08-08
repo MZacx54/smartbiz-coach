@@ -1464,6 +1464,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         onClick={() => {
                                                             setSelectedBackdrop('raw');
                                                             setHistoryIndex(0);
+                                                            toast.success("Restored raw original photo!");
                                                         }}
                                                         className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
                                                             selectedBackdrop === 'raw'
@@ -1471,7 +1472,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                                 : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900'
                                                         }`}
                                                     >
-                                                        📷 Keep Raw Original
+                                                        📷 Restore Raw Original Photo
                                                     </button>
                                                 </div>
                                             </div>
