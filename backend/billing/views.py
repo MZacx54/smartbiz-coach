@@ -177,16 +177,19 @@ class AdminTransactionsView(APIView):
             return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
 
         from django.db.models import Sum
+        from marketplace.models import Lead, VendorVerification
+
+        # 1. AI BizCredit Platform Revenue
         all_transactions = Transaction.objects.all().order_by('-created_at')
-        total_revenue = all_transactions.filter(status='SUCCESS').aggregate(total=Sum('amount'))['total'] or 0
-        
-        txs_data = []
+        total_credit_revenue = all_transactions.filter(status='SUCCESS').aggregate(total=Sum('amount'))['total'] or 0
+
+        credit_txs_data = []
         for tx in all_transactions[:200]:
-            txs_data.append({
+            credit_txs_data.append({
                 'id': tx.id,
                 'username': tx.user.username,
                 'email': tx.user.email,
-                'business_name': getattr(tx.user, 'business_name', ''),
+                'business_name': getattr(tx.user, 'business_name', '') or tx.user.username,
                 'amount': float(tx.amount),
                 'description': tx.description,
                 'status': tx.status,
@@ -194,11 +197,52 @@ class AdminTransactionsView(APIView):
                 'created_at': tx.created_at.isoformat()
             })
 
+        # 2. Storefront Products GMV (Gross Merchandise Value)
+        all_orders = Lead.objects.filter(lead_type='ORDER').order_by('-created_at')
+        storefront_gmv = all_orders.aggregate(total=Sum('quoted_price'))['total'] or 0
+
+        order_txs_data = []
+        for ord in all_orders[:200]:
+            order_txs_data.append({
+                'id': ord.id,
+                'business_name': ord.brand.business_name if ord.brand else 'Merchant Store',
+                'customer_name': ord.customer_name,
+                'customer_contact': ord.customer_contact,
+                'product_name': ord.product.name if ord.product else 'Storefront Product',
+                'amount': float(ord.quoted_price or 0),
+                'details': ord.message,
+                'status': 'SUCCESS' if ord.status in ['WON', 'NEW', 'FOLLOW_UP'] else 'CANCELLED',
+                'created_at': ord.created_at.isoformat()
+            })
+
+        # 3. Merchant Subaccount Settlement Directory
+        vendors = VendorVerification.objects.all().order_by('-created_at')
+        vendors_data = []
+        for v in vendors:
+            vendors_data.append({
+                'id': v.id,
+                'business_name': v.business_name,
+                'business_type': v.business_type,
+                'whatsapp_number': v.whatsapp_number,
+                'bank_name': v.bank_name or 'Not Connected',
+                'account_number': v.account_number or 'N/A',
+                'account_name': v.account_name or 'N/A',
+                'paystack_subaccount_code': v.paystack_subaccount_code or 'Pending Link',
+                'is_verified': v.is_verified,
+                'created_at': v.created_at.isoformat()
+            })
+
         return Response({
-            'total_revenue': float(total_revenue),
-            'total_count': all_transactions.count(),
-            'success_count': all_transactions.filter(status='SUCCESS').count(),
+            'total_revenue': float(total_credit_revenue), # AI Wallet Credit Purchases Revenue
+            'storefront_gmv': float(storefront_gmv),      # Combined Storefront Orders GMV
+            'combined_total': float(total_credit_revenue) + float(storefront_gmv),
+            'total_count': all_transactions.count() + all_orders.count(),
+            'success_count': all_transactions.filter(status='SUCCESS').count() + all_orders.count(),
             'failed_count': all_transactions.filter(status='FAILED').count(),
             'pending_count': all_transactions.filter(status='PENDING').count(),
-            'transactions': txs_data
+            'active_subaccounts_count': vendors.filter(paystack_subaccount_code__isnull=False).exclude(paystack_subaccount_code='').count(),
+            'transactions': credit_txs_data, # Backward compatibility
+            'credit_transactions': credit_txs_data,
+            'storefront_orders': order_txs_data,
+            'merchant_payout_directory': vendors_data
         }, status=status.HTTP_200_OK)

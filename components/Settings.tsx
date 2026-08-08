@@ -124,6 +124,30 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   // Admin console states
   const [adminData, setAdminData] = useState<AdminDashboardData | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
+  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'credits' | 'payouts'>('orders');
+
+  const handleExportAdminCSV = () => {
+    if (!adminData) return;
+    let csv = "Category,ID,Merchant/User,Customer/Email,Amount (NGN),Details/Ref,Status,Date\n";
+    
+    (adminData.storefront_orders || []).forEach(o => {
+      csv += `"Storefront Order",${o.id},"${o.business_name}","${o.customer_name} (${o.customer_contact})",${o.amount},"${o.product_name}",${o.status},"${o.created_at}"\n`;
+    });
+
+    (adminData.transactions || []).forEach(t => {
+      csv += `"BizCredit AI Purchase",${t.id},"${t.business_name}","${t.email}",${t.amount},"${t.description} (Ref: ${t.reference})",${t.status},"${t.created_at}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `SmartBiz_Admin_Financial_Audit_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Financial Audit CSV exported!");
+  };
 
   // Sync edit form when user changes
   useEffect(() => {
@@ -893,68 +917,210 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
       {/* ============ ADMIN TAB ============ */}
       {activeTab === 'admin' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Admin Stats Overview */}
-          <div className="bg-slate-900 text-white rounded-[32px] p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full filter blur-2xl" />
-            <div className="relative z-10">
-              <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Admin Control Center</p>
-              <h3 className="text-2xl font-black mt-1 mb-6 font-heading">Payment Revenue Audit Dashboard</h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Total Revenue</p>
-                  <h4 className="text-lg font-black text-emerald-400 mt-1 font-heading">₦{(adminData?.total_revenue || 0).toLocaleString()}</h4>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Payments Sold</p>
-                  <h4 className="text-lg font-black text-slate-100 mt-1 font-heading">{adminData?.success_count || 0} Successful</h4>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Failed Attempts</p>
-                  <h4 className="text-lg font-black text-red-400 mt-1 font-heading">{adminData?.failed_count || 0} Failed</h4>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Pending Checks</p>
-                  <h4 className="text-lg font-black text-yellow-400 mt-1 font-heading">{adminData?.pending_count || 0} Pending</h4>
-                </div>
+          {/* Admin Header & Stats */}
+          <div className="bg-slate-900 text-white rounded-[32px] p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 rounded-full filter blur-3xl" />
+            
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+              <div>
+                <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+                  Platform Admin Control Center
+                </span>
+                <h3 className="text-2xl font-black mt-2 font-heading text-white">Payment Revenue & Settlement Audit</h3>
+                <p className="text-xs text-slate-400 mt-1">Ecosystem-wide financial intelligence across merchant stores and AI wallet top-ups.</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleExportAdminCSV}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap active:scale-95 border-0"
+              >
+                📥 Export Financial CSV
+              </button>
+            </div>
+            
+            {/* Top 4 KPI Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Storefront Products GMV</p>
+                <h4 className="text-lg font-black text-white mt-1 font-heading">₦{(adminData?.storefront_gmv || 0).toLocaleString()}</h4>
+                <span className="text-[9px] text-slate-400">All Merchant Store Sales</span>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-wider">BizCredit AI Wallet Revenue</p>
+                <h4 className="text-lg font-black text-white mt-1 font-heading">₦{(adminData?.total_revenue || 0).toLocaleString()}</h4>
+                <span className="text-[9px] text-slate-400">Platform AI Credits</span>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-amber-400 uppercase tracking-wider">Linked Paystack Payouts</p>
+                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.active_subaccounts_count || 0} Subaccounts</h4>
+                <span className="text-[9px] text-slate-400">Direct Merchant Settlement</span>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">Total Ecosystem Logs</p>
+                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.total_count || 0} Transactions</h4>
+                <span className="text-[9px] text-slate-400">Paid & Tracked Orders</span>
               </div>
             </div>
           </div>
 
-          {/* Master Transaction Ledger */}
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-            <div className="bg-slate-55 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Master Payment Ledger</h3>
-              <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">All Users Transactions</span>
-            </div>
+          {/* Ledger Sub-Tab Selector */}
+          <div className="flex border-b border-slate-200 gap-2">
+            <button
+              onClick={() => setAdminSubTab('orders')}
+              className={`pb-3 px-4 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent ${
+                adminSubTab === 'orders' ? 'border-indigo-600 text-indigo-650' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              🛍️ Storefront Product Orders ({adminData?.storefront_orders?.length || 0})
+            </button>
+            <button
+              onClick={() => setAdminSubTab('credits')}
+              className={`pb-3 px-4 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent ${
+                adminSubTab === 'credits' ? 'border-indigo-600 text-indigo-650' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              ⚡ BizCredit AI Purchases ({adminData?.transactions?.length || 0})
+            </button>
+            <button
+              onClick={() => setAdminSubTab('payouts')}
+              className={`pb-3 px-4 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent ${
+                adminSubTab === 'payouts' ? 'border-indigo-600 text-indigo-650' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              🏛️ Merchant Bank Subaccounts ({adminData?.merchant_payout_directory?.length || 0})
+            </button>
+          </div>
 
-            <div className="divide-y divide-slate-50 overflow-y-auto max-h-[450px]">
-              {loadingAdmin ? (
-                <div className="p-8 text-center text-xs text-slate-400">Loading master ledger...</div>
-              ) : !adminData || adminData.transactions.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400 italic">No payments recorded across the platform.</div>
-              ) : (
-                adminData.transactions.map(tx => (
-                  <div key={tx.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-slate-50 transition-colors gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-black text-slate-800">{tx.business_name || tx.username}</span>
-                        <span className="text-[9px] text-slate-400">({tx.email})</span>
+          {/* Ledger Content Container */}
+          <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+            
+            {/* SUB-TAB 1: STOREFRONT PRODUCT ORDERS */}
+            {adminSubTab === 'orders' && (
+              <div>
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Storefront Product Purchases (All Merchants)</h3>
+                  <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-3 py-0.5 rounded-full">
+                    GMV Total: ₦{(adminData?.storefront_gmv || 0).toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-100 overflow-y-auto max-h-[480px]">
+                  {loadingAdmin ? (
+                    <div className="p-8 text-center text-xs text-slate-400">Loading storefront orders...</div>
+                  ) : !adminData?.storefront_orders || adminData.storefront_orders.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 italic">No storefront orders recorded yet.</div>
+                  ) : (
+                    adminData.storefront_orders.map(ord => (
+                      <div key={ord.id} className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-slate-50 transition-colors gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-slate-900">{ord.business_name}</span>
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                              Customer: {ord.customer_name} ({ord.customer_contact})
+                            </span>
+                          </div>
+                          <p className="text-xs font-bold text-slate-700">{ord.product_name}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">Date: {new Date(ord.created_at).toLocaleString()}</p>
+                        </div>
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1">
+                          <p className="text-sm font-black text-emerald-600">₦{ord.amount.toLocaleString()}</p>
+                          <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase tracking-wider">
+                            {ord.status}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-1">{tx.description}</p>
-                      <p className="text-[9px] text-slate-400 mt-0.5">Ref: {tx.reference} · {new Date(tx.created_at).toLocaleString()}</p>
-                    </div>
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1.5">
-                      <p className="text-xs font-black text-slate-900">₦{tx.amount.toLocaleString()}</p>
-                      <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider
-                        ${tx.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : tx.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
-                        {tx.status}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 2: BIZCREDIT AI PURCHASES */}
+            {activeTab === 'admin' && adminSubTab === 'credits' && (
+              <div>
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">BizCredit AI Wallet Purchases (Platform Revenue)</h3>
+                  <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-3 py-0.5 rounded-full">
+                    Platform Revenue: ₦{(adminData?.total_revenue || 0).toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-100 overflow-y-auto max-h-[480px]">
+                  {loadingAdmin ? (
+                    <div className="p-8 text-center text-xs text-slate-400">Loading wallet purchases...</div>
+                  ) : !adminData || adminData.transactions.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 italic">No credit purchases recorded.</div>
+                  ) : (
+                    adminData.transactions.map(tx => (
+                      <div key={tx.id} className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-slate-50 transition-colors gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-slate-900">{tx.business_name || tx.username}</span>
+                            <span className="text-[10px] text-slate-400">({tx.email})</span>
+                          </div>
+                          <p className="text-xs font-medium text-slate-600">{tx.description}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">Ref: {tx.reference} • {new Date(tx.created_at).toLocaleString()}</p>
+                        </div>
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1">
+                          <p className="text-sm font-black text-indigo-600">₦{tx.amount.toLocaleString()}</p>
+                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
+                            tx.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {tx.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 3: MERCHANT BANK SUBACCOUNTS */}
+            {activeTab === 'admin' && adminSubTab === 'payouts' && (
+              <div>
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Merchant Paystack Direct Payout Subaccount Directory</h3>
+                  <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-3 py-0.5 rounded-full">
+                    {adminData?.active_subaccounts_count || 0} Subaccounts Active
+                  </span>
+                </div>
+
+                <div className="divide-y divide-slate-100 overflow-y-auto max-h-[480px]">
+                  {!adminData?.merchant_payout_directory || adminData.merchant_payout_directory.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 italic">No merchant payout records found.</div>
+                  ) : (
+                    adminData.merchant_payout_directory.map(v => (
+                      <div key={v.id} className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-slate-50 transition-colors gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-slate-900">{v.business_name}</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">{v.business_type}</span>
+                            {v.is_verified && (
+                              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded">CAC VERIFIED</span>
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-slate-700">
+                            {v.account_name} ({v.bank_name} • {v.account_number})
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-mono">WhatsApp: {v.whatsapp_number}</p>
+                        </div>
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1">
+                          <span className="text-xs font-mono font-bold bg-slate-900 text-emerald-400 px-3 py-1 rounded-lg">
+                            {v.paystack_subaccount_code}
+                          </span>
+                          <span className="text-[9px] text-slate-400">Direct Paystack Settlement</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

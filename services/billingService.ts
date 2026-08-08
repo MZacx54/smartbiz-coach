@@ -61,12 +61,40 @@ export const billingService = {
   },
 };
 
+export interface StorefrontOrderData {
+  id: number;
+  business_name: string;
+  customer_name: string;
+  customer_contact: string;
+  product_name: string;
+  amount: number;
+  details: string;
+  status: string;
+  created_at: string;
+}
+
+export interface MerchantPayoutData {
+  id: number;
+  business_name: string;
+  business_type: string;
+  whatsapp_number: string;
+  bank_name: string;
+  account_number: string;
+  account_name: string;
+  paystack_subaccount_code: string;
+  is_verified: boolean;
+  created_at: string;
+}
+
 export interface AdminDashboardData {
   total_revenue: number;
+  storefront_gmv?: number;
+  combined_total?: number;
   total_count: number;
   success_count: number;
   failed_count: number;
   pending_count: number;
+  active_subaccounts_count?: number;
   transactions: {
     id: number;
     username: string;
@@ -78,4 +106,6 @@ export interface AdminDashboardData {
     reference: string;
     created_at: string;
   }[];
+  storefront_orders?: StorefrontOrderData[];
+  merchant_payout_directory?: MerchantPayoutData[];
 }
