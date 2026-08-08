@@ -25,7 +25,7 @@ export const FEATURE_CONFIGS: Record<FeatureKey, FeatureConfig> = {
   business_plan: { freeLimit: 0, creditCost: 15, label: 'AI Business Plan Generator' },
   grant_search: { freeLimit: 0, creditCost: 2, label: 'AI Grant Search' },
   debt_reminder: { freeLimit: 0, creditCost: 1, label: 'AI Debt Reminder' },
-  ai_chat: { freeLimit: 0, creditCost: 1, label: 'AI Live Support Chat' },
+  ai_chat: { freeLimit: 999999, creditCost: 0, label: 'AI Live Support Chat (Free)' },
   sales_assistant: { freeLimit: 0, creditCost: 2, label: 'AI Sales Assistant' },
   health_score: { freeLimit: 0, creditCost: 5, label: 'AI Business Health Score' },
   pricing_assistant: { freeLimit: 0, creditCost: 2, label: 'AI Pricing Assistant' },

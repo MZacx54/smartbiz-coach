@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatWithSmartBiz } from '../services/geminiService';
 import VoiceInput from './VoiceInput';
-import { usageLimiter } from '../utils/usageLimiter';
-import { billingService } from '../services/billingService';
-import CreditPromptModal from './CreditPromptModal';
 import { toast } from 'react-hot-toast';
 
 interface ChatMessage {
@@ -17,7 +14,7 @@ interface LiveSupportWidgetProps {
   onUpdateCredits?: (credits: number) => void;
 }
 
-const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUpdateCredits }) => {
+const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -26,10 +23,6 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Credit modal state
-  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
-  const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
-
   // Scroll to bottom on new message or typing state change
   useEffect(() => {
     if (isOpen) {
@@ -37,12 +30,11 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
     }
   }, [messages, isTyping, isOpen]);
 
-  const executeSendMessage = async (userMsgText: string, deduct: boolean, cost: number) => {
+  const executeSendMessage = async (userMsgText: string) => {
     const newUserMsg: ChatMessage = { id: Date.now(), text: userMsgText, sender: 'user' };
     setMessages(prev => [...prev, newUserMsg]);
     setMessage('');
     setIsTyping(true);
-    setShowCreditPrompt(false);
 
     try {
       const history = messages.map(m => ({
@@ -51,14 +43,6 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
       }));
 
       const responseText = await chatWithSmartBiz(history, userMsgText);
-
-      // Only charge credits / increment usage if successful
-      if (deduct) {
-        const billingResponse = await billingService.deductCredits(cost, 'AI Live Support Chat');
-        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
-      } else {
-        usageLimiter.incrementUsage('ai_chat');
-      }
 
       const botMsg: ChatMessage = {
         id: Date.now() + 1,
@@ -69,7 +53,7 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
     } catch (error) {
       const errorMsg: ChatMessage = {
         id: Date.now() + 1,
-        text: "Sorry, I'm having trouble connecting right now. Tap 'Human Agent' to chat with us directly on WhatsApp!",
+        text: "Sorry, I'm having trouble connecting right now. Tap 'Human Help' to chat with us directly on WhatsApp!",
         sender: 'bot'
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -83,21 +67,7 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
     if (!message.trim()) return;
 
     const userMsgText = message;
-    const usage = usageLimiter.checkUsage('ai_chat', credits);
-    
-    if (!usage.allowed) {
-      setDeductOnConfirm(null);
-      setShowCreditPrompt(true);
-      return;
-    }
-
-    if (usage.useCredits) {
-      setDeductOnConfirm(() => async () => { await executeSendMessage(userMsgText, true, usage.cost); });
-      setShowCreditPrompt(true);
-      return;
-    }
-
-    await executeSendMessage(userMsgText, false, 0);
+    await executeSendMessage(userMsgText);
   };
 
   const handleOpenWhatsApp = () => {
@@ -208,16 +178,6 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = ({ credits = 0, onUp
           </div>
         </div>
       )}
-
-      {/* Credit Prompt Modal */}
-      <CreditPromptModal
-        isOpen={showCreditPrompt}
-        featureLabel="AI Live Support Chat"
-        creditCost={1}
-        currentCredits={credits}
-        onConfirm={deductOnConfirm || (() => {})}
-        onClose={() => setShowCreditPrompt(false)}
-      />
     </div>
   );
 };
