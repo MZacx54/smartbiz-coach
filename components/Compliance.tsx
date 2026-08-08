@@ -6,6 +6,7 @@ import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
 import { BrandIdentity, User } from '../types';
+import { BankPayoutSetup } from './BankPayoutSetup';
 
 interface ComplianceProps {
   brand?: BrandIdentity | null;
@@ -529,6 +530,9 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
           </div>
         </div>
       </div>
+
+      {/* Direct Bank Payout Setup */}
+      <BankPayoutSetup />
 
       {/* Hire Agent Modal */}
       {showHireModal && (

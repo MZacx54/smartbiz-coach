@@ -9,6 +9,14 @@ class VendorVerification(models.Model):
     nin_number = models.CharField(max_length=100, blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     whatsapp_number = models.CharField(max_length=20)
+    
+    # Direct Paystack Payout Fields
+    bank_name = models.CharField(max_length=150, blank=True, null=True)
+    bank_code = models.CharField(max_length=50, blank=True, null=True)
+    account_number = models.CharField(max_length=20, blank=True, null=True)
+    account_name = models.CharField(max_length=255, blank=True, null=True)
+    paystack_subaccount_code = models.CharField(max_length=100, blank=True, null=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

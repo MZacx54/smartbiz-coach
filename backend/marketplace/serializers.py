@@ -4,7 +4,7 @@ from .models import VendorVerification, MarketplaceListing, Product, Lead
 class VendorVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = VendorVerification
-        fields = ['id', 'business_name', 'business_type', 'cac_number', 'is_verified', 'whatsapp_number', 'created_at']
+        fields = ['id', 'business_name', 'business_type', 'cac_number', 'is_verified', 'whatsapp_number', 'bank_name', 'bank_code', 'account_number', 'account_name', 'paystack_subaccount_code', 'created_at']
         read_only_fields = ['is_verified']
 
 class MarketplaceListingSerializer(serializers.ModelSerializer):
@@ -17,6 +17,7 @@ class MarketplaceListingSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     brand_name = serializers.ReadOnlyField(source='brand.business_name')
     whatsapp_number = serializers.SerializerMethodField()
+    paystack_subaccount_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -30,6 +31,12 @@ class ProductSerializer(serializers.ModelSerializer):
             return "".join(c for c in num if c.isdigit())
         except AttributeError:
             return "2348000000000"
+
+    def get_paystack_subaccount_code(self, obj):
+        try:
+            return obj.brand.user.vendor_profile.paystack_subaccount_code or ""
+        except AttributeError:
+            return ""
 
     def validate(self, attrs):
         is_promoted = attrs.get('is_promoted', False)

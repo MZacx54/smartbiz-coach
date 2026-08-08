@@ -267,6 +267,63 @@ const PublicStorefront: React.FC = () => {
     window.open(`https://wa.me/${brand.whatsapp || brand.phone || ''}?text=${encodeURIComponent(orderText)}`, '_blank');
   };
 
+  const handlePaystackOnlineCheckout = async () => {
+    if (!checkoutForm.name || !checkoutForm.phone || !checkoutForm.address) {
+      toast.error('Please fill in all required fields (Name, Phone, Address)');
+      return;
+    }
+
+    const cartTotal = getCartTotal();
+    const vendorSubaccount = products[0]?.paystack_subaccount_code || "";
+
+    try {
+      for (const item of cart) {
+        await api.post('/api/marketplace/leads/', {
+          product: item.product.id,
+          customer_name: checkoutForm.name,
+          customer_contact: checkoutForm.phone,
+          message: `Online Paystack Order:\nQty: ${item.quantity}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`,
+          lead_type: 'ORDER',
+          quoted_price: (parseFloat(item.product.price) * item.quantity).toFixed(2)
+        });
+      }
+    } catch (err) {
+      console.error('Failed to log order lead', err);
+    }
+
+    const publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
+
+    // @ts-ignore
+    if (window.PaystackPop) {
+      // @ts-ignore
+      const handler = window.PaystackPop.setup({
+        key: publicKey,
+        email: `${checkoutForm.phone.replace(/\D/g, '')}@customer.smartbizcoach.com.ng`,
+        amount: Math.round(cartTotal * 100),
+        currency: "NGN",
+        subaccount: vendorSubaccount || undefined,
+        metadata: {
+          custom_fields: [
+            { display_name: "Customer Name", variable_name: "customer_name", value: checkoutForm.name },
+            { display_name: "Customer Phone", variable_name: "customer_phone", value: checkoutForm.phone },
+            { display_name: "Delivery Address", variable_name: "delivery_address", value: checkoutForm.address }
+          ]
+        },
+        callback: function (response: any) {
+          toast.success("Payment successful! Ref: " + response.reference);
+          setShowCartModal(false);
+          setCart([]);
+        },
+        onClose: function () {
+          toast("Payment window closed.");
+        }
+      });
+      handler.openIframe();
+    } else {
+      toast.error("Paystack SDK initializing. Please try again or use WhatsApp order.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 pb-20 selection:bg-indigo-100 relative">
       {/* Brand cover Banner */}
@@ -607,13 +664,24 @@ const PublicStorefront: React.FC = () => {
                 />
               </div>
 
-              <button 
-                type="submit"
-                disabled={isPlacingOrder}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-400 text-white font-bold py-3.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 transition-all active:scale-98"
-              >
-                <MessageCircle className="w-4 h-4" /> Place Order via WhatsApp Checkout
-              </button>
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <button 
+                  type="button"
+                  onClick={handlePaystackOnlineCheckout}
+                  disabled={isPlacingOrder}
+                  className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-700 text-white font-bold py-3.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-98"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Pay Online via Paystack (Cards, Transfer, USSD, OPay)
+                </button>
+
+                <button 
+                  type="submit"
+                  disabled={isPlacingOrder}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 text-white font-bold py-3.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 transition-all cursor-pointer active:scale-98"
+                >
+                  <MessageCircle className="w-4 h-4" /> Order via WhatsApp (Pay on Delivery / Transfer)
+                </button>
+              </div>
             </form>
           </div>
         </div>
