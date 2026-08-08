@@ -158,15 +158,44 @@ const ProductManager: React.FC = () => {
   const [isBulkOnboarding, setIsBulkOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState<'catalog' | 'ledger'>('catalog');
 
-  const handleBulkSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressBase64Url = (dataUrl: string, maxWidth = 800, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!dataUrl || !dataUrl.startsWith('data:image')) {
+        resolve(dataUrl);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
+  const handleSnapFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
-    setIsBulkOnboarding(true);
-    setIsEditing(false);
 
-    const newDrafts = Array.from(files).map((file, index) => ({
-      id: Date.now() + index,
+    setIsBulkOnboarding(true);
+
+    const newDrafts = Array.from(files).map((file, idx) => ({
+      id: `draft-${Date.now()}-${idx}`,
       image_url: '',
       name: file.name.split('.')[0].substring(0, 40),
       price: '5000',
@@ -188,14 +217,15 @@ const ProductManager: React.FC = () => {
 
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Url = reader.result as string;
+        const rawBase64Url = reader.result as string;
+        const base64Url = await compressBase64Url(rawBase64Url, 800, 0.75);
         setBulkDrafts(prev => prev.map(d => d.id === draftId ? { ...d, image_url: base64Url } : d));
 
         try {
           const base64Clean = base64Url.split(',')[1];
           const response = await api.post('/api/marketplace/products/snap-and-list/', {
             image_base64: base64Clean,
-            mime_type: file.type
+            mime_type: file.type || 'image/jpeg'
           });
 
           await billingService.deductCredits(1, 'AI Snap & List Scanner');
@@ -219,35 +249,53 @@ const ProductManager: React.FC = () => {
   };
 
   const handlePublishBulk = async () => {
-    const toastId = toast.loading(`Publishing ${bulkDrafts.length} items to inventory...`);
-    try {
-      for (const draft of bulkDrafts) {
+    if (!bulkDrafts || bulkDrafts.length === 0) return;
+    const toastId = toast.loading(`Publishing ${bulkDrafts.length} item(s) to store inventory...`);
+    let publishedCount = 0;
+    let failedCount = 0;
+
+    for (const draft of bulkDrafts) {
+      try {
+        const compressedImage = await compressBase64Url(draft.image_url, 800, 0.75);
         const payload = {
-          name: draft.name,
-          description: draft.description,
+          name: draft.name || 'Scanned Product',
+          description: draft.description || 'Scanned product listing.',
           price: parseFloat(draft.price || '0').toFixed(2),
           cost_price: parseFloat(draft.cost_price || '0').toFixed(2),
-          stock_count: draft.quantity,
-          sku: draft.sku,
-          category: draft.category,
+          stock_count: parseInt(String(draft.quantity || 1)),
+          sku: draft.sku || `SKU-AI-${Math.floor(100 + Math.random() * 900)}`,
+          category: draft.category || 'General',
           product_type: draft.product_type || 'PHYSICAL',
-          image_url: draft.image_url,
+          image_url: compressedImage,
           is_public: true,
           is_promoted: false,
           low_stock_threshold: 5
         };
 
         if (isTractionMode) {
-          setProducts(prev => [{ ...payload, id: Date.now() + Math.random() } as Product, ...prev]);
+          const newProd = { ...payload, id: Date.now() + Math.random() } as Product;
+          setProducts(prev => [newProd, ...prev]);
+          publishedCount++;
         } else {
-          await api.post('/api/marketplace/products/', payload);
+          const response = await api.post('/api/marketplace/products/', payload);
+          if (response.data) {
+            setProducts(prev => [response.data, ...prev]);
+            publishedCount++;
+          }
         }
+      } catch (e: any) {
+        console.error('Failed to publish draft item:', draft.name, e?.response?.data || e);
+        failedCount++;
       }
-      toast.success('All items published successfully!', { id: toastId });
+    }
+
+    if (publishedCount > 0) {
+      toast.success(`Successfully published ${publishedCount} item(s) to store!`, { id: toastId });
       setIsBulkOnboarding(false);
+      setBulkDrafts([]);
       fetchProducts();
-    } catch (e) {
-      toast.error('Failed to publish all items', { id: toastId });
+    } else {
+      toast.error(`Publishing failed. Please check network or product details.`, { id: toastId });
     }
   };
 

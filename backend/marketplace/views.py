@@ -152,7 +152,11 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         from brand.models import BrandIdentity
-        brand = BrandIdentity.objects.get(user=self.request.user)
+        biz_name = getattr(self.request.user, 'business_name', '') or (self.request.user.email.split('@')[0] if self.request.user.email else 'My Business')
+        brand, _ = BrandIdentity.objects.get_or_create(
+            user=self.request.user,
+            defaults={'business_name': biz_name, 'niche': 'General', 'vibe': 'Professional'}
+        )
         serializer.save(brand=brand)
 
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
