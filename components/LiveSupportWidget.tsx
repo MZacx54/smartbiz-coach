@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatWithSmartBiz } from '../services/geminiService';
 import VoiceInput from './VoiceInput';
+import FormattedMarkdown from './FormattedMarkdown';
 import { toast } from 'react-hot-toast';
 
 interface ChatMessage {
@@ -99,9 +100,9 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
 
       {/* Floating Chat Panel overlay */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-[340px] sm:w-[380px] h-[480px] bg-white border border-slate-100 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-350 z-50">
+        <div className="fixed bottom-24 right-6 w-[340px] sm:w-[390px] h-[520px] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-350 z-50">
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white flex-shrink-0">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg">
@@ -125,29 +126,29 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
           </div>
 
           {/* Chat History */}
-          <div className="flex-1 bg-slate-50/50 p-4 overflow-y-auto space-y-3">
+          <div className="flex-1 bg-slate-50/70 p-4 overflow-y-auto space-y-3.5 no-scrollbar">
             {messages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`
-                  max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap
-                  ${msg.sender === 'user'
-                    ? 'bg-emerald-600 text-white rounded-br-none shadow-md shadow-emerald-650/10'
-                    : 'bg-white text-slate-800 border border-slate-200/50 rounded-bl-none shadow-sm'
-                  }
-                `}>
-                  {msg.text}
-                </div>
+                {msg.sender === 'user' ? (
+                  <div className="max-w-[85%] p-3 rounded-2xl rounded-br-xs text-xs leading-relaxed bg-emerald-600 text-white shadow-sm whitespace-pre-wrap">
+                    {msg.text}
+                  </div>
+                ) : (
+                  <div className="max-w-[90%] p-3.5 rounded-2xl rounded-tl-xs text-xs leading-relaxed bg-white text-slate-800 border border-slate-200/80 shadow-sm">
+                    <FormattedMarkdown content={msg.text} />
+                  </div>
+                )}
               </div>
             ))}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-white border border-slate-200/50 p-3 rounded-2xl rounded-bl-none shadow-sm flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-75"></span>
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-150"></span>
+                <div className="bg-white border border-slate-200/80 p-3 rounded-2xl rounded-tl-xs shadow-sm flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-75"></span>
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce delay-150"></span>
                 </div>
               </div>
             )}

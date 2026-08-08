@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatWithSmartBiz } from '../services/geminiService';
 import VoiceInput from './VoiceInput';
+import FormattedMarkdown from './FormattedMarkdown';
 
 interface ChatMessage {
   id: number;
@@ -105,15 +106,15 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
             key={msg.id}
             className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div className={`
-              max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap
-              ${msg.sender === 'user'
-                ? 'bg-indigo-600 text-white rounded-br-none'
-                : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none shadow-sm'
-              }
-            `}>
-              {msg.text}
-            </div>
+            {msg.sender === 'user' ? (
+              <div className="max-w-[85%] p-3 rounded-2xl rounded-br-xs text-sm leading-relaxed bg-indigo-600 text-white shadow-sm whitespace-pre-wrap">
+                {msg.text}
+              </div>
+            ) : (
+              <div className="max-w-[88%] p-3.5 rounded-2xl rounded-tl-xs text-sm leading-relaxed bg-white text-gray-800 border border-gray-200 shadow-sm">
+                <FormattedMarkdown content={msg.text} />
+              </div>
+            )}
           </div>
         ))}
         {isTyping && (
