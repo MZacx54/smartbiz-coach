@@ -213,8 +213,21 @@ const LandingPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-white font-sans selection:bg-green-200 overflow-x-hidden">
             <SEO
-                title="SmartBiz Coach | AI Platform for Nigerian SMEs"
-                description="The ultimate AI operating system for Nigerian businesses. Snap products with AI, manage inventory, find grants, close sales on WhatsApp — all in Naira, all in one place."
+                title="SmartBiz Coach | #1 AI Operating System for Nigerian SMEs"
+                description="The #1 AI Business Operating System for Nigerian SMEs. Brand, manage inventory, recover debts with Gbege Book on WhatsApp, generate BOI business plans, edit product photos, and match grants."
+                keywords="SmartBiz Coach, AI business operating system, Nigerian SME, AI Photo Studio background removal, Gbege Book WhatsApp debt recovery, BOI business plan generator, CAC checklist Nigeria, SME grants 2026"
+                schema={{
+                    '@context': 'https://schema.org',
+                    '@type': 'FAQPage',
+                    'mainEntity': faqs.map(f => ({
+                        '@type': 'Question',
+                        'name': f.q,
+                        'acceptedAnswer': {
+                            '@type': 'Answer',
+                            'text': f.a
+                        }
+                    }))
+                }}
             />
 
             {/* ═══════════ NAVBAR ═══════════ */}
