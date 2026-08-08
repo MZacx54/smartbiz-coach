@@ -197,12 +197,14 @@ class AdminTransactionsView(APIView):
                 'created_at': tx.created_at.isoformat()
             })
 
-        # 2. Storefront Products GMV (Gross Merchandise Value)
+        # 2. Storefront Products GMV (Gross Merchandise Value - ONLY Verified Paid Orders)
         all_orders = Lead.objects.filter(lead_type='ORDER').order_by('-created_at')
-        storefront_gmv = all_orders.aggregate(total=Sum('quoted_price'))['total'] or 0
+        paid_orders = all_orders.filter(status='WON')
+        storefront_gmv = paid_orders.aggregate(total=Sum('quoted_price'))['total'] or 0
 
         order_txs_data = []
         for ord in all_orders[:200]:
+            is_paid = (ord.status == 'WON')
             order_txs_data.append({
                 'id': ord.id,
                 'business_name': ord.brand.business_name if ord.brand else 'Merchant Store',
@@ -211,7 +213,8 @@ class AdminTransactionsView(APIView):
                 'product_name': ord.product.name if ord.product else 'Storefront Product',
                 'amount': float(ord.quoted_price or 0),
                 'details': ord.message,
-                'status': 'SUCCESS' if ord.status in ['WON', 'NEW', 'FOLLOW_UP'] else 'CANCELLED',
+                'status': 'PAID (Paystack Verified)' if is_paid else 'PENDING (WhatsApp Inquiry)',
+                'is_paid': is_paid,
                 'created_at': ord.created_at.isoformat()
             })
 

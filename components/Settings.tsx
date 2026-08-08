@@ -21,7 +21,9 @@ const CREDIT_PACKS = [
   { credits: 1000, price: 3000, label: 'Enterprise Pack', desc: 'Agency level power usage' },
 ];
 
-type SettingsTab = 'profile' | 'billing' | 'social' | 'preferences' | 'data' | 'admin';
+import { BankPayoutSetup } from './BankPayoutSetup';
+
+type SettingsTab = 'profile' | 'payout' | 'billing' | 'social' | 'preferences' | 'data' | 'admin';
 
 const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdateUser, onTopUpSuccess }) => {
   const location = useLocation();
@@ -318,6 +320,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
 
   const settingsTabs = [
     { id: 'profile' as SettingsTab, label: 'Profile', icon: '👤' },
+    { id: 'payout' as SettingsTab, label: 'Bank Payouts', icon: '🏦' },
     { id: 'billing' as SettingsTab, label: 'Credit Wallet', icon: '💳' },
     { id: 'social' as SettingsTab, label: 'Social & Meta', icon: '📸' },
     { id: 'preferences' as SettingsTab, label: 'Preferences', icon: '🎛️' },
@@ -457,6 +460,13 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ============ BANK PAYOUTS TAB ============ */}
+      {activeTab === 'payout' && (
+        <div className="animate-in fade-in duration-200">
+          <BankPayoutSetup />
         </div>
       )}
 
