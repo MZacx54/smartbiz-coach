@@ -49,6 +49,38 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def perform_update(self, serializer):
+        user = serializer.save()
+        try:
+            from brand.models import BrandIdentity
+            from marketplace.models import VendorVerification
+            
+            brand, _ = BrandIdentity.objects.get_or_create(
+                user=user,
+                defaults={'business_name': user.business_name or user.username}
+            )
+            if user.business_name:
+                brand.business_name = user.business_name
+            if user.logo:
+                brand.logo_url = user.logo
+            brand.save()
+
+            vendor, _ = VendorVerification.objects.get_or_create(
+                user=user,
+                defaults={
+                    'business_name': user.business_name or user.username,
+                    'business_type': 'Retail',
+                    'whatsapp_number': user.phone or '2348000000000'
+                }
+            )
+            if user.business_name:
+                vendor.business_name = user.business_name
+            if user.phone:
+                vendor.whatsapp_number = user.phone
+            vendor.save()
+        except Exception as e:
+            print(f"Notice: Brand/Vendor profile sync warning: {e}")
+
 class UserStatsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 

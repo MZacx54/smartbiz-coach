@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, UserStats } from '../types';
 import PaymentModal from './PaymentModal';
 import { billingService, TransactionData, CreditLedgerData, AdminDashboardData } from '../services/billingService';
+import { authService } from '../services/authService';
 import { marketingService } from '../services/marketingService';
 import { toast } from 'react-hot-toast';
 
@@ -28,11 +29,14 @@ type SettingsTab = 'profile' | 'payout' | 'billing' | 'social' | 'preferences' |
 const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdateUser, onTopUpSuccess }) => {
   const location = useLocation();
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [editForm, setEditForm] = useState({
     name: user.name || '',
-    businessName: user.businessName || '',
+    businessName: user.businessName || user.business_name || '',
     email: user.email || '',
-    phone: user.phone || ''
+    phone: user.phone || '',
+    location: user.location || '',
+    currency: user.currency || 'NGN'
   });
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
@@ -155,9 +159,11 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   useEffect(() => {
     setEditForm({
       name: user.name || '',
-      businessName: user.businessName || '',
+      businessName: user.businessName || user.business_name || '',
       email: user.email || '',
-      phone: user.phone || ''
+      phone: user.phone || '',
+      location: user.location || '',
+      currency: user.currency || 'NGN'
     });
   }, [user]);
 
@@ -219,19 +225,80 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     });
   }, []);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file (PNG, JPG, SVG)');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 400;
+        let w = img.width;
+        let h = img.height;
+        if (w > h) {
+          if (w > MAX) { h = Math.round((h * MAX) / w); w = MAX; }
+        } else {
+          if (h > MAX) { w = Math.round((w * MAX) / h); h = MAX; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, w, h);
+        const base64Logo = canvas.toDataURL('image/jpeg', 0.85);
+
+        try {
+          await authService.updateProfile({ logo: base64Logo });
+          const updatedUser = { ...user, logo: base64Logo };
+          if (onUpdateUser) onUpdateUser(updatedUser);
+          toast.success("Business logo updated & synced across your storefront, invoices, and marketplace!");
+        } catch (err: any) {
+          toast.error("Failed to update logo. Try again.");
+        } finally {
+          setIsUploadingLogo(false);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (onUpdateUser) {
-      onUpdateUser({
+    try {
+      await authService.updateProfile({
+        name: editForm.name,
+        business_name: editForm.businessName,
+        email: editForm.email,
+        phone: editForm.phone,
+        location: editForm.location,
+        currency: editForm.currency
+      });
+
+      const updatedUser = {
         ...user,
         name: editForm.name,
         businessName: editForm.businessName,
+        business_name: editForm.businessName,
         email: editForm.email,
-        phone: editForm.phone
-      });
-      toast.success("Profile updated successfully!");
+        phone: editForm.phone,
+        location: editForm.location,
+        currency: editForm.currency
+      };
+
+      if (onUpdateUser) onUpdateUser(updatedUser);
+      toast.success("Profile & Business Brand updated successfully!");
+      setIsEditing(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to save profile changes.");
     }
-    setIsEditing(false);
   };
 
   const handlePackSelect = (pack: typeof CREDIT_PACKS[0]) => {
@@ -367,96 +434,215 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto">
+      <div className="flex border-b border-slate-200/80 gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1.5 flex-nowrap shrink-0">
         {settingsTabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`pb-3.5 px-5 font-bold text-xs border-b-2 transition-all whitespace-nowrap cursor-pointer border-0 bg-transparent ${
+            className={`pb-3 px-4 font-bold text-xs border-b-2 transition-all whitespace-nowrap cursor-pointer border-0 bg-transparent flex items-center gap-2 shrink-0 ${
               activeTab === tab.id 
-                ? 'border-b-2 border-indigo-600 text-indigo-650' 
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                ? 'border-b-2 border-indigo-600 text-indigo-650 font-black' 
+                : 'border-transparent text-slate-400 hover:text-slate-600 font-semibold'
             }`}
           >
-            {tab.icon} {tab.label}
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
 
+      {/* Hidden File Input for Profile & Logo Upload */}
+      <input
+        type="file"
+        id="profile-logo-file-input"
+        accept="image/*"
+        className="hidden"
+        onChange={handleLogoFileUpload}
+      />
+
       {/* ============ PROFILE TAB ============ */}
       {activeTab === 'profile' && (
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-200">
-          <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">My Profile</h3>
+        <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-sm overflow-hidden animate-in fade-in duration-200 space-y-0">
+          
+          {/* Hero Banner & Logo Upload */}
+          <div className="bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden flex flex-col sm:flex-row items-center sm:items-start gap-6 border-b border-slate-800">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full filter blur-3xl pointer-events-none" />
+
+            {/* Avatar Circle with Camera Overlay */}
+            <div className="relative group shrink-0">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-3xl sm:rounded-[32px] flex items-center justify-center text-white text-3xl font-extrabold shadow-2xl overflow-hidden uppercase border-2 border-white/20">
+                {user.logo ? (
+                  <img src={user.logo} className="w-full h-full object-cover" alt="Business Logo" />
+                ) : (
+                  <span>{(user.name || user.businessName || 'U').charAt(0)}</span>
+                )}
+              </div>
+
+              {/* Camera Icon Overlay */}
+              <label
+                htmlFor="profile-logo-file-input"
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all rounded-3xl sm:rounded-[32px] flex flex-col items-center justify-center cursor-pointer text-white text-xs font-bold gap-1 backdrop-blur-xs"
+              >
+                <span className="text-lg">📷</span>
+                <span>{isUploadingLogo ? 'Uploading...' : 'Change Logo'}</span>
+              </label>
+
+              <label
+                htmlFor="profile-logo-file-input"
+                className="absolute -bottom-2 -right-2 bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl shadow-lg border-2 border-slate-900 cursor-pointer transition-transform active:scale-90"
+                title="Upload Business Logo"
+              >
+                <span className="text-xs">📷</span>
+              </label>
+            </div>
+
+            {/* User Meta Info */}
+            <div className="flex-1 text-center sm:text-left space-y-2 relative z-10">
+              <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
+                <h3 className="text-xl sm:text-2xl font-black text-white font-heading">
+                  {user.businessName || user.business_name || user.name || 'My Business'}
+                </h3>
+                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
+                  {user.plan || 'Free'} Plan
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-300 font-medium">{user.name} ({user.email})</p>
+              
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap pt-1 text-[11px]">
+                {user.location && (
+                  <span className="bg-white/10 text-slate-200 px-3 py-1 rounded-full font-bold">
+                    📍 {user.location}
+                  </span>
+                )}
+                {user.phone && (
+                  <span className="bg-white/10 text-slate-200 px-3 py-1 rounded-full font-bold">
+                    📞 {user.phone}
+                  </span>
+                )}
+                <span className="bg-emerald-400/20 text-emerald-300 px-3 py-1 rounded-full font-bold">
+                  ✓ Logo Auto-Synced to Storefront
+                </span>
+              </div>
+            </div>
+
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="text-xs text-indigo-650 font-bold hover:underline bg-transparent border-0 cursor-pointer"
+              className="bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer border-0 shrink-0 relative z-10"
             >
-              {isEditing ? 'Cancel' : 'Edit Profile'}
+              {isEditing ? 'Cancel Edit' : '✏️ Edit Profile Details'}
             </button>
           </div>
 
+          {/* Form / Details View */}
           {isEditing ? (
-            <form onSubmit={handleSaveProfile} className="p-6 sm:p-8 space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                <input
-                  required
-                  className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                  value={editForm.name}
-                  onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Name</label>
-                <input
-                  className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                  value={editForm.businessName}
-                  onChange={e => setEditForm({ ...editForm, businessName: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <form onSubmit={handleSaveProfile} className="p-6 sm:p-8 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name *</label>
+                  <input
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={editForm.name}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Name *</label>
+                  <input
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={editForm.businessName}
+                    onChange={e => setEditForm({ ...editForm, businessName: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address *</label>
                   <input
                     required
                     type="email"
-                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={editForm.email}
                     onChange={e => setEditForm({ ...editForm, email: e.target.value })}
                   />
                 </div>
+
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp / Phone</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp / Phone Number</label>
                   <input
                     type="tel"
-                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="e.g. 08012345678"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={editForm.phone}
                     onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Lagos, Yaba / Abuja"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={editForm.location}
+                    onChange={e => setEditForm({ ...editForm, location: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Store Currency</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={editForm.currency}
+                    onChange={e => setEditForm({ ...editForm, currency: e.target.value })}
+                  >
+                    <option value="NGN">NGN (₦ - Nigerian Naira)</option>
+                    <option value="USD">USD ($ - US Dollar)</option>
+                    <option value="GBP">GBP (£ - British Pound)</option>
+                  </select>
+                </div>
               </div>
-              <button
-                type="submit"
-                className="bg-indigo-600 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-600/10 border-0 cursor-pointer"
-              >
-                Save Changes
-              </button>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-2xl text-xs font-bold transition-all border-0 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-indigo-600/20 active:scale-95 border-0 cursor-pointer"
+                >
+                  Save Profile & Sync Logo
+                </button>
+              </div>
             </form>
           ) : (
-            <div className="p-6 sm:p-8 flex items-center gap-5">
-              <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-indigo-700 rounded-full flex items-center justify-center text-white text-2xl font-extrabold shadow-inner overflow-hidden uppercase flex-shrink-0">
-                {user.logo ? <img src={user.logo} className="w-full h-full object-cover" /> : (user.name ? user.name.charAt(0) : 'U')}
-              </div>
-              <div className="min-w-0">
-                <h4 className="text-lg font-extrabold text-slate-800">{user.name || 'User'}</h4>
-                <p className="text-slate-500 text-xs">{user.email}</p>
-                {user.businessName && (
-                  <p className="text-[10px] text-indigo-650 font-bold mt-1.5 bg-indigo-50 px-2.5 py-0.5 rounded-lg border border-indigo-100 inline-block">
-                    🏢 {user.businessName}
-                  </p>
-                )}
-                {user.phone && <p className="text-[10px] text-slate-400 mt-1">📞 {user.phone}</p>}
+            <div className="p-6 sm:p-8 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Full Name</span>
+                  <span className="text-sm font-bold text-slate-800">{user.name || 'Not set'}</span>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Business Name</span>
+                  <span className="text-sm font-bold text-slate-800">{user.businessName || user.business_name || 'Not set'}</span>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email Address</span>
+                  <span className="text-sm font-bold text-slate-800">{user.email || 'Not set'}</span>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">WhatsApp / Phone</span>
+                  <span className="text-sm font-bold text-slate-800">{user.phone || 'Not set'}</span>
+                </div>
               </div>
             </div>
           )}
