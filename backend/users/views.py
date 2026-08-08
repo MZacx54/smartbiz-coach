@@ -158,13 +158,16 @@ class ForgotPasswordView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        if not email:
+        email_raw = request.data.get('email')
+        if not email_raw:
             return Response({'error': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        email = email_raw.strip()
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            user = User.objects.filter(username__iexact=email).first()
+
+        if not user:
             # Return generic success to avoid email enumeration security vulnerability
             return Response({'message': 'If a matching account exists, a reset code has been sent.'}, status=status.HTTP_200_OK)
 
@@ -184,29 +187,27 @@ class ForgotPasswordView(views.APIView):
         subject = "SmartBiz Coach - Password Reset Code"
         message = f"Hello {user.first_name or user.username},\n\nYour password reset code is: {code}\n\nThis code is valid for 15 minutes. If you did not request a password reset, please ignore this email.\n\nBest regards,\nSmartBiz Coach Team"
         
+        api_key = (os.getenv('BREVO_API_KEY') or os.getenv('SENDINBLUE_API_KEY') or settings.EMAIL_HOST_PASSWORD or '').strip()
+        from_email = (os.getenv('DEFAULT_FROM_EMAIL') or settings.DEFAULT_FROM_EMAIL or 'noreply@smartbizcoach.com.ng').strip()
+        recipient_email = user.email or email
+
         def send_email_async():
             import urllib.error
-            # If we are using Brevo, bypass SMTP port blocks entirely using their HTTP API (Port 443 / HTTPS)
-            api_key = (settings.EMAIL_HOST_PASSWORD or '').strip()
-            from_email = (settings.DEFAULT_FROM_EMAIL or '').strip()
-
-            # Print safe debugging info to Railway logs (masking the actual key)
             key_preview = f"{api_key[:12]}..." if api_key else "None"
-            print(f"DEBUG: api_key length={len(api_key)}, starts_with_xkeysib={api_key.startswith('xkeysib-')}, preview={key_preview}, sender={from_email}")
+            print(f"DEBUG: api_key length={len(api_key)}, preview={key_preview}, sender={from_email}, recipient={recipient_email}")
 
             if api_key and len(api_key) > 20:
-                print("Attempting to send email via Brevo HTTP REST API (port 443)...")
+                print("Attempting to send email via Brevo REST API (port 443)...")
                 try:
                     url = "https://api.brevo.com/v3/smtp/email"
                     payload = {
                         "sender": {"email": from_email, "name": "SmartBiz Coach"},
-                        "to": [{"email": email}],
+                        "to": [{"email": recipient_email}],
                         "subject": subject,
                         "textContent": message
                     }
                     payload_bytes = json.dumps(payload).encode("utf-8")
                     req = urllib.request.Request(url, data=payload_bytes, method="POST")
-                    # Set headers individually to avoid any dict formatting issues
                     req.add_header("accept", "application/json")
                     req.add_header("api-key", api_key)
                     req.add_header("content-type", "application/json")
@@ -214,55 +215,55 @@ class ForgotPasswordView(views.APIView):
                     with urllib.request.urlopen(req, timeout=15) as response:
                         res_body = response.read().decode("utf-8")
                         print(f"Brevo HTTP API SUCCESS: status={response.status}, body={res_body}")
-                        return  # Email sent - done!
+                        return
 
                 except urllib.error.HTTPError as http_err:
-                    # Read the full Brevo error response body for diagnostics
                     try:
                         err_body = http_err.read().decode("utf-8")
                     except Exception:
                         err_body = "(could not read error body)"
                     print(f"Brevo HTTP API FAILED: status={http_err.code}, reason={http_err.reason}, body={err_body}")
                     print("Falling back to SMTP...")
-
                 except Exception as api_err:
                     print(f"Brevo HTTP API FAILED (unexpected error): {api_err}")
                     print("Falling back to SMTP...")
 
-            # Fallback to standard Django SMTP send_mail
             try:
                 print("Attempting to send email via SMTP...")
-                send_mail(subject, message, from_email, [email], fail_silently=False)
+                send_mail(subject, message, from_email, [recipient_email], fail_silently=False)
                 print("SMTP Email sent successfully!")
             except Exception as e:
                 print(f"Error sending email via SMTP: {e}")
 
-        # Start the background thread
         email_thread = threading.Thread(target=send_email_async)
         email_thread.start()
 
-        # In DEBUG mode, we can still print the code to the server logs for development ease
-        if settings.DEBUG:
+        res_data = {'message': 'If a matching account exists, a reset code has been sent.'}
+        if settings.DEBUG or not api_key:
+            res_data['debug_code'] = code
             print(f"DEBUG: Password reset code for {email} is {code}")
 
-        return Response({'message': 'If a matching account exists, a reset code has been sent.'}, status=status.HTTP_200_OK)
+        return Response(res_data, status=status.HTTP_200_OK)
 
 
 class ResetPasswordView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
+        email_raw = request.data.get('email')
         code = request.data.get('code')
         new_password = request.data.get('new_password')
 
-        if not email or not code or not new_password:
+        if not email_raw or not code or not new_password:
             return Response({'error': 'Email, code, and new password are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({'error': 'Invalid request.'}, status=status.HTTP_400_BAD_REQUEST)
+        email = email_raw.strip()
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            user = User.objects.filter(username__iexact=email).first()
+
+        if not user:
+            return Response({'error': 'Invalid request or account not found.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Retrieve the latest active reset code for this user
         reset_code = PasswordResetCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at').first()

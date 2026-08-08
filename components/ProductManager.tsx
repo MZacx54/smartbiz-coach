@@ -143,7 +143,7 @@ const ProductManager: React.FC = () => {
 
   // Bulk Scan States
   const [bulkDrafts, setBulkDrafts] = useState<{
-    id: number;
+    id: number | string;
     image_url: string;
     name: string;
     price: string;
@@ -247,6 +247,8 @@ const ProductManager: React.FC = () => {
       reader.readAsDataURL(file);
     }
   };
+
+  const handleBulkSelect = handleSnapFileSelect;
 
   const handlePublishBulk = async () => {
     if (!bulkDrafts || bulkDrafts.length === 0) return;
