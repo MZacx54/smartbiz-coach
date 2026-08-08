@@ -1289,3 +1289,75 @@ class GeneratePartnershipPitchView(views.APIView):
             return Response(result)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
+
+
+class RemoveBackgroundView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ImageEditThrottle]
+
+    def post(self, request):
+        image_base64 = request.data.get('image_base64') or request.data.get('image')
+        mime_type = request.data.get('mime_type', 'image/jpeg')
+
+        if not image_base64:
+            return Response({'error': 'No image provided'}, status=400)
+
+        try:
+            import base64
+            import io
+            from PIL import Image, ImageFilter
+
+            # Clean base64 header if present
+            if ',' in image_base64:
+                image_base64 = image_base64.split(',')[1]
+
+            img_bytes = base64.b64decode(image_base64)
+            raw_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+            
+            w, h = raw_img.size
+            corners = [
+                raw_img.getpixel((5, 5)),
+                raw_img.getpixel((w - 5, 5)),
+                raw_img.getpixel((5, h - 5)),
+                raw_img.getpixel((w - 5, h - 5)),
+                raw_img.getpixel((w // 2, 5)),
+            ]
+            
+            avg_r = sum(c[0] for c in corners) // len(corners)
+            avg_g = sum(c[1] for c in corners) // len(corners)
+            avg_b = sum(c[2] for c in corners) // len(corners)
+
+            datas = raw_img.getdata()
+            new_data = []
+
+            margin_x = int(w * 0.15)
+            margin_y = int(h * 0.15)
+
+            for idx, item in enumerate(datas):
+                x = idx % w
+                y = idx // w
+                r, g, b, a = item
+                
+                dist = ((r - avg_r)**2 + (g - avg_g)**2 + (b - avg_b)**2) ** 0.5
+                is_border_region = (x < margin_x or x > (w - margin_x) or y < margin_y or y > (h - margin_y))
+                
+                if (is_border_region and dist < 75) or (dist < 45):
+                    new_data.append((255, 255, 255, 0))
+                else:
+                    new_data.append((r, g, b, a))
+
+            raw_img.putdata(new_data)
+            
+            alpha = raw_img.split()[3]
+            alpha = alpha.filter(ImageFilter.GaussianBlur(1))
+            raw_img.putalpha(alpha)
+
+            buffered = io.BytesIO()
+            raw_img.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            
+            deduct_credits(request.user, 'image_edit')
+            return Response({'transparent_image_base64': f"data:image/png;base64,{img_str}"})
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)

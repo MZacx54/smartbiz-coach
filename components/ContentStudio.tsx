@@ -315,6 +315,9 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         return saved ? JSON.parse(saved) : [];
     });
 
+    const [badgeTheme, setBadgeTheme] = useState<'gold' | 'emerald' | 'ruby' | 'dark'>('gold');
+    const [badgePosition, setBadgePosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
+
     const handleLoadProject = (proj: SavedPhotoProject) => {
         setImagePreview(proj.image);
         setImageHistory([proj.image]);
@@ -1371,17 +1374,34 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                     </div>
                                                 )}
 
-                                                {/* Promo Discount Tag */}
-                                                {flyerPromo && (
-                                                    <div className="absolute top-4 right-4 bg-rose-600 px-3 py-1.5 rounded-full font-black text-xs text-white uppercase shadow-lg z-10 tracking-wider">
-                                                        💥 {flyerPromo}
-                                                    </div>
-                                                )}
-
-                                                {/* Price Sticker */}
-                                                {flyerPrice && (
-                                                    <div className="absolute bottom-4 right-4 bg-indigo-600 px-4 py-2 rounded-xl text-white font-black text-sm shadow-2xl z-10 border border-indigo-550">
-                                                        ₦{flyerPrice}
+                                                {/* Interactive Price & Discount Badge Banner Overlay */}
+                                                {(flyerPromo || flyerPrice) && (
+                                                    <div className={`absolute z-20 flex flex-col gap-1 p-2 ${
+                                                        badgePosition === 'top-left' ? 'top-3 left-3 items-start' :
+                                                        badgePosition === 'bottom-left' ? 'bottom-3 left-3 items-start' :
+                                                        badgePosition === 'bottom-right' ? 'bottom-3 right-3 items-end' :
+                                                        'top-3 right-3 items-end'
+                                                    }`}>
+                                                        {flyerPromo && (
+                                                            <span className={`px-3 py-1 rounded-full font-black text-[10px] uppercase tracking-wider shadow-lg border ${
+                                                                badgeTheme === 'emerald' ? 'bg-emerald-500 text-white border-emerald-400' :
+                                                                badgeTheme === 'ruby' ? 'bg-rose-600 text-white border-rose-500' :
+                                                                badgeTheme === 'dark' ? 'bg-slate-900 text-amber-400 border-slate-700' :
+                                                                'bg-amber-400 text-slate-950 border-amber-300 font-bold'
+                                                            }`}>
+                                                                💥 {flyerPromo}
+                                                            </span>
+                                                        )}
+                                                        {flyerPrice && (
+                                                            <span className={`px-3.5 py-1.5 rounded-xl font-black text-xs shadow-2xl font-mono tracking-tight border ${
+                                                                badgeTheme === 'emerald' ? 'bg-emerald-700 text-white border-emerald-500' :
+                                                                badgeTheme === 'ruby' ? 'bg-rose-700 text-white border-rose-600' :
+                                                                badgeTheme === 'dark' ? 'bg-slate-950 text-white border-slate-800' :
+                                                                'bg-slate-900 text-amber-300 border-slate-800'
+                                                            }`}>
+                                                                ₦{Number(flyerPrice.replace(/[^0-9.]/g, '')).toLocaleString() || flyerPrice}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -1415,13 +1435,29 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         type="button"
                                                         disabled={isApplyingAiEdit}
                                                         onClick={async () => {
-                                                            const rawImg = imageHistory[0] || imagePreview;
-                                                            setSelectedBackdrop('transparent');
-                                                            await performImageEdit('[ACTION] no_bg', rawImg);
+                                                            setIsApplyingAiEdit(true);
+                                                            try {
+                                                                toast("Running Semantic AI Background Removal...", { icon: '✂️' });
+                                                                const rawImg = imageHistory[0] || imagePreview || '';
+                                                                const res = await geminiService.removeBackgroundAi(rawImg);
+                                                                if (res && res.transparent_image_base64) {
+                                                                    setSelectedBackdrop('transparent');
+                                                                    setImageHistory(prev => [...prev, res.transparent_image_base64]);
+                                                                    setHistoryIndex(prev => prev + 1);
+                                                                    toast.success("AI Background Removal Complete!");
+                                                                } else {
+                                                                    toast.error("Failed to isolate background");
+                                                                }
+                                                            } catch (err: any) {
+                                                                console.error("BG removal error:", err);
+                                                                toast.error("Background removal error");
+                                                            } finally {
+                                                                setIsApplyingAiEdit(false);
+                                                            }
                                                         }}
-                                                        className="w-full py-3 px-4 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/20 hover:from-indigo-500 hover:to-violet-500 transition-all flex items-center justify-center gap-2 cursor-pointer border border-indigo-500/30"
+                                                        className="w-full py-3 px-4 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer border border-indigo-500/30 active:scale-95"
                                                     >
-                                                        <span>✂️ Remove Background (Transparent)</span>
+                                                        <span>✂️ AI Semantic Remove Background</span>
                                                     </button>
                                                     <button
                                                         type="button"
@@ -1458,11 +1494,14 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                             type="button"
                                                             onClick={async () => {
                                                                 setSelectedBackdrop(bg.id);
-                                                                // Auto-isolate product if still in raw state so backdrop shows cleanly behind product
                                                                 if (historyIndex === 0 && imageHistory.length === 1 && bg.id !== 'raw') {
-                                                                    const rawImg = imageHistory[0] || imagePreview;
+                                                                    const rawImg = imageHistory[0] || imagePreview || '';
                                                                     toast("Isolating product to display backdrop...", { icon: '✂️' });
-                                                                    await performImageEdit('[ACTION] no_bg', rawImg);
+                                                                    const res = await geminiService.removeBackgroundAi(rawImg);
+                                                                    if (res && res.transparent_image_base64) {
+                                                                        setImageHistory(prev => [...prev, res.transparent_image_base64]);
+                                                                        setHistoryIndex(prev => prev + 1);
+                                                                    }
                                                                 } else {
                                                                     toast.success(`Applied ${bg.label} backdrop!`);
                                                                 }
@@ -1502,25 +1541,51 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                 </div>
                                             </div>
 
-                                            {/* Step 4: Price & Discount Flyer Tag */}
-                                            <div className="space-y-2 pt-2 border-t border-slate-800/60">
-                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">4. PROMO TAGS (OPTIONAL)</label>
+                                            {/* Step 4: Price & Discount Banner Overlay Controls */}
+                                            <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                                                <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">4. PRICE & DISCOUNT BANNER OVERLAY</label>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <input 
                                                         type="text" 
                                                         value={flyerPrice} 
                                                         onChange={(e) => setFlyerPrice(e.target.value)}
-                                                        placeholder="Price ₦"
+                                                        placeholder="Price e.g. 15000"
                                                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
                                                     />
                                                     <input 
                                                         type="text" 
                                                         value={flyerPromo} 
                                                         onChange={(e) => setFlyerPromo(e.target.value)}
-                                                        placeholder="Discount %"
+                                                        placeholder="Promo e.g. 20% OFF"
                                                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
                                                     />
                                                 </div>
+
+                                                {/* Badge Theme & Position Selectors */}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <select 
+                                                        value={badgeTheme}
+                                                        onChange={(e) => setBadgeTheme(e.target.value as any)}
+                                                        className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 font-medium outline-none cursor-pointer"
+                                                    >
+                                                        <option value="gold">🏆 Gold Lux Theme</option>
+                                                        <option value="emerald">🇳🇬 Emerald Green</option>
+                                                        <option value="ruby">🔴 Ruby Red Sale</option>
+                                                        <option value="dark">🖤 Minimal Dark</option>
+                                                    </select>
+
+                                                    <select 
+                                                        value={badgePosition}
+                                                        onChange={(e) => setBadgePosition(e.target.value as any)}
+                                                        className="bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 font-medium outline-none cursor-pointer"
+                                                    >
+                                                        <option value="top-right">↗️ Top Right</option>
+                                                        <option value="top-left">↖️ Top Left</option>
+                                                        <option value="bottom-right">↘️ Bottom Right</option>
+                                                        <option value="bottom-left">↙️ Bottom Left</option>
+                                                    </select>
+                                                </div>
+
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -1529,9 +1594,9 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         navigator.clipboard.writeText(promoText);
                                                         toast.success("Direct WhatsApp Promo Link & Text Copied! Ready to post on Status 🚀");
                                                     }}
-                                                    className="w-full mt-2 py-2.5 px-4 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-900/30 transition-all"
+                                                    className="w-full mt-1 py-2.5 px-4 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-900/30 transition-all border-0"
                                                 >
-                                                    <span>📲 Copy Direct WhatsApp Shortlink & Promo Text</span>
+                                                    <span>📲 Copy WhatsApp Promo Text & Shortlink</span>
                                                 </button>
                                             </div>
 

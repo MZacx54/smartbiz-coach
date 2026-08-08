@@ -193,3 +193,11 @@ export const generatePartnershipPitch = async (partnerName: string, pitchType: s
     return response.data;
 };
 
+export const removeBackgroundAi = async (imageBase64: string, mimeType: string = 'image/jpeg') => {
+    const response = await api.post('/api/content/remove-bg/', {
+        image_base64: imageBase64,
+        mime_type: mimeType
+    });
+    return response.data;
+};
+
