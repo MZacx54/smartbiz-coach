@@ -1335,17 +1335,18 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                         {/* Left 2 Columns: Large Interactive Preview Canvas */}
                                         <div className="lg:col-span-2 flex flex-col items-center">
                                             <div 
-                                                className="w-full rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl relative select-none flex items-center justify-center aspect-square max-w-[450px]"
+                                                className="w-full rounded-2xl overflow-hidden border border-slate-700 bg-white shadow-2xl relative select-none flex items-center justify-center aspect-square max-w-[450px]"
                                                 ref={flyerRef}
                                                 style={
-                                                    selectedBackdrop === 'raw' ? { backgroundColor: '#0f172a' } :
+                                                    selectedBackdrop === 'raw' ? { backgroundColor: '#ffffff' } :
                                                     selectedBackdrop === 'transparent' ? {
-                                                        backgroundImage: 'radial-gradient(#475569 1px, transparent 1px), radial-gradient(#475569 1px, #0f172a 1px)',
+                                                        backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px), radial-gradient(#cbd5e1 1px, #ffffff 1px)',
                                                         backgroundSize: '16px 16px',
-                                                        backgroundPosition: '0 0, 8px 8px'
+                                                        backgroundPosition: '0 0, 8px 8px',
+                                                        backgroundColor: '#ffffff'
                                                     } :
                                                     selectedBackdrop === 'white' ? { backgroundColor: '#ffffff' } :
-                                                    selectedBackdrop === 'grey' ? { backgroundColor: '#f3f4f6' } :
+                                                    selectedBackdrop === 'grey' ? { backgroundColor: '#f1f5f9' } :
                                                     selectedBackdrop === 'gradient-warm' ? { backgroundImage: 'linear-gradient(to bottom right, #ffedd5, #fee2e2)' } :
                                                     selectedBackdrop === 'gradient-cool' ? { backgroundImage: 'linear-gradient(to bottom right, #e0e7ff, #fae8ff)' } :
                                                     selectedBackdrop === 'wood' ? { backgroundImage: 'linear-gradient(to bottom, #7c2d12, #451a03)' } :

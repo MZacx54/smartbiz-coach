@@ -1360,31 +1360,28 @@ class RemoveBackgroundView(views.APIView):
                 r, g, b, a = item
 
                 # 🛡️ 100% FOREGROUND PROTECTION GUARANTEE:
-                # If pixel is inside the subject bounding box, GUARANTEE 100% OPAQUE (Alpha = 255)!
-                # This guarantees her face, skin, hair, chain, and coral top are NEVER turned black or transparent!
+                # Inside subject bounding box: Keep 100% original pixel details (Alpha = 255)!
                 if sub_xmin <= x <= sub_xmax and sub_ymin <= y <= sub_ymax:
                     new_data.append((r, g, b, 255))
                 else:
-                    # Outside subject bounding box: Calculate distance to background color
+                    # Outside subject bounding box: Replace room/floor background with Pure Studio White (255, 255, 255, 255)
                     dist = ((r - avg_r)**2 + (g - avg_g)**2 + (b - avg_b)**2) ** 0.5
-                    if dist < 65:
-                        new_data.append((255, 255, 255, 0))
+                    if dist < 75:
+                        new_data.append((255, 255, 255, 255))  # Pure Studio White
                     else:
                         new_data.append((r, g, b, 255))
 
             raw_img.putdata(new_data)
             
-            # Subtle edge feathering
-            alpha = raw_img.split()[3]
-            alpha = alpha.filter(ImageFilter.GaussianBlur(0.8))
-            raw_img.putalpha(alpha)
-
             buffered = io.BytesIO()
             raw_img.save(buffered, format="PNG")
             img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
             
             deduct_credits(request.user, 'image_edit')
-            return Response({'transparent_image_base64': f"data:image/png;base64,{img_str}"})
+            return Response({
+                'transparent_image_base64': f"data:image/png;base64,{img_str}",
+                'studio_image_base64': f"data:image/png;base64,{img_str}"
+            })
 
         except Exception as e:
             print("Remove background error:", e)
