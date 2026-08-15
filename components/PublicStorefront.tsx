@@ -41,6 +41,86 @@ const PublicStorefront: React.FC = () => {
     notes: ''
   });
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [selectedDetailProduct, setSelectedDetailProduct] = useState<any | null>(null);
+  const [showStoreEditModal, setShowStoreEditModal] = useState(false);
+  const [isSavingStoreProfile, setIsSavingStoreProfile] = useState(false);
+  const [editStoreForm, setEditStoreForm] = useState({
+    businessName: '',
+    tagline: '',
+    socialBio: '',
+    phone: '',
+    email: '',
+    location: '',
+    monFri: '8:00 AM - 6:00 PM',
+    saturday: '9:00 AM - 4:00 PM',
+    sunday: 'Closed'
+  });
+
+  const openStoreEditModal = () => {
+    if (brand) {
+      setEditStoreForm({
+        businessName: brand.businessName || '',
+        tagline: brand.taglines?.[0] || '',
+        socialBio: brand.socialBio || '',
+        phone: brand.phone || brand.whatsapp || '',
+        email: brand.email || '',
+        location: brand.location || '',
+        monFri: brand.openingHours?.monFri || '8:00 AM - 6:00 PM',
+        saturday: brand.openingHours?.saturday || '9:00 AM - 4:00 PM',
+        sunday: brand.openingHours?.sunday || 'Closed'
+      });
+    }
+    setShowStoreEditModal(true);
+  };
+
+  const handleSaveStoreProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingStoreProfile(true);
+    try {
+      const updatedOpeningHours = {
+        monFri: editStoreForm.monFri,
+        saturday: editStoreForm.saturday,
+        sunday: editStoreForm.sunday
+      };
+
+      // 1. Update Brand Identity
+      if (brand && brand.id) {
+        await api.put(`/api/brand/${brand.id}/`, {
+          business_name: editStoreForm.businessName,
+          social_bio: editStoreForm.socialBio,
+          taglines: [editStoreForm.tagline],
+          opening_hours: updatedOpeningHours
+        });
+      }
+
+      // 2. Update User Profile
+      await api.patch('/api/users/profile/', {
+        business_name: editStoreForm.businessName,
+        phone: editStoreForm.phone,
+        location: editStoreForm.location
+      });
+
+      // Update local state
+      setBrand(prev => prev ? {
+        ...prev,
+        businessName: editStoreForm.businessName,
+        socialBio: editStoreForm.socialBio,
+        phone: editStoreForm.phone,
+        email: editStoreForm.email,
+        location: editStoreForm.location,
+        taglines: [editStoreForm.tagline],
+        openingHours: updatedOpeningHours
+      } : prev);
+
+      toast.success("Storefront profile & opening hours updated!");
+      setShowStoreEditModal(false);
+    } catch (err) {
+      console.error("Save store profile error", err);
+      toast.error("Failed to update store profile");
+    } finally {
+      setIsSavingStoreProfile(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -405,31 +485,51 @@ const PublicStorefront: React.FC = () => {
         {/* Left Sidebar: Business info cards */}
         <div className="md:col-span-1 space-y-6">
           {/* Operations Hours */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-455" /> Opening Hours
-            </h3>
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4 relative group">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-455" /> Opening Hours
+              </h3>
+              {(!slug || isTractionMode) && (
+                <button
+                  onClick={() => openStoreEditModal()}
+                  className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                >
+                  Edit ✏️
+                </button>
+              )}
+            </div>
             <div className="space-y-2 text-xs text-slate-600 font-medium">
               <div className="flex justify-between">
                 <span>Mon - Fri</span>
-                <span className="font-bold text-slate-800">8:00 AM - 6:00 PM</span>
+                <span className="font-bold text-slate-800">{brand?.openingHours?.monFri || '8:00 AM - 6:00 PM'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Saturday</span>
-                <span className="font-bold text-slate-800">9:00 AM - 4:00 PM</span>
+                <span className="font-bold text-slate-800">{brand?.openingHours?.saturday || '9:00 AM - 4:00 PM'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Sunday</span>
-                <span className="font-semibold text-rose-500">Closed</span>
+                <span className="font-semibold text-rose-500">{brand?.openingHours?.sunday || 'Closed'}</span>
               </div>
             </div>
           </div>
 
           {/* Contact widget */}
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <Phone className="w-4 h-4 text-slate-455" /> Contact Details
-            </h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Phone className="w-4 h-4 text-slate-455" /> Contact Details
+              </h3>
+              {(!slug || isTractionMode) && (
+                <button
+                  onClick={() => openStoreEditModal()}
+                  className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                >
+                  Edit ✏️
+                </button>
+              )}
+            </div>
             <div className="space-y-3 text-xs font-semibold text-slate-700">
               <div className="flex items-center gap-2">
                 <span>📞</span>
@@ -489,7 +589,10 @@ const PublicStorefront: React.FC = () => {
                         whileHover={{ y: -4 }}
                         className="group bg-white rounded-3xl overflow-hidden border border-slate-100 flex flex-col transition-all shadow-sm hover:shadow-md"
                       >
-                        <div className="aspect-[4/3] relative overflow-hidden bg-slate-50">
+                        <div 
+                          onClick={() => setSelectedDetailProduct(product)}
+                          className="aspect-[4/3] relative overflow-hidden bg-slate-50 cursor-pointer"
+                        >
                           {product.image_url ? (
                             <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
@@ -507,7 +610,7 @@ const PublicStorefront: React.FC = () => {
                               }}
                               className="absolute top-3 left-3 bg-gradient-to-r from-red-600 to-pink-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1 hover:scale-105 transition-all z-20 cursor-pointer"
                             >
-                              <span>▶️ Watch Product Video</span>
+                              <span>▶️ Watch Video</span>
                             </button>
                           )}
 
@@ -521,17 +624,28 @@ const PublicStorefront: React.FC = () => {
                           </div>
                         </div>
                         <div className="p-5 flex-1 flex flex-col justify-between">
-                          <div className="space-y-1.5 mb-4">
-                            <h4 className="font-bold text-sm text-slate-800 line-clamp-1">{product.name}</h4>
+                          <div 
+                            onClick={() => setSelectedDetailProduct(product)}
+                            className="space-y-1.5 mb-4 cursor-pointer"
+                          >
+                            <h4 className="font-bold text-sm text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">{product.name}</h4>
                             <p className="text-[10px] text-slate-400 line-clamp-2 leading-normal">{product.description}</p>
                           </div>
                           
-                          <button 
-                            onClick={() => addToCart(product)}
-                            className="w-full bg-slate-900 text-white text-[9px] font-black uppercase tracking-wider py-3.5 rounded-2xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-2"
-                          >
-                            <ShoppingCart className="w-3.5 h-3.5" /> Add to Order Cart
-                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button 
+                              onClick={() => setSelectedDetailProduct(product)}
+                              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-[9px] font-black uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span>👁️ View Details</span>
+                            </button>
+                            <button 
+                              onClick={() => addToCart(product)}
+                              className="w-full bg-slate-900 hover:bg-indigo-600 text-white text-[9px] font-black uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <ShoppingCart className="w-3 h-3" /> + Cart
+                            </button>
+                          </div>
                         </div>
                       </motion.div>
                     ))}
@@ -805,6 +919,195 @@ const PublicStorefront: React.FC = () => {
                 <ShoppingBag className="w-4 h-4" /> Add to Order
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Detail View Modal */}
+      {selectedDetailProduct && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in no-print">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-5 relative">
+            <button 
+              onClick={() => setSelectedDetailProduct(null)} 
+              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-all text-slate-500 z-10 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Media Image / Video */}
+            <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 relative shadow-inner">
+              {selectedDetailProduct.image_url ? (
+                <img src={selectedDetailProduct.image_url} alt={selectedDetailProduct.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                  <ShoppingBag className="w-16 h-16" />
+                </div>
+              )}
+              <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md text-white text-[10px] font-black uppercase px-3 py-1 rounded-full">
+                {selectedDetailProduct.product_type || 'PRODUCT'}
+              </div>
+            </div>
+
+            {/* Title & Price */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-start">
+                <h3 className="text-xl font-black text-slate-900 leading-tight">{selectedDetailProduct.name}</h3>
+                <span className="text-lg font-black text-emerald-600 font-mono">₦{parseFloat(selectedDetailProduct.price).toLocaleString()}</span>
+              </div>
+              {selectedDetailProduct.location && (
+                <p className="text-xs text-slate-400 font-bold flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-indigo-500" /> {selectedDetailProduct.location}
+                </p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description & Specifications</h4>
+              <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                {selectedDetailProduct.description || 'No detailed description provided for this item.'}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                onClick={() => {
+                  addToCart(selectedDetailProduct);
+                  setSelectedDetailProduct(null);
+                }}
+                className="py-3.5 px-4 bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer"
+              >
+                <ShoppingCart className="w-4 h-4" /> Add to Order Cart
+              </button>
+              <a
+                href={`https://wa.me/${brand?.whatsapp || brand?.phone || ''}?text=${encodeURIComponent(`Hi ${brand?.businessName}, I would like to order: ${selectedDetailProduct.name} (₦${parseFloat(selectedDetailProduct.price).toLocaleString()})`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="py-3.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer text-decoration-none"
+              >
+                <MessageCircle className="w-4 h-4" /> Order via WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Storefront Edit Modal */}
+      {showStoreEditModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in no-print">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-5 relative">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg">Edit Storefront Profile & Hours</h3>
+                <p className="text-[10px] text-slate-400">Update business details shown to public visitors</p>
+              </div>
+              <button onClick={() => setShowStoreEditModal(false)} className="p-2 hover:bg-slate-50 rounded-full">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStoreProfile} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Business Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editStoreForm.businessName}
+                  onChange={(e) => setEditStoreForm({ ...editStoreForm, businessName: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Tagline / Headline</label>
+                <input
+                  type="text"
+                  value={editStoreForm.tagline}
+                  onChange={(e) => setEditStoreForm({ ...editStoreForm, tagline: e.target.value })}
+                  placeholder="e.g. Empowering Nigerian Businesses"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Phone / WhatsApp</label>
+                  <input
+                    type="text"
+                    value={editStoreForm.phone}
+                    onChange={(e) => setEditStoreForm({ ...editStoreForm, phone: e.target.value })}
+                    placeholder="e.g. 08123456789"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Email Address</label>
+                  <input
+                    type="email"
+                    value={editStoreForm.email}
+                    onChange={(e) => setEditStoreForm({ ...editStoreForm, email: e.target.value })}
+                    placeholder="e.g. contact@business.com"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Physical Office Address / City</label>
+                <input
+                  type="text"
+                  value={editStoreForm.location}
+                  onChange={(e) => setEditStoreForm({ ...editStoreForm, location: e.target.value })}
+                  placeholder="e.g. Block 10, Yaba Industrial Estate, Lagos"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Opening Hours Schedule</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400">Mon - Fri</label>
+                    <input
+                      type="text"
+                      value={editStoreForm.monFri}
+                      onChange={(e) => setEditStoreForm({ ...editStoreForm, monFri: e.target.value })}
+                      placeholder="8:00 AM - 6:00 PM"
+                      className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs outline-none font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400">Saturday</label>
+                    <input
+                      type="text"
+                      value={editStoreForm.saturday}
+                      onChange={(e) => setEditStoreForm({ ...editStoreForm, saturday: e.target.value })}
+                      placeholder="9:00 AM - 4:00 PM"
+                      className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs outline-none font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400">Sunday</label>
+                    <input
+                      type="text"
+                      value={editStoreForm.sunday}
+                      onChange={(e) => setEditStoreForm({ ...editStoreForm, sunday: e.target.value })}
+                      placeholder="Closed"
+                      className="w-full border border-slate-200 rounded-xl px-2.5 py-2 text-xs outline-none font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSavingStoreProfile}
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all cursor-pointer"
+              >
+                {isSavingStoreProfile ? 'Saving Details...' : 'Save & Publish Storefront Profile'}
+              </button>
+            </form>
           </div>
         </div>
       )}

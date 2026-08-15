@@ -26,7 +26,16 @@ export const mapDbToBrand = (dbBrand: any): BrandIdentity => {
             quickReplies: [],
             broadcastMessages: []
         },
-        packaging: dbBrand.packaging || { thankYouNote: '', unboxingTip: '' }
+        packaging: dbBrand.packaging || { thankYouNote: '', unboxingTip: '' },
+        phone: dbBrand.phone || '',
+        email: dbBrand.email || '',
+        location: dbBrand.location || '',
+        whatsapp: dbBrand.whatsapp || '',
+        openingHours: dbBrand.openingHours || dbBrand.opening_hours || {
+            monFri: '8:00 AM - 6:00 PM',
+            saturday: '9:00 AM - 4:00 PM',
+            sunday: 'Closed'
+        }
     };
 };
 
@@ -48,7 +57,8 @@ export const mapBrandToDb = (brand: BrandIdentity): any => {
         policies: brand.policies,
         trust_badge_text: brand.trustBadgeText,
         whatsapp_content: brand.whatsappContent,
-        packaging: brand.packaging
+        packaging: brand.packaging,
+        opening_hours: brand.openingHours
     };
 };
 

@@ -51,6 +51,7 @@ class ResolveBankView(views.APIView):
     def post(self, request):
         account_number = request.data.get('account_number', '').strip()
         bank_code = request.data.get('bank_code', '').strip()
+        custom_name = request.data.get('custom_name', '').strip() or request.data.get('account_name', '').strip()
 
         if not account_number or len(account_number) != 10:
             return Response({"error": "Please enter a valid 10-digit NUBAN account number."}, status=status.HTTP_400_BAD_REQUEST)
@@ -58,13 +59,23 @@ class ResolveBankView(views.APIView):
         if not bank_code:
             return Response({"error": "Please select a bank."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # If user explicitly provided their account name manually
+        if custom_name and len(custom_name) >= 3:
+            return Response({
+                "account_number": account_number,
+                "account_name": custom_name.upper(),
+                "bank_code": bank_code,
+                "is_manual": True
+            }, status=status.HTTP_200_OK)
+
         secret_key = get_paystack_secret()
         if not secret_key:
             # Fallback for testing/offline mode
             return Response({
                 "account_number": account_number,
                 "account_name": f"VERIFIED MERCHANT ({account_number[:4]}***)",
-                "bank_code": bank_code
+                "bank_code": bank_code,
+                "is_manual": False
             }, status=status.HTTP_200_OK)
 
         try:
@@ -80,19 +91,29 @@ class ResolveBankView(views.APIView):
                     return Response({
                         "account_number": res_data['data']['account_number'],
                         "account_name": res_data['data']['account_name'],
-                        "bank_code": bank_code
+                        "bank_code": bank_code,
+                        "is_manual": False
                     }, status=status.HTTP_200_OK)
                 else:
-                    return Response({"error": "Could not resolve bank account details."}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({
+                        "error": "Could not resolve bank account details automatically.",
+                        "can_manual": True
+                    }, status=status.HTTP_400_BAD_REQUEST)
         except urllib.error.HTTPError as http_err:
             try:
                 err_json = json.loads(http_err.read().decode('utf-8'))
                 msg = err_json.get('message', 'Account resolution failed.')
             except Exception:
-                msg = "Could not verify account number with bank."
-            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+                msg = "Could not verify account number with bank automatically."
+            return Response({
+                "error": msg,
+                "can_manual": True
+            }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"error": f"Bank resolution error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "error": f"Bank resolution error: {str(e)}",
+                "can_manual": True
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class SetupPayoutView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]

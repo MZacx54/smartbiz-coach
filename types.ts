@@ -27,6 +27,11 @@ export interface BrandIdentity {
   email?: string;
   location?: string;
   whatsapp?: string;
+  openingHours?: {
+    monFri?: string;
+    saturday?: string;
+    sunday?: string;
+  };
 
   // Upgrade: Trust & Operations Kit
   policies: {

@@ -82,6 +82,9 @@ export const BankPayoutSetup: React.FC = () => {
     fetchDetails();
   }, []);
 
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualAccountName, setManualAccountName] = useState('');
+
   const handleResolveBank = async () => {
     if (!accountNumber || accountNumber.length !== 10) {
       toast.error("Please enter a valid 10-digit NUBAN account number");
@@ -104,10 +107,21 @@ export const BankPayoutSetup: React.FC = () => {
         toast.success(`Account Verified: ${res.data.account_name}`);
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Could not resolve bank account details. Check account number.");
+      const errMsg = err?.response?.data?.error || "Could not resolve bank account details automatically.";
+      toast.error(errMsg);
+      setShowManualInput(true);
     } finally {
       setIsResolving(false);
     }
+  };
+
+  const handleConfirmManualName = () => {
+    if (!manualAccountName.trim() || manualAccountName.trim().length < 3) {
+      toast.error("Please enter your official bank account name");
+      return;
+    }
+    setResolvedAccountName(manualAccountName.trim().toUpperCase());
+    toast.success(`Account Name Set: ${manualAccountName.trim().toUpperCase()}`);
   };
 
   const handleEnablePayouts = async () => {
@@ -251,9 +265,38 @@ export const BankPayoutSetup: React.FC = () => {
               >
                 {isResolving ? 'Verifying...' : 'Verify Account'}
               </button>
-            </div>
           </div>
         </div>
+      </div>
+
+        {/* Manual Account Name Fallback Input */}
+        {showManualInput && !resolvedAccountName && (
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-3 animate-in fade-in">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-600 text-sm font-bold">ℹ️</span>
+              <p className="text-xs text-amber-800 font-medium">
+                Automatic lookup couldn't verify this account number. You can enter your official bank account name manually to enable direct payouts.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={manualAccountName}
+                onChange={(e) => setManualAccountName(e.target.value)}
+                placeholder="e.g. ZECHARIAH MESHACH"
+                className="flex-1 bg-white border border-amber-300 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 outline-none uppercase"
+              />
+              <button
+                type="button"
+                onClick={handleConfirmManualName}
+                disabled={!manualAccountName.trim()}
+                className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+              >
+                Confirm Account Name
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Resolved Account Name Badge */}
         {resolvedAccountName && (

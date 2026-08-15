@@ -10,7 +10,7 @@ class User(AbstractUser):
     business_name = models.CharField(max_length=255, blank=True)
     plan = models.CharField(max_length=50, default='Free', choices=[('Free', 'Free'), ('Pro', 'Pro')])
     has_onboarded = models.BooleanField(default=False)
-    logo = models.URLField(blank=True, null=True)
+    logo = models.TextField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True)
     location = models.CharField(max_length=255, blank=True)
     currency = models.CharField(max_length=10, default='NGN')

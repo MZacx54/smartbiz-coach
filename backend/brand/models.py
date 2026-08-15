@@ -27,6 +27,7 @@ class BrandIdentity(models.Model):
     trust_badge_text = models.CharField(max_length=255, blank=True)
     whatsapp_content = models.JSONField(default=dict)
     packaging = models.JSONField(default=dict)
+    opening_hours = models.JSONField(default=dict, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
