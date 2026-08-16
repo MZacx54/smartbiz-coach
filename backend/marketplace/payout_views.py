@@ -37,13 +37,21 @@ NIGERIAN_BANKS = [
 ]
 
 def get_paystack_secret():
-    return os.getenv('PAYSTACK_SECRET_KEY') or getattr(settings, 'PAYSTACK_SECRET_KEY', '') or os.getenv('VITE_PAYSTACK_SECRET_KEY', '')
+    key = (os.getenv('PAYSTACK_SECRET_KEY') or getattr(settings, 'PAYSTACK_SECRET_KEY', '') or os.getenv('VITE_PAYSTACK_SECRET_KEY', '') or '').strip()
+    return key if key.startswith('sk_') else key
+
+def get_paystack_public_key():
+    key = (os.getenv('PAYSTACK_PUBLIC_KEY') or getattr(settings, 'PAYSTACK_PUBLIC_KEY', '') or os.getenv('VITE_PAYSTACK_PUBLIC_KEY', '') or '').strip()
+    return key
 
 class ListBanksView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        return Response({"banks": NIGERIAN_BANKS}, status=status.HTTP_200_OK)
+        return Response({
+            "banks": NIGERIAN_BANKS,
+            "paystack_public_key": get_paystack_public_key()
+        }, status=status.HTTP_200_OK)
 
 class ResolveBankView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -70,22 +78,20 @@ class ResolveBankView(views.APIView):
 
         secret_key = get_paystack_secret()
         if not secret_key:
-            # Fallback for testing/offline mode
             return Response({
-                "account_number": account_number,
-                "account_name": f"VERIFIED MERCHANT ({account_number[:4]}***)",
-                "bank_code": bank_code,
-                "is_manual": False
-            }, status=status.HTTP_200_OK)
+                "error": "Paystack Secret Key is not configured on server. Please enter your account name manually below.",
+                "can_manual": True
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             url = f"https://api.paystack.co/bank/resolve?account_number={account_number}&bank_code={bank_code}"
             req = urllib.request.Request(url, headers={
                 "Authorization": f"Bearer {secret_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SmartBiz/1.0"
             })
 
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 res_data = json.loads(resp.read().decode('utf-8'))
                 if res_data.get('status') and 'data' in res_data:
                     return Response({
@@ -96,13 +102,13 @@ class ResolveBankView(views.APIView):
                     }, status=status.HTTP_200_OK)
                 else:
                     return Response({
-                        "error": "Could not resolve bank account details automatically.",
+                        "error": res_data.get('message', "Could not resolve bank account details automatically."),
                         "can_manual": True
                     }, status=status.HTTP_400_BAD_REQUEST)
         except urllib.error.HTTPError as http_err:
             try:
                 err_json = json.loads(http_err.read().decode('utf-8'))
-                msg = err_json.get('message', 'Account resolution failed.')
+                msg = err_json.get('message', 'Account resolution failed via Paystack.')
             except Exception:
                 msg = "Could not verify account number with bank automatically."
             return Response({
@@ -146,20 +152,21 @@ class SetupPayoutView(views.APIView):
         secret_key = get_paystack_secret()
         subaccount_code = vendor.paystack_subaccount_code or ""
 
-        if secret_key:
+        if secret_key and secret_key.startswith('sk_'):
             try:
                 url = "https://api.paystack.co/subaccount"
                 payload = {
                     "business_name": vendor.business_name or biz_name,
                     "settlement_bank": bank_code,
                     "account_number": account_number,
-                    "percentage_charge": 0, # 100% of sales goes directly to the merchant
+                    "percentage_charge": 0, # 100% of sales goes directly to merchant
                     "description": f"Direct Payout Subaccount for {vendor.business_name}"
                 }
                 req_data = json.dumps(payload).encode('utf-8')
                 req = urllib.request.Request(url, data=req_data, headers={
                     "Authorization": f"Bearer {secret_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SmartBiz/1.0"
                 }, method="POST")
 
                 with urllib.request.urlopen(req, timeout=12) as resp:
@@ -169,14 +176,15 @@ class SetupPayoutView(views.APIView):
                         vendor.paystack_subaccount_code = subaccount_code
             except Exception as e:
                 print(f"Warning: Paystack subaccount creation notice: {e}")
-                # Generate a offline fallback subaccount code if API key is not live yet
-                if not subaccount_code:
-                    subaccount_code = f"ACCT_DIR_{account_number[-4:]}"
-                    vendor.paystack_subaccount_code = subaccount_code
+                # Ensure dummy code is NEVER set if real creation fails so storefront payment isn't broken
+                if not subaccount_code or subaccount_code.startswith('ACCT_DIR_'):
+                    subaccount_code = ""
+                    vendor.paystack_subaccount_code = ""
         else:
-            if not subaccount_code:
-                subaccount_code = f"ACCT_DIR_{account_number[-4:]}"
-                vendor.paystack_subaccount_code = subaccount_code
+            # If secret key is not live, do not set dummy subaccount code
+            if not subaccount_code or subaccount_code.startswith('ACCT_DIR_'):
+                subaccount_code = ""
+                vendor.paystack_subaccount_code = ""
 
         vendor.save()
 

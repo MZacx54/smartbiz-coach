@@ -372,7 +372,8 @@ const PublicStorefront: React.FC = () => {
     }
 
     const cartTotal = getCartTotal();
-    const vendorSubaccount = products[0]?.paystack_subaccount_code || "";
+    const rawSubaccount = (products[0]?.paystack_subaccount_code || "").trim();
+    const validSubaccount = (rawSubaccount.startsWith('ACCT_') && !rawSubaccount.startsWith('ACCT_DIR_')) ? rawSubaccount : undefined;
 
     try {
       for (const item of cart) {
@@ -389,17 +390,47 @@ const PublicStorefront: React.FC = () => {
       console.error('Failed to log order lead', err);
     }
 
-    const publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
+    let publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || (window as any).env?.VITE_PAYSTACK_PUBLIC_KEY || "";
+    
+    if (!publicKey || publicKey === "pk_test_placeholder" || !publicKey.startsWith('pk_')) {
+      try {
+        const configRes = await api.get('/api/marketplace/payout/banks/');
+        if (configRes.data?.paystack_public_key && configRes.data.paystack_public_key.startsWith('pk_')) {
+          publicKey = configRes.data.paystack_public_key;
+        }
+      } catch (e) {
+        console.warn("Public key fetch notice:", e);
+      }
+    }
+
+    if (!publicKey || publicKey === "pk_test_placeholder" || !publicKey.startsWith('pk_')) {
+      toast.error("Online card gateway is currently updating. Redirecting your order to WhatsApp...");
+      
+      let orderText = `Hi ${brand.businessName}, I would like to place an online order:\n\n`;
+      cart.forEach(item => {
+        orderText += `▪️ ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}\n`;
+      });
+      orderText += `\n💵 *Total:* ₦${cartTotal.toLocaleString()}\n`;
+      orderText += `\n👤 *Customer Details:*\nName: ${checkoutForm.name}\nPhone: ${checkoutForm.phone}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`;
+
+      setShowCartModal(false);
+      setCart([]);
+      window.open(`https://wa.me/${brand.whatsapp || brand.phone || ''}?text=${encodeURIComponent(orderText)}`, '_blank');
+      return;
+    }
+
+    const cleanPhone = checkoutForm.phone.replace(/\D/g, '');
+    const customerEmail = (cleanPhone.length >= 7) ? `customer${cleanPhone}@smartbizcoach.com.ng` : `customer${Date.now()}@smartbizcoach.com.ng`;
 
     // @ts-ignore
     if (window.PaystackPop) {
       // @ts-ignore
       const handler = window.PaystackPop.setup({
         key: publicKey,
-        email: `${checkoutForm.phone.replace(/\D/g, '')}@customer.smartbizcoach.com.ng`,
+        email: customerEmail,
         amount: Math.round(cartTotal * 100),
         currency: "NGN",
-        subaccount: vendorSubaccount || undefined,
+        subaccount: validSubaccount,
         metadata: {
           custom_fields: [
             { display_name: "Customer Name", variable_name: "customer_name", value: checkoutForm.name },
@@ -408,7 +439,7 @@ const PublicStorefront: React.FC = () => {
           ]
         },
         callback: function (response: any) {
-          toast.success("Payment successful! Ref: " + response.reference);
+          toast.success("Payment successful! Transaction Ref: " + response.reference);
           setShowCartModal(false);
           setCart([]);
         },
@@ -418,7 +449,7 @@ const PublicStorefront: React.FC = () => {
       });
       handler.openIframe();
     } else {
-      toast.error("Paystack SDK initializing. Please try again or use WhatsApp order.");
+      toast.error("Paystack SDK loading. Please try again or order via WhatsApp.");
     }
   };
 

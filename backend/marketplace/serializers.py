@@ -33,7 +33,10 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_paystack_subaccount_code(self, obj):
         try:
-            return getattr(obj.brand.user.vendor_profile, 'paystack_subaccount_code', '') or ""
+            code = getattr(obj.brand.user.vendor_profile, 'paystack_subaccount_code', '') or ""
+            if code and code.startswith('ACCT_') and not code.startswith('ACCT_DIR_'):
+                return code
+            return ""
         except Exception:
             return ""
 
