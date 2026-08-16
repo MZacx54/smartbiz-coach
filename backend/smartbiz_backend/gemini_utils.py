@@ -5,11 +5,11 @@ import urllib.error
 import time
 import hashlib
 
-# Google Gemini defaults (Using Google's latest Gemini 3.6 Flash & 3.5 Flash-Lite engines)
-DEFAULT_TEXT_MODEL = "gemini-3.6-flash"
-DEFAULT_FAST_MODEL = "gemini-3.5-flash-lite"
-DEFAULT_FALLBACK_MODEL = "gemini-2.0-flash"
-DEFAULT_VISION_MODEL = "gemini-3.6-flash"
+# Google Gemini defaults (Using Google's production Gemini 2.5 Flash & 2.0 Flash engines)
+DEFAULT_TEXT_MODEL = "gemini-2.5-flash"
+DEFAULT_FAST_MODEL = "gemini-2.0-flash"
+DEFAULT_FALLBACK_MODEL = "gemini-1.5-flash"
+DEFAULT_VISION_MODEL = "gemini-2.5-flash"
 
 # In-memory prompt cache for free-tier optimization
 PROMPT_CACHE = {}

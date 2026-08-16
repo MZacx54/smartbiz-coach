@@ -889,61 +889,85 @@ def ai_suggest_message(request):
     from brand.models import BrandIdentity
     from smartbiz_backend import gemini_utils
 
-    topic = request.data.get('topic', 'General Promotion').strip()
-    channel = request.data.get('channel', 'WHATSAPP').upper()
+    topic = str(request.data.get('topic', 'General Promotion')).strip()
+    channel = str(request.data.get('channel', 'WHATSAPP')).upper()
 
     # Retrieve BrandIdentity
+    biz_name = getattr(request.user, 'business_name', '') or "our business"
+    niche = "general retail"
+    voice = "friendly and professional"
+    audience = "valued customers"
+    pitch = ""
+
     try:
-        brand = BrandIdentity.objects.get(user=request.user)
-        biz_name = brand.business_name
-        niche = brand.niche or "general retail/service"
-        voice = brand.brand_voice or "friendly and professional"
-        audience = brand.target_audience or "general public in Nigeria"
-        pitch = brand.elevator_pitch or ""
-    except Exception:
-        # Fallback if profile not created or errored
-        biz_name = request.user.business_name or "our business"
-        niche = "general retail"
-        voice = "friendly and professional"
-        audience = "customers"
-        pitch = ""
+        brand = BrandIdentity.objects.filter(user=request.user).first()
+        if brand:
+            biz_name = brand.business_name or biz_name
+            niche = brand.niche or niche
+            voice = brand.brand_voice or voice
+            audience = brand.target_audience or audience
+            pitch = brand.elevator_pitch or pitch
+    except Exception as e:
+        print(f"Brand retrieval note: {e}")
 
     prompt = f"""
-    You are an expert digital marketer for Nigerian SMEs. Write a personalized, high-converting marketing broadcast message for a business with the following profile:
-    - Business Name: {biz_name}
-    - Niche/Industry: {niche}
-    - Target Audience: {audience}
-    - Vibe/Brand Voice: {voice}
-    - Elevator Pitch: {pitch}
+You are an expert digital marketer for Nigerian SMEs and businesses.
+Write a personalized, high-converting broadcast marketing message for the following business:
+- Business Name: {biz_name}
+- Niche/Industry: {niche}
+- Target Audience: {audience}
+- Vibe/Brand Voice: {voice}
+- Elevator Pitch: {pitch}
 
-    The objective of this message is: {topic}
-    The delivery channel is: {channel}
+The objective of this message is: {topic}
+The delivery channel is: {channel}
 
-    Requirements:
-    1. Start the message with a greeting that includes the placeholder '{{{{name}}}}' so the user can dynamically insert each contact's name (e.g. "Hi {{{name}}}! 👋" or "Hello {{{name}}},").
-    2. Write in a friendly, local, and engaging tone suited for Nigerian customers (you can use popular Nigerian terminology or pidgin phrases if the vibe is casual, e.g., "Quick one," "Trust your day is going well," etc.).
-    3. Keep it highly action-oriented (include a clear Call To Action).
-    4. Size constraints:
-       - If channel is 'SMS', make it very concise (strictly under 160 characters if possible, maximum 300 characters, no emojis).
-       - If channel is 'WHATSAPP', make it detailed but readable (under 800 characters, use emojis appropriately, and format with bullet points or bold text where helpful).
-    5. Return ONLY the drafted message content. Do not include any intro, outro, or explanations.
-    """
+Requirements:
+1. Start the message with a greeting that includes the recipient placeholder '{{{{name}}}}' so the user can dynamically personalize each message (e.g. "Hi {{{{name}}}}! 👋" or "Hello {{{{name}}}},").
+2. Write in a friendly, local, and engaging Nigerian business tone.
+3. Keep it highly action-oriented with a clear Call To Action (CTA).
+4. Size constraints:
+   - If channel is 'SMS', make it concise (strictly under 160 characters, maximum 250 characters, no emojis).
+   - If channel is 'WHATSAPP', make it attractive and well-formatted (under 700 characters, use emojis appropriately, bullet points for key value points).
+5. Return ONLY the drafted message content. Do not include introductory notes, markdown wrappers, or conversational remarks.
+"""
 
     try:
         suggestion = gemini_utils.generate_text_content(prompt)
+        
+        # If response was an error string, retry with fast model
+        if isinstance(suggestion, str) and suggestion.startswith("Error:"):
+            try:
+                suggestion = gemini_utils.make_gemini_request(prompt, model="gemini-2.0-flash")
+            except Exception:
+                pass
+
         # Clean up any potential markdown wraps
-        suggestion = suggestion.strip()
+        suggestion = str(suggestion or "").strip()
         if suggestion.startswith("```"):
             try:
-                # If wrapped as ``` or ```text, split it out
                 parts = suggestion.split("\n", 1)
                 if len(parts) > 1:
                     suggestion = parts[1].rsplit("```", 1)[0].strip()
             except Exception:
                 pass
+
+        # Fallback if empty or error string
+        if not suggestion or suggestion.startswith("Error:") or len(suggestion) < 10:
+            if channel == 'SMS':
+                suggestion = f"Hi {{{{name}}}}, exciting news from {biz_name}! Check out our {topic} offers today. Reply to this SMS or visit us to order now!"
+            else:
+                suggestion = f"Hi {{{{name}}}}! 👋\n\nExciting news from *{biz_name}*! 🚀\n\nWe have exclusive updates regarding *{topic}*. We'd love for you to be part of this special offer!\n\n👉 *Reply directly to this WhatsApp message* to place your order or learn more!\n\n– {biz_name} Team"
+
         return Response({'suggestion': suggestion})
     except Exception as e:
-        return Response({'error': f"Failed to generate suggestion: {str(e)}"}, status=500)
+        print(f"AI Suggest error: {e}")
+        if channel == 'SMS':
+            fallback = f"Hi {{{{name}}}}, special update from {biz_name}! Check out our {topic} offers today. Reply to order now!"
+        else:
+            fallback = f"Hi {{{{name}}}}! 👋\n\nSpecial update from *{biz_name}*! 🌟\n\nRegarding *{topic}*, we are giving exclusive perks for you today.\n\n📲 *Reply to this chat* to get started right away!\n\n– {biz_name}"
+        return Response({'suggestion': fallback})
+
 
 
 from rest_framework.views import APIView
