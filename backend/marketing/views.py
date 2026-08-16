@@ -137,83 +137,290 @@ def contact_detail(request, contact_id):
         return Response({'error': 'Contact not found'}, status=404)
 
 
+import re
+
+PHONE_HEADERS = [
+    'phone', 'phonenumber', 'phone_number', 'phone number', 'phone_no', 'phoneno', 'phone no',
+    'mobile', 'mobilenumber', 'mobile_number', 'mobile number', 'mobile_no', 'mobileno', 'mobile no',
+    'telephone', 'tel', 'contact', 'contactnumber', 'contact_number', 'contact number',
+    'whatsapp', 'whatsappnumber', 'whatsapp_number', 'whatsapp number', 'whatsapp_no', 'whatsapp no',
+    'msisdn', 'cell', 'cellular', 'number', 'saved name', 'saved_name'
+]
+
+NAME_HEADERS = [
+    'name', 'full_name', 'fullname', 'full name', 'saved_name', 'saved name', 'savedname',
+    'public_display_name', 'public display name', 'publicdisplayname', 'display_name', 'display name',
+    'contact_name', 'contact name', 'first_name', 'firstname', 'customer_name', 'customer name'
+]
+
+TAGS_HEADERS = [
+    'group_name', 'group name', 'groupname', 'group', 'tags', 'tag', 'category', 'label', 'labels',
+    'segment', 'list', 'source'
+]
+
+COUNTRY_CODE_HEADERS = [
+    'country_code', 'country code', 'countrycode', 'dial_code', 'dial code', 'cc'
+]
+
+
+def _clean_key(k: str) -> str:
+    """Normalizes dict keys for fuzzy matching."""
+    if not k:
+        return ''
+    return str(k).strip().lower().replace('_', '').replace(' ', '').replace('-', '')
+
+
+def _extract_field(row: dict, candidates: list) -> str:
+    """Extracts the first matching key from a row dictionary."""
+    clean_dict = {_clean_key(k): v for k, v in row.items() if k is not None}
+    for cand in candidates:
+        ck = _clean_key(cand)
+        if ck in clean_dict and clean_dict[ck] is not None:
+            val = str(clean_dict[ck]).strip()
+            if val:
+                return val
+    return ''
+
+
+def normalize_phone(raw_phone: str, default_country_code: str = '234') -> str:
+    """
+    Normalize any raw phone number into a standardized E.164 format (+<country_code><digits>).
+    Handles spaces, dashes, brackets, local formats, Nigerian & international numbers.
+    Returns normalized string (e.g., '+2348012345678') or '' if invalid.
+    """
+    if not raw_phone:
+        return ''
+    
+    s = str(raw_phone).strip()
+    
+    # Ignore lines that start with @ (social handles e.g. @christ_man1) or non-phone lines (e.g. '196 more')
+    if s.startswith('@'):
+        return ''
+    
+    # Remove (0) common in European/African exports e.g. +44(0)7448...
+    s = re.sub(r'\(0\)', '', s)
+    # Keep only digits and leading '+'
+    cleaned = re.sub(r'[^\d+]', '', s)
+    
+    if not cleaned:
+        return ''
+    
+    # If starts with '+'
+    if cleaned.startswith('+'):
+        digits = cleaned[1:]
+        if 7 <= len(digits) <= 16:
+            return '+' + digits
+        return ''
+    
+    # If starts with '00' (international prefix e.g. 00234...)
+    if cleaned.startswith('00'):
+        digits = cleaned[2:]
+        if 7 <= len(digits) <= 16:
+            return '+' + digits
+        return ''
+    
+    # If it's a Nigerian 11-digit local number starting with 0 (e.g. 08012345678)
+    if len(cleaned) == 11 and cleaned.startswith('0'):
+        return '+234' + cleaned[1:]
+    
+    # If it's a 10-digit Nigerian number without 0 (e.g. 8012345678, 706..., 903..., 913...)
+    if len(cleaned) == 10 and cleaned[0] in '789':
+        return '+234' + cleaned
+    
+    # If it starts with Nigerian country code '234' (13 digits: 2348012345678)
+    if cleaned.startswith('234') and len(cleaned) == 13:
+        return '+' + cleaned
+    
+    # If country code is explicitly provided from another column (e.g. 260, 233)
+    if default_country_code:
+        cc = str(default_country_code).replace('+', '').strip()
+        if cc:
+            if cleaned.startswith('0'):
+                cleaned_no_zero = cleaned[1:]
+            else:
+                cleaned_no_zero = cleaned
+            if not cleaned_no_zero.startswith(cc):
+                candidate = '+' + cc + cleaned_no_zero
+                if 7 <= len(candidate[1:]) <= 16:
+                    return candidate
+    
+    # If it's already an international number without '+' (e.g. 233..., 260..., 254..., 255..., 256..., 263..., 237..., 27..., 225..., 220..., 241..., 265..., 243..., 44..., 1..., 43...)
+    known_prefixes = ('234', '233', '254', '255', '256', '260', '263', '237', '27', '225', '220', '241', '265', '243', '44', '1', '43')
+    for pfx in known_prefixes:
+        if cleaned.startswith(pfx) and 9 <= len(cleaned) <= 16:
+            return '+' + cleaned
+    
+    # General fallback: if 10-15 digits, prefix with '+'
+    if 10 <= len(cleaned) <= 15:
+        return '+' + cleaned
+    
+    return ''
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_contacts_csv(request):
     """
-    Upload a CSV file with contacts.
-    Expected columns: phone, name (optional), tags (optional)
-    Returns: {imported: N, duplicates: M, errors: [...]}
+    Upload a CSV / TXT file with contacts.
+    Supports standard CSVs, WhatsApp group scraper exports, plain phone lists, and multi-format spreadsheets.
     """
     if 'file' not in request.FILES:
-        return Response({'error': 'No file uploaded. Send a CSV file as "file" field.'}, status=400)
+        return Response({'error': 'No file uploaded. Send a CSV/TXT file as "file" field.'}, status=400)
 
-    csv_file = request.FILES['file']
-    if not csv_file.name.endswith('.csv'):
-        return Response({'error': 'File must be a .csv file'}, status=400)
+    upload_file = request.FILES['file']
+    filename = upload_file.name.lower()
+    if not (filename.endswith('.csv') or filename.endswith('.txt') or filename.endswith('.tsv') or filename.endswith('.vcf')):
+        return Response({'error': 'File must be a .csv, .txt, or .tsv file'}, status=400)
 
-    decoded = csv_file.read().decode('utf-8', errors='ignore')
-    reader = csv.DictReader(io.StringIO(decoded))
+    try:
+        raw_bytes = upload_file.read()
+        try:
+            decoded = raw_bytes.decode('utf-8-sig')
+        except UnicodeDecodeError:
+            try:
+                decoded = raw_bytes.decode('utf-8', errors='ignore')
+            except Exception:
+                decoded = raw_bytes.decode('latin-1', errors='ignore')
+    except Exception as e:
+        return Response({'error': f'Could not read file: {str(e)}'}, status=400)
 
+    # Detect delimiter
+    sample = decoded[:4096]
+    delimiter = ','
+    if '\t' in sample and sample.count('\t') > sample.count(','):
+        delimiter = '\t'
+    elif ';' in sample and sample.count(';') > sample.count(','):
+        delimiter = ';'
+
+    limits = get_plan_limits(request.user)
+    existing_phones = set(Contact.objects.filter(user=request.user).values_list('phone', flat=True))
+    current_count = len(existing_phones)
+    
     imported = 0
     duplicates = 0
     errors = []
+    new_contacts = []
+    seen_in_batch = set()
 
-    limits = get_plan_limits(request.user)
-    current_count = Contact.objects.filter(user=request.user).count()
-    limit_reached = False
+    # Try DictReader first
+    reader = csv.DictReader(io.StringIO(decoded), delimiter=delimiter)
+    has_recognized_header = False
+    
+    if reader.fieldnames:
+        clean_fieldnames = [_clean_key(f) for f in reader.fieldnames if f]
+        for ph in PHONE_HEADERS:
+            if _clean_key(ph) in clean_fieldnames:
+                has_recognized_header = True
+                break
 
-    for i, row in enumerate(reader):
-        phone = (row.get('phone') or row.get('Phone') or row.get('PHONE') or '').strip()
-        name = (row.get('name') or row.get('Name') or row.get('NAME') or '').strip()
-        tags = (row.get('tags') or row.get('Tags') or '').strip()
+    if has_recognized_header:
+        # Process structured CSV with headers
+        for i, row in enumerate(reader):
+            cc = _extract_field(row, COUNTRY_CODE_HEADERS)
+            raw_phone = _extract_field(row, PHONE_HEADERS)
+            
+            # If phone header found but value is empty, try finding any column with digits
+            if not raw_phone:
+                for val in row.values():
+                    if val and re.search(r'[\d+]{7,}', str(val)):
+                        raw_phone = str(val)
+                        break
 
-        if not phone:
-            errors.append(f"Row {i + 2}: Missing phone number")
-            continue
+            phone = normalize_phone(raw_phone, default_country_code=cc)
+            if not phone:
+                # If row was not completely empty, record error
+                if any(row.values()):
+                    # Skip @usernames or metadata without adding annoying error
+                    if not str(raw_phone).startswith('@'):
+                        errors.append(f"Row {i + 2}: Invalid or missing phone number ({raw_phone or 'empty'})")
+                continue
 
-        # Normalize Nigerian numbers
-        phone = normalize_phone(phone)
+            raw_name = _extract_field(row, NAME_HEADERS)
+            # If name is just the same as phone number, leave it empty
+            if raw_name and normalize_phone(raw_name) == phone:
+                name = ''
+            else:
+                name = raw_name
 
-        # Check limit before trying to get_or_create
-        if not Contact.objects.filter(user=request.user, phone=phone).exists():
-            if current_count >= limits['max_contacts']:
-                limit_reached = True
+            tags = _extract_field(row, TAGS_HEADERS)
+
+            if phone in existing_phones or phone in seen_in_batch:
+                duplicates += 1
+                continue
+
+            if current_count + len(new_contacts) >= limits['max_contacts']:
                 errors.append(f"Upload halted: Contact limit of {limits['max_contacts']} reached for your {limits['plan_name']}.")
                 break
 
-        try:
-            _, created = Contact.objects.get_or_create(
+            seen_in_batch.add(phone)
+            new_contacts.append(Contact(
                 user=request.user,
                 phone=phone,
-                defaults={'name': name, 'tags': tags}
-            )
-            if created:
-                imported += 1
-                current_count += 1
-            else:
+                name=name[:200],
+                tags=tags[:500]
+            ))
+    else:
+        # Fallback: Headerless or plain text list of numbers (e.g. one phone per line)
+        lines = [line.strip() for line in decoded.splitlines() if line.strip()]
+        for i, line in enumerate(lines):
+            # Split line by delimiter in case it's comma/tab separated without headers
+            parts = [p.strip() for p in re.split(r'[,;\t|]', line) if p.strip()]
+            if not parts:
+                continue
+
+            raw_phone = ''
+            raw_name = ''
+            raw_tags = ''
+
+            # Find which part contains the phone number
+            for idx, part in enumerate(parts):
+                norm = normalize_phone(part)
+                if norm:
+                    raw_phone = part
+                    # Other parts can be name / tags
+                    other_parts = [p for j, p in enumerate(parts) if j != idx]
+                    if len(other_parts) >= 1:
+                        raw_name = other_parts[0]
+                    if len(other_parts) >= 2:
+                        raw_tags = ', '.join(other_parts[1:])
+                    break
+
+            phone = normalize_phone(raw_phone)
+            if not phone:
+                if not line.startswith('@') and not re.match(r'^\d+\s+more$', line, re.IGNORECASE):
+                    errors.append(f"Line {i + 1}: Could not find a valid phone number")
+                continue
+
+            if raw_name and normalize_phone(raw_name) == phone:
+                raw_name = ''
+
+            if phone in existing_phones or phone in seen_in_batch:
                 duplicates += 1
-        except Exception as e:
-            errors.append(f"Row {i + 2}: {str(e)}")
+                continue
+
+            if current_count + len(new_contacts) >= limits['max_contacts']:
+                errors.append(f"Upload halted: Contact limit of {limits['max_contacts']} reached for your {limits['plan_name']}.")
+                break
+
+            seen_in_batch.add(phone)
+            new_contacts.append(Contact(
+                user=request.user,
+                phone=phone,
+                name=raw_name[:200],
+                tags=raw_tags[:500]
+            ))
+
+    # Bulk create contacts for high performance
+    if new_contacts:
+        Contact.objects.bulk_create(new_contacts, ignore_conflicts=True)
+        imported = len(new_contacts)
 
     return Response({
         'imported': imported,
         'duplicates': duplicates,
-        'errors': errors[:20],  # Cap at 20 error messages
+        'errors': errors[:20],
         'total_contacts': Contact.objects.filter(user=request.user).count()
     })
-
-
-def normalize_phone(phone: str) -> str:
-    """Normalize phone number to international format +234XXXXXXXXXX."""
-    phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
-    if phone.startswith('0') and len(phone) == 11:
-        phone = '+234' + phone[1:]
-    elif phone.startswith('234') and not phone.startswith('+'):
-        phone = '+' + phone
-    elif not phone.startswith('+'):
-        phone = '+234' + phone
-    return phone
 
 
 # ──────────────────────────────────────────────────────────────────────────────

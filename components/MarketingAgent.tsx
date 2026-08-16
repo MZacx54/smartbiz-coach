@@ -599,41 +599,56 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
           {/* ══════════════════════════════════════════════════════ CONTACTS */}
           {activeTab === 'contacts' && (
             <div className="space-y-5">
-              {/* Upload CSV */}
+              {/* Upload CSV / TXT / WhatsApp Export */}
               <div className="bg-white border-2 border-dashed border-pink-300 rounded-2xl p-6 text-center hover:border-pink-500 transition-colors">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.txt,.tsv,.vcf"
                   className="hidden"
                   onChange={handleCSVUpload}
                 />
                 <div className="text-4xl mb-3">📂</div>
-                <h3 className="font-bold text-slate-700 text-lg mb-1">Upload Contacts CSV</h3>
+                <h3 className="font-bold text-slate-700 text-lg mb-1">Upload Contacts (CSV, TXT, or WhatsApp Export)</h3>
                 <p className="text-slate-500 text-sm mb-4">
-                  Required column: <code className="bg-slate-100 px-1 rounded">phone</code> | Optional: <code className="bg-slate-100 px-1 rounded">name</code>, <code className="bg-slate-100 px-1 rounded">tags</code>
+                  Supports standard CSVs (<code className="bg-slate-100 px-1 rounded">phone, name, tags</code>), WhatsApp Group Exporters (<code className="bg-slate-100 px-1 rounded">Phone Number, Saved Name, Group Name</code>), or plain phone lists.
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadLoading}
-                  className="bg-pink-600 hover:bg-pink-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all disabled:opacity-50"
+                  className="bg-pink-600 hover:bg-pink-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all disabled:opacity-50 shadow-md"
                 >
-                  {uploadLoading ? '⏳ Importing...' : '📁 Choose CSV File'}
+                  {uploadLoading ? '⏳ Importing...' : '📁 Choose File (.csv / .txt)'}
                 </button>
                 <p className="text-xs text-slate-400 mt-3">
-                  ✅ Supports 30,000+ contacts | Duplicates auto-skipped | Nigerian numbers normalized (08012345678 → +2348012345678)
+                  ✅ Supports 30,000+ contacts | Duplicates auto-skipped | Nigerian & international numbers auto-formatted (+234, +233, +260, +254...)
                 </p>
               </div>
 
-              {/* Sample CSV format */}
+              {/* Sample format tabs */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">📋 Sample CSV Format</p>
-                <pre className="text-xs font-mono text-slate-700 bg-white border border-slate-200 rounded-lg p-3 overflow-x-auto">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">📋 Supported File Formats</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-[11px] font-bold text-slate-600 mb-1">1. Standard CSV</div>
+                    <pre className="text-xs font-mono text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 overflow-x-auto">
 {`phone,name,tags
 08012345678,Chidinma Obi,customer
 +2348098765432,Emeka Nwosu,lead
-07034567890,Fatima Hassan,vip`}
-                </pre>
++260975766351,Kabwe Phiri,wholesale`}
+                    </pre>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-bold text-slate-600 mb-1">2. WhatsApp Group Export / Phone List</div>
+                    <pre className="text-xs font-mono text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 overflow-x-auto">
+{`Country Code,Phone Number,Public Display Name,Group Name
+234,+2349064556107,Meshach,Smartbiz Coach
+234,+2348154004068,Zechariah,Smartbiz Coach
++233 24 953 0086
++260 975766351`}
+                    </pre>
+                  </div>
+                </div>
               </div>
 
               {/* Add Single Contact */}
