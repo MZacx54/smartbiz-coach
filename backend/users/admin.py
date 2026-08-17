@@ -18,11 +18,13 @@ class UserAdmin(BaseUserAdmin):
 class PasswordResetCodeAdmin(admin.ModelAdmin):
     list_display = ['user', 'code', 'created_at', 'is_used']
     list_filter = ['is_used']
+    list_display_links = ['user', 'code']
 
 @admin.register(UserCompliance)
 class UserComplianceAdmin(admin.ModelAdmin):
     list_display = ['user', 'name_search_completed', 'business_reg_completed', 'tin_obtained_completed', 'bank_account_completed', 'updated_at']
     search_fields = ['user__username', 'user__email']
+    list_display_links = ['user']
 
 @admin.register(AgentHireRequest)
 class AgentHireRequestAdmin(admin.ModelAdmin):
@@ -30,3 +32,4 @@ class AgentHireRequestAdmin(admin.ModelAdmin):
     list_filter = ['status', 'business_type']
     search_fields = ['business_name', 'user__email']
     list_editable = ['status']
+    list_display_links = ['business_name']

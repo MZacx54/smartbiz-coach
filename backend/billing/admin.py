@@ -1,11 +1,12 @@
 from django.contrib import admin
-from .models import Transaction, CreditPurchase, CreditLedger
+from .models import Transaction, CreditPurchase, CreditLedger, DailyFreeUsage
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ['reference', 'user', 'amount', 'type', 'provider', 'status', 'created_at']
     list_filter = ['status', 'type', 'provider']
     search_fields = ['reference', 'user__username', 'user__email']
+    list_display_links = ['reference']
 
     def save_model(self, request, obj, form, change):
         if change:
@@ -41,6 +42,14 @@ class TransactionAdmin(admin.ModelAdmin):
 class CreditPurchaseAdmin(admin.ModelAdmin):
     list_display = ['user', 'amount', 'timestamp']
     search_fields = ['user__username', 'user__email']
+    list_display_links = ['user']
+
+@admin.register(DailyFreeUsage)
+class DailyFreeUsageAdmin(admin.ModelAdmin):
+    list_display = ['user', 'feature', 'count', 'last_used']
+    list_filter = ['feature', 'last_used']
+    search_fields = ['user__username', 'user__email', 'feature']
+    list_display_links = ['user', 'feature']
 
 @admin.register(CreditLedger)
 class CreditLedgerAdmin(admin.ModelAdmin):

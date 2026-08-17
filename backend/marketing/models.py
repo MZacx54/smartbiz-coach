@@ -19,7 +19,7 @@ class Contact(models.Model):
         ordering = ['name', 'phone']
 
     def __str__(self):
-        return f"{self.name} ({self.phone})"
+        return f"{self.name or 'Contact'} ({self.phone})"
 
 
 class Campaign(models.Model):
@@ -99,4 +99,4 @@ class SocialConnect(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"SocialConnect for {self.user.username}"
+        return f"SocialConnect for {self.user.username if self.user else 'User'}"
