@@ -20,7 +20,7 @@ class VendorVerification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"{self.business_name} ({'Verified' if self.is_verified else 'Pending'})"
+        return f"{self.business_name or 'Vendor'} ({'Verified' if self.is_verified else 'Pending'})"
 
 class MarketplaceListing(models.Model):
     CATEGORY_CHOICES = [

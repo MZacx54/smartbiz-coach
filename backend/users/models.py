@@ -16,7 +16,7 @@ class User(AbstractUser):
     currency = models.CharField(max_length=10, default='NGN')
 
     def __str__(self):
-        return self.username
+        return self.username or self.email or 'User'
 
 
 class PasswordResetCode(models.Model):
@@ -30,7 +30,7 @@ class PasswordResetCode(models.Model):
         return not self.is_used and timezone.now() < expiry
 
     def __str__(self):
-        return f"{self.user.email} - {self.code}"
+        return f"{self.user.email if self.user else 'User'} - {self.code}"
 
 
 class UserCompliance(models.Model):
@@ -42,7 +42,7 @@ class UserCompliance(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Compliance for {self.user.username}"
+        return f"Compliance for {self.user.username if self.user else 'User'}"
 
 
 class AgentHireRequest(models.Model):

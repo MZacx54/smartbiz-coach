@@ -41,7 +41,7 @@ class CreditLedger(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.amount} ({self.activity})"
+        return f"{self.user.username if self.user else 'User'} - {self.amount} ({self.activity})"
 
 class DailyFreeUsage(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='free_usage')
@@ -53,5 +53,5 @@ class DailyFreeUsage(models.Model):
         unique_together = ('user', 'feature')
 
     def __str__(self):
-        return f"{self.user.username} - {self.feature}: {self.count} (Last used: {self.last_used})"
+        return f"{self.user.username if self.user else 'User'} - {self.feature}: {self.count} (Last used: {self.last_used})"
 

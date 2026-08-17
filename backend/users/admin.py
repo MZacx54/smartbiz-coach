@@ -1,11 +1,18 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, PasswordResetCode, UserCompliance, AgentHireRequest
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
-    list_display = ['username', 'email', 'business_name', 'plan', 'credits', 'date_joined']
+class UserAdmin(BaseUserAdmin):
+    list_display = ['username', 'email', 'business_name', 'plan', 'credits', 'is_staff', 'date_joined']
     search_fields = ['username', 'email', 'business_name']
-    list_filter = ['plan']
+    list_filter = ['plan', 'is_staff', 'is_superuser', 'is_active']
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('SmartBiz Profile', {'fields': ('business_name', 'plan', 'credits', 'has_onboarded', 'logo', 'phone', 'location', 'currency')}),
+    )
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('SmartBiz Profile', {'fields': ('business_name', 'plan', 'credits')}),
+    )
 
 @admin.register(PasswordResetCode)
 class PasswordResetCodeAdmin(admin.ModelAdmin):

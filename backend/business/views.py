@@ -173,6 +173,7 @@ class FindGrantsView(views.APIView):
                 "type": "GRANT or LOAN or EQUITY",
                 "eligibility_checklist": ["CAC Registered (Yes/No status match)", "Corporate Account status match", "Sector Match"],
                 "application_steps": ["Step 1: Get CAC certificate", "Step 2: Submit application on portal"],
+                "portal_url": "https://official-application-website.gov.ng",
                 "is_currently_open": true
             }}
         ]
@@ -211,6 +212,7 @@ class FindGrantsView(views.APIView):
                     "Enter your NIN, BVN, and business location details",
                     "Submit verification documents for disbursement"
                 ],
+                "portal_url": "https://fedgrantandloan.gov.ng",
                 "is_currently_open": True
             },
             {
@@ -230,6 +232,7 @@ class FindGrantsView(views.APIView):
                     "Submit your business plan and 1-minute video pitch",
                     "Receive ₦2.5M seed capital upon qualification"
                 ],
+                "portal_url": "https://www.tefconnect.com",
                 "is_currently_open": True
             },
             {
@@ -249,6 +252,7 @@ class FindGrantsView(views.APIView):
                     "Undergo business site inspection and credit scoring",
                     "Loan disbursed at 9% single-digit annual interest rate"
                 ],
+                "portal_url": "https://smedanregister.ng",
                 "is_currently_open": True
             }
         ]
@@ -271,8 +275,12 @@ class FindGrantsView(views.APIView):
                     "Attend LSETF interview/pitch session",
                     "Access low-interest funding (5% interest per year)"
                 ],
+                "portal_url": "https://lsetf.ng",
                 "is_currently_open": True
             })
+
+        deduct_credits(request.user, 'grant_search')
+        return Response(fallback_list)
 
         deduct_credits(request.user, 'grant_search')
         return Response(fallback_list)

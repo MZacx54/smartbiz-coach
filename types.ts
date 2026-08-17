@@ -79,6 +79,7 @@ export interface Grant {
   eligibility_checklist?: string[];
   application_steps?: string[];
   is_currently_open?: boolean;
+  portal_url?: string;
 }
 
 export enum AppView {

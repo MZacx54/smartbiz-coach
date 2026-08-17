@@ -274,12 +274,25 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
                       )}
                     </div>
 
-                    <button 
-                      onClick={() => alert(`Redirecting to ${grant.provider} Portal. Ensure you have your CAC certificate, Corporate Bank statements, and BVN ready!`)} 
-                      className="w-full mt-4 bg-indigo-600 text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-750 transition-all active:scale-95 shadow-md shadow-indigo-600/10 cursor-pointer"
+                    <a 
+                      href={(() => {
+                        if (grant.portal_url && grant.portal_url.startsWith('http')) return grant.portal_url;
+                        const nameLower = (grant.name + " " + grant.provider).toLowerCase();
+                        if (nameLower.includes('presidential') || nameLower.includes('fgn') || nameLower.includes('fedgrant')) return 'https://fedgrantandloan.gov.ng';
+                        if (nameLower.includes('elumelu') || nameLower.includes('tef')) return 'https://www.tefconnect.com';
+                        if (nameLower.includes('smedan')) return 'https://smedanregister.ng';
+                        if (nameLower.includes('lsetf') || nameLower.includes('lagos state')) return 'https://lsetf.ng';
+                        if (nameLower.includes('boi') || nameLower.includes('bank of industry')) return 'https://www.boi.ng';
+                        if (nameLower.includes('nirsal') || nameLower.includes('agsmeis')) return 'https://nmfb.com.ng';
+                        return 'https://fedgrantandloan.gov.ng';
+                      })()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full mt-4 bg-indigo-600 text-white py-3.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/20 cursor-pointer flex items-center justify-center gap-2 text-center no-underline"
                     >
-                      Start Application 🚀
-                    </button>
+                      <span>Open Official Portal & Apply</span>
+                      <span className="text-base">🚀</span>
+                    </a>
                   </div>
                 </div>
               </div>
