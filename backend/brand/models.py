@@ -46,7 +46,7 @@ class BrandIdentity(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.business_name} ({self.user.username})"
+        return f"{self.business_name} ({self.user.username if self.user else 'No User'})"
 
 class GeneratedContent(models.Model):
     CONTENT_TYPES = [

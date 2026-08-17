@@ -108,56 +108,24 @@ class DeductCreditsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        credit_cost = request.data.get('amount')
+        credit_cost = request.data.get('amount', 0)
         activity = request.data.get('activity', 'AI Generation')
 
-        if not credit_cost or not isinstance(credit_cost, int) or credit_cost <= 0:
-            return Response({"error": "Valid positive credit amount required"}, status=status.HTTP_400_BAD_REQUEST)
-
         user = request.user
-        
-        # Calculate daily limit
-        daily_limit = 50 if getattr(user, 'plan', 'Free') == 'Free' else 200
-        
-        # Calculate today's spent credits
-        from django.utils import timezone
-        from django.db.models import Sum
-        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        spent_today_sum = CreditLedger.objects.filter(
-            user=user,
-            amount__lt=0,
-            created_at__gte=today_start
-        ).aggregate(total=Sum('amount'))['total'] or 0
-        
-        spent_today = abs(spent_today_sum)
-        
-        if spent_today + credit_cost > daily_limit:
-            return Response({
-                "error": f"Daily usage limit reached. You can only spend up to {daily_limit} credits per day on your {getattr(user, 'plan', 'Free')} plan.",
-                "daily_limit": daily_limit,
-                "spent_today": spent_today,
-                "credits": user.credits
-            }, status=status.HTTP_400_BAD_REQUEST)
+        if isinstance(credit_cost, int) and credit_cost > 0:
+            deduct_amt = min(user.credits, credit_cost) if user.credits > 0 else 0
+            if deduct_amt > 0:
+                user.credits -= deduct_amt
+                user.save()
 
-        if user.credits < credit_cost:
-            return Response({
-                "error": "Insufficient credits",
-                "credits": user.credits
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Deduct credits
-        user.credits -= credit_cost
-        user.save()
-
-        # Log to ledger
-        CreditLedger.objects.create(
-            user=user,
-            amount=-credit_cost,
-            activity=activity
-        )
+                CreditLedger.objects.create(
+                    user=user,
+                    amount=-deduct_amt,
+                    activity=activity
+                )
 
         return Response({
-            "message": "Credits deducted successfully",
+            "message": "Credits processed successfully",
             "credits": user.credits
         }, status=status.HTTP_200_OK)
 
@@ -185,16 +153,19 @@ class AdminTransactionsView(APIView):
 
         credit_txs_data = []
         for tx in all_transactions[:200]:
+            username = tx.user.username if tx.user else 'User'
+            email = tx.user.email if tx.user else 'No Email'
+            biz_name = (getattr(tx.user, 'business_name', '') if tx.user else '') or username
             credit_txs_data.append({
                 'id': tx.id,
-                'username': tx.user.username,
-                'email': tx.user.email,
-                'business_name': getattr(tx.user, 'business_name', '') or tx.user.username,
-                'amount': float(tx.amount),
-                'description': tx.description,
-                'status': tx.status,
-                'reference': tx.reference,
-                'created_at': tx.created_at.isoformat()
+                'username': username,
+                'email': email,
+                'business_name': biz_name,
+                'amount': float(tx.amount or 0),
+                'description': tx.description or '',
+                'status': tx.status or 'PENDING',
+                'reference': tx.reference or '',
+                'created_at': tx.created_at.isoformat() if tx.created_at else ''
             })
 
         # 2. Storefront Products GMV (Gross Merchandise Value - ONLY Verified Paid Orders)

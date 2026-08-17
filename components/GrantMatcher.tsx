@@ -50,7 +50,11 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
         usageLimiter.incrementUsage('grant_search');
       }
 
-      setGrants(results);
+      const grantList = Array.isArray(results)
+        ? results
+        : (results && Array.isArray(results.grants) ? results.grants : []);
+      
+      setGrants(grantList);
       setStep('RESULT');
     } catch (err) {
       setError("Could not fetch grant data. Please try again.");

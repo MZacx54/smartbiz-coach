@@ -42,7 +42,7 @@ class MarketplaceListing(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.title} - {self.vendor.business_name}"
+        return f"{self.title} - {self.vendor.business_name if self.vendor else 'No Vendor'}"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -120,7 +120,7 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"[{self.product_type}] {self.name} ({self.brand.business_name})"
+        return f"[{self.product_type}] {self.name} ({self.brand.business_name if self.brand else 'No Brand'})"
 
 class Lead(models.Model):
     LEAD_STATUS = [

@@ -1036,14 +1036,8 @@ class GetTrendingTopicsView(views.APIView):
 
 class GenerateSalesScriptView(views.APIView):
     permission_classes = [IsAuthenticated]
-    throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
-        from billing.utils import check_usage_gatekeeper
-        allowed, remaining_credits = check_usage_gatekeeper(request.user, 'sales_script', 3)
-        if not allowed:
-            return Response({"error": "Insufficient credits. Your free daily limit is exhausted.", "credits": remaining_credits}, status=402)
-
         context = request.data.get('context', 'CLOSING') # CLOSING, OBJECTION, FOLLOW_UP, GREETING, PRICE_ISSUE
         customer_message = request.data.get('customer_message', '').strip()
         closing_style = request.data.get('closing_style', 'MIXED').strip().upper() # PIDGIN, CORPORATE, FOMO, SOFT_PULL, MIXED
@@ -1071,13 +1065,31 @@ class GenerateSalesScriptView(views.APIView):
             prompt = f"Seller's latest message: '{customer_message}'. Previous chat history: {json.dumps(chat_history[-4:] if chat_history else [])}. Seed: {random_seed}"
             try:
                 result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
-                return Response(result)
+                if isinstance(result, dict) and 'buyer_reply' in result:
+                    return Response(result)
             except Exception as e:
-                return Response({
-                    "buyer_reply": "Okay, that sounds fair! Send me your bank details so I can transfer right away.",
-                    "deal_closed": True,
-                    "feedback": "Great job! You clearly addressed their concern and gave a clear payment directive."
-                })
+                pass
+
+            # Dynamic fallback for roleplay mode
+            msg_lower = customer_message.lower()
+            if 'price' in msg_lower or 'discount' in msg_lower or 'how much' in msg_lower:
+                reply = "That price sounds fair, but can you throw in free delivery to my location?"
+                closed = False
+                feedback = "Good response! Offering clear pricing builds trust. Consider offering a small shipping incentive to close."
+            elif 'bank' in msg_lower or 'transfer' in msg_lower or 'pay' in msg_lower or 'account' in msg_lower:
+                reply = "Great! Send me your account details and bank name so I can make the transfer right now."
+                closed = True
+                feedback = "Excellent closing! Giving direct payment instructions converts warm leads immediately."
+            else:
+                reply = "Thanks for the info! Do you have photos of this item or customer reviews I can see?"
+                closed = False
+                feedback = "Solid engagement. Providing social proof or clear options keeps the conversation moving forward."
+
+            return Response({
+                "buyer_reply": reply,
+                "deal_closed": closed,
+                "feedback": feedback
+            })
 
         mode_prompts = {
             'CLOSING': "Help me close this sale right now. The customer is warm but needs a confident push.",
@@ -1119,38 +1131,51 @@ class GenerateSalesScriptView(views.APIView):
         
         try:
             result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
-            if not isinstance(result, dict):
-                result = {}
-            if 'options' not in result or not isinstance(result['options'], list) or len(result['options']) == 0:
-                result['options'] = [
-                    "Hello! We can get this dispatched to you today. Would you prefer transfer or card payment?",
-                    "My boss! Make we slice small discount on shipping give you so you fit complete order now.",
-                    "We have only 2 slots remaining for today's batch. Grab yours now before price increases tomorrow!"
-                ]
-            if 'one_liner' not in result or not result['one_liner']:
-                result['one_liner'] = "Let's lock in your order right away!"
-            if 'strategy_tip' not in result or not result['strategy_tip']:
-                result['strategy_tip'] = "Always ask a closing question at the end to make it effortless for the buyer to say yes."
-            if 'do_not_say' not in result or not isinstance(result['do_not_say'], list):
-                result['do_not_say'] = ["Our price is non-negotiable", "You can check elsewhere if you like"]
-            if 'intent_analysis' not in result or not result['intent_analysis']:
-                result['intent_analysis'] = "Customer is evaluating value vs price and needs a clear call to action."
-
-            deduct_credits(request.user, 'sales_script')
-            return Response(result)
+            if isinstance(result, dict) and 'options' in result and isinstance(result['options'], list) and len(result['options']) > 0:
+                deduct_credits(request.user, 'sales_script')
+                return Response(result)
         except Exception as e:
-            fallback = {
-                "intent_analysis": "Customer needs value assurance and a smooth checkout option.",
-                "options": [
-                    "Hello! We can get this dispatched to you today. Would you prefer transfer or card payment?",
-                    "My boss! Make we slice small discount on shipping give you so you fit complete order now.",
-                    "We have only 2 slots remaining for today's batch. Grab yours now before price increases tomorrow!"
-                ],
-                "one_liner": "Let's lock in your order right away!",
-                "strategy_tip": "Always ask a closing question at the end to make it effortless for the buyer to say yes.",
-                "do_not_say": ["Our price is non-negotiable", "You can check elsewhere if you like"]
-            }
-            return Response(fallback)
+            pass
+
+        # Dynamic fallback script generator matching customer input & context
+        biz_name = "our business"
+        try:
+            from brand.models import BrandIdentity
+            brand = BrandIdentity.objects.get(user=request.user)
+            biz_name = brand.business_name or biz_name
+        except Exception:
+            pass
+
+        msg_topic = customer_message if customer_message else "your order"
+        
+        if context == 'PRICE_ISSUE' or 'price' in customer_message.lower() or 'expensive' in customer_message.lower():
+            opt1 = f"Hello! We understand pricing is important. At {biz_name}, we focus on top quality that lasts, saving you money in the long run. Would you like to check our special bundle discount?"
+            opt2 = f"My boss! Quality no be cheap, but because na you, I fit slice small discount off shipping for you today so you fit get {msg_topic} without stress. How you see am?"
+            opt3 = f"Hi there! We have only 3 units of {msg_topic} remaining at our current price before supplier rate increases tomorrow. Secure yours now before stock runs out!"
+            analysis = "Customer is evaluating price vs value and needs assurance of premium quality."
+            tip = "Focus on the long-term value and durability of your offer rather than just discounting."
+        elif context == 'OBJECTION':
+            opt1 = f"Thank you for sharing your concern regarding '{msg_topic}'. Many of our satisfied customers felt the same way initially until they experienced our verified service. Can I share a quick video demo?"
+            opt2 = f"No shaking at all! At {biz_name}, we guarantee 100% satisfaction. Make I send you customer feedback from last week so you see how we deliver?"
+            opt3 = f"We take full responsibility for quality and delivery. Complete your order today and if you're not 100% satisfied, we offer instant replacement!"
+            analysis = "Customer needs risk reduction and social proof before making a decision."
+            tip = "Provide direct social proof and clear guarantees to remove buying hesitation."
+        else:
+            opt1 = f"Hello! We can get '{msg_topic}' prepared and dispatched to your location today. Should we proceed with bank transfer or online card payment?"
+            opt2 = f"Chief! Make we lock in this order for you today before today's dispatch batch leaves. Which delivery address make we ship to?"
+            opt3 = f"Fast-track alert: Orders placed in the next 2 hours get priority express dispatch! Reply YES to confirm your order right away."
+            analysis = "Customer is warm and ready for a clear closing call to action."
+            tip = "Always give a clear binary choice (e.g. transfer vs card, morning vs afternoon delivery) to make deciding effortless."
+
+        fallback = {
+            "intent_analysis": analysis,
+            "options": [opt1, opt2, opt3],
+            "one_liner": f"Let's lock in your order with {biz_name} right away!",
+            "strategy_tip": tip,
+            "do_not_say": ["Our price is non-negotiable", "You can check elsewhere if you don't like it"]
+        }
+        deduct_credits(request.user, 'sales_script')
+        return Response(fallback)
 
 
 class AnalyzeProductView(views.APIView):
