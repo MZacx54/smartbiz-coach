@@ -274,25 +274,50 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
                       )}
                     </div>
 
-                    <a 
-                      href={(() => {
-                        if (grant.portal_url && grant.portal_url.startsWith('http')) return grant.portal_url;
-                        const nameLower = (grant.name + " " + grant.provider).toLowerCase();
-                        if (nameLower.includes('presidential') || nameLower.includes('fgn') || nameLower.includes('fedgrant')) return 'https://fedgrantandloan.gov.ng';
-                        if (nameLower.includes('elumelu') || nameLower.includes('tef')) return 'https://www.tefconnect.com';
-                        if (nameLower.includes('smedan')) return 'https://smedanregister.ng';
-                        if (nameLower.includes('lsetf') || nameLower.includes('lagos state')) return 'https://lsetf.ng';
-                        if (nameLower.includes('boi') || nameLower.includes('bank of industry')) return 'https://www.boi.ng';
-                        if (nameLower.includes('nirsal') || nameLower.includes('agsmeis')) return 'https://nmfb.com.ng';
-                        return 'https://fedgrantandloan.gov.ng';
-                      })()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full mt-4 bg-indigo-600 text-white py-3.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/20 cursor-pointer flex items-center justify-center gap-2 text-center no-underline"
-                    >
-                      <span>Open Official Portal & Apply</span>
-                      <span className="text-base">🚀</span>
-                    </a>
+                    <div className="mt-4 space-y-2">
+                      <a 
+                        href={(() => {
+                          if (grant.portal_url && grant.portal_url.startsWith('http') && !grant.portal_url.includes('fedgrantandloan.gov.ng') && !grant.portal_url.includes('example')) {
+                            return grant.portal_url;
+                          }
+                          const nameLower = (grant.name + " " + grant.provider).toLowerCase();
+                          if (nameLower.includes('presidential') || nameLower.includes('fgn') || nameLower.includes('fedgrant')) {
+                            return 'https://grant.fedgrantandloan.gov.ng/';
+                          }
+                          if (nameLower.includes('elumelu') || nameLower.includes('tef')) return 'https://www.tefconnect.com';
+                          if (nameLower.includes('smedan')) return 'https://smedan.gov.ng';
+                          if (nameLower.includes('lsetf') || nameLower.includes('lagos state')) return 'https://lsetf.ng';
+                          if (nameLower.includes('boi') || nameLower.includes('bank of industry')) return 'https://www.boi.ng';
+                          if (nameLower.includes('nirsal') || nameLower.includes('agsmeis')) return 'https://nmfb.com.ng';
+                          return 'https://www.boi.ng';
+                        })()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/20 cursor-pointer flex items-center justify-center gap-2 text-center no-underline"
+                      >
+                        <span>Open Application Portal</span>
+                        <span className="text-sm">🚀</span>
+                      </a>
+
+                      {/* Secondary / Backup Link */}
+                      <a 
+                        href={(() => {
+                          const nameLower = (grant.name + " " + grant.provider).toLowerCase();
+                          if (nameLower.includes('presidential') || nameLower.includes('fgn') || nameLower.includes('boi')) {
+                            return 'https://www.boi.ng/micro-business-loans/';
+                          }
+                          if (nameLower.includes('smedan')) return 'https://smedanregister.ng';
+                          if (nameLower.includes('lsetf')) return 'https://lsetf.ng/programmes/';
+                          return 'https://smedan.gov.ng';
+                        })()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 px-4 rounded-xl text-[11px] font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 text-center no-underline border border-slate-200"
+                      >
+                        <span>Agency Mirror Portal / Details</span>
+                        <span className="text-xs">↗</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>

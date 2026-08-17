@@ -212,7 +212,7 @@ class FindGrantsView(views.APIView):
                     "Enter your NIN, BVN, and business location details",
                     "Submit verification documents for disbursement"
                 ],
-                "portal_url": "https://fedgrantandloan.gov.ng",
+                "portal_url": "https://grant.fedgrantandloan.gov.ng/",
                 "is_currently_open": True
             },
             {
