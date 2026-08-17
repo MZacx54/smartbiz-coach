@@ -242,14 +242,25 @@ def get_dynamic_string_fallback(messages):
             "I'm here to support you! You can explore our Find Funding board for active SME grant opportunities or generate viral video scripts in Content Studio. What area of your business should we optimize next?"
         ]
         return random.choice(responses)
+
+    # 2. Debt recovery reminder response
+    if "debt" in msg_str or "debtor" in msg_str or "owe" in msg_str or "nudge" in msg_str or "balance" in msg_str:
+        return "Hello! Trust you are having a productive day. This is a friendly reminder regarding your outstanding balance. Kindly arrange for the settlement at your earliest convenience so we can balance our ledger. Thank you for your continued partnership!"
         
-    return "Here is a high-engaging, professional marketing message tailored for your audience: Scale operations effortlessly and connect with your top customers today! #smartbusiness"
+    return "Hello! Thank you for connecting with our business. Let us know how we can best assist you today."
 
 def get_dynamic_json_fallback(messages):
     """
     Scans the prompt/messages context to return the correct JSON structure for the calling feature.
     """
     prompt_str = str(messages).lower()
+
+    # 0. Debt Reminder Generator
+    if "debt" in prompt_str or "debtor" in prompt_str or "nudge" in prompt_str or "owe" in prompt_str or "balance" in prompt_str:
+        return json.dumps({
+            "english": "Hello! Trust you are doing well. This is a gentle reminder regarding your outstanding balance. Kindly arrange for the settlement at your earliest convenience so we can update your payment ledger. Thank you for your cooperation!",
+            "pidgin": "Good day! Hope work dey go well. Na gentle reminder on top the outstanding balance wey still dey pending. Abeg kindly help us do the transfer make we update your record. Thank you as you dey patronize us!"
+        })
     
     # 1. Social post content creator
     if "caption" in prompt_str or "hashtags" in prompt_str or "carousel" in prompt_str:

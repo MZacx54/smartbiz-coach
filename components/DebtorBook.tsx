@@ -356,8 +356,14 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     setShowCreditPrompt(false);
     const balance = getOutstandingBalance(debtor);
     try {
-      // API now returns { english, pidgin } structured response
-      const result = await generateDebtReminder(debtor.name, balance, reminderTone);
+      // API returns structured { english, pidgin } debt recovery messages
+      const result = await generateDebtReminder(
+        debtor.name, 
+        balance, 
+        reminderTone,
+        debtor.itemsBought,
+        debtor.dueDate
+      );
       
       // Only charge credits / increment usage if successful
       if (deduct) {
@@ -380,11 +386,29 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       }));
 
       if (typeof result === 'string') {
-        setReminder({ text: { english: result, pidgin: `Abeg ${debtor.name}, please settle the ₦${balance.toLocaleString()} balance. Na important matter be this.` }, debtor });
+        setReminder({ 
+          text: { 
+            english: result, 
+            pidgin: `Good day ${debtor.name}, hope work dey go well. Na gentle reminder on top the ₦${balance.toLocaleString()} balance. Abeg kindly help us do the transfer make we update your record. Thank you!` 
+          }, 
+          debtor 
+        });
       } else if (result?.english || result?.pidgin) {
-        setReminder({ text: { english: result.english, pidgin: result.pidgin }, debtor });
+        setReminder({ 
+          text: { 
+            english: result.english || `Hello ${debtor.name}, trust you are doing well. This is a gentle reminder regarding your outstanding balance of ₦${balance.toLocaleString()}. Kindly arrange for the settlement at your convenience. Thank you!`, 
+            pidgin: result.pidgin || `Good day ${debtor.name}, na quick reminder on top the ₦${balance.toLocaleString()} balance. Abeg help us do the transfer make we update your record. Thank you!` 
+          }, 
+          debtor 
+        });
       } else if (result?.message) {
-        setReminder({ text: { english: result.message, pidgin: `Abeg ${debtor.name}, settle the ₦${balance.toLocaleString()} wey you owe. Thank you.` }, debtor });
+        setReminder({ 
+          text: { 
+            english: result.message, 
+            pidgin: `Good day ${debtor.name}, na gentle reminder on top the ₦${balance.toLocaleString()} balance. Abeg kindly do the transfer make we update your record. Thank you!` 
+          }, 
+          debtor 
+        });
       }
     } catch (e) {
       console.error(e);
@@ -1065,7 +1089,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                 <span>💬</span> Send via WhatsApp App
               </a>
               
-              <ShareActions text={reminder.text[activeTab]} title="Debt Reminder" />
+              <ShareActions text={reminder.text[activeTab]} url="" title="Debt Reminder" />
             </div>
           </div>
         </div>

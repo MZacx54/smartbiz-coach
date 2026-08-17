@@ -934,38 +934,68 @@ class GenerateDebtReminderView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from billing.utils import check_usage_gatekeeper
-        allowed, remaining_credits = check_usage_gatekeeper(request.user, 'debt_reminder', 2)
-        if not allowed:
-            return Response({"error": "Insufficient credits. Your free daily limit is exhausted.", "credits": remaining_credits}, status=402)
+        name = request.data.get('name') or request.data.get('debtor_name') or 'Customer'
+        raw_amount = request.data.get('amount', 0)
+        try:
+            amount_val = float(raw_amount)
+            formatted_amount = f"{amount_val:,.0f}" if amount_val.is_integer() else f"{amount_val:,.2f}"
+        except (ValueError, TypeError):
+            formatted_amount = str(raw_amount)
 
-        name = request.data.get('name')
-        amount = request.data.get('amount')
-        tone = request.data.get('tone', 'POLITE')
-        
-        prompt = f"""Write two versions of a WhatsApp message to a debtor named "{name}" who owes N{amount}. 
-        Tone: {tone}. 
-        Context: Nigerian Business owner sending to a customer.
-        
-        Return JSON with keys:
-        - english: "The formal/standard English message",
-        - pidgin: "The Nigerian Pidgin version of the message (make it authentic, e.g. using terms like 'abeg', 'make we settle this matter')"
-        """
-        
+        tone = (request.data.get('tone') or request.data.get('reminderTone') or 'POLITE').upper()
+        items = request.data.get('items_bought') or request.data.get('items') or ''
+        due_date = request.data.get('due_date') or ''
+        business_name = getattr(request.user, 'business_name', None) or 'our store'
+
+        items_phrase = f" for '{items}'" if items and items != 'General Credit Sale' else ""
+        due_phrase = f" which was due on {due_date}" if due_date else ""
+
+        prompt = f"""You are a specialized Nigerian business debt collection assistant. 
+Write a high-converting, professional WhatsApp debt recovery message to recover an unpaid debt.
+
+DEBTOR DETAILS:
+- Debtor Name: {name}
+- Outstanding Amount: ₦{formatted_amount}
+- Items/Services: {items or 'Goods/Services delivered'}
+- Business Name: {business_name}
+- Tone Required: {tone} (POLITE = friendly reminder & payment appreciation, FIRM = direct reminder of pending reconciliation & due date, STRICT = urgent final notice before escalation)
+
+INSTRUCTIONS:
+1. Return a JSON object with EXACTLY two keys: "english" and "pidgin".
+2. "english": A compelling, clear, professional standard English WhatsApp message reminding {name} of the ₦{formatted_amount} debt{items_phrase} and asking for payment confirmation/transfer.
+3. "pidgin": An authentic, respectful Nigerian Pidgin message (using natural phrases like 'abeg', 'make we settle this matter', 'balance our records') crafted to collect the money effectively without unnecessary friction.
+4. DO NOT write general marketing messages or promote software. Focus 100% on recovering the money from {name}.
+
+JSON STRUCTURE:
+{{
+    "english": "message text here",
+    "pidgin": "pidgin text here"
+}}"""
+
         try:
             result = gemini_utils.generate_json_content(prompt)
-            if not result.get('english') or not result.get('pidgin'):
-                # fallback structure
-                text = gemini_utils.generate_text_content(f"Write a debt reminder to {name} for {amount} in {tone} tone.")
-                return Response({'english': text, 'pidgin': f"Abeg {name}, make we settle the ₦{amount} payment. Thank you."})
-            # Deduct credits
-            deduct_credits(request.user, 'debt_reminder')
-            return Response(result)
+            if isinstance(result, dict) and result.get('english') and result.get('pidgin'):
+                deduct_credits(request.user, 'debt_reminder')
+                return Response(result)
         except Exception as e:
-             return Response({
-                 'english': f"Hello {name}, please pay N{amount}.",
-                 'pidgin': f"Abeg {name}, make we settle the ₦{amount} payment. Thank you."
-             }, status=200)
+            pass
+
+        # Context-rich fallback tailored to tone and debtor details
+        if tone == 'STRICT':
+            fallback_english = f"URGENT PAYMENT NOTICE: Hello {name}, this is a final follow-up regarding your overdue balance of ₦{formatted_amount}{items_phrase} with {business_name}. Please arrange the full transfer immediately today to prevent account escalation. Kindly send proof of payment once completed."
+            fallback_pidgin = f"URGENT NOTICE: {name}, this na final reminder on top the ₦{formatted_amount}{items_phrase} wey you dey owe {business_name}. Abeg do the transfer today make this matter no carry go next level. Send us payment receipt sharp sharp once you pay."
+        elif tone == 'FIRM':
+            fallback_english = f"Dear {name}, we are following up on your outstanding balance of ₦{formatted_amount}{items_phrase}{due_phrase} with {business_name}. Our accounting books are currently undergoing reconciliation and this settlement is now required. Please confirm your transfer today."
+            fallback_pidgin = f"Hello {name}, we dey follow up on top the ₦{formatted_amount}{items_phrase} balance with {business_name}. We dey balance our books now and this payment don due. Abeg help us make the transfer today make we clear your record. Thanks!"
+        else: # POLITE
+            fallback_english = f"Hello {name}, trust you are having a wonderful week. This is a gentle reminder regarding your outstanding balance of ₦{formatted_amount}{items_phrase} with {business_name}. Kindly arrange for the settlement at your convenience. Please share the confirmation once done so we can update your ledger. Thank you!"
+            fallback_pidgin = f"Good day {name}, hope work dey go well. Na quick friendly reminder on top the ₦{formatted_amount}{items_phrase} balance with {business_name}. Abeg kindly help us do the transfer make we update your account record. Thank you for your continued patronage!"
+
+        deduct_credits(request.user, 'debt_reminder')
+        return Response({
+            'english': fallback_english,
+            'pidgin': fallback_pidgin
+        })
 class ListModelsView(views.APIView):
     permission_classes = [IsAuthenticated]
     

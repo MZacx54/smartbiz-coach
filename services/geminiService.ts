@@ -43,8 +43,23 @@ export const getTrendingTopics = async () => {
     return response.data;
 };
 
-export const generateDebtReminder = async (debtorName: string, amount: number, dueDate: string) => {
-    const response = await api.post('/api/content/generate-debt-reminder/', { debtor_name: debtorName, amount, due_date: dueDate });
+export const generateDebtReminder = async (
+    debtorName: string, 
+    amount: number, 
+    tone: string = 'POLITE',
+    itemsBought: string = '',
+    dueDate: string = ''
+) => {
+    const response = await api.post('/api/content/generate-debt-reminder/', { 
+        name: debtorName,
+        debtor_name: debtorName, 
+        amount, 
+        tone,
+        reminderTone: tone,
+        items_bought: itemsBought,
+        items: itemsBought,
+        due_date: dueDate 
+    });
     return response.data;
 };
 
