@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'smartbiz_backend.middleware.ExceptionLoggingMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -92,14 +93,15 @@ WSGI_APPLICATION = 'smartbiz_backend.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(default='sqlite:///db.sqlite3', conn_max_age=600)
+    'default': dj_database_url.config(default='sqlite:///db.sqlite3', conn_max_age=0)
 }
 
-# Set a strict 3-second connection timeout to prevent database connection hangs during startup (only for non-SQLite databases)
+# Supabase / PgBouncer pooler compatibility (Disable server-side cursors & set connection options)
+DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 if 'OPTIONS' not in DATABASES['default']:
     DATABASES['default']['OPTIONS'] = {}
 if 'sqlite' not in DATABASES['default'].get('ENGINE', ''):
-    DATABASES['default']['OPTIONS']['connect_timeout'] = 3
+    DATABASES['default']['OPTIONS']['connect_timeout'] = 10
 
 
 
@@ -138,7 +140,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

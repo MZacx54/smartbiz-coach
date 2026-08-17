@@ -2,7 +2,7 @@ services:
   - type: web
     name: smartbiz-backend
     env: python
-    buildCommand: "pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput"
+    buildCommand: "pip install -r backend/requirements.txt && python backend/manage.py migrate --noinput && python backend/manage.py collectstatic --noinput"
     startCommand: "python backend/manage.py migrate --noinput ; gunicorn --chdir backend smartbiz_backend.wsgi:application --bind 0.0.0.0:${PORT:-10000} --workers 2 --threads 4 --timeout 120"
     envVars:
       - key: DEBUG
