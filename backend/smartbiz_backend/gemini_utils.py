@@ -5,11 +5,11 @@ import urllib.error
 import time
 import hashlib
 
-# Google Gemini defaults (Using Google's production Gemini 2.5 Flash & 2.0 Flash engines)
-DEFAULT_TEXT_MODEL = "gemini-2.5-flash"
-DEFAULT_FAST_MODEL = "gemini-2.0-flash"
-DEFAULT_FALLBACK_MODEL = "gemini-1.5-flash"
-DEFAULT_VISION_MODEL = "gemini-2.5-flash"
+# Google Gemini defaults (Using Google's production Gemini 2.0 Flash & 1.5 Flash engines)
+DEFAULT_TEXT_MODEL = "gemini-2.0-flash"
+DEFAULT_FAST_MODEL = "gemini-1.5-flash"
+DEFAULT_FALLBACK_MODEL = "gemini-1.5-pro"
+DEFAULT_VISION_MODEL = "gemini-2.0-flash"
 
 # In-memory prompt cache for free-tier optimization
 PROMPT_CACHE = {}
@@ -29,11 +29,18 @@ KEY_INDEX = 0
 def get_gemini_api_keys():
     """
     Returns a list of all configured Gemini API keys from environment variables.
-    Supports:
-    1. Comma-separated string in GEMINI_API_KEYS (e.g. "key1,key2,key3")
-    2. Dynamic scanning for any env variable starting with GEMINI_API_KEY (e.g., GEMINI_API_KEY, GEMINI_API_KEY_2, GEMINI_API_KEY_3, GEMINI_API_KEY_4, etc.)
     """
     keys = []
+    
+    try:
+        from django.conf import settings
+        if getattr(settings, 'GEMINI_API_KEY', None):
+            k = str(settings.GEMINI_API_KEY).strip()
+            if k and k not in keys:
+                keys.append(k)
+    except Exception:
+        pass
+
     raw_keys = os.environ.get("GEMINI_API_KEYS", "")
     if raw_keys:
         for k in raw_keys.split(","):
@@ -260,6 +267,18 @@ def get_dynamic_json_fallback(messages):
         return json.dumps({
             "english": "Hello! Trust you are doing well. This is a gentle reminder regarding your outstanding balance. Kindly arrange for the settlement at your earliest convenience so we can update your payment ledger. Thank you for your cooperation!",
             "pidgin": "Good day! Hope work dey go well. Na gentle reminder on top the outstanding balance wey still dey pending. Abeg kindly help us do the transfer make we update your record. Thank you as you dey patronize us!"
+        })
+
+    # 0.1 Business Plan Generator
+    if "business plan" in prompt_str or "executivesummary" in prompt_str or "financialprojection" in prompt_str or "swotanalysis" in prompt_str or "investor-ready" in prompt_str:
+        return json.dumps({
+            "executiveSummary": "This enterprise is strategically positioned to capture significant market share in the Nigerian MSME sector by delivering high-value, cost-effective products and services tailored for local consumers and businesses. With disciplined customer service, optimized digital distribution, and robust financial controls, the business aims for sustainable profitability and scalable operations.",
+            "marketAnalysis": "Nigeria's dynamic commercial landscape offers strong demand for reliable, accessible solutions. Target demographics include urban consumers and growing small-to-medium enterprises. Key market drivers include population growth, digital adoption via WhatsApp and social media, and rising demand for reliable local brands.",
+            "marketingStrategy": "Omni-channel marketing strategy leveraging targeted WhatsApp broadcast campaigns, engaging Instagram/TikTok short-form content, strategic influencer collaborations, and word-of-mouth customer referral incentives.",
+            "financialProjection": "12-Month Financial Outline (NGN):\n- Projected Monthly Gross Revenue: ₦1,500,000 - ₦3,500,000\n- Average Gross Margin: 35% - 45%\n- Estimated Operating Expenses (OPEX): ₦600,000/month\n- Projected Break-even Timeline: Months 4 to 6\n- Estimated Year 1 Net Profit Margin: 25%",
+            "operationalPlan": "Day-to-day operations prioritize lean inventory management, direct verified supplier relationships to minimize cost spikes, reliable dispatch logistics partnerships, and dedicated alternative solar/inverter power backup to ensure uninterrupted business continuity.",
+            "swotAnalysis": "### SWOT Analysis\n\n| Category | Key Factors |\n| :--- | :--- |\n| **Strengths** | Direct customer relationships, low overhead agile structure, rapid digital ordering |\n| **Weaknesses** | Initial capital constraints, dependency on third-party dispatch couriers |\n| **Opportunities** | Untapped regional expansion across Nigerian states, corporate B2B bulk packages |\n| **Threats** | Macroeconomic inflation, fuel price volatility, foreign exchange fluctuations |",
+            "riskMitigation": "1. Price Buffer Strategy: Maintain flexible pricing tied to supplier cost changes.\n2. Energy Resilience: Utilize low-power solar inverter solutions.\n3. Cash Flow Protection: Enforce strict payment terms and advance deposits on large orders."
         })
     
     # 1. Social post content creator
