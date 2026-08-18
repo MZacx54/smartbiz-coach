@@ -13,3 +13,12 @@ from django.core.wsgi import get_wsgi_application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smartbiz_backend.settings')
 
 application = get_wsgi_application()
+
+# Auto-apply any pending database migrations on production startup
+try:
+    from django.core.management import call_command
+    call_command('migrate', interactive=False)
+    print("Startup database migrations verified successfully.")
+except Exception as e:
+    print(f"Startup migration note: {e}")
+
