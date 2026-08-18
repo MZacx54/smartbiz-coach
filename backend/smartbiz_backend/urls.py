@@ -28,9 +28,39 @@ def health_check(request):
         }
     })
 
+def debug_admin_view(request):
+    import traceback
+    results = {}
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    try:
+        results['user_count'] = User.objects.count()
+        results['sample_users'] = list(User.objects.values('id', 'username', 'email', 'is_staff', 'is_superuser')[:5])
+    except Exception as e:
+        results['user_query_error'] = f"{type(e).__name__}: {str(e)}"
+        results['user_query_traceback'] = traceback.format_exc()
+
+    try:
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        admin_req = factory.get('/admin/users/user/')
+        admin_req.user = User.objects.filter(is_superuser=True).first()
+        admin_req.session = {}
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        setattr(admin_req, '_messages', FallbackStorage(admin_req))
+        user_admin = admin.site._registry[User]
+        response = user_admin.changelist_view(admin_req)
+        results['admin_changelist_status'] = getattr(response, 'status_code', 200)
+    except Exception as e:
+        results['admin_changelist_error'] = f"{type(e).__name__}: {str(e)}"
+        results['admin_changelist_traceback'] = traceback.format_exc()
+
+    return JsonResponse(results)
+
 urlpatterns = [
     path('health/', health_check),
     path('api/health/', health_check),
+    path('api/debug-admin/', debug_admin_view),
     path('admin/', admin.site.urls),
     path('api/users/', include('users.urls')),
     path('api/brand/', include('brand.urls')), # Keeping api prefix for existing frontend calls if any
