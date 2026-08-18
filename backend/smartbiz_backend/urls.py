@@ -45,12 +45,17 @@ def debug_admin_view(request):
         factory = RequestFactory()
         admin_req = factory.get('/admin/users/user/')
         admin_req.user = User.objects.filter(is_superuser=True).first()
-        admin_req.session = {}
+        from django.contrib.sessions.middleware import SessionMiddleware
+        SessionMiddleware(lambda req: None).process_request(admin_req)
+        admin_req.session.save()
         from django.contrib.messages.storage.fallback import FallbackStorage
         setattr(admin_req, '_messages', FallbackStorage(admin_req))
         user_admin = admin.site._registry[User]
         response = user_admin.changelist_view(admin_req)
+        if hasattr(response, 'render'):
+            response.render()
         results['admin_changelist_status'] = getattr(response, 'status_code', 200)
+        results['rendered_length'] = len(response.content) if hasattr(response, 'content') else 0
     except Exception as e:
         results['admin_changelist_error'] = f"{type(e).__name__}: {str(e)}"
         results['admin_changelist_traceback'] = traceback.format_exc()
