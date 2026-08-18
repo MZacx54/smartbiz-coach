@@ -15,6 +15,10 @@ class User(AbstractUser):
     location = models.CharField(max_length=255, blank=True)
     currency = models.CharField(max_length=10, default='NGN')
 
+    @property
+    def is_admin_or_owner(self):
+        return self.is_staff or self.is_superuser or getattr(self, 'plan', '') == 'Pro'
+
     def __str__(self):
         return self.username or self.email or 'User'
 
