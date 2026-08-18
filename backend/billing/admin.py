@@ -3,10 +3,10 @@ from .models import Transaction, CreditPurchase, CreditLedger, DailyFreeUsage
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['reference', 'user', 'amount', 'type', 'provider', 'status', 'created_at']
-    list_filter = ['status', 'type', 'provider']
-    search_fields = ['reference', 'user__username', 'user__email']
-    list_display_links = ['reference']
+    list_display = ['id', 'reference', 'user', 'amount', 'type', 'provider', 'status', 'created_at']
+    list_filter = ['status', 'type', 'provider', 'created_at']
+    search_fields = ['reference', 'user__username', 'user__email', 'description']
+    list_display_links = ['id', 'reference']
 
     def save_model(self, request, obj, form, change):
         if change:
@@ -40,22 +40,23 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(CreditPurchase)
 class CreditPurchaseAdmin(admin.ModelAdmin):
-    list_display = ['user', 'amount', 'timestamp']
+    list_display = ['id', 'user', 'amount', 'timestamp']
     search_fields = ['user__username', 'user__email']
-    list_display_links = ['user']
+    list_display_links = ['id', 'user']
 
 @admin.register(DailyFreeUsage)
 class DailyFreeUsageAdmin(admin.ModelAdmin):
-    list_display = ['user', 'feature', 'count', 'last_used']
+    list_display = ['id', 'user', 'feature', 'count', 'last_used']
     list_filter = ['feature', 'last_used']
     search_fields = ['user__username', 'user__email', 'feature']
-    list_display_links = ['user', 'feature']
+    list_display_links = ['id', 'user', 'feature']
 
 @admin.register(CreditLedger)
 class CreditLedgerAdmin(admin.ModelAdmin):
-    list_display = ['user', 'amount', 'activity', 'created_at']
+    list_display = ['id', 'user', 'amount', 'activity', 'created_at']
     list_filter = ['created_at']
     search_fields = ['user__username', 'user__email', 'activity']
+    list_display_links = ['id', 'user']
 
     def save_model(self, request, obj, form, change):
         if not change:

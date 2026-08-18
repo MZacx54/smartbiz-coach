@@ -141,7 +141,7 @@ class AdminTransactionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if not (request.user.is_staff or request.user.is_superuser or request.user.email == 'meshachzax@gmail.com'):
+        if not (request.user.is_staff or request.user.is_superuser or request.user.email in ['meshachzax@gmail.com', 'admin@smartbizcoach.com.ng']):
             return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
 
         from django.db.models import Sum
