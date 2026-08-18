@@ -17,7 +17,7 @@ class MarketplaceListingAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name', 'brand', 'product_type', 'price', 'category', 'location', 'is_public', 'is_promoted', 'created_at']
+    list_display = ['id', 'name', 'brand', 'product_type', 'price', 'category', 'is_public', 'is_promoted', 'promoted_until', 'created_at']
     list_filter = ['product_type', 'category', 'is_public', 'is_promoted', 'created_at']
     search_fields = ['name', 'brand__business_name', 'location', 'sku']
     list_display_links = ['id', 'name']

@@ -335,12 +335,29 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 </ul>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mt-6">
-                  <h4 className="font-bold text-slate-950 mb-2">Stuck? Let us handle it</h4>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-base">🏛️</span>
+                    <h4 className="font-bold text-slate-950">Accredited Done-For-You Registration Desk</h4>
+                  </div>
                   <p className="text-xs text-slate-600 mb-4">
-                    Inside the SmartBiz Coach dashboard, you can hire an accredited CAC agent directly to handle your registry papers for a discounted token fee.
+                    Skip registry queues and document rejections. Our accredited CAC desk files your certificate directly with government fees included:
                   </p>
-                  <button onClick={() => navigate('/register')} className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md">
-                    Access Compliance Tool →
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-4">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <strong>Business Name (BN):</strong> ₦27,500 (3-5 Days)
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <strong>Limited Liability (Ltd):</strong> ₦68,000 (5-7 Days)
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <strong>Incorporated Trustee (NGO):</strong> ₦135,000
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                      <strong>SCUML Certificate:</strong> ₦35,000
+                    </div>
+                  </div>
+                  <button onClick={() => navigate('/register')} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md">
+                    Start Your Registration →
                   </button>
                 </div>
               </div>

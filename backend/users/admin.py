@@ -37,9 +37,10 @@ class UserComplianceAdmin(admin.ModelAdmin):
 
 @admin.register(AgentHireRequest)
 class AgentHireRequestAdmin(admin.ModelAdmin):
-    list_display = ['id', 'business_name', 'user', 'business_type', 'phone_number', 'status', 'created_at']
-    list_filter = ['status', 'business_type', 'created_at']
-    search_fields = ['business_name', 'user__username', 'user__email', 'phone_number']
-    list_editable = ['status']
+    list_display = ['id', 'business_name', 'registration_type', 'amount_paid', 'payment_status', 'user', 'phone_number', 'status', 'created_at']
+    list_filter = ['payment_status', 'status', 'registration_type', 'created_at']
+    search_fields = ['business_name', 'user__username', 'user__email', 'phone_number', 'payment_reference', 'registration_type']
+    list_editable = ['payment_status', 'status']
     list_display_links = ['id', 'business_name']
+    readonly_fields = ['created_at', 'payment_reference']
 

@@ -69,6 +69,8 @@ const LandingPage: React.FC = () => {
 
     // ── DATA ──
     const allFeatures = [
+        { icon: '🏛️', title: 'Accredited CAC Desk', desc: 'Fast-track Done-For-You CAC registration: Business Name (₦27,500), Ltd Co (₦68,000), NGO/Trustee (₦135,000), and SCUML (₦35,000) in 3-7 days.', color: 'from-emerald-600 to-teal-700', tag: 'Accredited' },
+        { icon: '🚀', title: 'Listing Boosts & Badges', desc: 'Promote products to the top of search and global feeds with 3-Day/7-Day boosts and activate your official Verified Vendor Badge.', color: 'from-amber-500 to-indigo-600', tag: 'Top Reach' },
         { icon: '🎥', title: 'Product Video Suite', desc: 'Record short 15-30s product videos directly or upload clips. AI extracts key frames to pre-fill listings, while the teleprompter helps you record scrolling video scripts.', color: 'from-pink-600 to-rose-600', tag: 'New' },
         { icon: '📲', title: 'Direct Meta Publishing', desc: '1-click direct social publishing to Instagram Business and Facebook Pages. Push posts, reels, captions, and hashtags instantly without copy-pasting.', color: 'from-blue-600 to-indigo-600', tag: 'New' },
         { icon: '📣', title: 'Broadcast HQ Campaigns', desc: 'Send targeted WhatsApp & SMS campaign blasts. Import CSV contacts, filter by audience tags (VIP, Lead), and insert personalized {{name}} variables.', color: 'from-emerald-600 to-teal-600', tag: 'Upgraded' },
@@ -180,17 +182,19 @@ const LandingPage: React.FC = () => {
     ];
 
     const packs = [
-        { name: 'Starter Pack', price: '₦300', credits: '30 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['30 AI Credits', '~30 basic tasks', 'Brand Builder (6x)', 'Content Posts (15x)', 'Debt Reminders (30x)', 'Email Support'] },
-        { name: 'Grower Pack', price: '₦1,000', credits: '120 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['120 AI Credits', 'Best value for money', 'Business Plans (8x)', 'Grant Searches (60x)', 'Brand Builder (24x)', 'Priority Support'] },
-        { name: 'Pro Pack', price: '₦3,000', credits: '400 Credits', tag: '💎 Best Value', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['400 AI Credits', 'For serious businesses', 'Business Plans (26x)', 'Content Posts (200x)', 'All features unlocked', 'VIP Support'] },
+        { name: 'Micro Pack', price: '₦500', credits: '40 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['40 AI Credits', 'Quick AI tasks & SMS test', 'Brand Builder (8x)', 'Content Posts (20x)', 'Debt Reminders (40x)', 'Standard Support'] },
+        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 AI Credits', '1 Product Boost (3-Day)', '30 AI Generations', 'Full Content Studio', 'WhatsApp & Email Support'] },
+        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 AI Credits', '1 Grant Business Plan (PDF)', '7-Day Featured Boost', 'Marketing SMS Campaigns', 'Priority Support'] },
+        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 Agency Power', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 AI Credits', 'Official Verified Vendor Badge', '2x Marketplace Boosts', 'High-Volume Broadcasts', 'VIP Concierge Desk'] },
     ];
 
     const faqs = [
-        { q: 'Is SmartBiz Coach free to use?', a: 'Yes! You get free daily usage on most AI tools when you sign up. You only pay for extra usage with our affordable credit packs starting at just ₦300 — no credit card required to get started.' },
+        { q: 'Is SmartBiz Coach free to use?', a: 'Yes! You get free daily usage on most AI tools when you sign up. You only pay for extra usage with our affordable credit packs starting at just ₦500 — no credit card required to get started.' },
         { q: 'How does the AI Snap & List feature work?', a: 'Simply take photos of your products and upload them. Our Gemini Vision AI analyzes each image, identifies the product type, suggests a name, category, price range, and writes a professional sales copy. You review and publish in one click.' },
         { q: 'What business types can use SmartBiz Coach?', a: 'Any Nigerian SME! Whether you sell physical goods, offer services (by hour or project), rent/sell property, or operate B2B (logistics, wholesale, influencer marketing, raw materials) — we have category-specific tools for you.' },
         { q: 'How does the WhatsApp CRM lead feature work?', a: 'When buyers find your marketplace listing, they click "Contact via WhatsApp" which opens a pre-filled professional message to you. Every inquiry is automatically saved in your CRM ledger so you can track and follow up on all leads.' },
         { q: 'Are the business plans accepted by Nigerian banks and investors?', a: 'Yes. Our AI generates detailed, structured plans with financial projections, market analysis, and SWOT analysis — meeting the standards for BOI, CBN, TEF, and most Nigerian commercial banks and NGO grant bodies.' },
+        { q: 'Can I get my CAC registration done directly on SmartBiz Coach?', a: 'Yes! Our accredited CAC filing desk handles Done-For-You registrations end-to-end: Business Name (₦27,500), Limited Liability Company (₦68,000), Incorporated Trustee/NGO (₦135,000), and SCUML Anti-Money Laundering certification (₦35,000) with certificate delivery in 3-7 working days.' },
         { q: 'Is my business data safe?', a: 'Absolutely. We use industry-standard encryption and never share your business data with third parties. Your information, your inventory, your clients — all protected. We also comply with NDPR data privacy requirements.' },
         { q: 'Can NGOs and agencies use SmartBiz Coach for their beneficiaries?', a: 'Yes! We have a dedicated NGO/Agency partner program that lets organizations onboard SME cohorts, track their progress, generate reports, and access bulk credit allocations. Contact us via the Partnership section below.' },
         { q: 'How do I top up credits?', a: 'Instantly via Paystack from inside the app — bank card, bank transfer, or USSD. Credits never expire and there\'s no monthly subscription. Buy what you need, when you need it.' },
@@ -780,7 +784,7 @@ const LandingPage: React.FC = () => {
                         <p className="text-green-100 text-sm">Every new account gets free daily usage on most tools. No credit card required to get started.</p>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         {packs.map((p, i) => (
                             <motion.div key={i} className={`relative bg-white rounded-2xl p-6 sm:p-8 border-2 ${p.color} ${p.popular ? 'shadow-2xl shadow-green-500/20 md:scale-105' : 'shadow-sm'} transition-all hover:shadow-lg`}
                                 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
