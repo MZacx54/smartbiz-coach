@@ -33,7 +33,7 @@ def get_plan_limits(user):
         }
     
     plan = getattr(user, 'plan', 'Free')
-    if plan == 'Pro':
+    if plan == 'Pro' or user.is_staff or user.is_superuser:
         return {
             'plan_name': 'Pro Plan',
             'max_contacts': 999999,
@@ -44,13 +44,13 @@ def get_plan_limits(user):
             'bypass_limits': False
         }
     
-    # Default: Free Plan
+    # Default: Free Plan (Can send SMS via BizCredits)
     return {
         'plan_name': 'Free Plan',
         'max_contacts': 500,
         'max_batch_size': 20,
         'max_campaigns': 1,
-        'can_send_sms': False,
+        'can_send_sms': True,
         'sms_credit_cost': 2,
         'bypass_limits': False
     }

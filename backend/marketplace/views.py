@@ -277,3 +277,100 @@ class RelatedEcosystemProductsView(views.APIView):
         products = qs[:6]
         serializer = ProductSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
+
+
+class BoostProductView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk, brand__user=request.user)
+        except Product.DoesNotExist:
+            return Response({'error': 'Product not found or you do not have permission to boost this item.'}, status=status.HTTP_404_NOT_FOUND)
+
+        duration_days = int(request.data.get('duration_days') or 3)
+        credits_required = 150 if duration_days <= 3 else 300
+
+        if request.user.credits < credits_required:
+            return Response({
+                'error': f'Insufficient BizCredits. You have {request.user.credits} credits, but {credits_required} credits are required to boost this listing for {duration_days} days.',
+                'credits_required': credits_required,
+                'current_credits': request.user.credits
+            }, status=status.HTTP_402_PAYMENT_REQUIRED)
+
+        # Deduct credits
+        request.user.credits -= credits_required
+        request.user.save(update_fields=['credits'])
+
+        # Record in CreditLedger
+        from billing.models import CreditLedger
+        CreditLedger.objects.create(
+            user=request.user,
+            amount=-credits_required,
+            activity=f"Marketplace Boost ({duration_days} Days) for '{product.name}'"
+        )
+
+        # Set product promoted state & duration
+        from django.utils import timezone
+        product.is_promoted = True
+        product.promoted_until = timezone.now() + timezone.timedelta(days=duration_days)
+        product.save(update_fields=['is_promoted', 'promoted_until'])
+
+        return Response({
+            'message': f"Product successfully boosted for {duration_days} days! It is now featured across the Marketplace.",
+            'product_id': product.id,
+            'is_promoted': product.is_promoted,
+            'promoted_until': product.promoted_until,
+            'remaining_credits': request.user.credits
+        }, status=status.HTTP_200_OK)
+
+
+class VerifyVendorWithCreditsView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from .models import VendorVerification
+        vendor, _ = VendorVerification.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'business_name': getattr(request.user, 'business_name', '') or request.user.username,
+                'business_type': 'Retail',
+                'whatsapp_number': getattr(request.user, 'phone', '') or '2348000000000'
+            }
+        )
+
+        if vendor.is_verified:
+            return Response({
+                'message': 'Your vendor profile is already verified with an official badge.',
+                'is_verified': True
+            }, status=status.HTTP_200_OK)
+
+        credits_required = 500
+        if request.user.credits < credits_required:
+            return Response({
+                'error': f'Insufficient BizCredits. You have {request.user.credits} credits, but {credits_required} credits are required to obtain the Verified Vendor Badge.',
+                'credits_required': credits_required,
+                'current_credits': request.user.credits
+            }, status=status.HTTP_402_PAYMENT_REQUIRED)
+
+        # Deduct credits
+        request.user.credits -= credits_required
+        request.user.save(update_fields=['credits'])
+
+        # Record in CreditLedger
+        from billing.models import CreditLedger
+        CreditLedger.objects.create(
+            user=request.user,
+            amount=-credits_required,
+            activity="Official Verified Vendor Badge Activation"
+        )
+
+        vendor.is_verified = True
+        vendor.save(update_fields=['is_verified'])
+
+        return Response({
+            'message': 'Congratulations! Your Vendor profile is now verified with the official Verified Badge on all Marketplace listings.',
+            'is_verified': True,
+            'remaining_credits': request.user.credits
+        }, status=status.HTTP_200_OK)
+

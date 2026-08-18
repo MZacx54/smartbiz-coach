@@ -67,10 +67,22 @@ class VerifyPaymentView(APIView):
                     reference=reference
                 )
 
-                # Map Naira amount to Credit Packs (Starter: N300=30, Grower: N1000=120, Pro: N3000=400)
-                # Fallback to 1 Credit per N10 if custom amount
+                # Map Naira amount to Credit Packs:
+                # - Micro Pack: N500 = 40 Credits
+                # - Starter Pack: N1,500 = 150 Credits
+                # - Grower Pack: N3,500 = 400 Credits
+                # - Vendor Pro Pack: N7,500 = 1,000 Credits
                 credits_purchased = 0
-                if abs(paystack_amount_naira - 300) < 5:
+                if abs(paystack_amount_naira - 500) < 5:
+                    credits_purchased = 40
+                elif abs(paystack_amount_naira - 1500) < 5:
+                    credits_purchased = 150
+                elif abs(paystack_amount_naira - 3500) < 5:
+                    credits_purchased = 400
+                elif abs(paystack_amount_naira - 7500) < 5:
+                    credits_purchased = 1000
+                # Legacy packs compatibility
+                elif abs(paystack_amount_naira - 300) < 5:
                     credits_purchased = 30
                 elif abs(paystack_amount_naira - 1000) < 5:
                     credits_purchased = 120
@@ -78,7 +90,7 @@ class VerifyPaymentView(APIView):
                     credits_purchased = 400
                 else:
                     # Generic fallback: N10 per credit
-                    credits_purchased = int(paystack_amount_naira / 10)
+                    credits_purchased = max(1, int(paystack_amount_naira / 10))
 
                 # Update user credits
                 request.user.credits += credits_purchased

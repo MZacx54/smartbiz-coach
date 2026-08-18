@@ -32,6 +32,6 @@ class UserComplianceSerializer(serializers.ModelSerializer):
 class AgentHireRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = AgentHireRequest
-        fields = ['id', 'business_name', 'business_type', 'phone_number', 'status', 'created_at']
+        fields = ['id', 'business_name', 'business_type', 'phone_number', 'registration_type', 'amount_paid', 'payment_reference', 'payment_status', 'status', 'created_at']
         read_only_fields = ['status', 'created_at']
 

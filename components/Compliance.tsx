@@ -8,6 +8,43 @@ import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
 import { BrandIdentity, User } from '../types';
 import { BankPayoutSetup } from './BankPayoutSetup';
+import PaymentModal from './PaymentModal';
+
+const CAC_PACKAGES = [
+  {
+    id: 'BN',
+    name: 'Business Name (Sole Proprietor)',
+    price: 27500,
+    timeline: '3-5 Working Days',
+    desc: 'Official CAC Certificate, Status Report, and FIRS TIN.',
+    badge: 'Most Popular',
+    popular: true
+  },
+  {
+    id: 'LTD',
+    name: 'Private Limited Company (Ltd / RC)',
+    price: 68000,
+    timeline: '5-7 Working Days',
+    desc: 'Full Incorporation (RC), MEMART, Status Report, and Corporate TIN.',
+    badge: 'Corporate Standard'
+  },
+  {
+    id: 'TRUSTEE',
+    name: 'Incorporated Trustee (NGO / Church / Club)',
+    price: 135000,
+    timeline: '10-15 Working Days',
+    desc: 'Trustee Board Filing, Newspaper Publication, Constitution, and Certificate.',
+    badge: 'Non-Profit / NGO'
+  },
+  {
+    id: 'SCUML',
+    name: 'SCUML Anti-Money Laundering (EFCC)',
+    price: 35000,
+    timeline: '7-10 Working Days',
+    desc: 'Mandatory Anti-Money Laundering compliance for corporate accounts.',
+    badge: 'Mandatory for Logistics/Retail'
+  }
+];
 
 interface ComplianceProps {
   brand?: BrandIdentity | null;
@@ -142,14 +179,17 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
 
   // Hire Agent Modal
   const [showHireModal, setShowHireModal] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState(CAC_PACKAGES[0]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hireForm, setHireForm] = useState({
     business_name: brand?.businessName || user?.businessName || '',
-    business_type: BUSINESS_TYPES[0],
+    business_type: CAC_PACKAGES[0].name,
     phone_number: user?.phone || '',
   });
   const [isSubmittingHire, setIsSubmittingHire] = useState(false);
   const [hireSuccess, setHireSuccess] = useState(false);
   const [hireError, setHireError] = useState('');
+  const [completedPaymentRef, setCompletedPaymentRef] = useState('');
 
   // Load persisted compliance status on mount
   useEffect(() => {
@@ -231,15 +271,38 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
     await executeNameAnalysis(false, 0);
   };
 
-  const handleHireSubmit = async (e: React.FormEvent) => {
+  const handleInitiateHirePayment = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hireForm.business_name.trim()) {
+      setHireError('Please provide your proposed business name.');
+      return;
+    }
+    if (!hireForm.phone_number.trim()) {
+      setHireError('Please provide your WhatsApp/Phone number.');
+      return;
+    }
+    setHireError('');
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = async (reference: string) => {
+    setShowPaymentModal(false);
     setIsSubmittingHire(true);
     setHireError('');
     try {
-      await submitHireRequest(hireForm);
+      await submitHireRequest({
+        business_name: hireForm.business_name,
+        business_type: selectedPackage.name,
+        phone_number: hireForm.phone_number,
+        registration_type: selectedPackage.name,
+        amount_paid: selectedPackage.price,
+        payment_reference: reference
+      });
+      setCompletedPaymentRef(reference);
       setHireSuccess(true);
+      toast.success("Payment verified! Your CAC filing request is now active.");
     } catch (err: any) {
-      setHireError(err?.response?.data?.detail || 'Something went wrong. Please try again.');
+      setHireError(err?.response?.data?.detail || 'Your payment succeeded but saving ticket details failed. Contact support with your reference.');
     } finally {
       setIsSubmittingHire(false);
     }
@@ -563,11 +626,11 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
 
       {/* Hire Agent Modal */}
       {showHireModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 md:p-8 relative my-8">
             <button
               onClick={() => { setShowHireModal(false); setHireSuccess(false); setHireError(''); }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold"
+              className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 text-xl font-bold bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center"
             >
               ✕
             </button>
@@ -575,51 +638,89 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
             {hireSuccess ? (
               <div className="text-center py-6">
                 <div className="text-6xl mb-4">🎉</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h3>
-                <p className="text-gray-500 text-sm max-w-xs mx-auto">
-                  An agent will reach out to you within <strong>24 hours</strong> to begin your registration.
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Registration Order Confirmed!</h3>
+                <p className="text-gray-600 text-sm max-w-sm mx-auto mb-4">
+                  Your <strong>{selectedPackage.name}</strong> filing ticket has been assigned to an accredited CAC legal desk.
                 </p>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-900 space-y-1.5 text-left mb-6">
+                  <p><strong>Business Name:</strong> {hireForm.business_name}</p>
+                  <p><strong>Filing Timeline:</strong> {selectedPackage.timeline}</p>
+                  <p><strong>Amount Paid:</strong> ₦{selectedPackage.price.toLocaleString()}</p>
+                  {completedPaymentRef && <p className="text-[10px] text-emerald-700"><strong>Ref:</strong> {completedPaymentRef}</p>}
+                </div>
                 <button
                   onClick={() => { setShowHireModal(false); setHireSuccess(false); }}
-                  className="mt-6 bg-green-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-green-700 transition-all"
+                  className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md"
                 >
-                  Done
+                  Return to Dashboard
                 </button>
               </div>
             ) : (
               <>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Hire a Registration Agent</h3>
-                <p className="text-sm text-gray-500 mb-5">Fill in your details and an agent will contact you within 24 hours.</p>
+                <div className="mb-5">
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
+                    Official Accredited Desk
+                  </span>
+                  <h3 className="text-xl font-extrabold text-gray-900 mt-2">Hire CAC Registration Agent</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Direct end-to-end filing with certificate delivery to your dashboard.</p>
+                </div>
 
-                <form onSubmit={handleHireSubmit} className="space-y-4">
+                <form onSubmit={handleInitiateHirePayment} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Proposed Business Name</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Proposed Business / Company Name</label>
                     <input
                       type="text"
                       required
-                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                      placeholder="e.g. Chukwu Logistics"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                      placeholder="e.g. Chukwu Global Logistics"
                       value={hireForm.business_name}
                       onChange={e => setHireForm(p => ({ ...p, business_name: e.target.value }))}
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">Business Type</label>
-                    <select
-                      required
-                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white"
-                      value={hireForm.business_type}
-                      onChange={e => setHireForm(p => ({ ...p, business_type: e.target.value }))}
-                    >
-                      {BUSINESS_TYPES.map(t => <option key={t}>{t}</option>)}
-                    </select>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Select CAC Registration Package</label>
+                    <div className="grid grid-cols-1 gap-2.5 max-h-56 overflow-y-auto pr-1">
+                      {CAC_PACKAGES.map(pkg => (
+                        <div
+                          key={pkg.id}
+                          onClick={() => {
+                            setSelectedPackage(pkg);
+                            setHireForm(p => ({ ...p, business_type: pkg.name }));
+                          }}
+                          className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                            selectedPackage.id === pkg.id 
+                              ? 'border-emerald-600 bg-emerald-50/60 shadow-sm' 
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-slate-900">{pkg.name}</p>
+                              {pkg.badge && (
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
+                                  pkg.popular ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {pkg.badge}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">{pkg.desc} (⏱️ {pkg.timeline})</p>
+                          </div>
+                          <span className="text-sm font-black text-emerald-700 shrink-0 ml-2">
+                            ₦{pkg.price.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">WhatsApp / Phone Number</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">WhatsApp / Contact Phone</label>
                     <input
                       type="tel"
                       required
-                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="e.g. 08012345678"
                       value={hireForm.phone_number}
                       onChange={e => setHireForm(p => ({ ...p, phone_number: e.target.value }))}
@@ -627,27 +728,44 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                   </div>
 
                   {hireError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg">
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl">
                       {hireError}
                     </div>
                   )}
 
-                  <div className="bg-green-50 border border-green-200 p-3 rounded-lg text-xs text-green-800">
-                    <strong>Pricing:</strong> BN (Sole Prop) — ₦20,000 &nbsp;|&nbsp; Ltd Company — ₦65,000
+                  <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Registration Fee</p>
+                      <p className="text-lg font-black text-slate-900">₦{selectedPackage.price.toLocaleString()}</p>
+                    </div>
+                    <span className="text-[10px] text-emerald-700 bg-emerald-100 font-bold px-2.5 py-1 rounded-lg">
+                      Government Fees Included
+                    </span>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isSubmittingHire}
-                    className="w-full bg-green-700 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition-all disabled:opacity-60 active:scale-95"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-emerald-600/20 active:scale-95 disabled:opacity-60 text-sm"
                   >
-                    {isSubmittingHire ? 'Submitting...' : 'Submit Request'}
+                    {isSubmittingHire ? 'Processing...' : `Proceed to Pay ₦${selectedPackage.price.toLocaleString()} →`}
                   </button>
                 </form>
               </>
             )}
           </div>
         </div>
+      )}
+
+      {/* Paystack Payment Modal for CAC */}
+      {showPaymentModal && (
+        <PaymentModal
+          amount={selectedPackage.price}
+          description={`CAC Registration: ${selectedPackage.name} - ${hireForm.business_name}`}
+          email={user?.email || 'meshachzax@gmail.com'}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePaymentSuccess}
+        />
       )}
 
       <CreditPromptModal

@@ -108,6 +108,7 @@ class Product(models.Model):
     # Unified Commerce Flags
     is_public = models.BooleanField(default=True) # Shown on Personal Storefront
     is_promoted = models.BooleanField(default=False) # Shown in Market Square
+    promoted_until = models.DateTimeField(null=True, blank=True)
     
     stock_count = models.IntegerField(default=1)
     

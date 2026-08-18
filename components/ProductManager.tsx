@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Plus, Trash2, Edit3, Sparkles, Globe, Megaphone, DollarSign, Package, Tag, ArrowRight, Save, X, Download, ShieldAlert, TrendingUp, AlertTriangle, Camera } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, Edit3, Sparkles, Globe, Megaphone, DollarSign, Package, Tag, ArrowRight, Save, X, Download, ShieldAlert, TrendingUp, AlertTriangle, Camera, Rocket, Zap, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
+import CreditPromptModal from './CreditPromptModal';
 
 interface Product {
   id: number;
@@ -157,6 +158,38 @@ const ProductManager: React.FC = () => {
   }[]>([]);
   const [isBulkOnboarding, setIsBulkOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState<'catalog' | 'ledger'>('catalog');
+
+  // Product Boosting States
+  const [boostingProduct, setBoostingProduct] = useState<Product | null>(null);
+  const [showBoostModal, setShowBoostModal] = useState(false);
+  const [isBoosting, setIsBoosting] = useState(false);
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [creditPromptCost, setCreditPromptCost] = useState(150);
+
+  const handleBoostListing = async (durationDays: number) => {
+    if (!boostingProduct) return;
+    const cost = durationDays <= 3 ? 150 : 300;
+    setCreditPromptCost(cost);
+    setIsBoosting(true);
+    try {
+      const res = await api.post(`/api/marketplace/products/${boostingProduct.id}/boost/`, {
+        duration_days: durationDays
+      });
+      setProducts(prev => prev.map(p => p.id === boostingProduct.id ? { ...p, is_promoted: true } : p));
+      toast.success(res.data?.message || `Listing boosted for ${durationDays} days!`);
+      setShowBoostModal(false);
+      setBoostingProduct(null);
+    } catch (err: any) {
+      if (err?.response?.status === 402) {
+        setShowBoostModal(false);
+        setShowCreditPrompt(true);
+      } else {
+        toast.error(err?.response?.data?.error || "Failed to boost product.");
+      }
+    } finally {
+      setIsBoosting(false);
+    }
+  };
 
   const compressBase64Url = (dataUrl: string, maxWidth = 800, quality = 0.75): Promise<string> => {
     return new Promise((resolve) => {
@@ -1751,6 +1784,21 @@ const ProductManager: React.FC = () => {
                             
                             <div className="flex gap-2 pt-2">
                                <button 
+                                 type="button"
+                                 onClick={() => {
+                                   setBoostingProduct(product);
+                                   setShowBoostModal(true);
+                                 }}
+                                 className={`px-3 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-0 cursor-pointer ${
+                                   product.is_promoted 
+                                     ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' 
+                                     : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white'
+                                 }`}
+                               >
+                                 {product.is_promoted ? <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> : <Rocket className="w-3.5 h-3.5" />}
+                                 <span>{product.is_promoted ? 'Boosted' : 'Boost'}</span>
+                               </button>
+                               <button 
                                  onClick={() => {
                                    setCurrentProduct({
                                      ...product,
@@ -1964,6 +2012,93 @@ const ProductManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Product Boost Modal */}
+      {showBoostModal && boostingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 sm:p-8 relative">
+            <button
+              onClick={() => {
+                setShowBoostModal(false);
+                setBoostingProduct(null);
+              }}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg font-bold bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center"
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-2 mb-6">
+              <div className="w-14 h-14 bg-amber-100 rounded-3xl flex items-center justify-center text-2xl mx-auto shadow-inner">
+                🚀
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Boost Listing on Marketplace</h3>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                Promote <strong className="text-slate-800 font-bold">"{boostingProduct.name}"</strong> to the top of all search queries, global feeds, and category spots.
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div 
+                onClick={() => handleBoostListing(3)}
+                className="p-4 rounded-2xl border-2 border-indigo-100 hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-50/80 cursor-pointer transition-all flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-600 text-white rounded-xl">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-indigo-700">3-Day Fast Boost</h4>
+                    <p className="text-[10px] text-slate-500">Marketplace highlight for 72 hours</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-indigo-700 block">150 Credits</span>
+                  <span className="text-[9px] text-slate-400">Instant Activation</span>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => handleBoostListing(7)}
+                className="p-4 rounded-2xl border-2 border-amber-200 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50/80 cursor-pointer transition-all flex items-center justify-between group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 bg-amber-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
+                  Best Value
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-500 text-white rounded-xl">
+                    <Flame className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-amber-800">7-Day Hot Deal Featured</h4>
+                    <p className="text-[10px] text-slate-500">Prime placement & top badge for 1 week</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-amber-800 block">300 Credits</span>
+                  <span className="text-[9px] text-slate-400">Maximum Reach</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 text-center">
+              BizCredits will be deducted from your wallet immediately.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Credit Prompt Modal if Insufficient Credits */}
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="Marketplace Product Boost"
+        creditCost={creditPromptCost}
+        currentCredits={0}
+        onConfirm={() => {
+          setShowCreditPrompt(false);
+          window.location.href = '/settings?tab=billing';
+        }}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

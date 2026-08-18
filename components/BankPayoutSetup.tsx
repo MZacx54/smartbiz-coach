@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
-import { Building2, CheckCircle2, ShieldCheck, ArrowRight, RefreshCw, CreditCard } from 'lucide-react';
+import { Building2, CheckCircle2, ShieldCheck, ArrowRight, RefreshCw, CreditCard, Shield } from 'lucide-react';
+import CreditPromptModal from './CreditPromptModal';
 
 interface BankOption {
   name: string;
@@ -10,6 +11,7 @@ interface BankOption {
 
 interface PayoutDetails {
   is_setup: boolean;
+  is_verified?: boolean;
   bank_name: string;
   bank_code: string;
   account_number: string;
@@ -45,7 +47,8 @@ export const BankPayoutSetup: React.FC = () => {
   const [isResolving, setIsResolving] = useState(false);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
-
+  const [isVerifyingWithCredits, setIsVerifyingWithCredits] = useState(false);
+  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
 
   // Fetch payout details and bank list on mount
@@ -159,6 +162,23 @@ export const BankPayoutSetup: React.FC = () => {
     }
   };
 
+  const handleActivateVerification = async () => {
+    setIsVerifyingWithCredits(true);
+    try {
+      const res = await api.post('/api/marketplace/vendor/verify-with-credits/');
+      setPayoutDetails(prev => prev ? ({ ...prev, is_verified: true }) : null);
+      toast.success("Verified Vendor Badge activated! Your listings now display the official verified trust badge.");
+    } catch (err: any) {
+      if (err?.response?.status === 402) {
+        setShowCreditPrompt(true);
+      } else {
+        toast.error(err?.response?.data?.error || "Failed to activate vendor badge.");
+      }
+    } finally {
+      setIsVerifyingWithCredits(false);
+    }
+  };
+
   if (isLoadingDetails) {
     return (
       <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm text-center">
@@ -189,12 +209,30 @@ export const BankPayoutSetup: React.FC = () => {
           </div>
         </div>
 
-        {payoutDetails?.is_setup && (
-          <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-1.5 rounded-full text-xs font-bold">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>PAYOUT ACTIVE ({payoutDetails.paystack_subaccount_code || 'CONNECTED'})</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {payoutDetails?.is_verified ? (
+            <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-3.5 py-1.5 rounded-full text-xs font-bold">
+              <Shield className="w-4 h-4 text-blue-600 fill-blue-600" />
+              <span>OFFICIAL VERIFIED VENDOR</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleActivateVerification}
+              disabled={isVerifyingWithCredits}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all"
+            >
+              <Shield className="w-4 h-4" />
+              <span>{isVerifyingWithCredits ? 'Activating...' : 'Get Verified Badge (500 Credits)'}</span>
+            </button>
+          )}
+
+          {payoutDetails?.is_setup && (
+            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3.5 py-1.5 rounded-full text-xs font-bold">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>PAYOUT ACTIVE ({payoutDetails.paystack_subaccount_code || 'CONNECTED'})</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Linked Payout Status Summary Card */}
@@ -321,6 +359,18 @@ export const BankPayoutSetup: React.FC = () => {
           </div>
         )}
       </div>
+
+      <CreditPromptModal
+        isOpen={showCreditPrompt}
+        featureLabel="Official Verified Vendor Badge"
+        creditCost={500}
+        currentCredits={0}
+        onConfirm={() => {
+          setShowCreditPrompt(false);
+          window.location.href = '/settings?tab=billing';
+        }}
+        onClose={() => setShowCreditPrompt(false)}
+      />
     </div>
   );
 };

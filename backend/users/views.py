@@ -436,7 +436,49 @@ class AgentHireRequestView(views.APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        hire_request = serializer.save(user=request.user)
+        reference = request.data.get('payment_reference', '').strip()
+        reg_type = request.data.get('registration_type') or request.data.get('business_type') or 'Business Name (Sole Proprietor)'
+        amount_paid = float(request.data.get('amount_paid') or 0.0)
+        payment_verified = False
+
+        # If payment reference was provided, verify with Paystack
+        if reference:
+            try:
+                import requests as http_requests
+                url = f"https://api.paystack.co/transaction/verify/{reference}"
+                headers = {
+                    "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+                    "Content-Type": "application/json",
+                }
+                paystack_res = http_requests.get(url, headers=headers, timeout=10).json()
+                if paystack_res.get('status') and paystack_res.get('data', {}).get('status') == 'success':
+                    verified_amount = paystack_res['data']['amount'] / 100.0
+                    amount_paid = verified_amount
+                    payment_verified = True
+                    
+                    # Record in Transaction table
+                    from billing.models import Transaction
+                    Transaction.objects.get_or_create(
+                        reference=reference,
+                        defaults={
+                            'user': request.user,
+                            'amount': verified_amount,
+                            'description': f"CAC Registration ({reg_type}) - {request.data.get('business_name')}",
+                            'status': 'SUCCESS',
+                            'provider': 'PAYSTACK',
+                            'type': 'PURCHASE'
+                        }
+                    )
+            except Exception as e:
+                print(f"Paystack CAC verification check notice: {e}")
+
+        hire_request = serializer.save(
+            user=request.user,
+            registration_type=reg_type,
+            amount_paid=amount_paid,
+            payment_reference=reference,
+            payment_status='PAID' if payment_verified or amount_paid > 0 else 'PENDING'
+        )
 
         # Send email notification (async) to admin
         import threading, json, urllib.request, urllib.error
@@ -445,14 +487,18 @@ class AgentHireRequestView(views.APIView):
             from_email = (settings.DEFAULT_FROM_EMAIL or '').strip()
             admin_email = 'noreply@smartbizcoach.com.ng'
 
-            subject = f"New Agent Hire Request: {hire_request.business_name}"
+            subject = f"{'🚨 PAID' if hire_request.payment_status == 'PAID' else 'New'} CAC Registration Request: {hire_request.business_name} (₦{hire_request.amount_paid:,.2f})"
             body = (
-                f"A user has requested an agent to handle their business registration.\n\n"
-                f"User: {request.user.email}\n"
+                f"A user has submitted a {'PAID' if hire_request.payment_status == 'PAID' else 'New'} CAC Registration Request!\n\n"
+                f"Registration Type: {hire_request.registration_type}\n"
                 f"Business Name: {hire_request.business_name}\n"
-                f"Business Type: {hire_request.business_type}\n"
-                f"Phone: {hire_request.phone_number}\n\n"
-                f"Login to admin to view: https://api.smartbizcoach.com.ng/admin/"
+                f"User Email: {request.user.email}\n"
+                f"Phone: {hire_request.phone_number}\n"
+                f"Amount Paid: ₦{hire_request.amount_paid:,.2f}\n"
+                f"Payment Reference: {hire_request.payment_reference or 'N/A'}\n"
+                f"Payment Status: {hire_request.payment_status}\n\n"
+                f"Open Django Admin to assign an agent and begin filing:\n"
+                f"https://smartbiz-coach.onrender.com/admin/users/agenthirerequest/{hire_request.id}/change/"
             )
 
             if api_key and len(api_key) > 20:
@@ -460,7 +506,7 @@ class AgentHireRequestView(views.APIView):
                     url = "https://api.brevo.com/v3/smtp/email"
                     payload = {
                         "sender": {"email": from_email, "name": "SmartBiz Coach"},
-                        "to": [{"email": admin_email}],
+                        "to": [{"email": admin_email}, {"email": "meshachzax@gmail.com"}],
                         "subject": subject,
                         "textContent": body
                     }
@@ -477,8 +523,10 @@ class AgentHireRequestView(views.APIView):
         threading.Thread(target=send_notification).start()
 
         return Response({
-            'message': 'Your hire request has been submitted. An agent will contact you within 24 hours.',
-            'id': hire_request.id
+            'message': f"Your CAC {reg_type} request has been submitted and assigned to an accredited agent.",
+            'id': hire_request.id,
+            'payment_status': hire_request.payment_status,
+            'amount_paid': hire_request.amount_paid
         }, status=status.HTTP_201_CREATED)
 
 

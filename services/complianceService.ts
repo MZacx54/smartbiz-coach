@@ -13,6 +13,9 @@ export interface AgentHirePayload {
   business_name: string;
   business_type: string;
   phone_number: string;
+  registration_type?: string;
+  amount_paid?: number;
+  payment_reference?: string;
 }
 
 export const getComplianceStatus = async (): Promise<ComplianceStatus> => {

@@ -54,6 +54,14 @@ class AgentHireRequest(models.Model):
     business_name = models.CharField(max_length=255)
     business_type = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=50)
+    registration_type = models.CharField(max_length=100, blank=True, default='Business Name')
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    payment_reference = models.CharField(max_length=100, blank=True, default='')
+    payment_status = models.CharField(max_length=50, default='PENDING', choices=[
+        ('PENDING', 'Pending Payment'),
+        ('PAID', 'Paid / In Progress'),
+        ('COMPLETED', 'Completed')
+    ])
     status = models.CharField(max_length=50, default='Pending', choices=[
         ('Pending', 'Pending'),
         ('Assigned', 'Assigned'),
@@ -62,6 +70,6 @@ class AgentHireRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Hire Request: {self.business_name} ({self.status})"
+        return f"CAC Registration: {self.business_name} ({self.registration_type} - {self.payment_status})"
 
 
