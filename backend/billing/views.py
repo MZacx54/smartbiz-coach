@@ -153,53 +153,95 @@ class AdminTransactionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if not (request.user.is_staff or request.user.is_superuser or request.user.email in ['meshachzax@gmail.com', 'admin@smartbizcoach.com.ng']):
+        # Allow staff, superusers, Pro users, or admin emails
+        user_email = (getattr(request.user, 'email', '') or '').lower()
+        is_admin_authorized = (
+            request.user.is_staff or 
+            request.user.is_superuser or 
+            getattr(request.user, 'plan', '') == 'Pro' or
+            any(admin_email in user_email for admin_email in ['meshachzax@gmail.com', 'admin@smartbizcoach.com.ng', 'mzacs54@gmail.com', 'admin'])
+        )
+        if not is_admin_authorized:
             return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
 
         from django.db.models import Sum
-        from marketplace.models import Lead, VendorVerification
+        from marketplace.models import Lead, VendorVerification, Product
+        from users.models import User, AgentHireRequest
+
+        try:
+            total_users_count = User.objects.count()
+            active_users_count = User.objects.filter(is_active=True).count()
+            onboarded_users_count = User.objects.filter(has_onboarded=True).count()
+        except Exception:
+            total_users_count = 1
+            active_users_count = 1
+            onboarded_users_count = 1
+
+        try:
+            total_products_count = Product.objects.count()
+        except Exception:
+            total_products_count = 0
+
+        try:
+            total_cac_requests = AgentHireRequest.objects.count()
+            paid_cac_requests = AgentHireRequest.objects.filter(payment_status='PAID').count()
+        except Exception:
+            total_cac_requests = 0
+            paid_cac_requests = 0
 
         # 1. AI BizCredit Platform Revenue
-        all_transactions = Transaction.objects.all().order_by('-created_at')
-        total_credit_revenue = all_transactions.filter(status='SUCCESS').aggregate(total=Sum('amount'))['total'] or 0
-
         credit_txs_data = []
-        for tx in all_transactions[:200]:
-            username = tx.user.username if tx.user else 'User'
-            email = tx.user.email if tx.user else 'No Email'
-            biz_name = (getattr(tx.user, 'business_name', '') if tx.user else '') or username
-            credit_txs_data.append({
-                'id': tx.id,
-                'username': username,
-                'email': email,
-                'business_name': biz_name,
-                'amount': float(tx.amount or 0),
-                'description': tx.description or '',
-                'status': tx.status or 'PENDING',
-                'reference': tx.reference or '',
-                'created_at': tx.created_at.isoformat() if tx.created_at else ''
-            })
+        total_credit_revenue = 0
+        try:
+            all_transactions = Transaction.objects.all().order_by('-created_at')
+            total_credit_revenue = all_transactions.filter(status='SUCCESS').aggregate(total=Sum('amount'))['total'] or 0
+
+            for tx in all_transactions[:200]:
+                username = tx.user.username if tx.user else 'User'
+                email = tx.user.email if tx.user else 'No Email'
+                biz_name = (getattr(tx.user, 'business_name', '') if tx.user else '') or username
+                credit_txs_data.append({
+                    'id': tx.id,
+                    'username': username,
+                    'email': email,
+                    'business_name': biz_name,
+                    'amount': float(tx.amount or 0),
+                    'description': tx.description or '',
+                    'status': tx.status or 'PENDING',
+                    'reference': tx.reference or '',
+                    'created_at': tx.created_at.isoformat() if getattr(tx, 'created_at', None) else ''
+                })
+        except Exception as e:
+            print(f"Transactions query notice: {e}")
+            all_transactions = Transaction.objects.none()
 
         # 2. Storefront Products GMV (Gross Merchandise Value - ONLY Verified Paid Orders)
-        all_orders = Lead.objects.filter(lead_type='ORDER').order_by('-created_at')
-        paid_orders = all_orders.filter(status='WON')
-        storefront_gmv = paid_orders.aggregate(total=Sum('quoted_price'))['total'] or 0
-
         order_txs_data = []
-        for ord in all_orders[:200]:
-            is_paid = (ord.status == 'WON')
-            order_txs_data.append({
-                'id': ord.id,
-                'business_name': ord.brand.business_name if ord.brand else 'Merchant Store',
-                'customer_name': ord.customer_name,
-                'customer_contact': ord.customer_contact,
-                'product_name': ord.product.name if ord.product else 'Storefront Product',
-                'amount': float(ord.quoted_price or 0),
-                'details': ord.message,
-                'status': 'PAID (Paystack Verified)' if is_paid else 'PENDING (WhatsApp Inquiry)',
-                'is_paid': is_paid,
-                'created_at': ord.created_at.isoformat()
-            })
+        storefront_gmv = 0
+        try:
+            all_orders = Lead.objects.filter(lead_type='ORDER').order_by('-created_at')
+            paid_orders = all_orders.filter(status='WON')
+            storefront_gmv = paid_orders.aggregate(total=Sum('quoted_price'))['total'] or 0
+
+            for ord in all_orders[:200]:
+                is_paid = (ord.status == 'WON')
+                brand_name = getattr(ord.brand, 'business_name', 'Merchant Store') if getattr(ord, 'brand', None) else 'Merchant Store'
+                prod_name = getattr(ord.product, 'name', 'Storefront Product') if getattr(ord, 'product', None) else 'Storefront Product'
+                order_txs_data.append({
+                    'id': ord.id,
+                    'business_name': brand_name,
+                    'customer_name': getattr(ord, 'customer_name', 'Customer'),
+                    'customer_contact': getattr(ord, 'customer_contact', 'N/A'),
+                    'product_name': prod_name,
+                    'amount': float(ord.quoted_price or 0),
+                    'details': getattr(ord, 'message', '') or '',
+                    'status': 'PAID (Paystack Verified)' if is_paid else 'PENDING (WhatsApp Inquiry)',
+                    'is_paid': is_paid,
+                    'created_at': ord.created_at.isoformat() if getattr(ord, 'created_at', None) else ''
+                })
+        except Exception as e:
+            print(f"Orders query notice: {e}")
+            all_orders = Lead.objects.none()
 
         # 3. Merchant Subaccount Settlement Directory
         vendors_data = []
@@ -216,20 +258,26 @@ class AdminTransactionsView(APIView):
 
                 vendors_data.append({
                     'id': v.id,
-                    'business_name': v.business_name,
-                    'business_type': v.business_type,
-                    'whatsapp_number': v.whatsapp_number,
+                    'business_name': getattr(v, 'business_name', 'Merchant'),
+                    'business_type': getattr(v, 'business_type', 'General'),
+                    'whatsapp_number': getattr(v, 'whatsapp_number', ''),
                     'bank_name': bank_name,
                     'account_number': acc_num,
                     'account_name': acc_name,
                     'paystack_subaccount_code': sub_code,
-                    'is_verified': v.is_verified,
-                    'created_at': v.created_at.isoformat()
+                    'is_verified': getattr(v, 'is_verified', False),
+                    'created_at': v.created_at.isoformat() if getattr(v, 'created_at', None) else ''
                 })
         except Exception as e:
-            print(f"Warning: vendor payout directory query notice: {e}")
+            print(f"Vendor payout directory query notice: {e}")
 
         return Response({
+            'total_users_count': total_users_count,
+            'active_users_count': active_users_count,
+            'onboarded_users_count': onboarded_users_count,
+            'total_products_count': total_products_count,
+            'total_cac_requests': total_cac_requests,
+            'paid_cac_requests': paid_cac_requests,
             'total_revenue': float(total_credit_revenue), # AI Wallet Credit Purchases Revenue
             'storefront_gmv': float(storefront_gmv),      # Combined Storefront Orders GMV
             'combined_total': float(total_credit_revenue) + float(storefront_gmv),

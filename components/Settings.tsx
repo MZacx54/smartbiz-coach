@@ -1176,12 +1176,18 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </button>
             </div>
             
-            {/* Top 4 KPI Metrics */}
+            {/* Top KPI Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">👥 Total Active Users</p>
+                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.active_users_count || adminData?.total_users_count || 1} Businesses</h4>
+                <span className="text-[9px] text-slate-400">{adminData?.onboarded_users_count || 1} Onboarded Merchants</span>
+              </div>
+
               <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
                 <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Storefront Products GMV</p>
                 <h4 className="text-lg font-black text-white mt-1 font-heading">₦{(adminData?.storefront_gmv || 0).toLocaleString()}</h4>
-                <span className="text-[9px] text-slate-400">All Merchant Store Sales</span>
+                <span className="text-[9px] text-slate-400">{adminData?.total_products_count || 0} Listed Products</span>
               </div>
 
               <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
@@ -1191,15 +1197,9 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </div>
 
               <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <p className="text-[9px] font-black text-amber-400 uppercase tracking-wider">Linked Paystack Payouts</p>
-                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.active_subaccounts_count || 0} Subaccounts</h4>
-                <span className="text-[9px] text-slate-400">Direct Merchant Settlement</span>
-              </div>
-
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <p className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">Total Ecosystem Logs</p>
-                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.total_count || 0} Transactions</h4>
-                <span className="text-[9px] text-slate-400">Paid & Tracked Orders</span>
+                <p className="text-[9px] font-black text-amber-400 uppercase tracking-wider">🏛️ CAC & Payout Desk</p>
+                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.total_cac_requests || 0} CAC / {adminData?.active_subaccounts_count || 0} Banks</h4>
+                <span className="text-[9px] text-slate-400">{adminData?.paid_cac_requests || 0} Paid CAC Filings</span>
               </div>
             </div>
           </div>

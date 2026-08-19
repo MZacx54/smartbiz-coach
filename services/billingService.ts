@@ -87,6 +87,12 @@ export interface MerchantPayoutData {
 }
 
 export interface AdminDashboardData {
+  total_users_count?: number;
+  active_users_count?: number;
+  onboarded_users_count?: number;
+  total_products_count?: number;
+  total_cac_requests?: number;
+  paid_cac_requests?: number;
   total_revenue: number;
   storefront_gmv?: number;
   combined_total?: number;
