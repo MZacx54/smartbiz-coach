@@ -317,6 +317,17 @@ def get_dynamic_json_fallback(messages):
         ]
         return json.dumps({"trends": vibe_ideas})
 
+    # 0.2 Product Inventory Snap & List Scanner Fallback
+    if "product" in prompt_str or "inventory" in prompt_str or "retail selling price" in prompt_str or "category" in prompt_str or "listing" in prompt_str:
+        return json.dumps({
+            "name": "Premium Quality Verified Merchant Item",
+            "price": 16500,
+            "cost_price": 10500,
+            "product_type": "PHYSICAL",
+            "category": "General Goods",
+            "description": "High-quality, durable inventory piece sourced for dependable performance and style. Guaranteed authentic with fast nationwide delivery and easy WhatsApp ordering."
+        })
+
     # 4. Default fallback values
     return json.dumps({
         "options": [

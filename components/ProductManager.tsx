@@ -227,19 +227,57 @@ const ProductManager: React.FC = () => {
 
     setIsBulkOnboarding(true);
 
-    const newDrafts = Array.from(files).map((file, idx) => ({
-      id: `draft-${Date.now()}-${idx}`,
-      image_url: '',
-      name: file.name.split('.')[0].substring(0, 40),
-      price: '5000',
-      cost_price: '3000',
-      category: 'General',
-      product_type: 'PHYSICAL' as 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B',
-      description: '',
-      quantity: 10,
-      sku: `SKU-AI-${Math.floor(100 + Math.random() * 900)}`,
-      status: 'LOADING' as const
-    }));
+    const newDrafts = Array.from(files).map((file, idx) => {
+      const cleanName = file.name.split('.')[0].replace(/[-_.]+/g, ' ').trim();
+      const formattedName = cleanName.length > 2 ? cleanName.charAt(0).toUpperCase() + cleanName.slice(1) : `Product Item ${idx + 1}`;
+      
+      const lower = cleanName.toLowerCase();
+      let initPrice = '15000';
+      let initCost = '9500';
+      let initCat = 'General';
+      let initType: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B' = 'PHYSICAL';
+      let initDesc = `Premium quality ${formattedName} verified for superior value, durability, and style. Available for swift door-step delivery and direct WhatsApp checkout.`;
+
+      if (lower.includes('tech') || lower.includes('ssl') || lower.includes('web') || lower.includes('app') || lower.includes('code') || lower.includes('error') || lower.includes('issue')) {
+        initPrice = '25000';
+        initCost = '15000';
+        initType = 'SERVICE';
+        initCat = 'IT Support';
+        initDesc = `Professional ${formattedName} service built for business efficiency and security. Includes full setup, optimization, and direct technical assistance.`;
+      } else if (lower.includes('meeting') || lower.includes('consult') || lower.includes('plan') || lower.includes('biz') || lower.includes('naccima') || lower.includes('strategy')) {
+        initPrice = '35000';
+        initCost = '18000';
+        initType = 'SERVICE';
+        initCat = 'Consulting';
+        initDesc = `Strategic ${formattedName} advisory session tailored for Nigerian MSMEs and corporate growth. Includes actionable roadmap and 1-on-1 consultation.`;
+      } else if (lower.includes('shoe') || lower.includes('bag') || lower.includes('cloth') || lower.includes('dress') || lower.includes('wear') || lower.includes('fashion') || lower.includes('ankara')) {
+        initPrice = '18500';
+        initCost = '12000';
+        initType = 'PHYSICAL';
+        initCat = 'Fashion';
+        initDesc = `Handcrafted ${formattedName} tailored with premium materials for maximum comfort and elegance. Sourced directly with same-day dispatch available.`;
+      } else if (lower.includes('food') || lower.includes('rice') || lower.includes('snack') || lower.includes('oil') || lower.includes('cake') || lower.includes('pepper')) {
+        initPrice = '8500';
+        initCost = '5500';
+        initType = 'PHYSICAL';
+        initCat = 'Groceries';
+        initDesc = `Fresh, hygienically packaged ${formattedName} ready for fast dispatch. Sourced from trusted local suppliers with quality guaranteed.`;
+      }
+
+      return {
+        id: `draft-${Date.now()}-${idx}`,
+        image_url: '',
+        name: formattedName,
+        price: initPrice,
+        cost_price: initCost,
+        category: initCat,
+        product_type: initType,
+        description: initDesc,
+        quantity: 10,
+        sku: `SKU-AI-${Math.floor(100 + Math.random() * 900)}`,
+        status: 'LOADING' as const
+      };
+    });
 
     setBulkDrafts(newDrafts);
 
@@ -258,7 +296,8 @@ const ProductManager: React.FC = () => {
           const base64Clean = base64Url.split(',')[1];
           const response = await api.post('/api/marketplace/products/snap-and-list/', {
             image_base64: base64Clean,
-            mime_type: file.type || 'image/jpeg'
+            mime_type: file.type || 'image/jpeg',
+            file_name: file.name
           });
 
           await billingService.deductCredits(1, 'AI Snap & List Scanner');
@@ -270,7 +309,7 @@ const ProductManager: React.FC = () => {
             cost_price: String(response.data.cost_price || d.cost_price),
             product_type: response.data.product_type || d.product_type,
             category: response.data.category || d.category,
-            description: response.data.description || d.description,
+            description: (response.data.description && response.data.description.trim().length > 10) ? response.data.description : d.description,
             status: 'READY' as const
           } : d));
         } catch (err) {
@@ -292,11 +331,15 @@ const ProductManager: React.FC = () => {
     for (const draft of bulkDrafts) {
       try {
         const compressedImage = await compressBase64Url(draft.image_url, 800, 0.75);
+        const itemDesc = (draft.description && draft.description.trim().length > 8 && !draft.description.includes('Scanned product listing'))
+          ? draft.description
+          : `High-quality ${draft.name || 'store item'} verified for durability, premium value, and fast nationwide delivery. Order via WhatsApp today.`;
+
         const payload = {
           name: draft.name || 'Scanned Product',
-          description: draft.description || 'Scanned product listing.',
-          price: parseFloat(draft.price || '0').toFixed(2),
-          cost_price: parseFloat(draft.cost_price || '0').toFixed(2),
+          description: itemDesc,
+          price: parseFloat(draft.price || '15000').toFixed(2),
+          cost_price: parseFloat(draft.cost_price || '9500').toFixed(2),
           stock_count: parseInt(String(draft.quantity || 1)),
           sku: draft.sku || `SKU-AI-${Math.floor(100 + Math.random() * 900)}`,
           category: draft.category || 'General',
