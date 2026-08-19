@@ -8,6 +8,19 @@ https://docs.djangoproject.com/en/5.0/howto/deployment/wsgi/
 """
 
 import os
+
+# Python 3.14 Compatibility Patch: Fix copy(super()) bug in django.template.context.BaseContext
+try:
+    import django.template.context
+    def _patched_base_context_copy(self):
+        cls = self.__class__
+        duplicate = cls.__new__(cls)
+        duplicate.dicts = self.dicts[:]
+        return duplicate
+    django.template.context.BaseContext.__copy__ = _patched_base_context_copy
+except Exception as e:
+    print(f"BaseContext copy patch note: {e}")
+
 from django.core.wsgi import get_wsgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smartbiz_backend.settings')
