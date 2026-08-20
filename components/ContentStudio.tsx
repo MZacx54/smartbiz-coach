@@ -1810,61 +1810,138 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                         <div className="space-y-8 text-slate-300 text-sm leading-relaxed">
                                             {activeTab === 'Post Writer' && (
                                                 <div className="space-y-6">
-                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
-                                                        <div className="flex justify-between items-center">
-                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Main Caption</h4>
-                                                            <div className="flex gap-2">
+                                                    {/* Main Post Caption */}
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4 shadow-xl">
+                                                        <div className="flex flex-wrap justify-between items-center gap-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">📝 Primary Post Caption</h4>
+                                                                <span className="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full text-[9px] font-bold">Hook-Story-Offer</span>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {generatedContent.whatsAppStatus && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            navigator.clipboard.writeText(generatedContent.whatsAppStatus);
+                                                                            toast.success("Copied WhatsApp Status version!");
+                                                                        }}
+                                                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all shadow-md cursor-pointer flex items-center gap-1 border-0"
+                                                                    >
+                                                                        <span>💬 Copy WhatsApp Status</span>
+                                                                    </button>
+                                                                )}
                                                                 <button
                                                                     onClick={() => {
                                                                         const caption = generatedContent.caption || generatedContent.post || '';
                                                                         const tags = (generatedContent.hashtags || generatedContent.tags || []).map((t: string) => `#${t}`).join(' ');
-                                                                        const cta = generatedContent.callToAction || generatedContent.cta || '';
-                                                                        const text = `💬 *${brand?.businessName || 'Special Offer'}*\n\n${caption}\n\n👉 ${cta}\n\n📲 Order on WhatsApp: https://wa.me/${brand?.whatsapp || brand?.phone || ''}\n\n${tags}`;
+                                                                        const text = `${caption}\n\n${tags}`;
                                                                         navigator.clipboard.writeText(text);
-                                                                        toast.success("Formatted & copied for WhatsApp Status!");
-                                                                    }}
-                                                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all shadow-md cursor-pointer flex items-center gap-1 border-0"
-                                                                >
-                                                                    <span>💬 Copy for WhatsApp</span>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        const caption = generatedContent.caption || generatedContent.post || '';
-                                                                        const tags = (generatedContent.hashtags || generatedContent.tags || []).map((t: string) => `#${t}`).join(' ');
-                                                                        const text = `${caption}\n.\n.\n${tags}`;
-                                                                        navigator.clipboard.writeText(text);
-                                                                        toast.success("Copied for Instagram Caption!");
+                                                                        toast.success("Copied full caption with hashtags!");
                                                                     }}
                                                                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all shadow-md cursor-pointer flex items-center gap-1 border-0"
                                                                 >
-                                                                    <span>📸 Copy for Instagram</span>
+                                                                    <span>📸 Copy Instagram Caption</span>
                                                                 </button>
                                                             </div>
                                                         </div>
 
-                                                        <p className="text-white whitespace-pre-wrap">{generatedContent.caption || generatedContent.post}</p>
-                                                        <div className="flex flex-wrap gap-2 pt-2">
-                                                            {(generatedContent.hashtags || generatedContent.tags)?.map((tag: string) => (
-                                                                <span key={tag} className="text-indigo-300 font-bold">#{tag}</span>
-                                                            ))}
-                                                        </div>
+                                                        <p className="text-white whitespace-pre-wrap leading-relaxed font-sans text-sm">{generatedContent.caption || generatedContent.post}</p>
+                                                        
+                                                        {generatedContent.hashtags && (
+                                                            <div className="flex flex-wrap gap-1.5 pt-3 border-t border-white/5">
+                                                                {(generatedContent.hashtags || generatedContent.tags)?.map((tag: string) => (
+                                                                    <span key={tag} className="bg-indigo-500/10 text-indigo-300 px-2.5 py-1 rounded-lg text-[10px] font-bold">#{tag.replace(/^#/, '')}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
 
+                                                    {/* Multi-Slide Carousel Viewer (if Carousel format) */}
+                                                    {generatedContent.slides && generatedContent.slides.length > 0 && (
+                                                        <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900 to-purple-950/40 p-6 rounded-2xl border border-indigo-500/20 space-y-4 shadow-xl">
+                                                            <div className="flex justify-between items-center">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">📑 Multi-Slide Carousel Breakdown</h4>
+                                                                    <span className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full text-[9px] font-bold">{generatedContent.slides.length} Slides</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const slideText = generatedContent.slides.map((s: any, i: number) => `SLIDE ${s.slideNumber || i + 1}: ${s.title}\n${s.content}\n[Visual Direction: ${s.visualDirection || 'Product showcase'}]\n`).join('\n---\n\n');
+                                                                        navigator.clipboard.writeText(slideText);
+                                                                        toast.success("All slides copied to clipboard!");
+                                                                    }}
+                                                                    className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer"
+                                                                >
+                                                                    Copy All Slides
+                                                                </button>
+                                                            </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                                {generatedContent.slides.map((slide: any, idx: number) => (
+                                                                    <div key={idx} className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-2 flex flex-col justify-between">
+                                                                        <div>
+                                                                            <div className="flex justify-between items-center text-[9px] font-bold text-indigo-400 uppercase">
+                                                                                <span>Slide {slide.slideNumber || idx + 1}</span>
+                                                                                <span className="bg-indigo-500/20 px-1.5 py-0.5 rounded">Canva Ready</span>
+                                                                            </div>
+                                                                            <h5 className="text-white font-bold text-xs mt-1.5">{slide.title}</h5>
+                                                                            <p className="text-slate-300 text-xs mt-1 leading-relaxed">{slide.content}</p>
+                                                                        </div>
+                                                                        {slide.visualDirection && (
+                                                                            <div className="bg-black/30 p-2 rounded-lg text-[9px] text-slate-400 italic mt-2 border border-white/5">
+                                                                                🎨 Visual: {slide.visualDirection}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Call to Action & Image Overlay Text */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                                            <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-2">Call to Action</h4>
-                                                            <p className="text-white font-medium">{generatedContent.callToAction || generatedContent.cta}</p>
+                                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-2">
+                                                            <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest">📣 Primary Call to Action</h4>
+                                                            <p className="text-white font-medium text-sm">{generatedContent.callToAction || generatedContent.cta}</p>
+                                                            {generatedContent.callToActionVariations && generatedContent.callToActionVariations.length > 0 && (
+                                                                <div className="space-y-1.5 pt-2 border-t border-white/5">
+                                                                    <span className="text-[9px] font-bold uppercase text-slate-400">Alternative Options:</span>
+                                                                    {generatedContent.callToActionVariations.map((ctaVar: string, i: number) => (
+                                                                        <div key={i} className="flex justify-between items-center text-xs text-slate-300 bg-white/5 p-2 rounded-lg">
+                                                                            <span className="line-clamp-1">{ctaVar}</span>
+                                                                            <button onClick={() => { navigator.clipboard.writeText(ctaVar); toast.success("CTA copied!"); }} className="text-[9px] text-emerald-400 hover:underline cursor-pointer ml-2">Copy</button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                                                            <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mb-2">Image Text Overlay</h4>
-                                                            <p className="text-white font-medium italic">"{generatedContent.imageText || generatedContent.overlay || generatedContent.image_text}"</p>
+                                                        <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-2 flex flex-col justify-between">
+                                                            <div>
+                                                                <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest">🎨 Graphic Overlay Headline</h4>
+                                                                <p className="text-white font-bold italic text-base mt-2">"{generatedContent.imageText || generatedContent.overlay || generatedContent.image_text}"</p>
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-400">Use this bold text on your flyer or video thumbnail.</span>
                                                         </div>
                                                     </div>
 
-                                                    <div className="bg-indigo-500/10 p-6 rounded-2xl border border-indigo-500/20">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest mb-3">🤝 Relationship Closer (DM Script)</h4>
-                                                        <p className="text-indigo-100 italic">"Use this to reply to comments or DMs:"</p>
-                                                        <p className="text-white mt-2 font-medium">{generatedContent.dmReply || generatedContent.dm_reply || generatedContent.reply}</p>
+                                                    {/* Relationship Closer (DM Sales Script) */}
+                                                    <div className="bg-emerald-950/30 p-6 rounded-2xl border border-emerald-500/20 space-y-3">
+                                                        <div className="flex justify-between items-center">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest">🤝 WhatsApp / DM Sales Closer Script</h4>
+                                                                <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full text-[9px] font-bold">Copy & Send</span>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const reply = generatedContent.dmReply || generatedContent.dm_reply || generatedContent.reply || '';
+                                                                    navigator.clipboard.writeText(reply);
+                                                                    toast.success("DM Closer script copied!");
+                                                                }}
+                                                                className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer"
+                                                            >
+                                                                Copy Script
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-xs text-emerald-200 italic">"Use this to reply when customers comment or send a DM asking for price / availability:"</p>
+                                                        <p className="text-white font-medium text-sm bg-black/30 p-4 rounded-xl border border-white/5 leading-relaxed">{generatedContent.dmReply || generatedContent.dm_reply || generatedContent.reply}</p>
                                                     </div>
                                                 </div>
                                             )}
@@ -1872,18 +1949,44 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             {activeTab === 'Blog Writer' && (
                                                 <div className="space-y-6">
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Blog Post Headline</h4>
-                                                        <h3 className="text-lg font-bold text-white font-heading">{generatedContent.title || generatedContent.headline}</h3>
-                                                    </div>
-                                                    
-                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Meta Description</h4>
-                                                        <p className="text-slate-350 italic">"{generatedContent.metaDescription || generatedContent.meta_description || generatedContent.description}"</p>
+                                                        <div className="flex justify-between items-center">
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">SEO Article Headline</h4>
+                                                            <span className="bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">⏱️ {generatedContent.readTimeMinutes || 5} Min Read</span>
+                                                        </div>
+                                                        <h3 className="text-xl font-bold text-white font-heading">{generatedContent.title || generatedContent.headline}</h3>
                                                     </div>
 
+                                                    <div className="bg-white/5 p-5 rounded-2xl border border-white/5 space-y-2">
+                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Meta Description (Search Snippet)</h4>
+                                                        <p className="text-slate-300 italic text-xs">"{generatedContent.metaDescription || generatedContent.meta_description || generatedContent.description}"</p>
+                                                    </div>
+
+                                                    {generatedContent.keyTakeaways && generatedContent.keyTakeaways.length > 0 && (
+                                                        <div className="bg-indigo-950/30 p-5 rounded-2xl border border-indigo-500/20 space-y-2">
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">💡 Executive Key Takeaways</h4>
+                                                            <ul className="list-disc pl-5 space-y-1 text-xs text-indigo-200">
+                                                                {generatedContent.keyTakeaways.map((takeaway: string, idx: number) => (
+                                                                    <li key={idx}>{takeaway}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Article Body (GEO Optimized)</h4>
-                                                        <div className="text-slate-200 whitespace-pre-wrap leading-relaxed max-w-none text-xs font-medium">
+                                                        <div className="flex justify-between items-center">
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Article Body (GEO & SEO Optimized)</h4>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const body = generatedContent.blogContent || generatedContent.blog_content || generatedContent.content || generatedContent.body;
+                                                                    navigator.clipboard.writeText(body);
+                                                                    toast.success("Full blog article copied!");
+                                                                }}
+                                                                className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer"
+                                                            >
+                                                                Copy Full Markdown
+                                                            </button>
+                                                        </div>
+                                                        <div className="text-slate-200 whitespace-pre-wrap leading-relaxed max-w-none text-xs font-medium space-y-3">
                                                             {generatedContent.blogContent || generatedContent.blog_content || generatedContent.content || generatedContent.body}
                                                         </div>
                                                     </div>
@@ -1901,27 +2004,50 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
                                             {activeTab === 'Partnership Pitch' && (
                                                 <div className="space-y-6">
-                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Proposal Subject Line</h4>
-                                                        <p className="text-white font-bold">{generatedContent.subjectLine || generatedContent.subject_line || generatedContent.subject}</p>
+                                                    <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-2 flex justify-between items-center">
+                                                        <div>
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Proposal Subject Line</h4>
+                                                            <p className="text-white font-bold text-sm mt-1">{generatedContent.subjectLine || generatedContent.subject_line || generatedContent.subject}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(generatedContent.subjectLine || generatedContent.subject);
+                                                                toast.success("Subject copied!");
+                                                            }}
+                                                            className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl font-bold cursor-pointer"
+                                                        >
+                                                            Copy
+                                                        </button>
                                                     </div>
 
                                                     <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Email Body Proposal</h4>
-                                                        <p className="text-white whitespace-pre-wrap leading-relaxed text-xs">{generatedContent.emailBody || generatedContent.email_body || generatedContent.body}</p>
+                                                        <div className="flex justify-between items-center">
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">Executive Proposal Email Body</h4>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const body = generatedContent.emailBody || generatedContent.email_body || generatedContent.body;
+                                                                    navigator.clipboard.writeText(body);
+                                                                    toast.success("Proposal email copied!");
+                                                                }}
+                                                                className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] px-3 py-1.5 rounded-xl font-bold cursor-pointer"
+                                                            >
+                                                                Copy Full Email
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-white whitespace-pre-wrap leading-relaxed text-xs font-sans bg-black/20 p-4 rounded-xl border border-white/5">{generatedContent.emailBody || generatedContent.email_body || generatedContent.body}</p>
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                                                            <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-3">Key Benefits to Partner</h4>
-                                                            <ul className="list-disc pl-4 space-y-2 text-slate-350 text-xs">
+                                                            <h4 className="text-emerald-400 font-bold uppercase text-[10px] tracking-widest mb-3">Key Strategic Benefits to Partner</h4>
+                                                            <ul className="list-disc pl-4 space-y-2 text-slate-300 text-xs">
                                                                 {(generatedContent.keyBenefits || generatedContent.key_benefits || generatedContent.benefits)?.map((b: string, i: number) => (
                                                                     <li key={i}>{b}</li>
                                                                 ))}
                                                             </ul>
                                                         </div>
                                                         <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                                                            <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mb-3">Recommended Follow Up</h4>
+                                                            <h4 className="text-amber-400 font-bold uppercase text-[10px] tracking-widest mb-3">Recommended Follow Up Roadmap</h4>
                                                             <p className="text-white text-xs leading-relaxed">{generatedContent.followUpStrategy || generatedContent.follow_up_strategy || generatedContent.followUp}</p>
                                                         </div>
                                                     </div>
@@ -1946,6 +2072,34 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         </button>
                                                     </div>
 
+                                                    {/* Second-by-Second Video Breakdown */}
+                                                    {generatedContent.script_breakdown && generatedContent.script_breakdown.length > 0 && (
+                                                        <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4 shadow-xl">
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">🎬 Second-by-Second Video Storyboard</h4>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                                {generatedContent.script_breakdown.map((scene: any, idx: number) => (
+                                                                    <div key={idx} className="bg-black/30 border border-white/10 p-4 rounded-xl space-y-2">
+                                                                        <div className="flex justify-between items-center">
+                                                                            <span className="bg-pink-500/20 text-pink-300 px-2 py-0.5 rounded text-[9px] font-bold">{scene.timeframe}</span>
+                                                                            <span className="text-white text-xs font-bold">{scene.section}</span>
+                                                                        </div>
+                                                                        <div className="bg-white/5 p-2 rounded-lg text-xs text-slate-300 italic">
+                                                                            👁️ <strong>Visual:</strong> {scene.visual}
+                                                                        </div>
+                                                                        <div className="text-xs text-white">
+                                                                            🎙️ <strong>Spoken:</strong> "{scene.spoken_words}"
+                                                                        </div>
+                                                                        {scene.audio_sfx && (
+                                                                            <div className="text-[10px] text-indigo-300">
+                                                                                🎵 <strong>SFX/Music:</strong> {scene.audio_sfx}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                         <div className="space-y-4">
                                                             <div className="bg-white/5 p-5 rounded-2xl border border-white/5 ring-1 ring-white/10">
@@ -1953,8 +2107,8 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                                 <p className="text-lg text-white font-heading font-bold italic leading-tight">"{generatedContent.hook}"</p>
                                                             </div>
                                                             <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                                                                <h5 className="text-slate-400 font-bold text-[10px] uppercase mb-2">📄 Main Body Script</h5>
-                                                                <p className="text-slate-200 leading-relaxed">{generatedContent.body}</p>
+                                                                <h5 className="text-slate-400 font-bold text-[10px] uppercase mb-2">📄 Teleprompter Narration Script</h5>
+                                                                <p className="text-slate-200 leading-relaxed text-xs">{generatedContent.teleprompter_script || generatedContent.body}</p>
                                                             </div>
                                                             <div className="bg-emerald-500/10 p-5 rounded-2xl border border-emerald-500/20">
                                                                 <h5 className="text-emerald-300 font-bold text-[10px] uppercase mb-2">📣 Call to Action (CTA)</h5>
@@ -1965,7 +2119,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         {/* Storyboard Rendering */}
                                                         <div className="space-y-4">
                                                             <div className="flex justify-between items-center mb-2">
-                                                                <h5 className="text-indigo-300 font-bold text-xs uppercase">🎬 Scene Storyboard Planner</h5>
+                                                                <h5 className="text-indigo-300 font-bold text-xs uppercase">🎬 AI Audio Voiceover & Narration</h5>
                                                                 {!storyboard && (
                                                                     <button
                                                                         onClick={handleGenerateVideo}
@@ -1995,7 +2149,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                                 </div>
                                                             ) : (
                                                                 <div className="bg-white/5 p-8 rounded-2xl border border-white/5 text-center text-xs text-slate-500">
-                                                                    Click "Generate Visuals" to draft a step-by-step storyboard for this script.
+                                                                    Click "Generate Visuals" to draft a step-by-step storyboard and Nigerian AI voiceover for this script.
                                                                 </div>
                                                             )}
                                                         </div>
@@ -2006,29 +2160,40 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                             {activeTab === 'Weekly Plan' && (
                                                 <div className="space-y-6">
                                                     <div className="flex items-center justify-between mb-4">
-                                                        <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">7-Day Growth Calendar Grid</h4>
+                                                        <div>
+                                                            <h4 className="text-indigo-400 font-bold uppercase text-[10px] tracking-widest">📅 7-Day Turnkey Growth Strategy</h4>
+                                                            <p className="text-xs text-slate-400">Complete ready-to-post captions and visual staging for all 7 days.</p>
+                                                        </div>
                                                         <span className="text-xs text-slate-500">Plan Generated: {new Date().toLocaleDateString()}</span>
                                                     </div>
-                                                    
+
                                                     {/* Calendar view Grid */}
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                                         {generatedContent.days?.map((day: any, idx: number) => (
-                                                            <div key={day.day || idx} className="bg-slate-800/80 border border-slate-700/50 p-4 rounded-2xl flex flex-col justify-between space-y-3 group hover:border-indigo-500 transition-colors">
+                                                            <div key={day.day || idx} className="bg-slate-800/90 border border-slate-700/60 p-5 rounded-2xl flex flex-col justify-between space-y-3 group hover:border-indigo-500 transition-all shadow-lg">
                                                                 <div>
                                                                     <div className="flex justify-between items-center text-[10px] font-bold uppercase text-indigo-400">
-                                                                        <span>{day.day || `Day ${idx + 1}`}</span>
-                                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                                                        <span className="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded">{day.day || `Day ${idx + 1}`}</span>
+                                                                        <span className="text-[9px] text-slate-400">{day.format || 'Post'}</span>
                                                                     </div>
-                                                                    <h5 className="text-white font-bold text-xs mt-2 line-clamp-1">{day.theme}</h5>
-                                                                    <p className="text-[10px] text-slate-400 mt-1.5 leading-normal line-clamp-3">{day.postIdea || day.post_idea || day.idea || day.content}</p>
+                                                                    <div className="text-[9px] font-bold text-emerald-400 uppercase mt-2 tracking-wider">{day.pillar || day.theme}</div>
+                                                                    <h5 className="text-white font-bold text-xs mt-1 line-clamp-1">{day.headline || day.theme}</h5>
+                                                                    <p className="text-xs text-slate-300 mt-2 leading-relaxed whitespace-pre-wrap line-clamp-4">{day.postIdea || day.post_idea || day.idea || day.content}</p>
+                                                                    {day.visualDirection && (
+                                                                        <div className="bg-black/30 p-2 rounded-lg text-[9px] text-slate-400 italic mt-2 border border-white/5">
+                                                                            🎨 {day.visualDirection}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                                <button 
+                                                                <button
                                                                     onClick={() => {
-                                                                        toast.success(`${day.day || 'Day'} post drafted and queued!`);
+                                                                        const copyText = `${day.day} - ${day.pillar || day.theme}\n\n${day.postIdea || day.content}\n\n[Visual Direction: ${day.visualDirection || 'Staging'}]`;
+                                                                        navigator.clipboard.writeText(copyText);
+                                                                        toast.success(`${day.day || 'Day'} caption copied!`);
                                                                     }}
-                                                                    className="w-full bg-white/5 hover:bg-white/15 text-white font-bold text-[9px] uppercase tracking-wider py-2 rounded-xl transition-all"
+                                                                    className="w-full bg-indigo-600/80 hover:bg-indigo-500 text-white font-bold text-[10px] uppercase tracking-wider py-2 rounded-xl transition-all cursor-pointer"
                                                                 >
-                                                                    Schedule Draft
+                                                                    Copy {day.day} Post
                                                                 </button>
                                                             </div>
                                                         ))}

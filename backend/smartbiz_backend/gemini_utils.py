@@ -282,38 +282,99 @@ def get_dynamic_json_fallback(messages):
         })
     
     # 1. Social post content creator
-    if "caption" in prompt_str or "hashtags" in prompt_str or "carousel" in prompt_str:
+    if "caption" in prompt_str or "hashtags" in prompt_str or "carousel" in prompt_str or "social" in prompt_str:
         return json.dumps({
-            "caption": "Looking for the best way to handle daily operations and scale your business? SmartBiz Coach has got you covered! Let our AI tools automate your marketing, brand building, and growth roadmap starting today. 🚀📈",
-            "hashtags": ["SmartBizCoach", "NigeriaBusiness", "SMEGrowth", "LagosBiz", "NaijaTech"],
-            "callToAction": "Click the link in bio to build your free brand identity and start generating posts!",
-            "imageText": "Empowering Nigerian Businesses with AI",
-            "dmReply": "Hello! Thanks for your interest. Send us a message or click the link in our bio to get started right away!",
+            "caption": "🚨 STOP SCROLLING! ✨ Upgrade your daily standard with premium verified quality! Are you tired of disappointing delivery and poor materials? We deliver dependable excellence designed for high performance.\n\n💎 100% Guaranteed Authenticity\n⚡ Fast Lagos & Nationwide Door-Step Waybill Dispatch\n🤝 Friendly 24/7 Customer Assistance\n\n📲 Tap the link in our bio or send us a WhatsApp DM right now to secure yours today!",
+            "whatsAppStatus": "✨ New Stock Alert!\n• Premium Quality 💎\n• Fast Nationwide Delivery ⚡\n• Limited Quantity 🔥\n\nReply 'ORDER' to get yours now!",
+            "hashtags": ["#NigerianBrand", "#LagosBusiness", "#NaijaSME", "#ShopLocalNG", "#VerifiedMerchant", "#NaijaHustle", "#OnlineStoreNG"],
+            "callToAction": "Send a WhatsApp DM to place your order now!",
+            "callToActionVariations": [
+                "⚡ Hurry! Current batch is selling fast — tap link in bio to secure yours.",
+                "💬 Have questions? Send us a DM and our friendly team will assist you immediately.",
+                "📲 Click the link in bio or WhatsApp us directly for same-day dispatch."
+            ],
+            "imageText": "Premium Quality • Fast Delivery",
+            "dmReply": "Hello! 👋 Thank you for reaching out to us. We currently have units in stock ready for immediate nationwide waybill dispatch! Would you like me to share our promo pricing and delivery options for your location?",
             "slides": [
-                {"title": "Step 1: Build Your Brand", "content": "Establish a strong identity instantly."},
-                {"title": "Step 2: Automate Posts", "content": "Create beautiful content with one click."}
+                {"slideNumber": 1, "title": "Why Settle For Less? 🔥", "content": "Discover a new standard of quality and affordability in Nigeria.", "visualDirection": "High-contrast cover slide with bold typography and product highlight."},
+                {"slideNumber": 2, "title": "The Problem We Solve 💡", "content": "Say goodbye to cheap alternatives that fail in weeks. We provide lasting value.", "visualDirection": "Clean side-by-side comparison visual."},
+                {"slideNumber": 3, "title": "Premium Features ✨", "content": "Crafted with durable materials and strictly inspected for your satisfaction.", "visualDirection": "Detailed product close-up with 3 feature callouts."},
+                {"slideNumber": 4, "title": "Customer Reviews ⭐️⭐️⭐️⭐️⭐️", "content": "Join hundreds of happy customers across Nigeria who trust our service.", "visualDirection": "Customer WhatsApp review graphic."},
+                {"slideNumber": 5, "title": "Claim Yours Today 🚀", "content": "Tap link in bio or WhatsApp us to order before this batch finishes!", "visualDirection": "Bold closing slide with WhatsApp call to action button."}
             ]
         })
         
     # 2. Video Script generator
-    if "script" in prompt_str or "hook" in prompt_str or "audio_suggestions" in prompt_str:
+    if "script" in prompt_str or "hook" in prompt_str or "teleprompter" in prompt_str or "audio_suggestions" in prompt_str:
+        teleprompter = "If you're in Nigeria and looking for the best quality and value, stop scrolling right now! Most options on the market either disappoint or don't last. That's why we engineered this premium solution for you. Look at this build quality and finish. It delivers 100% reliability, looks incredible, and is backed by fast nationwide delivery. Stock is strictly limited, so click the link in our bio or send us a WhatsApp DM right now to secure yours before it sells out!"
         return json.dumps({
-            "title": "Closing WhatsApp Deals in 3 Easy Steps",
-            "hook": "Objection handling is the secret weapon to double your sales today!",
-            "body": "First, align with the customer's doubt. Second, explain the unique value of your service. Third, offer an easy, direct checkout option.",
-            "visual_cues": ["Show close-up of phone screen", "Transition to happy customer review"],
-            "audio_suggestions": ["Upbeat high-energy background music", "Notification ping sound effect"],
-            "callToAction": "Try the WhatsApp Sales Closer in our bio right now!",
-            "estimated_duration": 45
+            "title": "The Ultimate Quality Showcase 🔥",
+            "hook": "If you've been looking for the best in Nigeria, stop scrolling right now!",
+            "estimated_duration": "30s",
+            "body": teleprompter,
+            "teleprompter_script": teleprompter,
+            "callToAction": "Click the link in bio or WhatsApp us to order now!",
+            "audio_suggestions": ["Trending Afrobeats Instrumental", "Fast-paced TikTok Vlog Beat"],
+            "caption_for_post": "Don't compromise on quality! ✨ Fast nationwide dispatch. WhatsApp link in bio! #NaijaTech #ShopNigeria #ViralReels #SMEGrowth",
+            "script_breakdown": [
+                {"timeframe": "0:00 - 0:03", "section": "The Viral Hook", "visual": "Direct eye contact with camera, holding product with bold text: 'STOP SCROLLING! 🚨'", "spoken_words": "If you've been looking for the best in Nigeria, stop scrolling right now!", "audio_sfx": "Upbeat bass drop"},
+                {"timeframe": "0:03 - 0:15", "section": "The Relatable Problem", "visual": "Showing frustration with common poor quality alternatives.", "spoken_words": "We all know how frustrating it is to spend hard-earned money on items that fail quickly.", "audio_sfx": "Subtle background rhythm"},
+                {"timeframe": "0:15 - 0:45", "section": "The Solution & Live Demo", "visual": "Slow-motion close up panning across product, demonstrating premium finish.", "spoken_words": "Every piece is strictly inspected for 100% durability, style, and top performance.", "audio_sfx": "High-energy Afrobeats tempo"},
+                {"timeframe": "0:45 - 0:60", "section": "Scarcity & Direct CTA", "visual": "Smile, point down to bio link with WhatsApp overlay.", "spoken_words": "Click the link in our bio or send us a WhatsApp DM right now to get yours with fast nationwide delivery!", "audio_sfx": "Cash register sound / Outro punch"}
+            ]
+        })
+
+    # 2.1 Weekly Content Plan
+    if "weekly plan" in prompt_str or "7-day" in prompt_str or "content plan" in prompt_str:
+        return json.dumps({
+            "weekStartDate": "This Week",
+            "campaignGoal": "Drive Direct Sales & Brand Discovery",
+            "days": [
+                {"day": "Monday", "pillar": "Motivation & Purpose", "format": "Single Image + Thought Leadership", "headline": "Start Strong: Excellence Is Our Standard! ✨", "postIdea": "Happy New Week! Consistency and quality drive success. We are ready to serve you with prompt nationwide delivery! Drop a '🔥' if you're ready to win this week!", "visualDirection": "Branded graphic with inspirational quote.", "callToAction": "Share your weekly goals below!"},
+                {"day": "Tuesday", "pillar": "Product Spotlight & Value", "format": "Carousel (5 Slides)", "headline": "Why Settle For Less? 💎", "postIdea": "Swipe to explore what makes our collection unique! 100% Genuine Quality, Fast Nationwide Delivery. Tap link in bio to order!", "visualDirection": "5-slide carousel showing detailed product angles.", "callToAction": "WhatsApp DM or bio link to order."},
+                {"day": "Wednesday", "pillar": "Customer Reviews & Social Proof", "format": "Story & Feed Testimonial", "headline": "Real Feedback From Real Nigerian Customers ⭐️⭐️⭐️⭐️⭐️", "postIdea": "Thank you for trusting our quality and fast dispatch! 'The delivery was fast and the quality is amazing.' Join our happy customer family today!", "visualDirection": "5-star customer review screenshot graphic.", "callToAction": "Send a DM to get yours dispatched."},
+                {"day": "Thursday", "pillar": "Behind-The-Scenes & Packaging", "format": "Reel / Short Video (30s)", "headline": "How We Package & Dispatch Orders Safely 📦", "postIdea": "Take a look at our meticulous packaging process to ensure every item arrives safe and intact via nationwide waybill!", "visualDirection": "Short aesthetic video showing neat order packaging.", "callToAction": "Order before 2 PM for same-day dispatch."},
+                {"day": "Friday", "pillar": "Weekend Flash Sale & Urgency", "format": "Flyer Graphic + WhatsApp Blast", "headline": "Weekend Flash Sale: Don't Miss Out! 🔥", "postIdea": "Special 48-hour flash offer on our top items! Limited stock remaining. Tap link in bio or reply 'FLASH' on WhatsApp to claim!", "visualDirection": "Vibrant promotional flyer with 48-HR FLASH SALE badge.", "callToAction": "Reply 'FLASH' on WhatsApp to unlock discount."},
+                {"day": "Saturday", "pillar": "Lifestyle Integration & Tips", "format": "Single Photo / User Spotlight", "headline": "Elevate Your Routine ✨", "postIdea": "Quality and style should never be complicated. Tag someone who needs this in their life!", "visualDirection": "Lifestyle photo showing the product in practical use.", "callToAction": "Tag a friend in the comments."},
+                {"day": "Sunday", "pillar": "Reflection & Restock Announcement", "format": "Story Wrap-up & Status Poll", "headline": "Wrapping Up The Week & Restock Alert! 🔔", "postIdea": "Thank you for an incredible week of orders! New restock arrives tomorrow morning. Pre-book your favorites now!", "visualDirection": "Clean Sunday post with restock notification banner.", "callToAction": "Reply to pre-book restock items."}
+            ]
+        })
+
+    # 2.2 Blog Post generator
+    if "blog" in prompt_str or "meta description" in prompt_str or "seo" in prompt_str or "geo" in prompt_str:
+        return json.dumps({
+            "title": "Proven Strategies for MSME Growth & Product Excellence in Nigeria",
+            "metaDescription": "Discover how quality sourcing, digital channels, and customer trust drive sustainable business growth across Nigerian commercial hubs.",
+            "readTimeMinutes": 5,
+            "blogContent": "# Strategies for Business Growth & Customer Trust in Nigeria\n\nIn today's fast-moving Nigerian market, staying ahead requires smart execution, reliable quality, and a deep understanding of local consumer behavior.\n\nAccording to **SMEDAN and NBS reports**, over 39 million MSMEs power the Nigerian economy. Businesses that embrace digital channels like WhatsApp ordering and guarantee consistent quality outperform the competition.\n\n## 1. Prioritize Product Quality & Authenticity\nNever compromise on materials or service delivery. Sourcing directly from verified partners protects your reputation and drives organic word-of-mouth referrals.\n\n## 2. Leverage Frictionless Mobile Commerce\nOver 90% of Nigerian transactions initiate on mobile devices. Fast response times on WhatsApp, transparent pricing, and prompt dispatch build lasting loyalty.\n\n## 3. FAQs\n**Q: How quickly can I get started?**\n*A:* Audit your current customer journey and implement standardized order follow-ups today.\n\n## Conclusion\nConsistency and authentic value are the keys to long-term profitability. Connect with our team to experience verified quality today!",
+            "keywords": ["Nigerian MSME Growth", "Lagos Commerce", "Shop Quality Nigeria", "Business Strategy NG", "WhatsApp Commerce"],
+            "keyTakeaways": [
+                "Trust and quality are the primary drivers of sustainable growth in Nigeria.",
+                "Digital channels like WhatsApp are essential for customer retention.",
+                "Standardized fulfillment ensures customer satisfaction."
+            ]
+        })
+
+    # 2.3 Partnership Pitch generator
+    if "partnership" in prompt_str or "proposal" in prompt_str or "pitch" in prompt_str or "synergy" in prompt_str:
+        return json.dumps({
+            "subjectLine": "Strategic Partnership Proposal: Joint Distribution & Value Creation",
+            "emailBody": "Dear Executive Leadership Team,\n\nI hope this message finds you well.\n\nI am writing to formally propose a strategic collaboration to co-deploy high-impact commercial solutions. Combining our verified delivery infrastructure with your organizational network creates immediate value for your members and stakeholders.\n\nKey Strategic Synergy Points:\n1. Direct Ecosystem Access: Seamless integration with verified merchant and supply networks.\n2. Turnkey Execution: Standardized quality controls, dedicated account management, and prompt support.\n3. Measurable Impact: Quantifiable improvements in stakeholder adoption and operational efficiency.\n\nWe would welcome a brief 15-minute alignment call this week to discuss how we can support your upcoming milestones.\n\nWarm regards,\nExecutive Leadership Team",
+            "keyBenefits": [
+                "Seamless access to verified product and service delivery infrastructure.",
+                "Direct measurable impact on stakeholder satisfaction.",
+                "Turnkey operational execution with dedicated account management."
+            ],
+            "followUpStrategy": "Follow up via email in 3 business days, and connect with their partnership lead on LinkedIn."
         })
 
     # 3. Dynamic Marketing Trend Ideas Fallback
     if "trend" in prompt_str or "marketing concept" in prompt_str:
-        import random
         vibe_ideas = [
-            {"trendName": "Naija Pop Culture Vibe", "description": "Leverage current trending Afrobeats rhythms & catchy slangs", "application": "Create quick WhatsApp status posts using current music trends."},
-            {"trendName": "Inflation Relief Offers", "description": "Offer pocket-friendly, bundled packaging to customers", "application": "Highlight budget combo deals on your product listings today."},
-            {"trendName": "WhatsApp Referral Loops", "description": "Encourage status repost shares with instant freebies", "application": "Give a 5% discount on next purchase when customers repost your flyer."}
+            {"trendName": "Month-End Payday Flash Promo", "description": "Capitalize on salary disbursements by offering a 48-hour bundle discount on top inventory items.", "application": "Run a broadcast on WhatsApp Status with countdown timer stickers."},
+            {"trendName": "Inflation Relief Combo Pack", "description": "Package complementary items together at an all-inclusive, pocket-friendly price point.", "application": "Create a multi-slide carousel highlighting cost savings vs buying individually."},
+            {"trendName": "Behind-The-Scenes Packaging & Dispatch", "description": "Show customers the care, cleanliness, and security of packaging their orders for nationwide waybill.", "application": "Record a 30s TikTok/Reels video with trending Afrobeats audio."},
+            {"trendName": "WhatsApp VIP Referral Loop", "description": "Reward existing buyers with a 5% discount on their next purchase when their friends order.", "application": "Send automated loyalty reminders to past buyers in your contact book."}
         ]
         return json.dumps({"trends": vibe_ideas})
 
