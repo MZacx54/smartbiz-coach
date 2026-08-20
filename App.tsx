@@ -617,7 +617,7 @@ const App: React.FC = () => {
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="grants" element={<GrantMatcher businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="learning" element={<LearningHub onNavigate={handleNavigate} />} />
-                  <Route path="inventory" element={<ProductManager />} />
+                  <Route path="inventory" element={<ProductManager credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="debtor" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" />} />

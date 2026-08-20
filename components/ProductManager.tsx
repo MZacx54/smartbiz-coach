@@ -104,7 +104,12 @@ const mockProducts: Product[] = [
   }
 ];
 
-const ProductManager: React.FC = () => {
+interface ProductManagerProps {
+  credits?: number;
+  onUpdateCredits?: (newCredits: number) => void;
+}
+
+const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCredits }) => {
   const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -159,12 +164,13 @@ const ProductManager: React.FC = () => {
   const [isBulkOnboarding, setIsBulkOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState<'catalog' | 'ledger'>('catalog');
 
-  // Product Boosting States
+  // Product Boosting & Credits States
   const [boostingProduct, setBoostingProduct] = useState<Product | null>(null);
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [isBoosting, setIsBoosting] = useState(false);
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [creditPromptCost, setCreditPromptCost] = useState(150);
+  const [creditPromptFeature, setCreditPromptFeature] = useState('Marketplace Product Boost');
 
   const handleBoostListing = async (durationDays: number) => {
     if (!boostingProduct) return;
@@ -224,6 +230,14 @@ const ProductManager: React.FC = () => {
   const handleSnapFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
+    const requiredCredits = files.length;
+    if (credits < requiredCredits) {
+      setCreditPromptCost(requiredCredits);
+      setCreditPromptFeature('AI Snap & List Scanner');
+      setShowCreditPrompt(true);
+      return;
+    }
 
     setIsBulkOnboarding(true);
 
@@ -300,7 +314,14 @@ const ProductManager: React.FC = () => {
             file_name: file.name
           });
 
-          await billingService.deductCredits(1, 'AI Snap & List Scanner');
+          try {
+            const billingRes = await billingService.deductCredits(1, 'AI Snap & List Scanner');
+            if (onUpdateCredits && typeof billingRes?.credits === 'number') {
+              onUpdateCredits(billingRes.credits);
+            }
+          } catch (billingErr) {
+            console.error("Credit deduction note:", billingErr);
+          }
 
           setBulkDrafts(prev => prev.map(d => d.id === draftId ? {
             ...d,
@@ -618,10 +639,16 @@ const ProductManager: React.FC = () => {
         if (currentProduct.location) detailsPrompt += `Located at: ${currentProduct.location}. `;
       } else if (pType === 'B2B') {
         if (meta.moq) detailsPrompt += `Minimum Order Quantity (MOQ): ${meta.moq}. `;
-        if (meta.tierPrices) detailsPrompt += `Wholesale pricing: ${meta.tierPrices}. `;
-        if (meta.leadTime) detailsPrompt += `Lead time: ${meta.leadTime}. `;
         if (meta.capacity) detailsPrompt += `Capacity: ${meta.capacity}. `;
         if (currentProduct.location) detailsPrompt += `Supply hub: ${currentProduct.location}. `;
+      }
+
+      if (credits < 1) {
+        setCreditPromptCost(1);
+        setCreditPromptFeature('AI Product Sales Copy');
+        setShowCreditPrompt(true);
+        toast.dismiss(toastId);
+        return;
       }
 
       const response = await api.post('/api/content/generate-social/', {
@@ -629,7 +656,14 @@ const ProductManager: React.FC = () => {
         platform: 'Instagram',
         tone: 'Persuasive'
       });
-      await billingService.deductCredits(1, 'AI Product Sales Copy');
+      try {
+        const billingRes = await billingService.deductCredits(1, 'AI Product Sales Copy');
+        if (onUpdateCredits && typeof billingRes?.credits === 'number') {
+          onUpdateCredits(billingRes.credits);
+        }
+      } catch (billingErr) {
+        console.error("Credit deduction note:", billingErr);
+      }
       setCurrentProduct(prev => ({ ...prev, description: response.data.caption || response.data.text }));
       toast.success('AI Copy applied! (1 credit debited)', { id: toastId });
     } catch (err) {
@@ -2133,9 +2167,9 @@ const ProductManager: React.FC = () => {
       {/* Credit Prompt Modal if Insufficient Credits */}
       <CreditPromptModal
         isOpen={showCreditPrompt}
-        featureLabel="Marketplace Product Boost"
+        featureLabel={creditPromptFeature}
         creditCost={creditPromptCost}
-        currentCredits={0}
+        currentCredits={credits}
         onConfirm={() => {
           setShowCreditPrompt(false);
           window.location.href = '/settings?tab=billing';

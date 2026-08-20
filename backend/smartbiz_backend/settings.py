@@ -268,7 +268,8 @@ if not DEBUG:
 
 # Validate critical environment variables
 import sys
-if not os.environ.get('GEMINI_API_KEY'):
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
+if not GEMINI_API_KEY:
     print("WARNING: No GEMINI_API_KEY set. AI features will not work.")
 
 if not os.environ.get('SECRET_KEY') or 'django-insecure' in os.environ.get('SECRET_KEY', ''):

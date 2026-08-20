@@ -216,7 +216,25 @@ class ProductSnapAndListView(views.APIView):
         if not image_base64 and not file_name:
             return Response({'error': 'No image or video frame provided'}, status=400)
 
-        # Smart contextual heuristic builder
+        # Sanitize image base64 if present
+        clean_b64 = None
+        if image_base64:
+            clean_b64 = str(image_base64).strip()
+            if ';base64,' in clean_b64:
+                clean_b64 = clean_b64.split(';base64,')[1]
+            clean_b64 = "".join(clean_b64.split())
+
+        # Retrieve user's brand profile context if available
+        biz_context = ""
+        try:
+            from brand.models import BrandIdentity
+            brand = BrandIdentity.objects.filter(user=request.user).first()
+            if brand:
+                biz_context = f"Merchant Business: '{brand.business_name}', Niche: '{brand.niche or 'General MSME'}', Target Audience: '{brand.target_audience or 'Nigerian Consumers'}'."
+        except Exception:
+            pass
+
+        # Smart contextual heuristic builder for fallback
         clean_name = re.sub(r'[\-_.]+', ' ', file_name).strip() if file_name else ''
         name_lower = clean_name.lower()
 
@@ -226,7 +244,7 @@ class ProductSnapAndListView(views.APIView):
             default_price = random.choice([25000, 35000, 48000, 18500])
             default_cost = int(default_price * 0.60)
             default_type = "SERVICE" if any(w in name_lower for w in ['service', 'support', 'issue', 'ssl', 'consult']) else "PHYSICAL"
-            default_cat = "IT Support" if default_type == "SERVICE" else "Electronics"
+            default_cat = "Electronics" if default_type == "PHYSICAL" else "IT Support"
             default_desc = f"Verified {default_name} solution built for reliable performance and business efficiency. Includes technical setup, direct WhatsApp assistance, and prompt support."
         elif any(w in name_lower for w in ['naccima', 'meeting', 'consult', 'counsel', 'biz', 'plan', 'coaching', 'training', 'audit', 'strategy']):
             default_name = clean_name.title() if len(clean_name) > 3 else "Executive Business Consultation Session"
@@ -258,24 +276,26 @@ class ProductSnapAndListView(views.APIView):
             default_desc = f"High-quality {default_name} verified for authenticity, durability, and value. Enjoy swift door-step dispatch and seamless WhatsApp order checkout."
 
         prompt = f"""
-        You are an expert Nigerian commerce AI. Analyze this product {"video frame" if is_video else "image"} (filename hint: "{file_name}") and generate a complete, high-converting digital inventory listing for a Nigerian SME.
-        
-        Generate:
-        1. A clear, professional Name (under 45 characters).
-        2. A realistic Retail Selling Price in Nigerian Naira (₦, integer e.g., 12500, 18500, 35000, 8500, 45000). DO NOT return flat 5000.
-        3. A suggested Cost Price (COGS, integer approx 60-70% of selling price).
-        4. Listing product_type ('PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B').
-        5. Category choice matching the item.
-        6. A compelling, persuasive sales description (2-3 sentences) suitable for Instagram or WhatsApp sales copy, highlighting key benefits and direct ordering.
+        You are a top-tier Google Vision AI tailored for Nigerian commerce and retail e-commerce inventory.
+        {biz_context}
 
-        Respond STRICTLY with a valid JSON object:
+        Analyze this product image/frame carefully (filename hint: "{file_name}"). Inspect all visible visual details:
+        - Product identification (what is it specifically: shoes, phone, wig, fabric, food item, software dashboard, service certificate, etc.).
+        - Color, material, finish, style, packaging, and visible features.
+        - Realistic Nigerian market retail selling price in Nigerian Naira (₦ integer, realistic for Nigerian consumers e.g. 8500, 15000, 28500, 45000, 85000).
+        - Estimated Cost Price (COGS, integer approx 60-70% of retail price).
+        - Correct Product Type: 'PHYSICAL', 'SERVICE', 'PROPERTY', or 'B2B'.
+        - Accurate Category (e.g., 'Fashion', 'Electronics', 'Beauty & Hair', 'Groceries', 'Home & Living', 'IT Support', 'Consulting', 'Real Estate').
+        - Persuasive, high-converting Nigerian sales copy (2-3 sentences) suitable for WhatsApp and Instagram sales. Highlight genuine durability, key benefits, fast nationwide waybill delivery, and direct order CTA.
+
+        Respond STRICTLY with a valid JSON object matching this schema:
         {{
-            "name": "Product Name",
-            "price": 18500,
-            "cost_price": 12000,
+            "name": "Specific Product Name",
+            "price": 28500,
+            "cost_price": 18000,
             "product_type": "PHYSICAL",
             "category": "Fashion",
-            "description": "High quality sales description here."
+            "description": "High-converting 2-3 sentence product sales description with benefit hooks and WhatsApp call to action."
         }}
         """
 
@@ -283,23 +303,38 @@ class ProductSnapAndListView(views.APIView):
             from smartbiz_backend import gemini_utils
             content = gemini_utils.generate_json_content(
                 prompt,
-                image_base64=image_base64,
+                image_base64=clean_b64,
                 mime_type=mime_type
             )
             
             if isinstance(content, dict) and 'name' in content and 'price' in content and 'description' in content:
                 # Ensure price is valid number and description is not empty
-                p = int(content.get('price') or default_price)
-                c = int(content.get('cost_price') or int(p * 0.65))
+                try:
+                    p = int(content.get('price') or default_price)
+                except (ValueError, TypeError):
+                    p = default_price
+
+                try:
+                    c = int(content.get('cost_price') or int(p * 0.65))
+                except (ValueError, TypeError):
+                    c = int(p * 0.65)
+
                 d = str(content.get('description') or '').strip()
-                if not d or len(d) < 10:
+                if not d or len(d) < 15:
                     d = default_desc
+
+                prod_name = str(content.get('name') or default_name).strip()
+                prod_cat = str(content.get('category') or default_cat).strip()
+                prod_type = str(content.get('product_type') or default_type).strip()
+                if prod_type not in ['PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B']:
+                    prod_type = default_type
+
                 return Response({
-                    'name': str(content.get('name') or default_name).strip(),
+                    'name': prod_name,
                     'price': p if p > 0 else default_price,
                     'cost_price': c if c > 0 else default_cost,
-                    'product_type': content.get('product_type') or default_type,
-                    'category': content.get('category') or default_cat,
+                    'product_type': prod_type,
+                    'category': prod_cat,
                     'description': d
                 })
             else:

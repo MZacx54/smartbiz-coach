@@ -5,11 +5,11 @@ import urllib.error
 import time
 import hashlib
 
-# Google Gemini defaults (Using Google's production Gemini 2.0 Flash & 1.5 Flash engines)
-DEFAULT_TEXT_MODEL = "gemini-2.0-flash"
-DEFAULT_FAST_MODEL = "gemini-1.5-flash"
-DEFAULT_FALLBACK_MODEL = "gemini-1.5-pro"
-DEFAULT_VISION_MODEL = "gemini-2.0-flash"
+# Google Gemini defaults (Using Google's production Gemini 3.6 Flash & 3.5 Flash Lite engines)
+DEFAULT_TEXT_MODEL = "gemini-3.6-flash"
+DEFAULT_FAST_MODEL = "gemini-3.5-flash-lite"
+DEFAULT_FALLBACK_MODEL = "gemini-3.6-flash"
+DEFAULT_VISION_MODEL = "gemini-3.6-flash"
 
 # In-memory prompt cache for free-tier optimization
 PROMPT_CACHE = {}
@@ -32,6 +32,17 @@ def get_gemini_api_keys():
     """
     keys = []
     
+    # Auto-load from .env if not yet loaded
+    try:
+        from pathlib import Path
+        from dotenv import load_dotenv
+        base_dir = Path(__file__).resolve().parent.parent
+        load_dotenv(base_dir / '.env')
+        load_dotenv(base_dir.parent / '.env')
+        load_dotenv(base_dir.parent / '.env.local')
+    except Exception:
+        pass
+
     try:
         from django.conf import settings
         if getattr(settings, 'GEMINI_API_KEY', None):
@@ -108,10 +119,11 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                                 try:
                                     header, base64_data = img_url.split(";base64,")
                                     mime_type = header.split("data:")[1]
+                                    clean_data = "".join(base64_data.split())
                                     parts.append({
-                                        "inlineData": {
-                                            "mimeType": mime_type,
-                                            "data": base64_data
+                                        "inline_data": {
+                                            "mime_type": mime_type,
+                                            "data": clean_data
                                         }
                                     })
                                 except Exception as e:
@@ -419,10 +431,14 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None,
     # Build contents parts
     parts = []
     if image_base64:
+        clean_b64 = image_base64
+        if ";base64," in clean_b64:
+            clean_b64 = clean_b64.split(";base64,")[1]
+        clean_b64 = "".join(clean_b64.split())
         parts.append({
-            "inlineData": {
-                "mimeType": mime_type or "image/jpeg",
-                "data": image_base64
+            "inline_data": {
+                "mime_type": mime_type or "image/jpeg",
+                "data": clean_b64
             }
         })
     parts.append({"text": prompt})
@@ -452,17 +468,22 @@ def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_typ
     """
     parts = []
     if image_base64:
+        clean_b64 = image_base64
+        if ";base64," in clean_b64:
+            clean_b64 = clean_b64.split(";base64,")[1]
+        clean_b64 = "".join(clean_b64.split())
         parts.append({
-            "inlineData": {
-                "mimeType": mime_type or "image/jpeg",
-                "data": image_base64
+            "inline_data": {
+                "mime_type": mime_type or "image/jpeg",
+                "data": clean_b64
             }
         })
     if audio_base64:
+        clean_audio = "".join(audio_base64.split())
         parts.append({
-            "inlineData": {
-                "mimeType": mime_type or "audio/webm",
-                "data": audio_base64
+            "inline_data": {
+                "mime_type": mime_type or "audio/webm",
+                "data": clean_audio
             }
         })
     parts.append({"text": prompt})
