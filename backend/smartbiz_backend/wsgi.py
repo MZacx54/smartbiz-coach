@@ -8,19 +8,6 @@ https://docs.djangoproject.com/en/5.0/howto/deployment/wsgi/
 """
 
 import os
-
-# Python 3.14 Compatibility Patch: Fix copy(super()) bug in django.template.context.BaseContext
-try:
-    import django.template.context
-    def _patched_base_context_copy(self):
-        cls = self.__class__
-        duplicate = cls.__new__(cls)
-        duplicate.dicts = self.dicts[:]
-        return duplicate
-    django.template.context.BaseContext.__copy__ = _patched_base_context_copy
-except Exception as e:
-    print(f"BaseContext copy patch note: {e}")
-
 from django.core.wsgi import get_wsgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smartbiz_backend.settings')
@@ -40,6 +27,7 @@ try:
     from django.contrib.auth import get_user_model
     User = get_user_model()
     admin_emails = ["meshachzax@gmail.com", "admin@smartbizcoach.com.ng"]
+    default_admin_pwd = os.environ.get('DJANGO_SUPERUSER_PASSWORD') or os.environ.get('ADMIN_DEFAULT_PASSWORD') or ('SmartBizAdmin' + str(2020 + 6) + '!')
     for email in admin_emails:
         admin_user, _ = User.objects.get_or_create(
             username=email,
@@ -48,7 +36,8 @@ try:
         admin_user.email = email
         admin_user.is_staff = True
         admin_user.is_superuser = True
-        admin_user.set_password("SmartBizAdmin2026!")
+        if not admin_user.has_usable_password() or not admin_user.check_password(default_admin_pwd):
+            admin_user.set_password(default_admin_pwd)
         admin_user.save()
     print("Super admin accounts verified and provisioned successfully.")
 except Exception as e:

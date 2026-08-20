@@ -15,18 +15,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Python 3.14 Compatibility Patch: Fix copy(super()) bug in django.template.context.BaseContext
-try:
-    import django.template.context
-    def _patched_base_context_copy(self):
-        cls = self.__class__
-        duplicate = cls.__new__(cls)
-        duplicate.dicts = self.dicts[:]
-        return duplicate
-    django.template.context.BaseContext.__copy__ = _patched_base_context_copy
-except Exception as e:
-    print(f"BaseContext copy patch note: {e}")
-
 # Load environment variables
 import os
 from dotenv import load_dotenv
