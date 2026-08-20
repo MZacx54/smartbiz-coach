@@ -118,10 +118,10 @@ To make yourself an admin so you bypass all contact and batch limits:
 The backend now accurately reflects the credit allocation visible on the landing page:
 
 | Package | Cost | Credits Credited | Cost/Credit | User SMS Cost (2 credits) | Termii Cost | Your Net Margin |
-|---|---|---|---|---|---|---|
-| **Starter** | ₦300 | **30 Credits** | ₦10.00 | ₦20.00 | ~₦4.00 | **₦16.00 (400%)** |
-| **Grower** | ₦1,000 | **120 Credits** | ₦8.33 | ₦16.67 | ~₦4.00 | **₦12.67 (317%)** |
-| **Pro** | ₦3,000 | **400 Credits** | ₦7.50 | ₦15.00 | ~₦4.00 | **₦11.00 (275%)** |
+| **Micro** | ₦500 | **40 Credits** | ₦12.50 | ₦25.00 | ~₦4.00 | **₦21.00 (525%)** |
+| **Starter** | ₦1,500 | **150 Credits** | ₦10.00 | ₦20.00 | ~₦4.00 | **₦16.00 (400%)** |
+| **Grower** | ₦3,500 | **400 Credits** | ₦8.75 | ₦17.50 | ~₦4.00 | **₦13.50 (337%)** |
+| **Vendor Pro** | ₦7,500 | **1,000 Credits** | ₦7.50 | ₦15.00 | ~₦4.00 | **₦11.00 (275%)** |
 
 Free plan accounts are limited to:
 - Maximum **500 contacts** (uploads are cut off past 500).

@@ -1225,31 +1225,55 @@ class GenerateDebtReminderView(views.APIView):
         tone = (request.data.get('tone') or request.data.get('reminderTone') or 'POLITE').upper()
         items = request.data.get('items_bought') or request.data.get('items') or ''
         due_date = request.data.get('due_date') or ''
-        business_name = getattr(request.user, 'business_name', None) or 'our store'
+        
+        # Resolve merchant's actual business brand name
+        business_name = 'our business'
+        try:
+            from brand.models import BrandIdentity
+            brand = BrandIdentity.objects.filter(user=request.user).first()
+            if brand and brand.business_name:
+                business_name = brand.business_name
+            elif getattr(request.user, 'business_name', None):
+                business_name = request.user.business_name
+            elif getattr(request.user, 'name', None):
+                business_name = request.user.name
+        except Exception:
+            pass
 
         items_phrase = f" for '{items}'" if items and items != 'General Credit Sale' else ""
-        due_phrase = f" which was due on {due_date}" if due_date else ""
+        due_phrase = f" (due date: {due_date})" if due_date else ""
 
-        prompt = f"""You are a specialized Nigerian business debt collection assistant. 
-Write a high-converting, professional WhatsApp debt recovery message to recover an unpaid debt.
+        tone_guidance = {
+            'POLITE': "Warm, cordial, appreciative check-in. Thank them for their relationship, politely state the outstanding balance, and offer bank transfer details with zero aggression.",
+            'FIRM': "Professional, direct accounting reminder. Mention that our books are undergoing periodic reconciliation, cite the specific balance and due date, and request confirmation of payment today.",
+            'STRICT': "URGENT FINAL PAYMENT NOTICE. Clear, authoritative, non-hostile demand notice stating that payment must be resolved today to avoid service suspension, ledger flag, and formal recovery escalation.",
+            'NATIVE_PIDGIN': "Authentic, respectful Nigerian street-smart Pidgin. Natural market conversational style ('How far boss', 'Abeg make we balance this record', 'make our supply line no hold up').",
+            'DISCOUNT_INCENTIVE': "Incentivized settlement offer. Friendly encouragement offering a small gesture or prompt service benefit if the balance is cleared today."
+        }.get(tone, "Professional and courteous reminder.")
 
-DEBTOR DETAILS:
-- Debtor Name: {name}
-- Outstanding Amount: ₦{formatted_amount}
-- Items/Services: {items or 'Goods/Services delivered'}
-- Business Name: {business_name}
-- Tone Required: {tone} (POLITE = friendly reminder & payment appreciation, FIRM = direct reminder of pending reconciliation & due date, STRICT = urgent final notice before escalation)
+        prompt = f"""You are a specialized Nigerian business debt recovery expert writing on behalf of '{business_name}'.
+Write a distinct, realistic, high-converting WhatsApp debt collection message to recover an unpaid balance.
+
+DEBTOR PROFILE:
+- Debtor / Client Name: {name}
+- Outstanding Balance: ₦{formatted_amount}
+- Items / Services Delivered: {items or 'Products/Services delivered'}
+- Due Date: {due_date or 'Immediate'}
+- Merchant Business: {business_name}
+- Tone Required: {tone}
+- Tone Guidance: {tone_guidance}
 
 INSTRUCTIONS:
 1. Return a JSON object with EXACTLY two keys: "english" and "pidgin".
-2. "english": A compelling, clear, professional standard English WhatsApp message reminding {name} of the ₦{formatted_amount} debt{items_phrase} and asking for payment confirmation/transfer.
-3. "pidgin": An authentic, respectful Nigerian Pidgin message (using natural phrases like 'abeg', 'make we settle this matter', 'balance our records') crafted to collect the money effectively without unnecessary friction.
-4. DO NOT write general marketing messages or promote software. Focus 100% on recovering the money from {name}.
+2. "english": Standard English message matching the exact tone '{tone}'. Make it natural, concise, and focused on receiving payment proof.
+3. "pidgin": Authentic Nigerian Pidgin version matching the exact mood '{tone}'.
+4. Include debtor name '{name}', business name '{business_name}', and balance '₦{formatted_amount}'.
+5. Do NOT include generic placeholder brackets like [Bank Name] or [Insert Date]. Write ready-to-send copy.
 
 JSON STRUCTURE:
 {{
-    "english": "message text here",
-    "pidgin": "pidgin text here"
+    "english": "WhatsApp message in English",
+    "pidgin": "WhatsApp message in Nigerian Pidgin"
 }}"""
 
         try:
@@ -1260,15 +1284,21 @@ JSON STRUCTURE:
         except Exception as e:
             pass
 
-        # Context-rich fallback tailored to tone and debtor details
+        # High quality tone-specific fallbacks
         if tone == 'STRICT':
-            fallback_english = f"URGENT PAYMENT NOTICE: Hello {name}, this is a final follow-up regarding your overdue balance of ₦{formatted_amount}{items_phrase} with {business_name}. Please arrange the full transfer immediately today to prevent account escalation. Kindly send proof of payment once completed."
-            fallback_pidgin = f"URGENT NOTICE: {name}, this na final reminder on top the ₦{formatted_amount}{items_phrase} wey you dey owe {business_name}. Abeg do the transfer today make this matter no carry go next level. Send us payment receipt sharp sharp once you pay."
+            fallback_english = f"URGENT PAYMENT DEMAND: Dear {name}, this is a formal final notice regarding your overdue balance of ₦{formatted_amount}{items_phrase}{due_phrase} with {business_name}. Please arrange the immediate transfer today to avoid account escalation and service suspension. Kindly send proof of payment once done."
+            fallback_pidgin = f"URGENT FINAL NOTICE: {name}, this na final follow-up on top the ₦{formatted_amount}{items_phrase} balance wey you dey owe {business_name}. Abeg make the transfer today sharp sharp make this matter no carry go next level. Send us payment receipt once you pay."
         elif tone == 'FIRM':
-            fallback_english = f"Dear {name}, we are following up on your outstanding balance of ₦{formatted_amount}{items_phrase}{due_phrase} with {business_name}. Our accounting books are currently undergoing reconciliation and this settlement is now required. Please confirm your transfer today."
-            fallback_pidgin = f"Hello {name}, we dey follow up on top the ₦{formatted_amount}{items_phrase} balance with {business_name}. We dey balance our books now and this payment don due. Abeg help us make the transfer today make we clear your record. Thanks!"
+            fallback_english = f"Dear {name}, we are following up on your pending balance of ₦{formatted_amount}{items_phrase}{due_phrase} with {business_name}. Our accounting ledger is undergoing reconciliation today and this settlement is now required. Please confirm your transfer."
+            fallback_pidgin = f"Hello {name}, we dey follow up on top the ₦{formatted_amount}{items_phrase} balance with {business_name}. We dey balance our accounting books now and this payment don due. Abeg help us make the transfer today make we update your ledger."
+        elif tone == 'NATIVE_PIDGIN':
+            fallback_english = f"Hello {name}, just checking in regarding the pending ₦{formatted_amount}{items_phrase} balance with {business_name}. Kindly assist us with the payment transfer today so we can keep your account smoothly updated. Thank you!"
+            fallback_pidgin = f"How far {name}! Hope market and work dey move well. Abeg na quick check-in on top the ₦{formatted_amount}{items_phrase} balance with {business_name}. Help us do the transfer today make our records dey clean. We appreciate you boss!"
+        elif tone == 'DISCOUNT_INCENTIVE':
+            fallback_english = f"Hello {name}, trust you are having a productive day. Regarding your outstanding balance of ₦{formatted_amount}{items_phrase} with {business_name}, if you are able to settle this today, we will apply priority processing and a special loyalty perk to your next order! Thank you."
+            fallback_pidgin = f"Good day {name}! Quick update from {business_name}: if you fit clear the ₦{formatted_amount}{items_phrase} balance today, we get special bonus and discount wey we go add for your next order. Abeg help us settle am today. Thank you!"
         else: # POLITE
-            fallback_english = f"Hello {name}, trust you are having a wonderful week. This is a gentle reminder regarding your outstanding balance of ₦{formatted_amount}{items_phrase} with {business_name}. Kindly arrange for the settlement at your convenience. Please share the confirmation once done so we can update your ledger. Thank you!"
+            fallback_english = f"Hello {name}, trust you are having a wonderful week. This is a gentle reminder regarding your outstanding balance of ₦{formatted_amount}{items_phrase} with {business_name}. Kindly arrange for the settlement at your earliest convenience and share the receipt so we can update your ledger. Thank you for your partnership!"
             fallback_pidgin = f"Good day {name}, hope work dey go well. Na quick friendly reminder on top the ₦{formatted_amount}{items_phrase} balance with {business_name}. Abeg kindly help us do the transfer make we update your account record. Thank you for your continued patronage!"
 
         deduct_credits(request.user, 'debt_reminder')

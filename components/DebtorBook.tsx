@@ -29,7 +29,13 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'english' | 'pidgin'>('english');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [reminderTone, setReminderTone] = useState<'POLITE' | 'FIRM' | 'STRICT'>('POLITE');
+  
+  // Per-debtor selected tone state
+  const [selectedTones, setSelectedTones] = useState<Record<string, 'POLITE' | 'FIRM' | 'STRICT' | 'NATIVE_PIDGIN' | 'DISCOUNT_INCENTIVE'>>({});
+  
+  const getDebtorTone = (debtorId: string): 'POLITE' | 'FIRM' | 'STRICT' | 'NATIVE_PIDGIN' | 'DISCOUNT_INCENTIVE' => {
+    return selectedTones[debtorId] || 'POLITE';
+  };
   
   // Advanced features state
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID'>('ALL');
@@ -53,7 +59,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   const [newDebtor, setNewDebtor] = useState({ name: '', amount: '', phone: '', itemsBought: '', dueDate: '' });
 
   // Reminder Modal State
-  const [reminder, setReminder] = useState<{ text: { english: string; pidgin: string }; debtor: Debtor } | null>(null);
+  const [reminder, setReminder] = useState<{ text: { english: string; pidgin: string }; debtor: Debtor; tone: string } | null>(null);
   const [sendingCloudReminder, setSendingCloudReminder] = useState(false);
 
   const handleSendCloudWAReminder = async () => {
@@ -351,16 +357,21 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     }
   };
 
-  const executeGenerateReminder = async (debtor: Debtor, deduct: boolean, cost: number) => {
+  const executeGenerateReminder = async (
+    debtor: Debtor, 
+    deduct: boolean, 
+    cost: number, 
+    targetTone: 'POLITE' | 'FIRM' | 'STRICT' | 'NATIVE_PIDGIN' | 'DISCOUNT_INCENTIVE' = 'POLITE'
+  ) => {
     setIsGenerating(true);
     setShowCreditPrompt(false);
     const balance = getOutstandingBalance(debtor);
     try {
-      // API returns structured { english, pidgin } debt recovery messages
+      // API returns structured { english, pidgin } debt recovery messages tailored to exact tone
       const result = await generateDebtReminder(
         debtor.name, 
         balance, 
-        reminderTone,
+        targetTone,
         debtor.itemsBought,
         debtor.dueDate
       );
@@ -391,7 +402,8 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
             english: result, 
             pidgin: `Good day ${debtor.name}, hope work dey go well. Na gentle reminder on top the ₦${balance.toLocaleString()} balance. Abeg kindly help us do the transfer make we update your record. Thank you!` 
           }, 
-          debtor 
+          debtor,
+          tone: targetTone
         });
       } else if (result?.english || result?.pidgin) {
         setReminder({ 
@@ -399,7 +411,8 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
             english: result.english || `Hello ${debtor.name}, trust you are doing well. This is a gentle reminder regarding your outstanding balance of ₦${balance.toLocaleString()}. Kindly arrange for the settlement at your convenience. Thank you!`, 
             pidgin: result.pidgin || `Good day ${debtor.name}, na quick reminder on top the ₦${balance.toLocaleString()} balance. Abeg help us do the transfer make we update your record. Thank you!` 
           }, 
-          debtor 
+          debtor,
+          tone: targetTone
         });
       } else if (result?.message) {
         setReminder({ 
@@ -407,18 +420,23 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
             english: result.message, 
             pidgin: `Good day ${debtor.name}, na gentle reminder on top the ₦${balance.toLocaleString()} balance. Abeg kindly do the transfer make we update your record. Thank you!` 
           }, 
-          debtor 
+          debtor,
+          tone: targetTone
         });
       }
     } catch (e) {
       console.error(e);
-      toast.error("Failed to generate AI reminders.");
+      toast.error("Failed to generate AI reminder. Please try again.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleGenerateReminder = async (debtor: Debtor) => {
+  const handleGenerateReminder = async (
+    debtor: Debtor, 
+    targetTone?: 'POLITE' | 'FIRM' | 'STRICT' | 'NATIVE_PIDGIN' | 'DISCOUNT_INCENTIVE'
+  ) => {
+    const toneToUse = targetTone || getDebtorTone(debtor.id);
     const usage = usageLimiter.checkUsage('debt_reminder', credits);
     if (!usage.allowed) {
       setDeductOnConfirm(null);
@@ -426,11 +444,11 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       return;
     }
     if (usage.useCredits) {
-      setDeductOnConfirm(() => async () => { await executeGenerateReminder(debtor, true, usage.cost); });
+      setDeductOnConfirm(() => async () => { await executeGenerateReminder(debtor, true, usage.cost, toneToUse); });
       setShowCreditPrompt(true);
       return;
     }
-    await executeGenerateReminder(debtor, false, 0);
+    await executeGenerateReminder(debtor, false, 0, toneToUse);
   };
 
   // Ageing Analytics Calculations
@@ -842,33 +860,37 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                 </div>
 
                 {/* Right side: Action controls */}
-                <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-3 min-w-[240px]">
+                <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-3 min-w-[250px]">
                   {debtor.status !== 'PAID' && (
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2">
                         {/* Escalate Tone select based on nudge count */}
                         <select
-                          className="text-[10px] font-bold border border-slate-200 rounded-xl px-2.5 bg-slate-50 text-slate-600 outline-none"
-                          value={reminderTone}
-                          onChange={(e) => setReminderTone(e.target.value as any)}
+                          className="text-[10px] font-bold border border-slate-200 rounded-xl px-2.5 py-2 bg-slate-50 text-slate-700 outline-none cursor-pointer focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                          value={getDebtorTone(debtor.id)}
+                          onChange={(e) => setSelectedTones(prev => ({ ...prev, [debtor.id]: e.target.value as any }))}
                         >
-                          <option value="POLITE">Polite Tone</option>
-                          <option value="FIRM">Firm Tone</option>
-                          <option value="STRICT">Strict Tone</option>
+                          <option value="POLITE">😊 Polite Tone</option>
+                          <option value="FIRM">⚖️ Firm & Direct</option>
+                          <option value="STRICT">🚨 Strict Warning</option>
+                          <option value="NATIVE_PIDGIN">🇳🇬 Naija Pidgin</option>
+                          <option value="DISCOUNT_INCENTIVE">🎁 Discount Offer</option>
                         </select>
                         
                         <button
                           type="button"
-                          onClick={() => {
-                            if (reminderTone !== nudgeToneSuggestion) {
-                              toast(`Note: AI suggests using ${nudgeToneSuggestion.toLowerCase()} tone based on nudge count.`);
-                            }
-                            handleGenerateReminder(debtor);
-                          }}
+                          onClick={() => handleGenerateReminder(debtor, getDebtorTone(debtor.id))}
                           disabled={isGenerating}
-                          className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2.5 px-3 rounded-xl transition-all border-0 flex items-center justify-center gap-1"
+                          className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2.5 px-3 rounded-xl transition-all border-0 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
                         >
-                          {isGenerating ? '...' : 'Generate Nudge'}
+                          {isGenerating ? (
+                            <div className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <span>✨</span>
+                              <span>Generate Nudge</span>
+                            </>
+                          )}
                         </button>
                       </div>
                       
@@ -1033,12 +1055,14 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       {reminder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-in zoom-in-95 space-y-4">
-            <div className="flex justify-between items-start mb-2">
+            <div className="flex justify-between items-start mb-1">
               <div>
                 <h3 className="font-extrabold text-slate-800 font-heading text-sm uppercase tracking-wider flex items-center gap-1.5">
-                  <span>💬</span> AI Reminder Generated
+                  <span>💬</span> AI Debt Recovery Copy
                 </h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Send a polite or firm message directly to WhatsApp</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Tailored for <strong className="text-slate-700">{reminder.debtor.name}</strong> • ₦{getOutstandingBalance(reminder.debtor).toLocaleString()}
+                </p>
               </div>
               <button 
                 type="button" 
@@ -1049,45 +1073,82 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
               </button>
             </div>
 
+            {/* Quick Tone Switcher inside Modal */}
+            <div className="bg-slate-50 p-2 rounded-2xl flex items-center justify-between gap-2 border border-slate-100">
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider shrink-0 pl-1">Tone:</span>
+                <select
+                  className="text-[10px] font-bold bg-white border border-slate-200 rounded-xl px-2 py-1.5 text-slate-700 outline-none cursor-pointer flex-1"
+                  value={getDebtorTone(reminder.debtor.id)}
+                  onChange={(e) => {
+                    const newTone = e.target.value as any;
+                    setSelectedTones(prev => ({ ...prev, [reminder.debtor.id]: newTone }));
+                    handleGenerateReminder(reminder.debtor, newTone);
+                  }}
+                >
+                  <option value="POLITE">😊 Polite Reminder</option>
+                  <option value="FIRM">⚖️ Firm & Direct</option>
+                  <option value="STRICT">🚨 Strict Warning</option>
+                  <option value="NATIVE_PIDGIN">🇳🇬 Naija Pidgin</option>
+                  <option value="DISCOUNT_INCENTIVE">🎁 Discount Offer</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleGenerateReminder(reminder.debtor, getDebtorTone(reminder.debtor.id))}
+                disabled={isGenerating}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-all border-0 cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <RefreshCw size={11} className={isGenerating ? 'animate-spin' : ''} />
+                <span>{isGenerating ? 'Drafting...' : 'Regenerate'}</span>
+              </button>
+            </div>
+
             {/* Tab buttons */}
             <div className="flex border-b border-slate-200">
               <button
                 type="button"
                 onClick={() => setActiveTab('english')}
-                className={`flex-1 py-2.5 font-black text-[10px] uppercase tracking-wider ${activeTab === 'english' ? 'border-b-2 border-indigo-600 text-indigo-650' : 'text-slate-400 hover:text-slate-600 bg-transparent border-0'}`}
+                className={`flex-1 py-2.5 font-black text-[10px] uppercase tracking-wider transition-all ${activeTab === 'english' ? 'border-b-2 border-indigo-600 text-indigo-650' : 'text-slate-400 hover:text-slate-600 bg-transparent border-0'}`}
               >
                 🇬🇧 English Version
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('pidgin')}
-                className={`flex-1 py-2.5 font-black text-[10px] uppercase tracking-wider ${activeTab === 'pidgin' ? 'border-b-2 border-indigo-600 text-indigo-650' : 'text-indigo-650 hover:text-indigo-800 bg-transparent border-0'}`}
+                className={`flex-1 py-2.5 font-black text-[10px] uppercase tracking-wider transition-all ${activeTab === 'pidgin' ? 'border-b-2 border-indigo-600 text-indigo-650' : 'text-slate-400 hover:text-slate-600 bg-transparent border-0'}`}
               >
                 🇳🇬 Naija Pidgin
               </button>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl text-xs text-slate-700 whitespace-pre-wrap italic border-l-4 border-indigo-500 max-h-52 overflow-y-auto leading-relaxed">
+            <div className="bg-slate-50 p-4 rounded-2xl text-xs text-slate-700 whitespace-pre-wrap italic border-l-4 border-indigo-500 max-h-52 overflow-y-auto leading-relaxed select-all">
               "{reminder.text[activeTab]}"
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              <button
-                onClick={handleSendCloudWAReminder}
-                disabled={sendingCloudReminder}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/15 disabled:opacity-50 cursor-pointer"
-              >
-                <span>⚡</span> {sendingCloudReminder ? 'Sending...' : 'Auto-Send via WhatsApp API'}
-              </button>
+              {reminder.debtor.phone && (
+                <button
+                  onClick={handleSendCloudWAReminder}
+                  disabled={sendingCloudReminder}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/15 disabled:opacity-50 cursor-pointer border-0"
+                >
+                  <span>⚡</span> {sendingCloudReminder ? 'Sending...' : 'Auto-Send via WhatsApp API'}
+                </button>
+              )}
 
-              <a
-                href={`https://wa.me/${reminder.debtor.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(reminder.text[activeTab])}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full bg-slate-800 hover:bg-slate-900 text-white text-center py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-decoration-none cursor-pointer"
-              >
-                <span>💬</span> Send via WhatsApp App
-              </a>
+              {reminder.debtor.phone ? (
+                <a
+                  href={`https://wa.me/${reminder.debtor.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(reminder.text[activeTab])}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-slate-900 hover:bg-black text-white text-center py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-decoration-none cursor-pointer border-0"
+                >
+                  <span>💬</span> Open in WhatsApp App
+                </a>
+              ) : (
+                <p className="text-[10px] text-amber-600 text-center font-bold">No phone number recorded. Copy the message below to send manually.</p>
+              )}
               
               <ShareActions text={reminder.text[activeTab]} url="" title="Debt Reminder" />
             </div>

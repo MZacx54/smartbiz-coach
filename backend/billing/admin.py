@@ -15,14 +15,18 @@ class TransactionAdmin(admin.ModelAdmin):
                 if old_obj.status != 'SUCCESS' and obj.status == 'SUCCESS':
                     amount_naira = float(obj.amount)
                     credits_purchased = 0
-                    if abs(amount_naira - 300) < 5:
-                        credits_purchased = 50
-                    elif abs(amount_naira - 1000) < 5:
-                        credits_purchased = 250
-                    elif abs(amount_naira - 3000) < 5:
+                    if abs(amount_naira - 500) < 5:
+                        credits_purchased = 40
+                    elif abs(amount_naira - 1500) < 5:
+                        credits_purchased = 150
+                    elif abs(amount_naira - 3500) < 5:
+                        credits_purchased = 400
+                    elif abs(amount_naira - 7500) < 5:
                         credits_purchased = 1000
+                    elif abs(amount_naira - 300) < 5:
+                        credits_purchased = 30
                     else:
-                        credits_purchased = int(amount_naira / 6)
+                        credits_purchased = max(1, int(amount_naira / 10))
 
                     user = obj.user
                     user.credits += credits_purchased
