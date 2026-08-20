@@ -210,26 +210,52 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
     const [magicIdeasVideo, setMagicIdeasVideo] = useState<string[]>([]);
     const [isLoadingMagicVideo, setIsLoadingMagicVideo] = useState(false);
+    const [historyKey, setHistoryKey] = useState<number>(0);
+
+    const deleteHistoryItem = (id: number) => {
+        try {
+            const history = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
+            const updated = history.filter((item: any) => item.id !== id);
+            localStorage.setItem('sb_content_history', JSON.stringify(updated));
+            setHistoryKey(prev => prev + 1);
+            toast.success("Item removed from history");
+        } catch (e) {
+            console.error("Failed to delete history item:", e);
+        }
+    };
+
+    const clearAllHistory = () => {
+        if (window.confirm("Are you sure you want to clear your entire creations history?")) {
+            localStorage.removeItem('sb_content_history');
+            setHistoryKey(prev => prev + 1);
+            toast.success("All creations history cleared!");
+        }
+    };
 
     const fetchMagicIdeasPost = async () => {
         setIsLoadingMagicPost(true);
         try {
-            const result = await geminiService.generateSuggestedPrompts(brand?.niche || 'Small Business', 'POST');
+            const biz = brand?.businessName || brand?.niche || 'Nigerian Merchant';
+            const result = await geminiService.generateSuggestedPrompts(brand?.niche || 'Nigerian Commerce', 'POST');
             if (Array.isArray(result) && result.length > 0) {
                 setMagicIdeasPost(result);
+                toast.success("Loaded 4 AI topic ideas!");
             } else {
                 setMagicIdeasPost([
-                    "Write a compelling story about how my product solves a common Nigerian problem.",
-                    "Behind the scenes look at my daily business hustle.",
-                    "A warm thank you post spotlighting recent customer feedback."
+                    `Weekend Flash Sale: 20% discount on fast-moving items with same-day Lagos dispatch & nationwide waybill.`,
+                    `Behind-the-scenes unboxing: How we inspect every single order for 100% authenticity before delivery at ${biz}.`,
+                    `Customer Transformation: Real WhatsApp feedback from a buyer who switched to ${biz} after bad past experiences.`,
+                    `3 critical mistakes Nigerians make when ordering products online and how ${biz} guarantees complete peace of mind.`
                 ]);
             }
         } catch (e) {
             console.error("Failed to load magic ideas:", e);
+            const biz = brand?.businessName || brand?.niche || 'Our Brand';
             setMagicIdeasPost([
-                "Write a compelling story about how my product solves a common Nigerian problem.",
-                "Behind the scenes look at my daily business hustle.",
-                "A warm thank you post spotlighting recent customer feedback."
+                `Weekend Flash Sale: 20% discount on fast-moving items with same-day Lagos dispatch & nationwide waybill.`,
+                `Behind-the-scenes unboxing: How we inspect every single order for 100% authenticity before delivery at ${biz}.`,
+                `Customer Transformation: Real WhatsApp feedback from a buyer who switched to ${biz} after bad past experiences.`,
+                `3 critical mistakes Nigerians make when ordering products online and how ${biz} guarantees complete peace of mind.`
             ]);
         } finally {
             setIsLoadingMagicPost(false);
@@ -239,22 +265,25 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const fetchMagicIdeasVideo = async () => {
         setIsLoadingMagicVideo(true);
         try {
-            const result = await geminiService.generateSuggestedPrompts(brand?.niche || 'Small Business', 'SCRIPT');
+            const result = await geminiService.generateSuggestedPrompts(brand?.niche || 'Nigerian Commerce', 'SCRIPT');
             if (Array.isArray(result) && result.length > 0) {
                 setMagicIdeasVideo(result);
+                toast.success("Loaded 4 video concept ideas!");
             } else {
                 setMagicIdeasVideo([
-                    "A funny sketch about customers who promise to pay tomorrow but never do.",
-                    "A day in the life of a small business owner in Lagos.",
-                    "3 reasons to digitize your retail inventory list."
+                    "Stop scrolling! Why buying cheap alternatives costs you 3x more in Nigeria.",
+                    "Day in the life packaging 20 waybill orders for nationwide delivery.",
+                    "3 reasons smart customers are switching to verified merchants this month.",
+                    "What happens when you test durability vs counterfeit alternatives."
                 ]);
             }
         } catch (e) {
             console.error("Failed to load magic ideas:", e);
             setMagicIdeasVideo([
-                "A funny sketch about customers who promise to pay tomorrow but never do.",
-                "A day in the life of a small business owner in Lagos.",
-                "3 reasons to digitize your retail inventory list."
+                "Stop scrolling! Why buying cheap alternatives costs you 3x more in Nigeria.",
+                "Day in the life packaging 20 waybill orders for nationwide delivery.",
+                "3 reasons smart customers are switching to verified merchants this month.",
+                "What happens when you test durability vs counterfeit alternatives."
             ]);
         } finally {
             setIsLoadingMagicVideo(false);
@@ -801,7 +830,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             } else if (activeTab === 'Video Script') {
                 result = await geminiService.generateVideoScript(videoTopic, videoPlatform, tone, hookStyle);
             } else if (activeTab === 'Weekly Plan') {
-                result = await geminiService.generateWeeklyPlan(planGoal);
+                result = await geminiService.generateWeeklyPlan(planGoal, planFrequency);
             } else if (activeTab === 'Blog Writer') {
                 result = await geminiService.generateBlogPost(blogTopic, blogTone, blogLength);
             } else if (activeTab === 'Partnership Pitch') {
@@ -834,17 +863,50 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
             setGeneratedContent(result);
             
-            // Save to local creations history catalog
+            // Save to local creations history catalog with proper metadata & deduplication
             try {
+                let topicLabel = 'Generated Content';
+                let previewSnippet = 'Generated Content';
+
+                if (activeTab === 'Post Writer') {
+                    topicLabel = postTopic || 'High-Converting Social Post';
+                    previewSnippet = result?.caption || result?.post || '';
+                } else if (activeTab === 'Video Script') {
+                    topicLabel = videoTopic || result?.title || 'Viral Video Script';
+                    previewSnippet = result?.hook ? `"${result.hook}" - ${result.title || ''}` : (result?.body || '');
+                } else if (activeTab === 'Weekly Plan') {
+                    topicLabel = `${planGoal} (${planFrequency})`;
+                    previewSnippet = `${result?.campaignGoal || planGoal} • ${result?.days?.length || 0} scheduled days (${result?.days?.map((d: any) => d.day).join(', ')})`;
+                } else if (activeTab === 'Blog Writer') {
+                    topicLabel = blogTopic || result?.title || 'SEO Blog Article';
+                    previewSnippet = result?.title ? `${result.title} — ${result.metaDescription || ''}` : (result?.blogContent || '');
+                } else if (activeTab === 'Partnership Pitch') {
+                    topicLabel = `${partnerName} - ${pitchType}`;
+                    previewSnippet = result?.subjectLine ? `Subject: ${result.subjectLine}` : (result?.emailBody || '');
+                } else if (activeTab === 'Photo Studio') {
+                    topicLabel = photoDesc || 'Product Merchandising Analysis';
+                    previewSnippet = result?.enhanced_description || result?.composition_notes || result?.suggestions?.[0] || 'Photo styling and enhancements';
+                }
+
                 const historyItem = {
                     id: Date.now(),
                     tab: activeTab,
-                    topic: activeTab === 'Post Writer' ? postTopic : activeTab === 'Video Script' ? videoTopic : activeTab === 'Blog Writer' ? blogTopic : activeTab === 'Partnership Pitch' ? partnerName + " - " + pitchType : photoDesc || 'Visual Prompt',
+                    topic: topicLabel,
+                    preview: previewSnippet,
                     timestamp: new Date().toISOString(),
                     content: result
                 };
+
                 const currentHistory = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
-                localStorage.setItem('sb_content_history', JSON.stringify([historyItem, ...currentHistory]));
+                // Prevent duplicate entries saved within 8 seconds
+                const isDuplicate = currentHistory.length > 0 && 
+                    currentHistory[0].tab === historyItem.tab && 
+                    currentHistory[0].topic === historyItem.topic &&
+                    (Date.now() - new Date(currentHistory[0].timestamp).getTime() < 8000);
+
+                if (!isDuplicate) {
+                    localStorage.setItem('sb_content_history', JSON.stringify([historyItem, ...currentHistory.slice(0, 49)]));
+                }
             } catch (historyErr) {
                 console.error("Failed to write to content history:", historyErr);
             }
@@ -1017,45 +1079,57 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                     {/* Quick Topic Starter Chips */}
                                     <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1 mb-2">
                                         {[
-                                            '⚡ 50% Weekend Flash Sale',
-                                            '📦 New Stock Unboxing Arrival',
-                                            '🌟 Customer Testimonial Spotlight',
-                                            '💡 3 Business Tips for Customers',
-                                            '🚚 Fast Nationwide Delivery Offer'
+                                            { label: '⚡ 50% Weekend Flash Sale', prompt: `Weekend Flash Sale: 50% limited discount on our best-selling collection. Highlight verified authenticity, limited units in stock, and fast nationwide waybill dispatch.` },
+                                            { label: '📦 New Stock Unboxing Arrival', prompt: `New Stock Unboxing Arrival: Behind-the-scenes look at freshly arrived verified inventory. Showcase top build quality, durability, and WhatsApp direct ordering.` },
+                                            { label: '🌟 Customer Testimonial Spotlight', prompt: `Customer Testimonial Spotlight: 5-star review from a satisfied Nigerian customer celebrating our prompt delivery and outstanding quality.` },
+                                            { label: '💡 3 Pro Shopping Tips', prompt: `3 Pro Shopping Tips: How smart Nigerian buyers can identify genuine, durable products and avoid wasting money on cheap counterfeits.` },
+                                            { label: '🚚 Fast Nationwide Delivery Offer', prompt: `Fast Nationwide Delivery Promo: Same-day Lagos dispatch and rapid, secure waybill shipping to all 36 states with easy tracking.` }
                                         ].map((chip, idx) => (
                                             <button
                                                 key={idx}
                                                 type="button"
-                                                onClick={() => setPostTopic(chip)}
-                                                className="bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0"
+                                                onClick={() => {
+                                                    setPostTopic(chip.prompt);
+                                                    toast.success("Topic prompt inserted!");
+                                                }}
+                                                className="bg-indigo-50/90 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
                                             >
-                                                {chip}
+                                                {chip.label}
                                             </button>
                                         ))}
                                     </div>
 
                                     <div className="relative">
                                         <textarea rows={4} className="w-full rounded-xl border border-slate-300 p-4 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none bg-white text-sm font-medium"
-                                            placeholder="e.g. 50% discount on all wigs this weekend" value={postTopic} onChange={(e) => setPostTopic(e.target.value)}
+                                            placeholder="e.g. 50% discount on all wigs this weekend with fast waybill delivery across Nigeria" value={postTopic} onChange={(e) => setPostTopic(e.target.value)}
                                         ></textarea>
                                     </div>
                                     {isLoadingMagicPost && (
                                         <p className="text-xs text-indigo-650 animate-pulse mt-2 flex items-center gap-1 font-medium">
-                                            <span>✨</span> Tailoring custom ideas for {brand?.businessName || brand?.niche || "your brand"}...
+                                            <span>✨</span> Analyzing {brand?.businessName || brand?.niche || "your brand"} to craft high-converting topic angles...
                                         </p>
                                     )}
                                     {!isLoadingMagicPost && magicIdeasPost.length > 0 && (
-                                        <div className="mt-3 space-y-2 bg-slate-50/50 p-3.5 rounded-xl border border-slate-200">
-                                            <p className="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">💡 Click an idea to fill:</p>
-                                            <div className="flex flex-col gap-1.5">
+                                        <div className="mt-3 space-y-2 bg-gradient-to-r from-indigo-50/70 via-purple-50/50 to-pink-50/50 p-4 rounded-xl border border-indigo-100">
+                                            <div className="flex justify-between items-center">
+                                                <p className="text-[10px] uppercase tracking-wider font-extrabold text-indigo-700 flex items-center gap-1">
+                                                    <span>💡</span> AI Magic Ideas for Your Brand (Click to use):
+                                                </p>
+                                                <button onClick={() => setMagicIdeasPost([])} className="text-[10px] text-slate-400 hover:text-slate-600 font-bold">Dismiss</button>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
                                                 {magicIdeasPost.map((idea, idx) => (
                                                     <button
                                                         key={idx}
                                                         type="button"
-                                                        onClick={() => setPostTopic(idea)}
-                                                        className="text-left text-xs bg-white hover:bg-indigo-50 hover:text-indigo-700 p-2.5 rounded-xl border border-slate-200 hover:border-indigo-200 transition-all font-medium text-slate-705 shadow-sm"
+                                                        onClick={() => {
+                                                            setPostTopic(idea);
+                                                            toast.success("Magic idea inserted!");
+                                                        }}
+                                                        className="text-left text-xs bg-white hover:bg-indigo-50/80 hover:text-indigo-900 p-3 rounded-xl border border-indigo-100 transition-all font-medium text-slate-700 shadow-xs flex justify-between items-center gap-2 group cursor-pointer"
                                                     >
-                                                        {idea}
+                                                        <span className="line-clamp-2">{idea}</span>
+                                                        <span className="text-[10px] font-bold text-indigo-600 shrink-0 bg-indigo-50 group-hover:bg-indigo-100 px-2 py-1 rounded-md">Use Topic →</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -1667,68 +1741,105 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                         {activeTab === 'Creations History' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-800 mb-2">Creations History</h3>
-                                    <p className="text-xs text-slate-500 mb-4">
-                                        All your AI-generated posts, scripts, blogs, and pitches are automatically saved to your browser history here.
-                                    </p>
+                                    <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-800">Creations History</h3>
+                                            <p className="text-xs text-slate-500">
+                                                All your AI-generated posts, scripts, weekly roadmaps, blogs, and pitches are automatically saved here.
+                                            </p>
+                                        </div>
+                                        {(() => {
+                                            const history = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
+                                            if (history.length > 0) {
+                                                return (
+                                                    <button
+                                                        onClick={clearAllHistory}
+                                                        className="text-xs text-red-600 hover:text-red-700 font-bold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-red-200/60"
+                                                    >
+                                                        <Trash2 size={12} /> Clear All History
+                                                    </button>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
                                     
                                     {/* History list */}
                                     {(() => {
                                         const history = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
                                         if (history.length === 0) {
                                             return (
-                                                <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200">
-                                                    <span className="text-3xl block mb-2">📭</span>
-                                                    <p className="text-sm font-semibold text-slate-600">No creations saved yet</p>
-                                                    <p className="text-xs text-slate-400 mt-1">Generate some posts or scripts to start building your history catalog!</p>
+                                                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 my-4">
+                                                    <span className="text-4xl block mb-2">📭</span>
+                                                    <p className="text-sm font-bold text-slate-700">No creations saved yet</p>
+                                                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Generate a social post, video script, or weekly plan to automatically build your library!</p>
                                                 </div>
                                             );
                                         }
 
                                         return (
-                                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                                                {history.map((item: any) => (
-                                                    <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-250 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-indigo-300 transition-colors">
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                                                <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
-                                                                    {item.tab}
-                                                                </span>
-                                                                <span className="text-[10px] text-slate-400">
-                                                                    {new Date(item.timestamp).toLocaleString()}
-                                                                </span>
+                                            <div className="space-y-3 max-h-[550px] overflow-y-auto pr-2 mt-4">
+                                                {history.map((item: any) => {
+                                                    const previewText = item.preview || 
+                                                        item.content?.caption || 
+                                                        (item.content?.days ? `${item.content.campaignGoal || 'Weekly Plan'}: ${item.content.days.length} days scheduled` : '') ||
+                                                        (item.content?.hook ? `"${item.content.hook}"` : '') ||
+                                                        item.content?.title ||
+                                                        item.content?.subjectLine ||
+                                                        item.content?.blogContent?.slice(0, 140) ||
+                                                        item.content?.body ||
+                                                        "View to see full generated content";
+
+                                                    return (
+                                                        <div key={item.id} className="p-4 bg-slate-50 hover:bg-white rounded-2xl border border-slate-200 hover:border-indigo-300 hover:shadow-sm transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                                    <span className="text-[10px] uppercase font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                                                                        {item.tab}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-slate-400 font-medium">
+                                                                        {new Date(item.timestamp).toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                <h4 className="text-sm font-bold text-slate-800 line-clamp-1">
+                                                                    {item.topic}
+                                                                </h4>
+                                                                <p className="text-xs text-slate-600 mt-1 line-clamp-2 bg-white p-2.5 rounded-xl border border-slate-200/80 font-sans">
+                                                                    {previewText}
+                                                                </p>
                                                             </div>
-                                                            <h4 className="text-sm font-bold text-slate-800 line-clamp-1">
-                                                                {item.topic}
-                                                            </h4>
-                                                            <p className="text-xs text-slate-550 mt-1 line-clamp-2 bg-white/50 p-2 rounded border border-slate-150">
-                                                                {item.content?.text || item.content?.caption || item.content?.body || item.content?.emailBody || item.content?.blogContent || "Generated Content"}
-                                                            </p>
+                                                            <div className="flex gap-2 w-full md:w-auto shrink-0">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const text = item.content?.caption || item.content?.body || item.content?.blogContent || item.content?.emailBody || (item.content?.days ? JSON.stringify(item.content, null, 2) : item.preview || '');
+                                                                        navigator.clipboard.writeText(text);
+                                                                        toast.success("Copied to clipboard!");
+                                                                    }}
+                                                                    className="flex-1 md:flex-none text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-xl border border-indigo-150 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                                                >
+                                                                    <Copy size={12} /> Copy
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setGeneratedContent(item.content);
+                                                                        setActiveTab(item.tab);
+                                                                        toast.success(`Loaded ${item.tab} into workspace!`);
+                                                                    }}
+                                                                    className="flex-1 md:flex-none text-xs bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-2 rounded-xl border border-slate-300 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                                                                >
+                                                                    <Eye size={12} /> View
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => deleteHistoryItem(item.id)}
+                                                                    title="Delete from history"
+                                                                    className="text-xs bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-400 font-bold p-2 rounded-xl border border-slate-200 transition-colors flex items-center justify-center cursor-pointer"
+                                                                >
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex gap-2 w-full md:w-auto">
-                                                            <button
-                                                                onClick={() => {
-                                                                    const text = item.content?.text || item.content?.caption || item.content?.body || item.content?.emailBody || item.content?.blogContent || JSON.stringify(item.content, null, 2);
-                                                                    navigator.clipboard.writeText(text);
-                                                                    toast.success("Copied to clipboard!");
-                                                                }}
-                                                                className="flex-1 md:flex-none text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-lg border border-indigo-150 transition-colors flex items-center justify-center gap-1.5"
-                                                            >
-                                                                <Copy size={12} /> Copy
-                                                            </button>
-                                                            <button
-                                                                onClick={() => {
-                                                                    setGeneratedContent(item.content);
-                                                                    setActiveTab(item.tab);
-                                                                    toast.success("Loaded back into workspace!");
-                                                                }}
-                                                                className="flex-1 md:flex-none text-xs bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-2 rounded-lg border border-slate-350 transition-colors flex items-center justify-center gap-1.5"
-                                                            >
-                                                                <Eye size={12} /> View
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         );
                                     })()}

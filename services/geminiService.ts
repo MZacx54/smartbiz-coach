@@ -171,8 +171,12 @@ export const generateSocialContent = async (topic: string, platform: string, ton
     return response.data;
 };
 
-export const generateWeeklyPlan = async (niche: string) => {
-    const response = await api.post('/api/content/generate-weekly-plan/', { niche });
+export const generateWeeklyPlan = async (goal: string, frequency?: string) => {
+    const response = await api.post('/api/content/generate-weekly-plan/', { 
+        goal, 
+        niche: goal,
+        frequency: frequency || '5 times/week' 
+    });
     return response.data;
 };
 
@@ -180,6 +184,7 @@ export const generateSuggestedPrompts = async (niche: string, contentType: strin
     const response = await api.post('/api/content/generate-prompts/', {
         niche,
         content_type: contentType,
+        context: contentType,
         image_base64: imageBase64,
         image_mime_type: imageMimeType,
         trend_names: trendNames

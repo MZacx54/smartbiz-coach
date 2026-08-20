@@ -919,20 +919,20 @@ class GenerateSuggestedPromptsView(views.APIView):
     
     def post(self, request):
         niche = request.data.get('niche')
-        context = request.data.get('context') or request.data.get('content_type') # Map both
+        context = request.data.get('context') or request.data.get('content_type') or 'POST'
         image = request.data.get('image') or request.data.get('image_base_64') or request.data.get('image_base64')
         mime_type = request.data.get('mimeType') or request.data.get('image_mime_type') or request.data.get('mime_type')
         trends = request.data.get('trends') or request.data.get('trend_names') or []
         
-        trend_context = f"Consider trends: {', '.join(trends)}." if trends else ""
-        
+        trend_context = f"Consider current Nigerian trends: {', '.join(trends)}." if trends else ""
         brand_context = get_brand_context(request.user)
+        biz_name = getattr(request.user, 'business_name', 'Our Brand')
         
         if image:
              prompt = f"""
              {brand_context}
-             Based on this image and the brand niche above, suggest 3 creative editing or caption prompts. 
-             Return JSON list of strings (array)."""
+             Based on this product image and the brand above, suggest 4 creative, high-converting editing or caption prompts for social media.
+             Return JSON list of 4 strings (array)."""
              messages = [
                  {
                      "role": "user",
@@ -945,20 +945,35 @@ class GenerateSuggestedPromptsView(views.APIView):
              try:
                 text = gemini_utils.make_gemini_request(messages, model=gemini_utils.DEFAULT_VISION_MODEL)
                 lines = [line.strip().lstrip('-0123456789. ') for line in text.splitlines() if line.strip()]
-                return Response(lines[:3])
+                return Response(lines[:4])
              except Exception as e:
-                 return Response(["Enhance brightness", "Focus on product", "Add logo"], status=200)
+                 return Response([
+                     "Highlight product durability and premium materials against a clean white backdrop",
+                     "Create an unboxing flyer with fast nationwide delivery trust badge",
+                     "Style with complementary lifestyle props for an Instagram carousel",
+                     "Add bold 48-Hour Weekend Flash Sale discount text overlay"
+                 ], status=200)
         else:
             prompt = f"""
             {brand_context}
-            Suggest 3 creative and viral {context} ideas for this specific business. {trend_context}
-            Return JSON list of strings (array).
+            You are a Viral Content Strategist for Nigerian MSMEs.
+            Suggest 4 hyper-specific, high-converting, and viral {context} topic ideas for this business. {trend_context}
+            
+            Every topic must be actionable, culturally relevant to Nigerian commerce (addressing trust, quality, payday, unboxing, customer satisfaction, or problem-solving), and ready to paste into the generator.
+            Return JSON list of 4 complete strings (array).
             """
             try:
                 suggestions = gemini_utils.generate_json_content(prompt)
-                return Response(suggestions)
+                if isinstance(suggestions, list) and len(suggestions) >= 3:
+                    return Response(suggestions[:4])
+                raise Exception("Incomplete suggestions")
             except Exception as e:
-                return Response(["Morning Motivation", "Product Showcase", "Customer Review"])
+                return Response([
+                    f"48-Hour Weekend Flash Sale: 20% discount on top-selling items with same-day nationwide waybill dispatch",
+                    f"Behind-the-scenes quality test: How we inspect and securely package every order at {biz_name}",
+                    f"Customer transformation story: How our verified products saved a client from substandard alternatives",
+                    f"3 common mistakes Nigerians make when shopping online and how {biz_name} guarantees 100% authenticity"
+                ])
 
 
 class GenerateWeeklyPlanView(views.APIView):
@@ -966,6 +981,8 @@ class GenerateWeeklyPlanView(views.APIView):
 
     def post(self, request):
         goal_input = request.data.get('goal') or request.data.get('niche') or 'Brand Awareness'
+        frequency_input = str(request.data.get('frequency', '5 times/week')).lower().strip()
+        
         goal_mapping = {
             'SALES': 'Direct Sales & Cash Conversions',
             'BRAND AWARENESS': 'Brand Trust, Authority & Discovery',
@@ -973,132 +990,145 @@ class GenerateWeeklyPlanView(views.APIView):
         }
         goal = goal_mapping.get(str(goal_input).upper().strip(), str(goal_input))
         
+        # Determine number of days based on frequency selection
+        if '3' in frequency_input or 'relaxed' in frequency_input:
+            num_days = 3
+            day_schedule = ["Monday", "Wednesday", "Friday"]
+            freq_desc = "3 days / week (Relaxed schedule: Mon, Wed, Fri)"
+        elif 'daily' in frequency_input or '7' in frequency_input or 'growth' in frequency_input:
+            num_days = 7
+            day_schedule = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            freq_desc = "7 days / week (Daily high-growth schedule)"
+        else:
+            num_days = 5
+            day_schedule = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            freq_desc = "5 days / week (Standard weekday schedule: Mon to Fri)"
+
         brand_context = get_brand_context(request.user)
         prompt = f"""
         You are a Master Content Strategist for Nigerian MSMEs.
-        Create an all-inclusive, turnkey 7-Day Social Media & WhatsApp Content Plan for this specific business.
+        Create an all-inclusive, turnkey Social Media & WhatsApp Content Plan for this specific business.
         
         CAMPAIGN STRATEGY GOAL: {goal}
+        POSTING FREQUENCY: {freq_desc}
+        EXACT NUMBER OF POSTING DAYS REQUIRED: {num_days} days ({', '.join(day_schedule)})
         
-        MANDATORY 7-DAY CONTENT PILLAR STRUCTURE:
-        - Monday: Mindset, Motivation & Weekly Focus (Establish authority and inspire customers).
-        - Tuesday: Product Showcase, Value Proposition & Live Demo (Highlight features, benefits, and price transparency).
-        - Wednesday: Social Proof, Unboxing & Customer Reviews (Build unshakeable trust with testimonials).
-        - Thursday: Behind-The-Scenes, Craftsmanship & Order Packaging (Show the authenticity and care behind every order).
-        - Friday: Weekend Flash Sale, Urgency & Payday Promo (Drive direct weekend orders and WhatsApp checkouts).
-        - Saturday: Lifestyle Integration, How-To Guide or Customer Spotlight (Show the product in real daily life).
-        - Sunday: Reflection, Community Q&A & Restock Announcement (Engage the community and prepare for the coming week).
+        CRITICAL STRATEGY GUIDANCE FOR GOAL '{goal}':
+        - If Goal is 'Direct Sales & Cash Conversions': Every day must focus on product value, clear price transparency, limited-batch scarcity, DM closers, and WhatsApp instant checkout CTAs.
+        - If Goal is 'Brand Trust, Authority & Discovery': Focus on founder expertise, unboxing quality tests, customer proof, debunking industry myths, and shareable educational insights.
+        - If Goal is 'Customer Engagement, Reviews & Community': Focus on relatable Nigerian culture polls, customer spotlights, interactive Q&A, memes, and referral incentives.
 
         OUTPUT REQUIREMENTS (STRICT JSON ONLY):
         {{
             "weekStartDate": "Upcoming Monday",
             "campaignGoal": "{goal}",
+            "postingFrequency": "{freq_desc}",
             "days": [
                 {{
                     "day": "Monday",
-                    "pillar": "Motivation & Authority",
-                    "format": "Single Post + Thought Leadership Caption",
-                    "headline": "Scroll-stopping Monday headline",
-                    "postIdea": "Complete, ready-to-publish post caption with emojis, spacing, and hashtags",
-                    "visualDirection": "Exact instruction for graphic/photo creation (e.g. Founder workspace photo with bold overlay quote)",
-                    "callToAction": "Specific comment or share prompt"
-                }},
-                {{
-                    "day": "Tuesday",
-                    "pillar": "Product Spotlight & Demo",
-                    "format": "Reel / 30s Video Demo",
-                    "headline": "Product value headline",
-                    "postIdea": "Full detailed sales caption with feature bullets and price notice",
-                    "visualDirection": "Close-up 15-second product demonstration showing durability and build quality",
-                    "callToAction": "WhatsApp direct checkout CTA"
+                    "pillar": "Primary Strategic Pillar",
+                    "format": "Reel / Carousel / WhatsApp Status / Single Post",
+                    "headline": "Scroll-stopping headline",
+                    "postIdea": "Complete, ready-to-publish post caption with emojis, Nigerian context, and hashtags",
+                    "visualDirection": "Exact instruction for staging photo/video or designing graphic",
+                    "callToAction": "Specific call to action matching '{goal}'"
                 }}
             ]
         }}
+        Generate exactly {num_days} day objects for: {', '.join(day_schedule)}.
         """
 
         system_prompt = f"""
         {brand_context}
         
         You are an elite Digital Growth Consultant.
-        Deliver a 7-day content schedule where every day provides a complete, copy-paste-ready caption, format advice, and visual staging instructions.
-        Never return vague summaries; provide full, high-converting copy.
+        Deliver a {num_days}-day turnkey content plan tailored strictly to the campaign goal '{goal}'.
+        Never return vague summaries; provide full, copy-paste-ready captions with Nigerian hashtags and clear CTAs.
         """
 
         try:
             plan = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
-            if isinstance(plan, dict) and 'days' in plan and len(plan['days']) >= 5:
+            if isinstance(plan, dict) and 'days' in plan and len(plan['days']) >= num_days - 1:
                 return Response(plan)
             raise Exception("Incomplete weekly plan structure")
         except Exception as e:
             biz_name = getattr(request.user, 'business_name', 'Our Brand')
+            
+            all_fallback_days = [
+                {
+                    "day": "Monday",
+                    "pillar": "Motivation & Authority" if 'sales' not in goal.lower() else "Weekly Flash Launch",
+                    "format": "Single Image + Inspiring Caption" if 'sales' not in goal.lower() else "Flyer + WhatsApp Status Blast",
+                    "headline": "Start Strong: Excellence Is Our Standard! ✨" if 'sales' not in goal.lower() else "New Week Restock & Special Deals! 🔥",
+                    "postIdea": f"Happy New Week! 🚀 At {biz_name}, we believe in giving your best every single day. We are geared up to serve you this week with top-grade quality and fast nationwide dispatch.\n\n💬 Drop a '🔥' in the comments if you're ready to win this week!\n\n#MondayMotivation #{biz_name.replace(' ', '')} #NaijaHustle #Excellence" if 'sales' not in goal.lower() else f"🚨 NEW WEEK BATCH UNLOCKED! Start your week with verified quality from {biz_name}. Enjoy priority dispatch when you order today!\n\n📲 Tap link in bio or WhatsApp us now to secure yours before stock finishes!\n\n#ShopNow #{biz_name.replace(' ', '')} #LagosSales",
+                    "visualDirection": "High-contrast branded graphic with bold quote and product badge in the corner.",
+                    "callToAction": "Drop a comment and share your goals for the week!" if 'sales' not in goal.lower() else "WhatsApp us to place your order right now!"
+                },
+                {
+                    "day": "Tuesday",
+                    "pillar": "Product Spotlight & Value",
+                    "format": "Carousel (5 Slides) / Product Demo",
+                    "headline": "Why Settle For Less When You Can Have The Best? 💎",
+                    "postIdea": f"Swipe through to see what makes our top collection stand out! ✨\n\n• 100% Genuine, Verified Quality\n• Built for Maximum Durability\n• Fast Doorstep Delivery Across Nigeria\n\n📲 Ready to order? Tap the link in our bio or send us a WhatsApp DM right away!\n\n#QualityFirst #{biz_name.replace(' ', '')} #NigerianSME",
+                    "visualDirection": "5-slide carousel showing detailed product angles, feature callouts, and customer unboxing.",
+                    "callToAction": "WhatsApp DM or bio link to secure your order."
+                },
+                {
+                    "day": "Wednesday",
+                    "pillar": "Customer Reviews & Social Proof",
+                    "format": "Story Sequence + Feed Testimonial",
+                    "headline": "Real Feedback From Real Nigerian Customers ⭐️⭐️⭐️⭐️⭐️",
+                    "postIdea": f"Nothing beats the joy of receiving feedback like this! 🙌 'The delivery was fast and the quality is even better than expected.' Thank you for trusting {biz_name}. Your satisfaction is our priority.\n\n📦 We are dispatching new orders today! Send a DM to join our happy customer family.\n\n#CustomerReview #HappyClient #{biz_name.replace(' ', '')}",
+                    "visualDirection": "Clean graphic displaying a 5-star customer WhatsApp review screenshot with product photo in background.",
+                    "callToAction": "Send a DM to get yours dispatched today."
+                },
+                {
+                    "day": "Thursday",
+                    "pillar": "Behind-The-Scenes & Packaging",
+                    "format": "Reel / Short Video (30s)",
+                    "headline": "How We Package & Dispatch Your Orders Safely 📦",
+                    "postIdea": f"Ever wondered what happens after you tap 'Order'? 👀 Here is a quick look at our meticulous packaging process to ensure every item arrives safe and intact via nationwide waybill!\n\n⚡ Next dispatch leaves today at 2 PM. WhatsApp us to catch today's batch!\n\n#BehindTheScenes #OrderDispatch #{biz_name.replace(' ', '')}",
+                    "visualDirection": "Time-lapse or aesthetic video showing neat order packaging, labeling, and thank-you notes.",
+                    "callToAction": "Order before 2 PM for same-day dispatch."
+                },
+                {
+                    "day": "Friday",
+                    "pillar": "Weekend Flash Sale & Urgency",
+                    "format": "Flyer Graphic + WhatsApp Status Blast",
+                    "headline": "Weekend Flash Sale: Don't Miss Out! 🔥",
+                    "postIdea": f"Weekend is here and we are dropping a special 48-hour flash offer on our fast-moving items! 🚨\n\n⚡ Enjoy exclusive bundle pricing when you order today.\n🔒 Limited stock remaining for this batch.\n\n📲 Tap the link in our bio or reply 'FLASH' on WhatsApp to claim your discount!\n\n#FlashSale #WeekendPromo #{biz_name.replace(' ', '')}",
+                    "visualDirection": "Vibrant promotional flyer with '48-HR FLASH SALE' badge and countdown timer sticker on stories.",
+                    "callToAction": "Reply 'FLASH' on WhatsApp to unlock discount."
+                },
+                {
+                    "day": "Saturday",
+                    "pillar": "Lifestyle Integration & Tips",
+                    "format": "Single Photo / User Spotlight",
+                    "headline": "Elevate Your Weekend Routine ✨",
+                    "postIdea": f"How are you spending your Saturday? Whether relaxing at home or attending an event, {biz_name} has you covered. Quality and style should never be complicated.\n\n✨ Tag someone who needs this in their life!\n\n#WeekendVibes #LifestyleNG #{biz_name.replace(' ', '')}",
+                    "visualDirection": "Lifestyle photo showing the product in practical, aesthetic real-world use.",
+                    "callToAction": "Tag a friend in the comments."
+                },
+                {
+                    "day": "Sunday",
+                    "pillar": "Reflection & Restock Announcement",
+                    "format": "WhatsApp Status Poll & Story Wrap-up",
+                    "headline": "Wrapping Up The Week & Restock Alert! 🔔",
+                    "postIdea": f"Thank you for an incredible week of orders! 🙏 Quick reminder: our new batch restock arrives tomorrow morning. Reserve your favorite pieces today so you don't miss out.\n\nWishing you a restful Sunday and a prosperous week ahead! ❤️\n\n#SundayReflection #RestockAlert #{biz_name.replace(' ', '')}",
+                    "visualDirection": "Calm, clean aesthetic Sunday post with restock notification banner.",
+                    "callToAction": "Reply to pre-book restock items."
+                }
+            ]
+
+            selected_fallback_days = [d for d in all_fallback_days if d['day'] in day_schedule]
+            if len(selected_fallback_days) < num_days:
+                selected_fallback_days = all_fallback_days[:num_days]
+
             return Response({
                 "weekStartDate": "This Week",
                 "campaignGoal": goal,
-                "days": [
-                    {
-                        "day": "Monday",
-                        "pillar": "Motivation & Purpose",
-                        "format": "Single Image + Inspiring Caption",
-                        "headline": "Start Strong: Excellence Is Our Standard! ✨",
-                        "postIdea": f"Happy New Week! 🚀 At {biz_name}, we believe in giving your best every single day. Whether you're building a business or pursuing your dreams, consistency is key. We are geared up to serve you this week with top-grade quality and fast nationwide dispatch.\n\n💬 Drop a '🔥' in the comments if you're ready to win this week!\n\n#MondayMotivation #{biz_name.replace(' ', '')} #NaijaHustle #Excellence",
-                        "visualDirection": "High-contrast branded graphic with bold inspirational quote and product badge in the corner.",
-                        "callToAction": "Drop a comment and share your goals for the week!"
-                    },
-                    {
-                        "day": "Tuesday",
-                        "pillar": "Product Spotlight & Value",
-                        "format": "Carousel (5 Slides) / Product Demo",
-                        "headline": "Why Settle For Less When You Can Have The Best? 💎",
-                        "postIdea": f"Swipe through to see what makes our top collection stand out! ✨\n\n• 100% Genuine, Verified Quality\n• Built for Maximum Durability\n• Fast Doorstep Delivery Across Nigeria\n\n📲 Ready to order? Tap the link in our bio or send us a WhatsApp DM right away!",
-                        "visualDirection": "5-slide carousel showing detailed product angles, feature callouts, and customer unboxing.",
-                        "callToAction": "WhatsApp DM or bio link to secure your order."
-                    },
-                    {
-                        "day": "Wednesday",
-                        "pillar": "Customer Reviews & Social Proof",
-                        "format": "Story Sequence + Feed Testimonial",
-                        "headline": "Real Feedback From Real Nigerian Customers ⭐️⭐️⭐️⭐️⭐️",
-                        "postIdea": f"Nothing beats the joy of receiving feedback like this! 🙌 'The delivery was fast and the quality is even better than expected.' Thank you for trusting {biz_name}. Your satisfaction is our priority.\n\n📦 We are dispatching new orders today! Send a DM to join our happy customer family.",
-                        "visualDirection": "Clean graphic displaying a 5-star customer WhatsApp review screenshot with product photo in background.",
-                        "callToAction": "Send a DM to get yours dispatched today."
-                    },
-                    {
-                        "day": "Thursday",
-                        "pillar": "Behind-The-Scenes & Packaging",
-                        "format": "Reel / Short Video (30s)",
-                        "headline": "How We Package & Dispatch Your Orders Safely 📦",
-                        "postIdea": f"Ever wondered what happens after you tap 'Order'? 👀 Here is a quick look at our meticulous packaging process to ensure every item arrives safe and intact via nationwide waybill!\n\n⚡ Next dispatch leaves today at 2 PM. WhatsApp us to catch today's batch!",
-                        "visualDirection": "Time-lapse or aesthetic video showing neat order packaging, labeling, and thank-you notes.",
-                        "callToAction": "Order before 2 PM for same-day dispatch."
-                    },
-                    {
-                        "day": "Friday",
-                        "pillar": "Weekend Flash Sale & Urgency",
-                        "format": "Flyer Graphic + WhatsApp Status Blast",
-                        "headline": "Weekend Flash Sale: Don't Miss Out! 🔥",
-                        "postIdea": f"Weekend is here and we are dropping a special 48-hour flash offer on our fast-moving items! 🚨\n\n⚡ Enjoy exclusive bundle pricing when you order today.\n🔒 Limited stock remaining for this batch.\n\n📲 Tap the link in our bio or reply 'FLASH' on WhatsApp to claim your discount!",
-                        "visualDirection": "Vibrant promotional flyer with '48-HR FLASH SALE' badge and countdown timer sticker on stories.",
-                        "callToAction": "Reply 'FLASH' on WhatsApp to unlock discount."
-                    },
-                    {
-                        "day": "Saturday",
-                        "pillar": "Lifestyle Integration & Tips",
-                        "format": "Single Photo / User Spotlight",
-                        "headline": "Elevate Your Weekend Routine ✨",
-                        "postIdea": f"How are you spending your Saturday? Whether relaxing at home or attending an event, {biz_name} has you covered. Quality and style should never be complicated.\n\n✨ Tag someone who needs this in their life!",
-                        "visualDirection": "Lifestyle photo showing the product in practical, aesthetic real-world use.",
-                        "callToAction": "Tag a friend in the comments."
-                    },
-                    {
-                        "day": "Sunday",
-                        "pillar": "Reflection & Restock Announcement",
-                        "format": "WhatsApp Status Poll & Story Wrap-up",
-                        "headline": "Wrapping Up The Week & Restock Alert! 🔔",
-                        "postIdea": f"Thank you for an incredible week of orders! 🙏 Quick reminder: our new batch restock arrives tomorrow morning. Reserve your favorite pieces today so you don't miss out.\n\nWishing you a restful Sunday and a prosperous week ahead! ❤️",
-                        "visualDirection": "Calm, clean aesthetic Sunday post with restock notification banner.",
-                        "callToAction": "Reply to pre-book restock items."
-                    }
-                ]
+                "postingFrequency": freq_desc,
+                "days": selected_fallback_days
             })
 
 class GenerateMarketingVideoView(views.APIView):
