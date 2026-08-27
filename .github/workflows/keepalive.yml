@@ -2,8 +2,8 @@ name: Keep-Alive Supabase Ping
 
 on:
   schedule:
-    # Runs every 12 hours to ensure Supabase database never pauses due to inactivity
-    - cron: '0 */12 * * *'
+    # Runs every 6 hours to ensure Supabase database never pauses due to inactivity
+    - cron: '0 */6 * * *'
   workflow_dispatch: # Allows manual trigger anytime from GitHub Actions tab
 
 jobs:
@@ -12,4 +12,8 @@ jobs:
     steps:
       - name: Ping SmartBiz Backend Database Health Endpoint
         run: |
-          curl -s -X GET "https://smartbiz-coach.onrender.com/health/" | grep -q "connected" && echo "Supabase database ping successful!" || echo "Ping completed."
+          echo "Pinging primary API..."
+          curl -s -X GET "https://api.smartbizcoach.com.ng/health/" || true
+          echo "Pinging fallback domain..."
+          curl -s -X GET "https://smartbiz-coach.onrender.com/health/" || true
+          echo "Supabase keep-alive ping sequence completed!"
