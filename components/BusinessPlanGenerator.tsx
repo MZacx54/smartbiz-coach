@@ -203,17 +203,26 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     doc.setDrawColor(203, 213, 225);
     doc.line(35, 140, 175, 140);
 
+    // -------------------------------------------------------------
+    // Content Processing Engine
+    // -------------------------------------------------------------
+    const cleanTextForPDF = (text: string) => {
+      if (!text) return "";
+      let clean = text.replace(/[₦]|[â‚¦]|[\u20A6]|[\u00A6]/g, 'NGN ');
+      return clean;
+    };
+
     const metaLeft = 35;
     let metaY = 152;
     const addMetaRow = (label: string, value: string) => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(71, 85, 105); // Slate-600
-      doc.text(label, metaLeft, metaY);
+      doc.text(cleanTextForPDF(label), metaLeft, metaY);
       
       doc.setFont("helvetica", "normal");
       doc.setTextColor(15, 23, 42); // Slate-900
-      doc.text(value, metaLeft + 55, metaY);
+      doc.text(cleanTextForPDF(value), metaLeft + 55, metaY);
       metaY += 10;
     };
 
@@ -231,15 +240,6 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     doc.setFontSize(8.5);
     doc.setTextColor(148, 163, 184); // Slate-400
     doc.text("SmartBiz Coach • Verified MSME Enterprise Planning System", 105, 280, { align: "center" });
-    
-    // -------------------------------------------------------------
-    // Content Processing Engine
-    // -------------------------------------------------------------
-    const cleanTextForPDF = (text: string) => {
-      if (!text) return "";
-      let clean = text.replace(/[₦]|[â‚¦]/g, 'NGN ');
-      return clean;
-    };
 
     const sections = [
       { num: "01", title: "Executive Summary & Pitch Dossier", content: cleanTextForPDF(editablePlan.executiveSummary) },
@@ -254,7 +254,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     const margin = 20;
     const pageWidth = 210;
     const contentWidth = 170;
-    const maxY = 270;
+    const maxY = 276;
     let pageCount = 1;
 
     sections.forEach((sec) => {
@@ -266,24 +266,24 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184); // Slate-400
-      doc.text(`${name.toUpperCase()} • STRATEGIC BUSINESS PLAN`, margin, 15);
+      doc.text(`${cleanTextForPDF(name).toUpperCase()} • STRATEGIC BUSINESS PLAN`, margin, 15);
       doc.text("CONFIDENTIAL", pageWidth - margin, 15, { align: "right" });
       doc.setDrawColor(226, 232, 240);
       doc.line(margin, 18, pageWidth - margin, 18);
 
       // Section Banner Box
       doc.setFillColor(241, 245, 249); // Slate-100
-      doc.roundedRect(margin, y, contentWidth, 14, 2, 2, 'F');
+      doc.roundedRect(margin, y, contentWidth, 13, 2, 2, 'F');
       
       doc.setFillColor(30, 58, 138); // Navy left indicator
-      doc.roundedRect(margin, y, 4, 14, 1, 1, 'F');
+      doc.roundedRect(margin, y, 4, 13, 1, 1, 'F');
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
+      doc.setFontSize(11.5);
       doc.setTextColor(30, 58, 138);
-      doc.text(`${sec.num}. ${sec.title.toUpperCase()}`, margin + 8, y + 9.5);
+      doc.text(`${sec.num}. ${sec.title.toUpperCase()}`, margin + 8, y + 9);
       
-      y += 22;
+      y += 20;
 
       // Section Content Parsing (Handling subheadings, tables, and paragraphs)
       const rawLines = sec.content.split('\n');
@@ -299,7 +299,12 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       for (let i = 0; i < rawLines.length; i++) {
         let line = rawLines[i].trim();
         if (!line) {
-          y += 3.5;
+          y += 2.5;
+          continue;
+        }
+
+        // Filter out markdown table divider lines (e.g. |---|---| or |---|---|---|>)
+        if (/^\|?[\s\-:|<>+]+\|?$/.test(line) || (line.startsWith('|') && line.includes('---')) || line.includes('---|')) {
           continue;
         }
 
@@ -314,7 +319,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
           doc.setFont("helvetica", "normal");
           doc.setFontSize(8);
           doc.setTextColor(148, 163, 184);
-          doc.text(`${name.toUpperCase()} • STRATEGIC BUSINESS PLAN (Cont.)`, margin, 15);
+          doc.text(`${cleanTextForPDF(name).toUpperCase()} • STRATEGIC BUSINESS PLAN (Cont.)`, margin, 15);
           doc.setDrawColor(226, 232, 240);
           doc.line(margin, 18, pageWidth - margin, 18);
         }
@@ -324,30 +329,27 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
                              (line.startsWith('**') && line.endsWith('**') && line.length < 60);
 
         if (isSubheading) {
-          y += 3;
+          y += 2.5;
           let headingText = line.replace(/###|\*\*/g, '').trim();
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(10.5);
+          doc.setFontSize(10);
           doc.setTextColor(30, 58, 138); // Navy Blue
           
           const splitH = doc.splitTextToSize(headingText, contentWidth);
           splitH.forEach((hLine: string) => {
             doc.text(hLine, margin, y);
-            y += 5.5;
+            y += 5;
           });
-          y += 1;
+          y += 0.5;
           continue;
         }
 
         // 2. Detect Markdown Table Rows (e.g. | Col 1 | Col 2 |)
-        if (line.startsWith('|') && line.endsWith('|')) {
-          // Skip divider rows (|---|---|)
-          if (line.includes('---') || line.includes('-:-')) continue;
-
+        if (line.startsWith('|') && line.includes('|')) {
           const cols = line.split('|').map(c => c.trim().replace(/\*\*/g, '')).filter(c => c !== '');
           if (cols.length >= 2) {
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(9.5);
+            doc.setFontSize(9);
             doc.setTextColor(51, 65, 85); // Slate-700
             
             const col1 = cols[0];
@@ -362,11 +364,11 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
               if (vIdx === 0) {
                 doc.text(vLine, margin + 45, y);
               } else {
-                y += 4.5;
+                y += 4;
                 doc.text(vLine, margin + 45, y);
               }
             });
-            y += 5;
+            y += 4.5;
             continue;
           }
         }
@@ -375,7 +377,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
         if (line.startsWith('- ') || line.startsWith('• ') || /^\d+\.\s/.test(line)) {
           let bulletText = line.replace(/^[-•]\s*/, '').replace(/\*\*/g, '');
           doc.setFont("helvetica", "normal");
-          doc.setFontSize(9.5);
+          doc.setFontSize(9);
           doc.setTextColor(51, 65, 85); // Slate-700
           
           const splitBullet = doc.splitTextToSize(`• ${bulletText}`, contentWidth - 4);
@@ -387,7 +389,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
               y = 28;
             }
             doc.text(bLine, margin + 3, y);
-            y += 5;
+            y += 4.5;
           });
           continue;
         }
@@ -395,7 +397,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
         // 4. Standard Paragraph Text
         const cleanParagraph = line.replace(/\*\*/g, '');
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(9.5);
+        doc.setFontSize(9);
         doc.setTextColor(51, 65, 85); // Slate-700
         
         const splitText = doc.splitTextToSize(cleanParagraph, contentWidth);
@@ -407,9 +409,9 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
             y = 28;
           }
           doc.text(pLine, margin, y);
-          y += 5;
+          y += 4.5;
         });
-        y += 2;
+        y += 1.5;
       }
 
       // Render footer for last page of section
