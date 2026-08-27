@@ -11,9 +11,10 @@ class GenerateBusinessPlanView(views.APIView):
         name = request.data.get('businessName') or request.data.get('business_name') or request.data.get('name') or getattr(request.user, 'business_name', '') or 'SmartBiz Enterprise'
         niche = request.data.get('niche') or 'Commercial MSME'
         details = request.data.get('details') or ''
-        capital = request.data.get('startupCapital') or request.data.get('capital') or '₦500,000 - ₦2,000,000'
+        capital = request.data.get('startupCapital') or request.data.get('capital') or '₦1,000,000 - ₦5,000,000'
         employees = request.data.get('employeesCount') or request.data.get('employees') or '1-3 employees'
         revenue_model = request.data.get('revenueModel') or request.data.get('revenue_model') or 'Direct retail & service sales'
+        location = request.data.get('location') or getattr(request.user, 'location', 'Lagos, Nigeria')
 
         from brand.models import BrandIdentity
         # Retrieve BrandIdentity to enrich prompt with user's specific brand settings
@@ -22,6 +23,7 @@ class GenerateBusinessPlanView(views.APIView):
             brand = BrandIdentity.objects.get(user=request.user)
             brand_context = f"""
             Brand Profile Context:
+            - Business Location: {location}
             - Target Audience: {brand.target_audience}
             - Brand Voice/Vibe: {brand.brand_voice} (Style: {brand.vibe})
             - Elevator Pitch: {brand.elevator_pitch}
@@ -29,29 +31,40 @@ class GenerateBusinessPlanView(views.APIView):
             - Taglines: {", ".join(brand.taglines) if isinstance(brand.taglines, list) else ""}
             """
         except Exception:
-            brand_context = ""
+            brand_context = f"Business Location: {location}"
 
-        prompt = f"""Write a comprehensive, investor-ready, bank-quality business plan for "{name}" in the "{niche}" industry in Nigeria.
-        {brand_context}
-        Specific details: {details}
-        Startup Capital: {capital}
-        Number of Employees: {employees}
-        Revenue Model/Source: {revenue_model}
-        Ensure you focus heavily on the Nigerian economic climate (inflation, power challenges, target audience purchasing power, and local marketing strategies like WhatsApp marketing/referrals).
+        prompt = f"""You are a senior investment banker and top-tier management consultant specializing in Nigerian MSMEs, bank lending (Bank of Industry, Commercial Banks), and competitive African grant programs (iDICE, Tony Elumelu Foundation, LSETF, SMEDAN).
 
-        Return a JSON object matching this structure EXACTLY:
-        {{
-            "executiveSummary": "A detailed executive summary covering the business description, value proposition, and vision.",
-            "marketAnalysis": "A deep analysis of the target market in Nigeria, competitor landscape, and estimation of TAM, SAM, SOM.",
-            "marketingStrategy": "Actionable marketing strategy focusing on Nigerian channels (WhatsApp, Instagram, local markets, referrals).",
-            "financialProjection": "A 12-month financial projection in Nigerian Naira (NGN), showing startup costs, estimated monthly revenue, gross margin, and break-even point.",
-            "operationalPlan": "Details on day-to-day operations, sourcing suppliers/materials, logistics, power/generator alternatives, and staffing.",
-            "swotAnalysis": "A thorough SWOT Analysis table formatted as markdown listing Strengths, Weaknesses, Opportunities, and Threats for this business model in Nigeria.",
-            "riskMitigation": "Risk mitigation plan tackling key Nigerian economic factors (e.g. diesel/fuel cost rises, currency devaluation, transport inflation)."
-        }}
-        
-        CRITICAL: The output MUST be a valid JSON dictionary. Inside the text and markdown string values, NEVER use raw double quotes ("). If you need quotes inside the text, use single quotes (') instead to avoid breaking the JSON format.
-        """
+Write an EXHAUSTIVE, HIGHLY PROFESSIONAL, INVESTOR-GRADE, BANK-READY Business Plan for "{name}" operating in the "{niche}" industry in {location}, Nigeria.
+
+Enterprise Parameters:
+- Business Name: {name}
+- Industry / Niche: {niche}
+- Operating Base: {location}
+- Capital Base / Funding Target: {capital}
+- Staffing Structure: {employees}
+- Core Revenue Model: {revenue_model}
+- Specific Business Focus & Unique Edge: {details}
+{brand_context}
+
+CRITICAL QUALITY STANDARDS:
+1. Every section MUST be exhaustive, multi-paragraph, deeply analytical, and formatted with structured numerical sub-headings (e.g. 1.1, 1.2, 1.3).
+2. Do NOT write brief summaries. Provide rich, detailed explanations, Nigerian market statistics, realistic monetary figures in Nigerian Naira (₦ / NGN), and concrete operational procedures.
+3. Incorporate real Nigerian operating dynamics: inflation shielding, FX buffer strategies, solar/inverter power continuity, WhatsApp community social commerce, and CAC/TIN regulatory compliance.
+
+Return a valid JSON object matching this structure EXACTLY:
+{{
+    "executiveSummary": "Comprehensive Executive Summary containing:\\n1.1 Enterprise Overview & Problem Statement\\n1.2 The Innovation & Unique Value Proposition (UVP)\\n1.3 Target Market & Demographic Potential\\n1.4 Revenue Model & Commercial Engine\\n1.5 Capital Requirement & Fund Allocation\\n1.6 3-Year Strategic Growth & Financial Summary",
+    "marketAnalysis": "Exhaustive Market Analysis containing:\\n2.1 Nigerian Industry Overview & Growth Drivers\\n2.2 Target Customer Personas & Demand Patterns (B2C & B2B)\\n2.3 Market Sizing in Naira (TAM, SAM, SOM estimates)\\n2.4 Competitive Advantage & Competitor Comparison Matrix\\n2.5 Barriers to Entry & Strategic Defensive Moats",
+    "marketingStrategy": "Actionable Marketing & Sales Strategy containing:\\n3.1 Omnichannel Customer Acquisition (WhatsApp Community Commerce, TikTok/Instagram Reels, Micro-influencers, Local B2B)\\n3.2 CAC vs. LTV Economics & Pricing Strategy\\n3.3 Sales Pipeline & Daily Conversion SOPs\\n3.4 Customer Retention, Loyalty Loops & Referral Incentives",
+    "operationalPlan": "Complete Operational & Execution Plan containing:\\n4.1 Daily Operating Workflow & Standard Operating Procedures (SOPs)\\n4.2 Supply Chain Resilience & Direct Wholesale Sourcing (FX Hedging)\\n4.3 Logistics, Dispatch Delivery & Interstate Waybill Partnerships\\n4.4 Power & Infrastructure Resilience (Solar Inverter + Hybrid Fuel Setup for 100% Uptime)\\n4.5 Technology Stack & Automated Digital Operations\\n4.6 Staffing Plan, Key Roles & Governance",
+    "financialProjection": "Detailed 3-Year Financial Model (All figures in NGN) containing:\\n5.1 Startup Capital Expenditure (CAPEX) & Initial Working Capital Table\\n5.2 3-Year Projected Income Statement (Year 1, Year 2, Year 3: Revenue, COGS, Gross Profit, OPEX, EBITDA, Net Profit)\\n5.3 Monthly Cash Flow & Working Capital Runway (Year 1 Month-by-Month)\\n5.4 Break-Even Analysis & Margin Sensitivities\\n5.5 Return on Investment (ROI) & Payback Horizon for Grant Providers & Investors",
+    "swotAnalysis": "Comprehensive 4-Quadrant SWOT Matrix containing:\\n6.1 In-Depth Strengths (Internal Core Competencies)\\n6.2 Weaknesses & Internal Mitigation Measures\\n6.3 Market Opportunities & Growth Vectors\\n6.4 External Macroeconomic Threats & Defensive Strategy\\n6.5 Strategic Action Matrix (Markdown Table)",
+    "riskMitigation": "Robust Risk Mitigation & Institutional Compliance containing:\\n7.1 Inflation & Currency Devaluation Shielding Protocol\\n7.2 Regulatory & Tax Compliance Roadmap (CAC, TIN, FIRS, State IRS)\\n7.3 Supply Disruption & Critical Inventory Buffer Strategy\\n7.4 Business Continuity & Emergency Protocols\\n7.5 Grant & Institutional Funding Alignment (iDICE, BOI, LSETF, TEF readiness)"
+}}
+
+CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NEVER use unescaped double quotes (\"). If you need quotes inside the text, use single quotes (') instead.
+"""
         
         try:
             plan = gemini_utils.generate_json_content(prompt)
@@ -67,20 +80,218 @@ class GenerateBusinessPlanView(views.APIView):
                     'swotAnalysis': plan.get('swotAnalysis') or plan.get('swot_analysis') or plan.get('SwotAnalysis') or "",
                     'riskMitigation': plan.get('riskMitigation') or plan.get('risk_mitigation') or plan.get('RiskMitigation') or ""
                 }
-                if normalized_plan['executiveSummary'] or normalized_plan['marketAnalysis']:
+                if len(normalized_plan['executiveSummary']) > 150 and len(normalized_plan['marketAnalysis']) > 150:
                     return Response(normalized_plan)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Business plan generation error: {e}")
 
-        # Robust context-tailored fallback plan guaranteed to succeed
+        # Exhaustive investor-grade fallback plan tailored with deep Nigerian economic modeling
         fallback_plan = {
-            "executiveSummary": f"{name} is a high-potential enterprise operating in Nigeria's {niche} sector. Focused on solving everyday customer demands with high quality and rapid delivery, {name} leverages agile operations and direct digital channels (WhatsApp, social commerce, and local networks) to achieve sustainable profitability with an initial estimated capitalization of {capital}.",
-            "marketAnalysis": f"The Nigerian {niche} market demonstrates strong organic growth driven by urbanization, expanding middle-class consumption, and high mobile connectivity. {name} targets value-conscious individuals and business clients seeking reliable, premium service delivery. Competitors exist primarily as informal operators, giving {name} a significant competitive advantage through standardized branding, verified payment options, and responsive customer care.",
-            "marketingStrategy": f"1. Direct WhatsApp Community Commerce: Daily status product updates, direct order checkout, and dedicated client follow-ups.\n2. Social Proof & Video Marketing: Short-form TikTok & Instagram Reels highlighting customer testimonials and unboxing/service demos.\n3. Referral & Loyalty Loops: Rewarding repeat customers with discounts and bundled product offers.\n4. Local Market Penetration: Targeted flyer campaigns and strategic B2B partnerships in commercial hubs.",
-            "financialProjection": f"12-Month Financial Projection (Nigerian Naira - NGN):\n- Initial Working Capital Base: {capital}\n- Target Monthly Revenue (Months 1-3): ₦800,000 - ₦1,500,000\n- Target Monthly Revenue (Months 4-12): ₦2,000,000 - ₦5,000,000\n- Gross Profit Margin: 35% - 50%\n- Operating Expenses (Rent, Logistics, Power, Staff): ~₦400,000 - ₦800,000/month\n- Projected Break-Even Point: Month 4\n- Year 1 Estimated Net Profit: ₦6,500,000",
-            "operationalPlan": f"Staffing Structure: Operated by an agile team of {employees}.\n- Supply Chain: Direct sourcing from verified local wholesalers and manufacturers to mitigate FX price shocks.\n- Power Continuity: Solar inverter installation backed with a low-fuel generator to ensure 100% operational uptime during grid outages.\n- Fulfillment: Partnership with top dispatch courier networks for same-day local delivery and interstate transit.",
-            "swotAnalysis": f"### SWOT Analysis for {name}\n\n| Category | Insights |\n| :--- | :--- |\n| **Strengths** | Direct customer relationships, low fixed overheads, agile operations, fast digital response time. |\n| **Weaknesses** | Brand awareness in early months, reliance on third-party dispatch couriers for delivery. |\n| **Opportunities** | Untapped wholesale/B2B bulk orders, regional distribution across Nigerian states, digital marketplace listing. |\n| **Threats** | Macroeconomic inflation, fuel price volatility, foreign exchange rate instability on raw materials. |",
-            "riskMitigation": "1. Price Buffer Strategy: Maintain dynamic pricing models with a 10-15% buffer to accommodate supplier cost fluctuations.\n2. Fuel Cost Management: Transitioning high-draw electrical equipment to solar inverter power systems.\n3. Working Capital Protection: Operating strict inventory control with upfront deposits on customized/large volume orders."
+            "executiveSummary": f"""1.1 ENTERPRISE OVERVIEW & PROBLEM STATEMENT
+{name} is a high-growth commercial enterprise established to capture strong, unmet market demand within Nigeria's burgeoning {niche} sector. In today's volatile economic landscape, consumers and commercial buyers face persistent pain points: unpredictable product quality, opaque pricing structures, unreliable fulfillment timelines, and poor customer service. {name} directly solves these vulnerabilities by institutionalizing standardized procurement, transparent tiered pricing, rapid digital fulfillment, and dedicated relationship management.
+
+1.2 THE INNOVATION & UNIQUE VALUE PROPOSITION (UVP)
+Operating from {location}, {name} combines direct-to-consumer digital channels with robust local fulfillment networks. Unlike traditional informal market traders, {name} delivers:
+- Verified product authenticity and batch-level quality control.
+- Seamless WhatsApp-first social commerce with instant catalog browsing, real-time inventory visibility, and digital invoicing.
+- High-efficiency dispatch and waybill fulfillment with same-day local delivery and 48-hour nationwide transit.
+- Flexible payment reconciliation via instant bank transfer and verified escrow gateways.
+
+1.3 TARGET MARKET & DEMOGRAPHIC POTENTIAL
+The enterprise targets two primary revenue cohorts:
+1. Urban Middle-Class Consumers & Professionals: Seeking premium, reliable goods with zero hassle.
+2. B2B Commercial Buyers & Retail Resellers: Requiring steady wholesale replenishment with guaranteed margins and predictable delivery schedules.
+
+1.4 BUSINESS MODEL & COMMERCIAL REVENUE DRIVERS
+{name} operates a multi-stream revenue model centered around {revenue_model}. Core monetization channels include:
+- Direct Retail Sales: High-margin retail commerce driven by social proof and digital marketing.
+- Wholesale & Bulk Distribution: Volume-discounted orders providing predictable baseline cash flow.
+- Value-Added Service & Custom Packaging: Premium customized orders generating incremental gross margins.
+
+1.5 CAPITAL REQUIREMENT & RESOURCE ALLOCATION
+To scale operations, expand inventory reserves, and solidify market leadership, {name} is deployed with an initial capitalization base of {capital}. Capital is allocated rigorously across four strategic pillars:
+- 45% Working Capital & Inventory Stocking: Sourcing high-demand inventory directly from tier-1 manufacturers to secure wholesale volume discounts.
+- 25% Logistics, Power & Operational Infrastructure: Installing a hybrid solar inverter system (to eliminate diesel generator downtime) and establishing dispatch logistics hubs.
+- 20% Omnichannel Marketing & Customer Acquisition: Scaling hyper-targeted social media campaigns, influencer partnerships, and localized activations.
+- 10% Regulatory Compliance, Quality Assurance & Emergency Buffer: Maintaining CAC, TIN, and operational contingency reserves.
+
+1.6 3-YEAR STRATEGIC GROWTH & FINANCIAL SUMMARY
+Over the next 36 months, {name} is projected to achieve:
+- Year 1 Gross Revenue: ₦18,500,000 (Net Margin: 28%)
+- Year 2 Gross Revenue: ₦42,000,000 (Net Margin: 33%)
+- Year 3 Gross Revenue: ₦85,000,000 (Net Margin: 36%)
+- Break-even milestone achieved by Month 4 of operations, with full capital payback anticipated within 14 months.""",
+
+            "marketAnalysis": f"""2.1 NIGERIAN SECTOR OVERVIEW & MACRO DYNAMICS
+Nigeria's {niche} industry is undergoing a structural transition driven by rapid urbanization, an expanding tech-savvy youth demographic, and widespread smartphone penetration exceeding 85% in major urban commercial centers. Despite macroeconomic headwinds such as inflation and foreign exchange volatility, consumer spending on essential and lifestyle goods remains resilient, with buyers increasingly shifting toward trusted, digitally enabled merchants who guarantee quality and prompt delivery.
+
+2.2 TARGET CUSTOMER PERSONAS & DEMOGRAPHICS
+{name} has segmented its market into three distinct buyer personas:
+1. 'The Digital Professional' (Ages 24–45, 60% of volume): Urban salaried professionals and tech workers who value convenience, speed, and trusted digital communication. They prioritize effortless ordering via WhatsApp and fast door-to-door delivery.
+2. 'The Value-Seeking Family Shopper' (Ages 30–55, 25% of volume): Household decision-makers focused on durability, transparent pricing, and bulk discount incentives.
+3. 'The SME / Corporate Reseller' (Commercial accounts, 15% of volume): Small boutique owners and business operators who require reliable wholesale supply, consistent quality, and formal tax/invoicing documentation.
+
+2.3 MARKET SIZING (TAM, SAM, SOM) IN NIGERIAN NAIRA
+- Total Addressable Market (TAM): Estimated at ₦450 Billion nationally across Nigeria's broader {niche} ecosystem.
+- Serviceable Available Market (SAM): Estimated at ₦45 Billion, encompassing accessible urban markets in Lagos, Abuja, Port Harcourt, Kano, and Ibadan with active logistics networks.
+- Serviceable Obtainable Market (SOM): Targeted at ₦120 Million over the next 3 years by capturing a dominant 0.25% market share in primary operating zones through superior branding and customer retention.
+
+2.4 COMPETITIVE LANDSCAPE & ADVANTAGE MATRIX
+The local market is currently characterized by three tiers of competition:
+- Informal Open-Market Traders: Low prices but plagued by inconsistent quality, zero after-sales support, and manual, friction-heavy payment methods.
+- Large Retail Conglomerates: Established brand recognition but hindered by high overheads, slow customer response times, and premium price markups.
+- {name}'s Competitive Edge: Combines the agility and competitive pricing of independent traders with the institutional reliability, standardized packaging, digital speed, and professional customer care of major corporations.
+
+2.5 ENTRY BARRIERS & DEFENSIVE MOATS
+- Direct Supplier Relationships: Securing preferential wholesale pricing directly from factory importers and primary producers.
+- Proprietary Customer Community: Building an engaged WhatsApp and social media audience with high switching costs driven by personalized service and loyalty rewards.
+- Agile Digital Infrastructure: Utilizing automated order capture, debtor tracking, and inventory sync to operate at 40% lower overhead than brick-and-mortar competitors.""",
+
+            "marketingStrategy": f"""3.1 OMNICHANNEL CUSTOMER ACQUISITION STRATEGY
+{name} executes a multi-pronged digital and localized marketing framework designed to maximize organic reach and maintain low customer acquisition costs:
+1. WhatsApp Community Commerce: Daily curated status updates, flash sales, private VIP broadcast groups, and 1-on-1 personalized follow-ups to turn social contacts into repeat buyers.
+2. High-Converting Short-Form Video (TikTok & Instagram Reels): Product unboxings, customer testimonials, behind-the-scenes quality checks, and educational lifestyle content designed for viral organic discovery.
+3. Strategic Influencer & Micro-Creator Endorsements: Collaborating with trusted niche creators in {location} to drive authentic social proof and instant credibility.
+4. Local B2B Outreach & Commercial Activations: Direct distribution of branded flyers, corporate catalogs, and introductory trial packages in high-traffic business districts.
+
+3.2 UNIT ECONOMICS & CAC VS. LTV OPTIMIZATION
+- Estimated Customer Acquisition Cost (CAC): ₦1,200 – ₦2,500 per paying customer via targeted digital channels.
+- Average Order Value (AOV): ₦18,500 – ₦45,000 across product categories.
+- Projected Customer Lifetime Value (LTV): ₦125,000 over 12 months based on a conservative 4.2x annual repurchase frequency.
+- LTV-to-CAC Ratio: 50:1, demonstrating outstanding marketing ROI and highly profitable unit economics.
+
+3.3 CONVERSION FUNNEL & DAILY SALES PIPELINE
+- Stage 1 (Awareness): Targeted reels, paid meta ads, and word-of-mouth driving traffic to the digital storefront.
+- Stage 2 (Engagement): Automated instant WhatsApp greeting with product catalogs, pricing tiers, and active promotional vouchers.
+- Stage 3 (Checkout): Seamless invoice generation with verified bank payment details and automated order confirmation.
+- Stage 4 (Fulfillment & Review): Dispatch tracking notification followed by an automated review/feedback request within 48 hours.
+
+3.4 CUSTOMER RETENTION, LOYALTY LOOPS & REFERRALS
+- 'Refer-a-Friend' Incentive: Providing a 5% discount on the referrer's next purchase and a ₦1,000 voucher for new referred buyers.
+- VIP Priority Access: Exclusive first-look access to new inventory arrivals and seasonal clearance discounts for repeat customers.
+- Proactive Relationship Management: Automated birthday and milestone greetings coupled with customized restock reminders.""",
+
+            "operationalPlan": f"""4.1 DAILY OPERATIONAL WORKFLOW & STANDARD OPERATING PROCEDURES
+{name} operates with streamlined, documented SOPs to ensure flawless daily execution:
+- Morning Shift (08:00 - 10:00): Inventory audit, reconciliation of incoming stock, and review of overnight digital orders.
+- Mid-Day Operations (10:00 - 15:00): Order processing, packaging in branded protective materials, quality inspection, and dispatch handover to courier partners.
+- Afternoon/Evening (15:00 - 18:00): Customer support, delivery confirmation tracking, debtor ledger reconciliation, and daily financial balancing.
+
+4.2 SUPPLY CHAIN RESILIENCE & SOURCING STRATEGY
+To mitigate inflation and foreign exchange shocks, {name} maintains a diversified dual-sourcing model:
+- Primary Tier: Long-term agreements with verified primary importers and local manufacturers with guaranteed 30-day price-lock commitments.
+- Secondary Tier: Pre-vetted local distributor network in major wholesale commercial centers for rapid emergency restocks.
+- Buffer Inventory: Maintaining a minimum 21-day safety stock on high-velocity SKUs to prevent stockouts during supplier lead-time spikes.
+
+4.3 LOGISTICS, FULFILLMENT & WAYBILL PARTNERSHIPS
+- Local Intra-City Deliveries: Exclusive SLAs with dedicated dispatch courier networks in {location} ensuring 2- to 4-hour express fulfillment.
+- Interstate Transit: Strategic partnerships with established logistics providers (e.g., GIG Logistics, Speedaf, Peace Mass Transit) offering trackable waybill services across all 36 Nigerian states.
+
+4.4 POWER & INFRASTRUCTURE CONTINUITY (100% UPTIME)
+To eliminate downtime caused by national grid instability:
+- Primary Power Backup: 3.5kVA Pure Sine Wave Solar Inverter installation equipped with lithium-ion batteries powering all computers, routers, lighting, and communication devices.
+- Secondary Backup: Low-fuel consumption generator for peak machinery operation during extended rainy spells.
+- Internet Redundancy: Dual high-speed 4G/5G mobile routers (MTN + Airtel) ensuring zero disruption to digital orders and customer messaging.
+
+4.5 STAFFING STRUCTURE & KEY PERSONNEL
+Operated by an agile team of {employees}:
+- Managing Director / Founder: Strategic direction, supplier negotiations, marketing campaigns, and financial oversight.
+- Operations & Fulfillment Lead: Packaging, inventory management, courier coordination, and quality control.
+- Customer Care & Sales Associate: WhatsApp community management, order entry, and after-sales support.""",
+
+            "financialProjection": f"""5.1 STARTUP CAPITAL EXPENDITURE (CAPEX) & WORKING CAPITAL
+Total Capital Base: {capital}
+
+| Expenditure Item | Allocation (₦) | Percentage | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Initial Inventory Stocking** | ₦2,250,000 | 45% | Direct wholesale inventory procurement from Tier-1 suppliers |
+| **Logistics & Packaging Setup** | ₦600,000 | 12% | Branded packaging, thermal barcode printers, weighing scales |
+| **Solar Inverter & Power System** | ₦650,000 | 13% | 3.5kVA Solar Inverter + Lithium Battery for 24/7 uptime |
+| **Marketing & Launch Campaigns** | ₦750,000 | 15% | Meta ads, TikTok influencer activations, launch promotions |
+| **CAC Registration & Compliance** | ₦250,000 | 5% | CAC incorporation, TIN, corporate account setup |
+| **Contingency Operating Reserve** | ₦500,000 | 10% | Emergency cash runway & working capital buffer |
+| **TOTAL INITIAL DEPLOYMENT** | **₦5,000,000** | **100%** | **Comprehensive Launch & Growth Capitalization** |
+
+5.2 3-YEAR PROJECTED INCOME STATEMENT (NGN)
+- **Year 1**:
+  - Gross Revenue: ₦18,500,000
+  - Cost of Goods Sold (COGS - 55%): (₦10,175,000)
+  - **Gross Profit (45%)**: ₦8,325,000
+  - Operating Expenses (Rent, Logistics, Power, Staff, Ads): (₦3,145,000)
+  - **Net Profit Before Tax (28%)**: **₦5,180,000**
+- **Year 2**:
+  - Gross Revenue: ₦42,000,000
+  - Cost of Goods Sold (COGS - 52%): (₦21,840,000)
+  - **Gross Profit (48%)**: ₦20,160,000
+  - Operating Expenses: (₦6,300,000)
+  - **Net Profit Before Tax (33%)**: **₦13,860,000**
+- **Year 3**:
+  - Gross Revenue: ₦85,000,000
+  - Cost of Goods Sold (COGS - 50%): (₦42,500,000)
+  - **Gross Profit (50%)**: ₦42,500,000
+  - Operating Expenses: (₦11,900,000)
+  - **Net Profit Before Tax (36%)**: **₦30,600,000**
+
+5.3 MONTHLY CASH FLOW & BREAK-EVEN DYNAMICS
+- Average Monthly Operating Expenses: ~₦260,000 – ₦350,000 in Year 1.
+- Monthly Break-Even Sales Volume: ₦680,000 gross revenue.
+- Projected Break-Even Month: Achieved by Month 4 of commercial operations.
+- Full Capital Payback Period: Estimated at 14 months, providing an outstanding Internal Rate of Return (IRR) exceeding 65%.""",
+
+            "swotAnalysis": f"""6.1 IN-DEPTH SWOT STRATEGIC ANALYSIS FOR {name}
+
+### STRENGTHS (Internal Advantages)
+- Agile Digital Sales Engine: High-converting WhatsApp community commerce and direct social selling with near-zero customer friction.
+- Lean Operational Cost Structure: Operating without bloated retail rent overheads, enabling 15–20% higher net margins than traditional competitors.
+- Uncompromising Quality Control: Direct sourcing protocols ensuring zero counterfeit products and top-tier customer trust.
+- Verified Payment & Invoicing Infrastructure: Seamless digital invoices and instant bank reconciliation building strong commercial credibility.
+
+### WEAKNESSES (Internal Improvement Areas)
+- Early-Stage Brand Awareness: Initial market presence requires aggressive social proof and targeted acquisition campaigns.
+- Reliance on Third-Party Couriers: Potential delivery delays caused by external logistics dispatch partners during peak rainy seasons.
+- Working Capital Constraints on Bulk Stocking: Need to balance rapid stock turnover against bulk purchase volume discounts.
+
+### OPPORTUNITIES (External Market Growth Vectors)
+- B2B Corporate Supply & Wholesale Expansion: Supplying larger retail outlets, corporate offices, and institutional buyers in bulk.
+- Interstate Geographic Scaling: Replicating {location} success across Abuja, Port Harcourt, and regional commerce hubs.
+- Nigerian Grant & MSME Funding Access: Capitalizing on active funding programs (e.g. Bank of Industry, iDICE, LSETF, TEF) to acquire specialized equipment and bulk inventory.
+- Digital Marketplace Dominance: Leveraging ecosystem listings to attract nationwide organic buyers.
+
+### THREATS (External Macroeconomic Risks)
+- Macroeconomic Inflation & Fuel Price Volatility: Escalating transport and delivery costs impacting margins.
+- Foreign Exchange Fluctuation: Rising import replacement costs for raw materials and imported goods.
+- Price Undercutting by Low-Quality Informal Traders: Competitors offering cheap counterfeit substitutes.
+
+6.2 STRATEGIC SWOT ACTION MATRIX
+
+| Strategy Type | Action Plan |
+| :--- | :--- |
+| **SO (Strengths + Opportunities)** | Leverage lean digital operations to bid aggressively on lucrative corporate wholesale contracts and apply for low-interest BOI expansion loans. |
+| **ST (Strengths + Threats)** | Deploy dynamic cost-plus pricing algorithms with a 10–15% inflation cushion to preserve gross margins against sudden supplier price spikes. |
+| **WO (Weaknesses + Opportunities)** | Use grant funding to secure volume-discounted container inventory and establish dedicated dispatch courier partnerships. |
+| **WT (Weaknesses + Threats)** | Implement strict 100% upfront payment policies on customized orders to eliminate bad debts and maintain healthy operating cash flow. |""",
+
+            "riskMitigation": f"""7.1 MACROECONOMIC INFLATION & FX SHIELDING PROTOCOL
+- Dynamic Cost-Plus Pricing Buffer: Adjusting retail and wholesale price lists dynamically with a 10–15% floating margin buffer to absorb sudden supplier increases without eroding profitability.
+- Fast Inventory Velocity: Maintaining a high inventory turnover cycle (<25 days) to ensure cash is never trapped in stagnant stock during inflationary surges.
+- Bulk Pre-Orders: Locking in wholesale prices with upfront supplier deposits prior to anticipated currency devaluations.
+
+7.2 REGULATORY & TAX COMPLIANCE ROADMAP
+- CAC Corporate Registration: Formally registered under the Corporate Affairs Commission (CAC) with active status.
+- Tax Identification Number (TIN): Fully linked with the Federal Inland Revenue Service (FIRS) and state revenue boards to ensure 100% compliance for corporate contracts and grant eligibility.
+- Standard Financial Ledgers: Utilizing SmartBiz audit-ready bookkeeping (invoicing, stock tracking, expense logs) to satisfy bank loan conditions and institutional grant audits.
+
+7.3 SUPPLY CHAIN DISRUPTIONS & INVENTORY PROTECTION
+- Dual-Vendor Redundancy: No single supplier accounts for more than 40% of total procurement, preventing single-point failure bottlenecks.
+- Safe Storage Protocols: Fire-rated, moisture-controlled, and digitally monitored warehouse inventory holding.
+- Strict Debtor Limits: Enforcing strict credit thresholds via Gbege Book debt recovery nudges to keep outstanding receivables under 5% of monthly revenue.
+
+7.4 GRANT & INSTITUTIONAL FUNDING ALIGNMENT
+{name}'s operational and financial structure is directly aligned with top Nigerian intervention funds:
+- **Bank of Industry (BOI) Micro-Enterprise Fund**: Eligible for single-digit concessionary asset financing.
+- **iDICE (Investment in Digital and Creative Enterprises)**: Positioned for tech-enabled digital commerce scaling.
+- **LSETF (Lagos State Employment Trust Fund)**: Tailored for local job creation and micro-expansion capital.
+- **Tony Elumelu Foundation (TEF)**: Structured to meet all seed grant application and mentorship criteria."""
         }
         return Response(fallback_plan)
 
