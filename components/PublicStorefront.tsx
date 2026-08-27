@@ -6,6 +6,7 @@ import { BrandIdentity } from '../types';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { mapDbToBrand } from '../services/brandService';
+import { openPaystackCheckout } from '../services/paystackService';
 
 // Inline SVG replacements for brand icons
 const InstagramIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -372,39 +373,47 @@ const PublicStorefront: React.FC = () => {
     }
 
     const cartTotal = getCartTotal();
-    const rawSubaccount = (products[0]?.paystack_subaccount_code || "").trim();
-    const validSubaccount = (rawSubaccount.startsWith('ACCT_') && !rawSubaccount.startsWith('ACCT_DIR_')) ? rawSubaccount : undefined;
+    const rawSubaccount = (products[0]?.paystack_subaccount_code || brand?.paystack_subaccount_code || (brand as any)?.subaccount_code || "").trim();
 
     try {
-      for (const item of cart) {
-        await api.post('/api/marketplace/leads/', {
-          product: item.product.id,
-          customer_name: checkoutForm.name,
-          customer_contact: checkoutForm.phone,
-          message: `Online Paystack Order:\nQty: ${item.quantity}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`,
-          lead_type: 'ORDER',
-          quoted_price: (parseFloat(item.product.price) * item.quantity).toFixed(2)
-        });
-      }
-    } catch (err) {
-      console.error('Failed to log order lead', err);
-    }
+      toast.loading('Opening secure Paystack checkout...');
+      await openPaystackCheckout({
+        amount: cartTotal,
+        customerName: checkoutForm.name,
+        customerPhone: checkoutForm.phone,
+        customerAddress: checkoutForm.address,
+        orderNotes: checkoutForm.notes,
+        subaccountCode: rawSubaccount,
+        onSuccess: async (res) => {
+          toast.dismiss();
+          toast.success("Payment successful! Transaction Ref: " + res.reference);
+          
+          try {
+            await api.post('/api/marketplace/orders/create/', {
+              items: cart.map(i => ({ productId: i.product.id, price: i.product.price, quantity: i.quantity })),
+              reference: res.reference,
+              total_amount: cartTotal,
+              customer_name: checkoutForm.name,
+              customer_phone: checkoutForm.phone,
+              customer_address: checkoutForm.address,
+              notes: checkoutForm.notes
+            });
+          } catch (err) {
+            console.error('Order lead log notice:', err);
+          }
 
-    let publicKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || (window as any).env?.VITE_PAYSTACK_PUBLIC_KEY || "";
-    
-    if (!publicKey || publicKey === "pk_test_placeholder" || !publicKey.startsWith('pk_')) {
-      try {
-        const configRes = await api.get('/api/marketplace/payout/banks/');
-        if (configRes.data?.paystack_public_key && configRes.data.paystack_public_key.startsWith('pk_')) {
-          publicKey = configRes.data.paystack_public_key;
+          setShowCartModal(false);
+          setCart([]);
+        },
+        onClose: () => {
+          toast.dismiss();
+          toast("Payment window closed.");
         }
-      } catch (e) {
-        console.warn("Public key fetch notice:", e);
-      }
-    }
-
-    if (!publicKey || publicKey === "pk_test_placeholder" || !publicKey.startsWith('pk_')) {
-      toast.error("Online card gateway is currently updating. Redirecting your order to WhatsApp...");
+      });
+    } catch (err: any) {
+      toast.dismiss();
+      console.warn("Paystack checkout notice:", err);
+      toast.error(err?.message || "Card gateway loading error. Redirecting to WhatsApp...");
       
       let orderText = `Hi ${brand.businessName}, I would like to place an online order:\n\n`;
       cart.forEach(item => {
@@ -416,40 +425,6 @@ const PublicStorefront: React.FC = () => {
       setShowCartModal(false);
       setCart([]);
       window.open(`https://wa.me/${brand.whatsapp || brand.phone || ''}?text=${encodeURIComponent(orderText)}`, '_blank');
-      return;
-    }
-
-    const cleanPhone = checkoutForm.phone.replace(/\D/g, '');
-    const customerEmail = (cleanPhone.length >= 7) ? `customer${cleanPhone}@smartbizcoach.com.ng` : `customer${Date.now()}@smartbizcoach.com.ng`;
-
-    // @ts-ignore
-    if (window.PaystackPop) {
-      // @ts-ignore
-      const handler = window.PaystackPop.setup({
-        key: publicKey,
-        email: customerEmail,
-        amount: Math.round(cartTotal * 100),
-        currency: "NGN",
-        subaccount: validSubaccount,
-        metadata: {
-          custom_fields: [
-            { display_name: "Customer Name", variable_name: "customer_name", value: checkoutForm.name },
-            { display_name: "Customer Phone", variable_name: "customer_phone", value: checkoutForm.phone },
-            { display_name: "Delivery Address", variable_name: "delivery_address", value: checkoutForm.address }
-          ]
-        },
-        callback: function (response: any) {
-          toast.success("Payment successful! Transaction Ref: " + response.reference);
-          setShowCartModal(false);
-          setCart([]);
-        },
-        onClose: function () {
-          toast("Payment window closed.");
-        }
-      });
-      handler.openIframe();
-    } else {
-      toast.error("Paystack SDK loading. Please try again or order via WhatsApp.");
     }
   };
 

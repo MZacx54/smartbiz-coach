@@ -69,30 +69,57 @@ class EcosystemAnalyticsView(views.APIView):
         })
 
 class OrderCreateView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         items = request.data.get('items', [])
-        reference = request.data.get('reference')
-        total_amount = request.data.get('total_amount')
+        reference = request.data.get('reference', '')
+        total_amount = request.data.get('total_amount', 0)
+        
+        # Extract rich customer profile details
+        customer_name = (request.data.get('customer_name') or 
+                         (request.user.is_authenticated and (request.user.get_full_name() or request.user.username)) or 
+                         'Customer').strip()
+        customer_contact = (request.data.get('customer_phone') or 
+                            request.data.get('customer_contact') or 
+                            (request.user.is_authenticated and request.user.email) or 
+                            'Direct Buyer').strip()
+        customer_address = (request.data.get('customer_address') or 
+                            request.data.get('delivery_address') or 
+                            'Standard Waybill / Delivery').strip()
+        order_notes = (request.data.get('notes') or '').strip()
         
         leads_created = []
         for item in items:
-            product_id = item.get('productId')
+            product_id = item.get('productId') or item.get('product_id') or item.get('id')
             try:
                 product = Product.objects.get(id=product_id)
+                qty = int(item.get('quantity') or 1)
+                item_price = float(item.get('price') or product.price)
+                
+                # Compose detailed order lead message
+                msg_parts = [
+                    f"🛒 Order Paid & Confirmed (Ref: {reference or 'DIRECT'})",
+                    f"Item: {product.name} (Qty: {qty})",
+                    f"Total: ₦{item_price * qty:,.2f}",
+                    f"Customer: {customer_name} ({customer_contact})",
+                    f"Delivery Address: {customer_address}"
+                ]
+                if order_notes:
+                    msg_parts.append(f"Notes: {order_notes}")
+
                 lead = Lead.objects.create(
                     brand=product.brand,
                     product=product,
-                    customer_name=request.user.get_full_name() or request.user.username,
-                    customer_contact=request.user.email,
-                    message=f"Order paid via reference: {reference}. Qty: {item.get('quantity')}",
+                    customer_name=customer_name,
+                    customer_contact=customer_contact,
+                    message="\n".join(msg_parts),
                     lead_type='ORDER',
                     status='WON',
-                    quoted_price=float(item.get('price')) * int(item.get('quantity'))
+                    quoted_price=item_price * qty
                 )
                 leads_created.append(lead.id)
-            except Product.DoesNotExist:
+            except (Product.DoesNotExist, ValueError, TypeError):
                 continue
 
         return Response({

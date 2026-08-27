@@ -142,7 +142,7 @@ class DeductCreditsView(APIView):
         }, status=status.HTTP_200_OK)
 
 class PaystackConfigView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
         return Response({

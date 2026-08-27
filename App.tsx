@@ -411,9 +411,13 @@ const App: React.FC = () => {
           productId: String(product.id),
           title: product.name,
           price: parseFloat(product.price),
-          image: product.image_url,
+          image: product.image_url || '',
           quantity: 1,
-          vendorId: String(product.id), // Fallback
+          vendorId: String(product.id),
+          vendorName: product.brand_name || 'Verified Merchant',
+          whatsapp: product.whatsapp_number || '',
+          paystack_subaccount_code: product.paystack_subaccount_code || '',
+          location: product.location || ''
         },
       ];
     });

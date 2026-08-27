@@ -27,6 +27,7 @@ export interface BrandIdentity {
   email?: string;
   location?: string;
   whatsapp?: string;
+  paystack_subaccount_code?: string;
   openingHours?: {
     monFri?: string;
     saturday?: string;
@@ -420,6 +421,10 @@ export interface CartItem {
   quantity: number;
   image: string;
   vendorId: string;
+  vendorName?: string;
+  whatsapp?: string;
+  paystack_subaccount_code?: string;
+  location?: string;
 }
 
 export interface Transaction {
@@ -460,6 +465,7 @@ export interface UnifiedItem {
     metadata: any; 
     brand_name?: string; 
     whatsapp_number?: string;
+    paystack_subaccount_code?: string;
     is_public: boolean; 
     is_promoted: boolean; 
     stock_count: number; 
