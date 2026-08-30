@@ -5,10 +5,11 @@ User = get_user_model()
 
 
 class Contact(models.Model):
-    """A broadcast contact (WhatsApp or SMS recipient)."""
+    """A broadcast contact (WhatsApp, SMS, or Email recipient)."""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contacts')
     name = models.CharField(max_length=200, blank=True, default='')
     phone = models.CharField(max_length=20)  # Include country code e.g. +2348012345678
+    email = models.EmailField(max_length=255, blank=True, default='')
     tags = models.CharField(max_length=500, blank=True, default='')  # Comma-separated tags
     is_opted_out = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -19,14 +20,15 @@ class Contact(models.Model):
         ordering = ['name', 'phone']
 
     def __str__(self):
-        return f"{self.name or 'Contact'} ({self.phone})"
+        return f"{self.name or 'Contact'} ({self.phone or self.email})"
 
 
 class Campaign(models.Model):
-    """A broadcast campaign (WhatsApp or SMS)."""
+    """A broadcast campaign (WhatsApp, SMS, or Email)."""
     CHANNEL_CHOICES = [
         ('WHATSAPP', 'WhatsApp'),
         ('SMS', 'SMS'),
+        ('EMAIL', 'Email Broadcast'),
     ]
     STATUS_CHOICES = [
         ('DRAFT', 'Draft'),
@@ -40,6 +42,12 @@ class Campaign(models.Model):
     message_template = models.TextField()  # May contain {{name}} placeholder
     channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default='WHATSAPP')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    
+    # Email Broadcast Specific Fields
+    email_subject = models.CharField(max_length=300, blank=True, default='')
+    email_sender_name = models.CharField(max_length=150, blank=True, default='')
+    email_preview_text = models.CharField(max_length=300, blank=True, default='')
+    
     daily_limit = models.IntegerField(default=100)  # Max messages per day
     total_contacts = models.IntegerField(default=0)
     sent_count = models.IntegerField(default=0)
@@ -74,7 +82,8 @@ class MessageLog(models.Model):
 
     campaign = models.ForeignKey(Campaign, on_delete=models.CASCADE, related_name='logs')
     contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True, blank=True)
-    phone = models.CharField(max_length=20)
+    phone = models.CharField(max_length=20, blank=True, default='')
+    recipient = models.CharField(max_length=255, blank=True, default='')
     message = models.TextField()  # Rendered message (with name substituted)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     sms_message_id = models.CharField(max_length=200, blank=True, default='')

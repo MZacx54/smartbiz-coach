@@ -24,6 +24,33 @@ class RegisterView(generics.CreateAPIView):
             user.credits = 200
             user.save()
 
+            # Auto-initialize baseline BrandIdentity & Vendor profile
+            try:
+                from brand.models import BrandIdentity
+                from marketplace.models import VendorVerification
+                
+                BrandIdentity.objects.get_or_create(
+                    user=user,
+                    defaults={'business_name': user.business_name or user.username}
+                )
+                VendorVerification.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'business_name': user.business_name or user.username,
+                        'business_type': 'Retail',
+                        'whatsapp_number': user.phone or '2348000000000'
+                    }
+                )
+            except Exception as e:
+                print(f"Notice: Registration brand initialization notice: {e}")
+
+            # Send Welcome Email with 200 Credits & WhatsApp Community link
+            try:
+                from smartbiz_backend.email_utils import send_welcome_email
+                send_welcome_email(user)
+            except Exception as e:
+                print(f"Notice: Welcome email dispatch notice: {e}")
+
             # Handle Referral Credit Bonus
             ref_code = request.data.get('ref', '').strip()
             if ref_code:

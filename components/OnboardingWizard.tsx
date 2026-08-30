@@ -70,6 +70,28 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
   };
 
   const handleComplete = () => {
+    // If no brand identity exists yet, initialize a baseline one so all AI tools have context immediately
+    const existingBrand = localStorage.getItem('sb_brand');
+    if (!existingBrand || existingBrand === 'null') {
+      const initialBrand = {
+        businessName: formData.businessName || user.businessName || 'My Business',
+        niche: formData.industry || 'General Retail',
+        brandVoice: 'Friendly, Professional, and Authentic Nigerian',
+        taglines: [
+          `Quality & Value at ${formData.businessName || 'Our Business'}`,
+          `Your Trusted Partner for ${formData.industry || 'Excellence'}`
+        ],
+        elevatorPitch: `${formData.businessName || 'Our business'} is a premier ${formData.industry || 'enterprise'} based in ${formData.location || 'Nigeria'}, dedicated to providing top-quality products and services to our valued customers.`,
+        targetAudience: 'Value-conscious Nigerian customers, retail shoppers, and local businesses',
+        primaryColor: '#4F46E5',
+        secondaryColor: '#10B981',
+        location: formData.location || 'Lagos, Nigeria',
+        whatsapp: formData.phone || '',
+        phone: formData.phone || '',
+      };
+      localStorage.setItem('sb_brand', JSON.stringify(initialBrand));
+    }
+
     onComplete({
       ...user,
       location: formData.location,

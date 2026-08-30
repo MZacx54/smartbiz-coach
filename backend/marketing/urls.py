@@ -22,6 +22,9 @@ urlpatterns = [
     # SMS
     path('sms/send/', views.send_sms_batch, name='sms-send'),
 
+    # Email Broadcast
+    path('email/send/', views.send_email_batch, name='email-send'),
+
     # AI Message suggestion
     path('ai-suggest/', views.ai_suggest_message, name='marketing-ai-suggest'),
 

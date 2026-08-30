@@ -16,6 +16,7 @@ interface Contact {
   id: number;
   name: string;
   phone: string;
+  email?: string;
   tags: string;
   is_opted_out: boolean;
   last_messaged_at: string | null;
@@ -24,7 +25,7 @@ interface Contact {
 interface Campaign {
   id: number;
   name: string;
-  channel: 'WHATSAPP' | 'SMS';
+  channel: 'WHATSAPP' | 'SMS' | 'EMAIL';
   status: 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED';
   daily_limit: number;
   total_contacts: number;
@@ -32,6 +33,9 @@ interface Campaign {
   failed_count: number;
   progress_percent: number;
   message_template: string;
+  email_subject?: string;
+  email_sender_name?: string;
+  email_preview_text?: string;
   scheduled_at?: string | null;
   target_tags?: string;
 }
@@ -95,7 +99,7 @@ const MESSAGE_TEMPLATES = [
 
 const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'contacts' | 'whatsapp' | 'sms' | 'campaigns'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'contacts' | 'whatsapp' | 'sms' | 'email' | 'campaigns'>('overview');
   const [stats, setStats] = useState<MarketingStats | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -108,8 +112,11 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
 
   // Campaign creation
   const [newCampaignName, setNewCampaignName] = useState('');
-  const [newCampaignChannel, setNewCampaignChannel] = useState<'WHATSAPP' | 'SMS'>('WHATSAPP');
+  const [newCampaignChannel, setNewCampaignChannel] = useState<'WHATSAPP' | 'SMS' | 'EMAIL'>('WHATSAPP');
   const [newCampaignTemplate, setNewCampaignTemplate] = useState(MESSAGE_TEMPLATES[0].text);
+  const [newCampaignEmailSubject, setNewCampaignEmailSubject] = useState('');
+  const [newCampaignEmailSenderName, setNewCampaignEmailSenderName] = useState(user?.businessName || '');
+  const [newCampaignEmailPreviewText, setNewCampaignEmailPreviewText] = useState('');
   const [newCampaignDailyLimit, setNewCampaignDailyLimit] = useState(100);
   const [newCampaignScheduledAt, setNewCampaignScheduledAt] = useState('');
   const [newCampaignTargetTags, setNewCampaignTargetTags] = useState('');
@@ -134,12 +141,20 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
   const [smsSending, setSmsSending] = useState(false);
   const [smsResult, setSmsResult] = useState<any>(null);
 
+  // Email
+  const [emailCampaign, setEmailCampaign] = useState<Campaign | null>(null);
+  const [emailBatchSize, setEmailBatchSize] = useState(50);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<any>(null);
+  const [emailPreviewDevice, setEmailPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+
   // CSV upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
 
   // Single contact add
   const [addPhone, setAddPhone] = useState('');
+  const [addEmail, setAddEmail] = useState('');
   const [addName, setAddName] = useState('');
   const [addTags, setAddTags] = useState('');
 
@@ -213,11 +228,11 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addPhone) return toast.error('Phone number is required');
+    if (!addPhone && !addEmail) return toast.error('Phone number or Email is required');
     try {
-      await api.post('marketing/contacts/', { phone: addPhone, name: addName, tags: addTags });
+      await api.post('marketing/contacts/', { phone: addPhone, email: addEmail, name: addName, tags: addTags });
       toast.success('Contact added!');
-      setAddPhone(''); setAddName(''); setAddTags('');
+      setAddPhone(''); setAddEmail(''); setAddName(''); setAddTags('');
       fetchContacts();
       fetchStats();
     } catch (err: any) {
@@ -260,6 +275,12 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
         if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
 
         setNewCampaignTemplate(response.data.suggestion);
+        if (response.data.subject) {
+          setNewCampaignEmailSubject(response.data.subject);
+        }
+        if (response.data.preview_text) {
+          setNewCampaignEmailPreviewText(response.data.preview_text);
+        }
         toast.success(`AI Message suggestion generated! (${aiCost} credits debited)`);
         setShowAiSuggestModal(false);
         setAiPromptObjective('');
@@ -286,20 +307,60 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
         message_template: newCampaignTemplate,
         channel: newCampaignChannel,
         daily_limit: newCampaignDailyLimit,
+        email_subject: newCampaignEmailSubject,
+        email_sender_name: newCampaignEmailSenderName,
+        email_preview_text: newCampaignEmailPreviewText,
         scheduled_at: newCampaignScheduledAt || null,
         target_tags: newCampaignTargetTags,
       });
       toast.success(`Campaign "${res.data.name}" created!`);
       setNewCampaignName('');
+      setNewCampaignEmailSubject('');
+      setNewCampaignEmailPreviewText('');
       setNewCampaignScheduledAt('');
       setNewCampaignTargetTags('');
       fetchCampaigns();
-      setActiveTab('whatsapp');
-      setSelectedCampaign(res.data);
+      if (newCampaignChannel === 'EMAIL') {
+        setActiveTab('email');
+        setEmailCampaign(res.data);
+      } else if (newCampaignChannel === 'SMS') {
+        setActiveTab('sms');
+        setSmsCampaign(res.data);
+      } else {
+        setActiveTab('whatsapp');
+        setSelectedCampaign(res.data);
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to create campaign');
     } finally {
       setCreatingCampaign(false);
+    }
+  };
+
+  // ─── Email Batch ──────────────────────────────────────────────────────────
+
+  const handleSendEmailBatch = async () => {
+    if (!emailCampaign) return toast.error('Select an Email campaign first');
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const res = await api.post('marketing/email/send/', {
+        campaign_id: emailCampaign.id,
+        batch_size: emailBatchSize,
+      });
+      setEmailResult(res.data);
+      if (res.data.credits_deducted > 0 && onUpdateCredits) {
+        onUpdateCredits(res.data.remaining_credits);
+      }
+      toast.success(`📧 Dispatched ${res.data.sent} emails successfully!`);
+      fetchCampaigns();
+      fetchStats();
+    } catch (err: any) {
+      const errData = err.response?.data;
+      toast.error(errData?.error || 'Email send failed');
+      setEmailResult(errData);
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -431,6 +492,7 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
     { id: 'campaigns', label: 'Campaigns', icon: '📋' },
     { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
     { id: 'sms', label: 'SMS', icon: '📩' },
+    { id: 'email', label: 'Email Broadcasts', icon: '📧' },
   ] as const;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -654,12 +716,19 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
               {/* Add Single Contact */}
               <div className="bg-white border border-slate-200 rounded-2xl p-5">
                 <h3 className="font-bold text-slate-700 mb-4">➕ Add Single Contact</h3>
-                <form onSubmit={handleAddContact} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <form onSubmit={handleAddContact} className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                   <input
                     type="tel"
                     placeholder="Phone (+2348012345678)"
                     value={addPhone}
                     onChange={e => setAddPhone(e.target.value)}
+                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email (optional)"
+                    value={addEmail}
+                    onChange={e => setAddEmail(e.target.value)}
                     className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                   />
                   <input
@@ -678,7 +747,7 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
                   />
                   <button
                     type="submit"
-                    className="bg-pink-600 hover:bg-pink-500 text-white font-bold px-4 py-2 rounded-xl transition-all text-sm"
+                    className="bg-pink-600 hover:bg-pink-500 text-white font-bold px-4 py-2 rounded-xl transition-all text-sm cursor-pointer"
                   >
                     Add Contact
                   </button>
@@ -716,10 +785,10 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
                   </div>
                   <input
                     type="text"
-                    placeholder="Search contacts..."
+                    placeholder="Search phone, name, email..."
                     value={contactSearch}
                     onChange={e => setContactSearch(e.target.value)}
-                    className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm w-48 focus:ring-2 focus:ring-pink-400 outline-none"
+                    className="border border-slate-200 rounded-xl px-3 py-1.5 text-sm w-56 focus:ring-2 focus:ring-pink-400 outline-none"
                   />
                 </div>
                 {contacts.length === 0 ? (
@@ -734,11 +803,14 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
                       <div key={c.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {c.name ? c.name[0].toUpperCase() : c.phone[3] || '#'}
+                            {c.name ? c.name[0].toUpperCase() : (c.email ? c.email[0].toUpperCase() : (c.phone[3] || '#'))}
                           </div>
                           <div>
                             <div className="font-semibold text-slate-700 text-sm">{c.name || 'Unknown'}</div>
-                            <div className="text-xs text-slate-400">{c.phone}</div>
+                            <div className="text-xs text-slate-400 flex items-center gap-2">
+                              <span>{c.phone}</span>
+                              {c.email && <span className="text-indigo-600 font-medium">✉️ {c.email}</span>}
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -750,7 +822,7 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
                           )}
                           <button
                             onClick={() => handleDeleteContact(c.id)}
-                            className="text-slate-300 hover:text-red-500 transition-colors text-sm ml-1"
+                            className="text-slate-300 hover:text-red-500 transition-colors text-sm ml-1 cursor-pointer"
                           >
                             🗑️
                           </button>
@@ -790,25 +862,66 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
                     <div>
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Channel</label>
                       <div className="flex gap-2">
-                        {(['WHATSAPP', 'SMS'] as const).map(ch => (
+                        {(['WHATSAPP', 'SMS', 'EMAIL'] as const).map(ch => (
                           <button
                             key={ch}
                             type="button"
                             onClick={() => setNewCampaignChannel(ch)}
-                            className={`flex-1 py-2.5 rounded-xl font-bold text-sm border transition-all ${
+                            className={`flex-1 py-2 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
                               newCampaignChannel === ch
                                 ? ch === 'WHATSAPP'
                                   ? 'bg-green-600 text-white border-green-600'
-                                  : 'bg-pink-600 text-white border-pink-600'
+                                  : ch === 'SMS'
+                                  ? 'bg-pink-600 text-white border-pink-600'
+                                  : 'bg-indigo-600 text-white border-indigo-600'
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                             }`}
                           >
-                            {ch === 'WHATSAPP' ? '💬 WhatsApp' : '📩 SMS'}
+                            {ch === 'WHATSAPP' ? '💬 WhatsApp' : ch === 'SMS' ? '📩 SMS' : '📧 Email'}
                           </button>
                         ))}
                       </div>
                     </div>
                   </div>
+
+                  {newCampaignChannel === 'EMAIL' && (
+                    <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-3">
+                      <h4 className="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">📧 Email Campaign Settings</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">Email Subject Line</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 🔥 Special 20% Off Weekend Sale for {{name}}!"
+                            value={newCampaignEmailSubject}
+                            onChange={e => setNewCampaignEmailSubject(e.target.value)}
+                            required={newCampaignChannel === 'EMAIL'}
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">Sender Name (Shown in Inbox)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Amaka Fashion Store"
+                            value={newCampaignEmailSenderName}
+                            onChange={e => setNewCampaignEmailSenderName(e.target.value)}
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 mb-1 block">Preview Snippet (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Open now to claim your exclusive discount code before it expires."
+                          value={newCampaignEmailPreviewText}
+                          onChange={e => setNewCampaignEmailPreviewText(e.target.value)}
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">
@@ -1292,6 +1405,288 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════ EMAIL */}
+          {activeTab === 'email' && (
+            <div className="space-y-5">
+              {/* Email Broadcast Header Banner */}
+              <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full filter blur-2xl" />
+                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl border border-white/20 shadow-inner">
+                      📧
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-lg text-white tracking-tight">
+                        Branded HTML Email Marketing
+                      </h3>
+                      <p className="text-indigo-200 text-xs mt-1 max-w-xl leading-relaxed">
+                        Send beautiful, high-converting HTML promotional emails, product launch announcements, and discount codes directly to your customers' inboxes. 
+                        <strong> Cost: 1 BizCredit per email.</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setNewCampaignChannel('EMAIL');
+                        setActiveTab('campaigns');
+                      }}
+                      className="bg-white hover:bg-indigo-50 text-indigo-950 text-xs font-black px-4 py-2.5 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                    >
+                      + Create Email Campaign
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Email Campaign Selector & Dispatcher */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Left Column: Configuration & Controls */}
+                <div className="lg:col-span-6 space-y-4">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <h4 className="font-extrabold text-slate-800 text-base mb-4 flex items-center gap-2">
+                      <span>⚙️</span> Campaign & Batch Settings
+                    </h4>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">
+                          Select Email Campaign
+                        </label>
+                        <select
+                          value={emailCampaign?.id || ''}
+                          onChange={e => {
+                            const c = campaigns.find(c => c.id === Number(e.target.value));
+                            setEmailCampaign(c || null);
+                            setEmailResult(null);
+                          }}
+                          className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-400 outline-none font-medium text-slate-800"
+                        >
+                          <option value="">— Choose an Email campaign —</option>
+                          {campaigns.filter(c => c.channel === 'EMAIL').map(c => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} ({c.sent_count}/{c.total_contacts} sent)
+                            </option>
+                          ))}
+                        </select>
+                        {campaigns.filter(c => c.channel === 'EMAIL').length === 0 && (
+                          <p className="text-xs text-slate-400 mt-1.5">
+                            No Email campaigns found. Click <button onClick={() => { setNewCampaignChannel('EMAIL'); setActiveTab('campaigns'); }} className="text-indigo-600 font-bold underline">Create one</button> to get started.
+                          </p>
+                        )}
+                      </div>
+
+                      {emailCampaign && (
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-bold">Subject:</span>
+                            <span className="text-slate-800 font-semibold truncate max-w-[200px]">{emailCampaign.email_subject || 'No subject set'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-bold">Sender Name:</span>
+                            <span className="text-slate-800 font-semibold">{emailCampaign.email_sender_name || user?.businessName || 'SmartBiz Merchant'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-bold">Target Contacts:</span>
+                            <span className="text-indigo-600 font-bold">{emailCampaign.total_contacts} valid email contacts</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500 font-bold">Status:</span>
+                            <StatusBadge status={emailCampaign.status} />
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                            Batch Dispatch Size
+                          </label>
+                          <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                            {emailBatchSize} Emails
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={5}
+                          max={200}
+                          step={5}
+                          value={emailBatchSize}
+                          onChange={e => setEmailBatchSize(Number(e.target.value))}
+                          className="w-full accent-indigo-600"
+                        />
+                        <div className="flex justify-between text-[11px] text-slate-400 mt-1 font-medium">
+                          <span>5</span>
+                          <span>Cost: <strong>{emailBatchSize} BizCredits</strong> (1 credit/email)</span>
+                          <span>200</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleSendEmailBatch}
+                        disabled={!emailCampaign || emailSending}
+                        className="w-full bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-500 hover:to-purple-600 text-white font-extrabold py-3.5 rounded-xl transition-all disabled:opacity-50 shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                      >
+                        {emailSending ? (
+                          <>
+                            <span className="animate-spin text-lg">⏳</span>
+                            <span>Dispatching Email Broadcast...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>🚀</span>
+                            <span>Send {emailBatchSize} Emails Now</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Result Box */}
+                      {emailResult && (
+                        <div className={`p-4 rounded-xl text-xs ${emailResult.sent > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-rose-50 border border-rose-200'}`}>
+                          {emailResult.sent !== undefined ? (
+                            <div className="space-y-2">
+                              <p className="font-extrabold text-emerald-800 text-sm flex items-center gap-1.5">
+                                <span>✅</span> Email Broadcast Complete!
+                              </p>
+                              <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                                <div className="bg-white rounded-lg p-2 border border-emerald-100">
+                                  <div className="text-lg font-black text-emerald-600">{emailResult.sent}</div>
+                                  <div className="text-[10px] text-slate-500 font-bold">Delivered</div>
+                                </div>
+                                <div className="bg-white rounded-lg p-2 border border-emerald-100">
+                                  <div className="text-lg font-black text-rose-500">{emailResult.failed}</div>
+                                  <div className="text-[10px] text-slate-500 font-bold">Failed</div>
+                                </div>
+                                <div className="bg-white rounded-lg p-2 border border-emerald-100">
+                                  <div className="text-lg font-black text-indigo-600">{emailResult.credits_deducted || 0}</div>
+                                  <div className="text-[10px] text-slate-500 font-bold">Credits Used</div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="font-bold text-rose-800">⚠️ Send Failed</p>
+                              <p className="text-rose-600 mt-0.5">{emailResult.error || 'Please check your configuration.'}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Personalization Tag Chips */}
+                  <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">💡 Dynamic Smart Tags</p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-indigo-200 text-indigo-700 font-mono font-bold">
+                        {'{{name}}'} <span className="text-slate-400 font-normal font-sans">➔ Customer Name</span>
+                      </span>
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-indigo-200 text-indigo-700 font-mono font-bold">
+                        {'{{business_name}}'} <span className="text-slate-400 font-normal font-sans">➔ Your Brand</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Live Responsive Email Preview Mockup */}
+                <div className="lg:col-span-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                      <span>👁️</span> Live Email Preview
+                    </h4>
+                    <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                      <button
+                        onClick={() => setEmailPreviewDevice('desktop')}
+                        className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                          emailPreviewDevice === 'desktop' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        💻 Desktop
+                      </button>
+                      <button
+                        onClick={() => setEmailPreviewDevice('mobile')}
+                        className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                          emailPreviewDevice === 'mobile' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        📱 Mobile
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Email Mockup Shell */}
+                  <div
+                    className={`mx-auto bg-slate-100 border border-slate-300 rounded-2xl overflow-hidden shadow-md transition-all ${
+                      emailPreviewDevice === 'mobile' ? 'max-w-sm' : 'w-full'
+                    }`}
+                  >
+                    {/* Mock Browser/Mail Header */}
+                    <div className="bg-slate-800 text-white px-4 py-2.5 text-xs flex items-center justify-between">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                        <span className="text-slate-300 font-mono ml-2 text-[11px] truncate">
+                          {emailCampaign?.email_subject || 'Special Update from ' + (user?.businessName || 'SmartBiz')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Email Inbox Metadata Header */}
+                    <div className="bg-white p-3.5 border-b border-slate-200 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-slate-800">
+                          {emailCampaign?.email_sender_name || user?.businessName || 'SmartBiz Merchant'}
+                        </span>
+                        <span className="text-slate-400 text-[10px]">Just now</span>
+                      </div>
+                      <div className="text-slate-500 truncate text-[11px]">
+                        <strong>To:</strong> Customer &lt;chidinma@example.com&gt;
+                      </div>
+                      {emailCampaign?.email_preview_text && (
+                        <div className="text-slate-400 italic truncate text-[11px]">
+                          {emailCampaign.email_preview_text}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Email Body Content */}
+                    <div className="p-5 bg-white space-y-4">
+                      {/* Business Header */}
+                      <div className="bg-slate-900 text-white p-4 rounded-xl text-center shadow-sm">
+                        <h2 className="text-base font-black tracking-tight">
+                          {user?.businessName || 'SmartBiz Merchant'}
+                        </h2>
+                      </div>
+
+                      {/* Rendered Body Copy */}
+                      <div className="text-xs text-slate-700 leading-relaxed space-y-2 whitespace-pre-line font-sans">
+                        {emailCampaign?.message_template
+                          ? emailCampaign.message_template
+                              .replace(/{{name}}/g, 'Chidinma')
+                              .replace(/{{business_name}}/g, user?.businessName || 'Our Business')
+                          : `Hello Chidinma,\n\nWe have exciting updates and exclusive promotional offers for you today!\n\nTap below to explore our products or place your order now.\n\nBest regards,\n${user?.businessName || 'Our Team'}`}
+                      </div>
+
+                      {/* Call to Action Button */}
+                      <div className="text-center pt-2">
+                        <span className="inline-block bg-indigo-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md">
+                          Shop Products / Claim Offer ➔
+                        </span>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="pt-4 border-t border-slate-100 text-center text-[10px] text-slate-400">
+                        <p>Sent by {user?.businessName || 'SmartBiz Merchant'} via SmartBiz Operating System.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </motion.div>

@@ -72,7 +72,7 @@ def contacts_list(request):
 
         qs = Contact.objects.filter(user=request.user)
         if search:
-            qs = qs.filter(phone__icontains=search) | qs.filter(name__icontains=search)
+            qs = qs.filter(phone__icontains=search) | qs.filter(name__icontains=search) | qs.filter(email__icontains=search)
 
         total = qs.count()
         contacts = qs[(page - 1) * per_page: page * per_page]
@@ -86,6 +86,7 @@ def contacts_list(request):
                     'id': c.id,
                     'name': c.name,
                     'phone': c.phone,
+                    'email': c.email,
                     'tags': c.tags,
                     'is_opted_out': c.is_opted_out,
                     'last_messaged_at': c.last_messaged_at,
@@ -98,10 +99,17 @@ def contacts_list(request):
     # POST — add single contact
     data = request.data
     phone = data.get('phone', '').strip()
-    if not phone:
-        return Response({'error': 'Phone number is required'}, status=400)
+    email = data.get('email', '').strip()
+    
+    if not phone and not email:
+        return Response({'error': 'Phone number or Email address is required'}, status=400)
 
-    normalized = normalize_phone(phone)
+    if phone:
+        normalized = normalize_phone(phone)
+    else:
+        # Fallback phone when only email is provided
+        normalized = f"+00{abs(hash(email)) % 10000000000}"
+
     limits = get_plan_limits(request.user)
     
     # Check limit if creating a new contact
@@ -115,12 +123,22 @@ def contacts_list(request):
     contact, created = Contact.objects.get_or_create(
         user=request.user,
         phone=normalized,
-        defaults={'name': data.get('name', ''), 'tags': data.get('tags', '')}
+        defaults={'name': data.get('name', ''), 'email': email, 'tags': data.get('tags', '')}
     )
+    if not created:
+        if email:
+            contact.email = email
+        if data.get('name'):
+            contact.name = data.get('name')
+        if data.get('tags'):
+            contact.tags = data.get('tags')
+        contact.save()
+
     return Response({
         'id': contact.id,
         'name': contact.name,
         'phone': contact.phone,
+        'email': contact.email,
         'created': created
     }, status=201 if created else 200)
 
@@ -156,6 +174,11 @@ NAME_HEADERS = [
 TAGS_HEADERS = [
     'group_name', 'group name', 'groupname', 'group', 'tags', 'tag', 'category', 'label', 'labels',
     'segment', 'list', 'source'
+]
+
+EMAIL_HEADERS = [
+    'email', 'e-mail', 'email_address', 'email address', 'email_no', 'mail', 'contact_email', 'contact email',
+    'customer_email', 'customer email', 'user_email', 'user email', 'e_mail'
 ]
 
 COUNTRY_CODE_HEADERS = [
@@ -308,7 +331,7 @@ def upload_contacts_csv(request):
     
     if reader.fieldnames:
         clean_fieldnames = [_clean_key(f) for f in reader.fieldnames if f]
-        for ph in PHONE_HEADERS:
+        for ph in PHONE_HEADERS + EMAIL_HEADERS:
             if _clean_key(ph) in clean_fieldnames:
                 has_recognized_header = True
                 break
@@ -318,6 +341,7 @@ def upload_contacts_csv(request):
         for i, row in enumerate(reader):
             cc = _extract_field(row, COUNTRY_CODE_HEADERS)
             raw_phone = _extract_field(row, PHONE_HEADERS)
+            raw_email = _extract_field(row, EMAIL_HEADERS)
             
             # If phone header found but value is empty, try finding any column with digits
             if not raw_phone:
@@ -326,17 +350,26 @@ def upload_contacts_csv(request):
                         raw_phone = str(val)
                         break
 
+            # If email was not explicitly found in headers, check all values for '@'
+            if not raw_email:
+                for val in row.values():
+                    if val and '@' in str(val) and '.' in str(val):
+                        raw_email = str(val).strip()
+                        break
+
             phone = normalize_phone(raw_phone, default_country_code=cc)
-            if not phone:
-                # If row was not completely empty, record error
+            email = raw_email.strip() if (raw_email and '@' in raw_email) else ''
+
+            if not phone and not email:
                 if any(row.values()):
-                    # Skip @usernames or metadata without adding annoying error
                     if not str(raw_phone).startswith('@'):
-                        errors.append(f"Row {i + 2}: Invalid or missing phone number ({raw_phone or 'empty'})")
+                        errors.append(f"Row {i + 2}: Invalid or missing phone number / email ({raw_phone or 'empty'})")
                 continue
 
+            if not phone and email:
+                phone = f"+00{abs(hash(email)) % 10000000000}"
+
             raw_name = _extract_field(row, NAME_HEADERS)
-            # If name is just the same as phone number, leave it empty
             if raw_name and normalize_phone(raw_name) == phone:
                 name = ''
             else:
@@ -356,40 +389,45 @@ def upload_contacts_csv(request):
             new_contacts.append(Contact(
                 user=request.user,
                 phone=phone,
+                email=email[:255],
                 name=name[:200],
                 tags=tags[:500]
             ))
     else:
-        # Fallback: Headerless or plain text list of numbers (e.g. one phone per line)
+        # Fallback: Headerless or plain text list of numbers/emails
         lines = [line.strip() for line in decoded.splitlines() if line.strip()]
         for i, line in enumerate(lines):
-            # Split line by delimiter in case it's comma/tab separated without headers
             parts = [p.strip() for p in re.split(r'[,;\t|]', line) if p.strip()]
             if not parts:
                 continue
 
             raw_phone = ''
+            raw_email = ''
             raw_name = ''
             raw_tags = ''
 
-            # Find which part contains the phone number
+            # Find which part contains phone or email
             for idx, part in enumerate(parts):
                 norm = normalize_phone(part)
-                if norm:
+                if norm and not raw_phone:
                     raw_phone = part
-                    # Other parts can be name / tags
-                    other_parts = [p for j, p in enumerate(parts) if j != idx]
-                    if len(other_parts) >= 1:
-                        raw_name = other_parts[0]
-                    if len(other_parts) >= 2:
-                        raw_tags = ', '.join(other_parts[1:])
-                    break
+                elif '@' in part and '.' in part and not raw_email:
+                    raw_email = part
+                elif not raw_name:
+                    raw_name = part
+                else:
+                    raw_tags = part
 
             phone = normalize_phone(raw_phone)
-            if not phone:
+            email = raw_email.strip() if (raw_email and '@' in raw_email) else ''
+
+            if not phone and not email:
                 if not line.startswith('@') and not re.match(r'^\d+\s+more$', line, re.IGNORECASE):
-                    errors.append(f"Line {i + 1}: Could not find a valid phone number")
+                    errors.append(f"Line {i + 1}: Could not find a valid phone number or email")
                 continue
+
+            if not phone and email:
+                phone = f"+00{abs(hash(email)) % 10000000000}"
 
             if raw_name and normalize_phone(raw_name) == phone:
                 raw_name = ''
@@ -406,6 +444,7 @@ def upload_contacts_csv(request):
             new_contacts.append(Contact(
                 user=request.user,
                 phone=phone,
+                email=email[:255],
                 name=raw_name[:200],
                 tags=raw_tags[:500]
             ))
@@ -445,6 +484,9 @@ def campaigns_list(request):
                 'failed_count': c.failed_count,
                 'progress_percent': c.progress_percent,
                 'message_template': c.message_template,
+                'email_subject': c.email_subject,
+                'email_sender_name': c.email_sender_name,
+                'email_preview_text': c.email_preview_text,
                 'created_at': c.created_at,
                 'scheduled_at': c.scheduled_at,
                 'target_tags': c.target_tags,
@@ -461,19 +503,26 @@ def campaigns_list(request):
         }, status=400)
 
     data = request.data
+    channel = data.get('channel', 'WHATSAPP')
     campaign = Campaign.objects.create(
         user=request.user,
         name=data.get('name', 'Untitled Campaign'),
         message_template=data.get('message_template', ''),
-        channel=data.get('channel', 'WHATSAPP'),
+        channel=channel,
         daily_limit=int(data.get('daily_limit', 100)),
         status='DRAFT',
+        email_subject=data.get('email_subject', ''),
+        email_sender_name=data.get('email_sender_name', request.user.business_name or ''),
+        email_preview_text=data.get('email_preview_text', ''),
         scheduled_at=data.get('scheduled_at') if data.get('scheduled_at') else None,
         target_tags=data.get('target_tags', ''),
     )
 
     # Count total contacts
     contacts_qs = Contact.objects.filter(user=request.user, is_opted_out=False)
+    if channel == 'EMAIL':
+        contacts_qs = contacts_qs.exclude(email='')
+        
     if campaign.target_tags:
         from django.db.models import Q
         target_tags_list = [t.strip() for t in campaign.target_tags.split(',') if t.strip()]
@@ -490,6 +539,8 @@ def campaigns_list(request):
         'id': campaign.id,
         'name': campaign.name,
         'channel': campaign.channel,
+        'email_subject': campaign.email_subject,
+        'email_sender_name': campaign.email_sender_name,
         'total_contacts': campaign.total_contacts,
         'scheduled_at': campaign.scheduled_at,
         'target_tags': campaign.target_tags,
@@ -515,12 +566,20 @@ def campaign_detail(request, campaign_id):
         campaign.message_template = data.get('message_template', campaign.message_template)
         campaign.daily_limit = int(data.get('daily_limit', campaign.daily_limit))
         campaign.status = data.get('status', campaign.status)
+        if 'email_subject' in data:
+            campaign.email_subject = data.get('email_subject', campaign.email_subject)
+        if 'email_sender_name' in data:
+            campaign.email_sender_name = data.get('email_sender_name', campaign.email_sender_name)
+        if 'email_preview_text' in data:
+            campaign.email_preview_text = data.get('email_preview_text', campaign.email_preview_text)
         if 'scheduled_at' in data:
             campaign.scheduled_at = data.get('scheduled_at') if data.get('scheduled_at') else None
         campaign.target_tags = data.get('target_tags', campaign.target_tags)
         
-        # Re-evaluate contact count if target_tags changed
+        # Recalculate contacts
         contacts_qs = Contact.objects.filter(user=request.user, is_opted_out=False)
+        if campaign.channel == 'EMAIL':
+            contacts_qs = contacts_qs.exclude(email='')
         if campaign.target_tags:
             from django.db.models import Q
             target_tags_list = [t.strip() for t in campaign.target_tags.split(',') if t.strip()]
@@ -532,20 +591,24 @@ def campaign_detail(request, campaign_id):
         campaign.total_contacts = contacts_qs.count()
         campaign.save()
 
-    return Response({
-        'id': campaign.id,
-        'name': campaign.name,
-        'channel': campaign.channel,
-        'status': campaign.status,
-        'daily_limit': campaign.daily_limit,
-        'total_contacts': campaign.total_contacts,
-        'sent_count': campaign.sent_count,
-        'failed_count': campaign.failed_count,
-        'progress_percent': campaign.progress_percent,
-        'message_template': campaign.message_template,
-        'scheduled_at': campaign.scheduled_at,
-        'target_tags': campaign.target_tags,
-    })
+        return Response({
+            'id': campaign.id,
+            'name': campaign.name,
+            'channel': campaign.channel,
+            'status': campaign.status,
+            'daily_limit': campaign.daily_limit,
+            'total_contacts': campaign.total_contacts,
+            'sent_count': campaign.sent_count,
+            'failed_count': campaign.failed_count,
+            'progress_percent': campaign.progress_percent,
+            'message_template': campaign.message_template,
+            'email_subject': campaign.email_subject,
+            'email_sender_name': campaign.email_sender_name,
+            'email_preview_text': campaign.email_preview_text,
+            'created_at': campaign.created_at,
+            'scheduled_at': campaign.scheduled_at,
+            'target_tags': campaign.target_tags,
+        })
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -823,6 +886,137 @@ def send_sms_batch(request):
     })
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_email_batch(request):
+    """
+    Send HTML Email Broadcast to a batch of contacts with email addresses.
+    Body: { campaign_id, batch_size (default 50, max 200) }
+    Cost: 1 BizCredit per email.
+    """
+    campaign_id = request.data.get('campaign_id')
+    batch_size = min(int(request.data.get('batch_size', 50)), 200)
+
+    try:
+        campaign = Campaign.objects.get(id=campaign_id, user=request.user, channel='EMAIL')
+    except Campaign.DoesNotExist:
+        return Response({'error': 'Email Campaign not found'}, status=404)
+
+    # Get already messaged emails for this campaign
+    messaged_emails = MessageLog.objects.filter(
+        campaign=campaign, status__in=['SENT', 'DELIVERED']
+    ).values_list('recipient', flat=True)
+
+    contacts_qs = Contact.objects.filter(
+        user=request.user, is_opted_out=False
+    ).exclude(email='').exclude(email__in=messaged_emails)
+
+    if campaign.target_tags:
+        from django.db.models import Q
+        target_tags_list = [t.strip() for t in campaign.target_tags.split(',') if t.strip()]
+        if target_tags_list:
+            tag_query = Q()
+            for tag in target_tags_list:
+                tag_query |= Q(tags__icontains=tag)
+            contacts_qs = contacts_qs.filter(tag_query)
+
+    contacts = list(contacts_qs[:batch_size])
+
+    if not contacts:
+        return Response({'message': 'No more contacts with email addresses to message in this campaign.', 'sent': 0})
+
+    # Credit cost: 1 BizCredit per email sent (Admin gets bypass)
+    is_admin = (request.user.email == 'meshachzax@gmail.com')
+    credit_cost_per_email = 0 if is_admin else 1
+    total_cost = len(contacts) * credit_cost_per_email
+
+    if not is_admin and request.user.credits < total_cost:
+        return Response({
+            'error': f"Insufficient BizCredits. Sending to {len(contacts)} emails requires {total_cost} credits, but you have {request.user.credits} credits. Please top up."
+        }, status=400)
+
+    from smartbiz_backend.email_utils import send_broadcast_email
+    
+    sender_name = campaign.email_sender_name or request.user.business_name or request.user.get_full_name() or "SmartBiz Merchant"
+    business_name = request.user.business_name or sender_name
+
+    sent_count = 0
+    failed_count = 0
+    results = []
+
+    for contact in contacts:
+        contact_name = contact.name or "Valued Customer"
+        rendered_subject = (campaign.email_subject or "Important update for you").replace('{{name}}', contact_name).replace('{{business_name}}', business_name)
+        rendered_body = campaign.message_template.replace('{{name}}', contact_name).replace('{{business_name}}', business_name)
+
+        success, err_msg = send_broadcast_email(
+            recipient_email=contact.email,
+            recipient_name=contact_name,
+            subject=rendered_subject,
+            body_content=rendered_body,
+            sender_name=sender_name,
+            business_name=business_name
+        )
+
+        if success:
+            sent_count += 1
+            status_val = 'SENT'
+            contact.last_messaged_at = timezone.now()
+            contact.save(update_fields=['last_messaged_at'])
+        else:
+            failed_count += 1
+            status_val = 'FAILED'
+
+        MessageLog.objects.create(
+            campaign=campaign,
+            contact=contact,
+            phone=contact.phone or '',
+            recipient=contact.email,
+            message=f"Subject: {rendered_subject}\n\n{rendered_body}",
+            status=status_val,
+            error_message='' if success else err_msg,
+            sent_at=timezone.now() if success else None
+        )
+
+        results.append({
+            'contact_id': contact.id,
+            'email': contact.email,
+            'name': contact.name,
+            'status': status_val,
+            'error': '' if success else err_msg
+        })
+
+    # Update campaign counters
+    campaign.sent_count += sent_count
+    campaign.failed_count += failed_count
+    if campaign.sent_count + campaign.failed_count >= campaign.total_contacts and campaign.total_contacts > 0:
+        campaign.status = 'COMPLETED'
+    elif campaign.status == 'DRAFT':
+        campaign.status = 'ACTIVE'
+    campaign.save()
+
+    # Deduct credits
+    actual_credit_cost = sent_count * credit_cost_per_email
+    if actual_credit_cost > 0:
+        request.user.credits = max(0, request.user.credits - actual_credit_cost)
+        request.user.save(update_fields=['credits'])
+        CreditLedger.objects.create(
+            user=request.user,
+            amount=-actual_credit_cost,
+            activity=f"Email Broadcast ({sent_count} emails - Campaign: '{campaign.name}')"
+        )
+
+    return Response({
+        'sent': sent_count,
+        'failed': failed_count,
+        'total_sent_in_campaign': campaign.sent_count,
+        'progress_percent': campaign.progress_percent,
+        'credits_deducted': actual_credit_cost,
+        'remaining_credits': request.user.credits,
+        'results': results
+    })
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def campaign_logs(request, campaign_id):
@@ -929,10 +1123,22 @@ Requirements:
 4. Size constraints:
    - If channel is 'SMS', make it concise (strictly under 160 characters, maximum 250 characters, no emojis).
    - If channel is 'WHATSAPP', make it attractive and well-formatted (under 700 characters, use emojis appropriately, bullet points for key value points).
-5. Return ONLY the drafted message content. Do not include introductory notes, markdown wrappers, or conversational remarks.
+   - If channel is 'EMAIL', output a JSON with "subject", "preview_text", and "message" keys.
+5. If channel is 'EMAIL', respond strictly in JSON:
+{{"subject": "Catchy email subject line", "preview_text": "Engaging inbox preview snippet", "message": "Compelling email body with {{{{name}}}} placeholder and CTA"}}
+Otherwise return ONLY the message content text.
 """
 
     try:
+        if channel == 'EMAIL':
+            email_data = gemini_utils.generate_json_content(prompt)
+            if isinstance(email_data, dict) and 'message' in email_data:
+                return Response({
+                    'suggestion': email_data.get('message', ''),
+                    'subject': email_data.get('subject', f"Exciting update from {biz_name}"),
+                    'preview_text': email_data.get('preview_text', f"Special offer on {topic}")
+                })
+
         suggestion = gemini_utils.generate_text_content(prompt)
         
         # If response was an error string, retry with fast model
@@ -956,14 +1162,30 @@ Requirements:
         if not suggestion or suggestion.startswith("Error:") or len(suggestion) < 10:
             if channel == 'SMS':
                 suggestion = f"Hi {{{{name}}}}, exciting news from {biz_name}! Check out our {topic} offers today. Reply to this SMS or visit us to order now!"
+            elif channel == 'EMAIL':
+                return Response({
+                    'suggestion': f"Hello {{{{name}}}},\n\nWe are excited to share an exclusive update from {biz_name} regarding {topic}.\n\nVisit our store or reply to this email to get started today!\n\nBest regards,\n{biz_name}",
+                    'subject': f"Special Update from {biz_name}: {topic}",
+                    'preview_text': f"Don't miss our latest update on {topic}"
+                })
             else:
                 suggestion = f"Hi {{{{name}}}}! 👋\n\nExciting news from *{biz_name}*! 🚀\n\nWe have exclusive updates regarding *{topic}*. We'd love for you to be part of this special offer!\n\n👉 *Reply directly to this WhatsApp message* to place your order or learn more!\n\n– {biz_name} Team"
 
-        return Response({'suggestion': suggestion})
+        return Response({
+            'suggestion': suggestion,
+            'subject': f"Exclusive: {topic} from {biz_name}",
+            'preview_text': f"Special update on {topic}"
+        })
     except Exception as e:
         print(f"AI Suggest error: {e}")
         if channel == 'SMS':
             fallback = f"Hi {{{{name}}}}, special update from {biz_name}! Check out our {topic} offers today. Reply to order now!"
+        elif channel == 'EMAIL':
+            return Response({
+                'suggestion': f"Hello {{{{name}}}},\n\nSpecial update from {biz_name} regarding {topic}.\n\nContact us today to learn more!\n\nBest regards,\n{biz_name}",
+                'subject': f"Update from {biz_name}",
+                'preview_text': f"Check out {topic}"
+            })
         else:
             fallback = f"Hi {{{{name}}}}! 👋\n\nSpecial update from *{biz_name}*! 🌟\n\nRegarding *{topic}*, we are giving exclusive perks for you today.\n\n📲 *Reply to this chat* to get started right away!\n\n– {biz_name}"
         return Response({'suggestion': fallback})

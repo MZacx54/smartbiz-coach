@@ -11,6 +11,7 @@ import api from '../services/api';
 import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
+import ActivationChecklist from './ActivationChecklist';
 
 interface DashboardProps {
   userStats: UserStats;
@@ -71,6 +72,11 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
 
   const [savedBrand, setSavedBrand] = useState<any>(() => {
     const saved = localStorage.getItem('sb_brand');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    const saved = localStorage.getItem('sb_user');
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -328,6 +334,14 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           </div>
         </div>
       </div>
+
+      {/* MSME Foundation & Activation Checklist */}
+      <ActivationChecklist
+        savedBrand={savedBrand}
+        user={currentUser}
+        onNavigate={onNavigate}
+        credits={credits}
+      />
 
       {/* SME Operations Core Metrics Panel */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
