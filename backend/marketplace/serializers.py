@@ -18,11 +18,18 @@ class ProductSerializer(serializers.ModelSerializer):
     brand_name = serializers.ReadOnlyField(source='brand.business_name')
     whatsapp_number = serializers.SerializerMethodField()
     paystack_subaccount_code = serializers.SerializerMethodField()
+    is_vendor_verified = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = '__all__'
         read_only_fields = ['brand']
+
+    def get_is_vendor_verified(self, obj):
+        try:
+            return getattr(obj.brand.user.vendor_profile, 'is_verified', False)
+        except Exception:
+            return False
 
     def get_whatsapp_number(self, obj):
         try:

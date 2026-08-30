@@ -119,7 +119,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ onResultClick }) => {
                         </h4>
                       </div>
                       <div className="flex items-center gap-3 text-[11px] text-slate-500">
-                        <span className="font-bold text-slate-900">₦{parseFloat(item.price).toLocaleString()}</span>
+                        <span className="font-bold text-slate-900">₦{Number(item.price).toLocaleString()}</span>
                         {item.location && (
                           <span className="flex items-center gap-1 truncate">
                             <MapPin className="w-3 h-3 text-slate-400" /> {item.location}

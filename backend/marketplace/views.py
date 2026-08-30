@@ -208,15 +208,59 @@ class GlobalMarketplaceListView(generics.ListAPIView):
     search_fields = ['name', 'description', 'category', 'location', 'brand__business_name']
 
     def get_queryset(self):
-        # Display all public products, ordering promoted/featured items to the top
-        queryset = Product.objects.filter(is_public=True).order_by('-is_promoted', '-created_at')
+        from django.utils import timezone
+        now = timezone.now()
+
+        # Housekeeping: update any expired promoted items
+        Product.objects.filter(is_promoted=True, promoted_until__lt=now).update(is_promoted=False)
+
+        queryset = Product.objects.filter(is_public=True)
+        
+        # Product type filter (PHYSICAL, SERVICE, PROPERTY, B2B)
         product_type = self.request.query_params.get('product_type')
-        if product_type:
+        if product_type and product_type != 'ALL':
             queryset = queryset.filter(product_type=product_type)
             
+        # Category sub-filter
         category = self.request.query_params.get('category')
-        if category:
-            queryset = queryset.filter(category=category)
+        if category and category.strip():
+            queryset = queryset.filter(category__iexact=category.strip())
+            
+        # State / Geo-Location filter (e.g. Lagos, Abuja, Onitsha, etc.)
+        location = self.request.query_params.get('location')
+        if location and location.strip() and location.strip() != 'ALL':
+            queryset = queryset.filter(location__icontains=location.strip())
+
+        # Price range filter
+        min_price = self.request.query_params.get('min_price')
+        if min_price:
+            try:
+                queryset = queryset.filter(price__gte=float(min_price))
+            except (ValueError, TypeError):
+                pass
+
+        max_price = self.request.query_params.get('max_price')
+        if max_price:
+            try:
+                queryset = queryset.filter(price__lte=float(max_price))
+            except (ValueError, TypeError):
+                pass
+
+        # Verified vendor filter
+        verified_only = self.request.query_params.get('verified_only')
+        if verified_only in ['true', '1', True]:
+            queryset = queryset.filter(brand__user__vendor_profile__is_verified=True)
+
+        # Dynamic Sorting
+        sort_by = self.request.query_params.get('sort_by', 'boosted')
+        if sort_by == 'price_low':
+            queryset = queryset.order_by('price', '-is_promoted', '-created_at')
+        elif sort_by == 'price_high':
+            queryset = queryset.order_by('-price', '-is_promoted', '-created_at')
+        elif sort_by == 'newest':
+            queryset = queryset.order_by('-created_at')
+        else: # 'boosted' or default
+            queryset = queryset.order_by('-is_promoted', '-created_at')
             
         return queryset
 

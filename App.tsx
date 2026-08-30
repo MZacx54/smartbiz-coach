@@ -410,7 +410,7 @@ const App: React.FC = () => {
           id: Date.now().toString(),
           productId: String(product.id),
           title: product.name,
-          price: parseFloat(product.price),
+          price: Number(product.price) || 0,
           image: product.image_url || '',
           quantity: 1,
           vendorId: String(product.id),

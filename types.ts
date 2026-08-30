@@ -218,6 +218,7 @@ export interface Product {
   name: string;
   description: string;
   price: string; // stored as decimal string from backend
+  price_max?: string | number;
   cost_price?: string;
   category: string;
   product_type: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B';
@@ -230,8 +231,11 @@ export interface Product {
   metadata?: Record<string, any>;
   brand_name?: string;
   whatsapp_number?: string;
+  paystack_subaccount_code?: string;
   is_public?: boolean;
   is_promoted?: boolean;
+  is_vendor_verified?: boolean;
+  promoted_until?: string;
   stock_count?: number;
 }
 
@@ -258,11 +262,12 @@ export interface Debtor {
 }
 
 export interface RoadmapStep {
-  id: string;
+  id: number;
   title: string;
   description: string;
-  platform: "Facebook" | "WhatsApp" | "Google" | "General" | "TikTok" | "LinkedIn" | "Instagram";
+  tool: string;
   isCompleted: boolean;
+  actionRoute: string;
 }
 
 // --- Invoice Types ---
@@ -456,8 +461,8 @@ export interface UnifiedItem {
     id: number; 
     name: string; 
     description: string; 
-    price: string; 
-    price_max?: number; 
+    price: string | number; 
+    price_max?: number | string; 
     image_url: string; 
     category: string; 
     product_type: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'; 
@@ -468,5 +473,7 @@ export interface UnifiedItem {
     paystack_subaccount_code?: string;
     is_public: boolean; 
     is_promoted: boolean; 
+    is_vendor_verified?: boolean;
+    promoted_until?: string;
     stock_count: number; 
 }
