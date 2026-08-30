@@ -84,7 +84,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     cache_key = get_cache_key(messages, model, response_format, system_instruction)
     now = time.time()
     msg_str = str(messages).lower()
-    is_dynamic = "trend" in msg_str or "concept" in msg_str or "caption" in msg_str or "topic" in msg_str or "script" in msg_str or "chat" in msg_str or "antigravity" in msg_str or "support" in msg_str or "debt" in msg_str or "nudge" in msg_str or "reminder" in msg_str or "debtor" in msg_str or "owe" in msg_str or "plan" in msg_str or "business_plan" in msg_str or "grant" in msg_str
+    is_dynamic = "trend" in msg_str or "concept" in msg_str or "caption" in msg_str or "topic" in msg_str or "script" in msg_str or "chat" in msg_str or "smartbiz" in msg_str or "coach" in msg_str or "support" in msg_str or "debt" in msg_str or "nudge" in msg_str or "reminder" in msg_str or "debtor" in msg_str or "owe" in msg_str or "plan" in msg_str or "business_plan" in msg_str or "grant" in msg_str
     if not is_dynamic and cache_key in PROMPT_CACHE:
         timestamp, cached_response = PROMPT_CACHE[cache_key]
         if now - timestamp < CACHE_TTL:
@@ -253,7 +253,7 @@ def get_dynamic_string_fallback(messages):
     msg_str = str(messages).lower()
     
     # 1. Chat Support / Advisory responses
-    if "antigravity" in msg_str or "support" in msg_str or "help" in msg_str or "how to" in msg_str or "my business" in msg_str or "strategy" in msg_str:
+    if "smartbiz" in msg_str or "coach" in msg_str or "support" in msg_str or "help" in msg_str or "how to" in msg_str or "my business" in msg_str or "strategy" in msg_str:
         responses = [
             "Great question! To scale up your business quickly, focus on high-converting WhatsApp status updates, setting clear invoice payment terms, and using our Content Studio to publish daily product flyers. Let me know if you need help with a specific tool!",
             "To boost sales this week, try offering a limited-time bundle deal or running an automated debtor reminder in Gbege Book. How else can I assist your growth strategy today?",

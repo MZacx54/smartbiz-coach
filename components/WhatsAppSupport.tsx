@@ -18,7 +18,7 @@ interface WhatsAppSupportProps {
 const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 1, text: "Welcome to SmartBiz Growth Lab! 🚀 I am Antigravity, your digital marketing strategist and business growth advisor. Ask me how to optimize your brand, create converting content, recover debts, or find grants to scale your business!", sender: 'bot' }
+    { id: 1, text: "Welcome to SmartBiz Growth Lab! 🚀 I am your SmartBiz AI Coach, your digital marketing strategist and business growth advisor. Ask me how to optimize your brand, create converting content, recover debts, or find grants to scale your business!", sender: 'bot' }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -84,7 +84,7 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
             🚀
           </div>
           <div>
-            <h2 className="font-extrabold text-sm tracking-wide font-heading">Antigravity AI Advisor</h2>
+            <h2 className="font-extrabold text-sm tracking-wide font-heading">SmartBiz AI Coach</h2>
             <p className="text-[10px] text-emerald-300 flex items-center gap-1 font-bold">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
               Digital Marketing Strategist
