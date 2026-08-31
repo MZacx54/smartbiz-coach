@@ -58,13 +58,13 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
             resp = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=12)
             if resp.status_code in [200, 201]:
                 message_id = resp.json().get('messageId', 'sent')
-                print(f"✓ Brevo API Email Delivered to {recipient_email} [ID: {message_id}]")
+                print(f"[OK] Brevo API Email Delivered to {recipient_email} [ID: {message_id}]")
                 return True, f"Delivered via Brevo ({message_id})"
             else:
                 err_text = resp.text
-                print(f"⚠️ Brevo API response note ({resp.status_code}): {err_text}. Falling back to standard SMTP...")
+                print(f"[NOTE] Brevo API response note ({resp.status_code}): {err_text}. Falling back to standard SMTP...")
         except Exception as ex:
-            print(f"⚠️ Brevo API exception: {ex}. Falling back to standard SMTP...")
+            print(f"[NOTE] Brevo API exception: {ex}. Falling back to standard SMTP...")
 
     # ── 2. Resend REST API ──────────────────────────────────────────────────
     resend_api_key = os.getenv('RESEND_API_KEY', '').strip()
@@ -84,12 +84,12 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
             resp = requests.post("https://api.resend.com/emails", json=payload, headers=headers, timeout=12)
             if resp.status_code in [200, 201]:
                 email_id = resp.json().get('id', 'sent')
-                print(f"✓ Resend Email Delivered to {recipient_email} [ID: {email_id}]")
+                print(f"[OK] Resend Email Delivered to {recipient_email} [ID: {email_id}]")
                 return True, f"Delivered via Resend ({email_id})"
             else:
-                print(f"⚠️ Resend API response error ({resp.status_code}): {resp.text}")
+                print(f"[NOTE] Resend API response error ({resp.status_code}): {resp.text}")
         except Exception as ex:
-            print(f"⚠️ Resend API exception: {ex}")
+            print(f"[NOTE] Resend API exception: {ex}")
 
     # ── 3. Standard Django Mail (Brevo SMTP / Console Backend) ───────────────
     plain_text = strip_tags(html_content)
@@ -102,7 +102,7 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
         )
         msg.attach_alternative(html_content, "text/html")
         msg.send(fail_silently=False)
-        print(f"✓ Email sent to {recipient_email} via Django Mail Backend")
+        print(f"[OK] Email sent to {recipient_email} via Django Mail Backend")
         return True, "Delivered via Django Mail"
     except Exception as e:
         print(f"Warning: Failed to send email to {recipient_email}: {e}")
@@ -211,6 +211,80 @@ def send_welcome_email(user):
             </p>
             <p style="color: #94A3B8; font-size: 11px; margin: 0;">
               Join our WhatsApp Community: <a href="{WA_COMMUNITY_LINK}" style="color: #059669; font-weight: bold; text-decoration: underline;">Click Here</a> | Support: <a href="{WA_DIRECT_SUPPORT}" style="color: #4F46E5; text-decoration: underline;">+234 906 455 6107</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
+
+    success, _ = _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz Coach")
+    return success
+
+
+def send_password_reset_email(user, code):
+    """
+    Sends a professional HTML email containing the 6-digit password recovery code.
+    """
+    recipient_email = getattr(user, 'email', '').strip()
+    if not recipient_email or '@' not in recipient_email:
+        return False
+
+    name = user.get_full_name() or user.business_name or user.username or "Entrepreneur"
+    subject = "SmartBiz Coach - Your Password Reset Code 🔑"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{subject}</title>
+    </head>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #1E293B; margin: 0; padding: 30px 15px;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+        
+        <!-- Header Banner -->
+        <tr>
+          <td style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 35px 30px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px;">🔐</div>
+            <h1 style="color: #FFFFFF; font-size: 22px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px;">Password Reset Request</h1>
+            <p style="color: #94A3B8; font-size: 13px; margin: 0;">SmartBiz Coach Account Security</p>
+          </td>
+        </tr>
+
+        <!-- Content -->
+        <tr>
+          <td style="padding: 35px 30px;">
+            <p style="font-size: 15px; color: #0F172A; line-height: 1.6; margin-top: 0;">
+              Hello <strong>{name}</strong>,
+            </p>
+            <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+              We received a request to reset the password for your SmartBiz Coach account. Use the 6-digit verification code below to complete your password reset:
+            </p>
+
+            <!-- Verification Code Box -->
+            <div style="background-color: #F8FAFC; border: 2px dashed #CBD5E1; border-radius: 16px; padding: 22px 20px; margin: 25px 0; text-align: center;">
+              <span style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #16A34A; font-family: monospace;">{code}</span>
+              <p style="color: #64748B; font-size: 12px; margin: 8px 0 0 0; font-weight: 600;">⏱️ This code will expire in 15 minutes</p>
+            </div>
+
+            <p style="font-size: 13px; color: #64748B; line-height: 1.6;">
+              If you did not request this code, you can safely ignore this email. Your account password will remain unchanged.
+            </p>
+
+            <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #F1F5F9; font-size: 12px; color: #94A3B8;">
+              Need help? Contact our WhatsApp Support at <a href="{WA_DIRECT_SUPPORT}" style="color: #059669; font-weight: bold; text-decoration: none;">+234 906 455 6107</a>
+            </div>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background-color: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 20px 30px; text-align: center;">
+            <p style="color: #94A3B8; font-size: 11px; margin: 0;">
+              SmartBiz Coach • The AI Business Operating System for Nigerian MSMEs
             </p>
           </td>
         </tr>

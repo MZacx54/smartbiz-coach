@@ -1,12 +1,15 @@
+import os
+import random
+import threading
 from rest_framework import generics, permissions, status, views
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
-import random
 from .serializers import UserSerializer, UserComplianceSerializer, AgentHireRequestSerializer
 from .models import PasswordResetCode, UserCompliance, AgentHireRequest
+from smartbiz_backend.email_utils import send_password_reset_email, send_welcome_email
 
 
 User = get_user_model()
@@ -232,7 +235,7 @@ class ForgotPasswordView(views.APIView):
     def post(self, request):
         email_raw = request.data.get('email')
         if not email_raw:
-            return Response({'error': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Email address is required.'}, status=status.HTTP_400_BAD_REQUEST)
         
         email = email_raw.strip()
         user = User.objects.filter(email__iexact=email).first()
@@ -241,7 +244,7 @@ class ForgotPasswordView(views.APIView):
 
         if not user:
             # Return generic success to avoid email enumeration security vulnerability
-            return Response({'message': 'If a matching account exists, a reset code has been sent.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'If a matching account exists, a 6-digit reset code has been sent.'}, status=status.HTTP_200_OK)
 
         # Generate a 6-digit random code
         code = "".join(random.choices("0123456789", k=6))
@@ -252,66 +255,19 @@ class ForgotPasswordView(views.APIView):
         # Save new code
         PasswordResetCode.objects.create(user=user, code=code)
         
-        # Send Email in a background thread to make the API response instant
-        import threading
-        import urllib.request
-        import json
-        subject = "SmartBiz Coach - Password Reset Code"
-        message = f"Hello {user.first_name or user.username},\n\nYour password reset code is: {code}\n\nThis code is valid for 15 minutes. If you did not request a password reset, please ignore this email.\n\nBest regards,\nSmartBiz Coach Team"
-        
-        api_key = (os.getenv('BREVO_API_KEY') or os.getenv('SENDINBLUE_API_KEY') or settings.EMAIL_HOST_PASSWORD or '').strip()
-        from_email = (os.getenv('DEFAULT_FROM_EMAIL') or settings.DEFAULT_FROM_EMAIL or 'noreply@smartbizcoach.com.ng').strip()
-        recipient_email = user.email or email
-
+        # Send Email asynchronously via multi-tier Brevo REST API / Resend / SMTP helper
         def send_email_async():
-            import urllib.error
-            key_preview = f"{api_key[:12]}..." if api_key else "None"
-            print(f"DEBUG: api_key length={len(api_key)}, preview={key_preview}, sender={from_email}, recipient={recipient_email}")
-
-            if api_key and len(api_key) > 20:
-                print("Attempting to send email via Brevo REST API (port 443)...")
-                try:
-                    url = "https://api.brevo.com/v3/smtp/email"
-                    payload = {
-                        "sender": {"email": from_email, "name": "SmartBiz Coach"},
-                        "to": [{"email": recipient_email}],
-                        "subject": subject,
-                        "textContent": message
-                    }
-                    payload_bytes = json.dumps(payload).encode("utf-8")
-                    req = urllib.request.Request(url, data=payload_bytes, method="POST")
-                    req.add_header("accept", "application/json")
-                    req.add_header("api-key", api_key)
-                    req.add_header("content-type", "application/json")
-
-                    with urllib.request.urlopen(req, timeout=15) as response:
-                        res_body = response.read().decode("utf-8")
-                        print(f"Brevo HTTP API SUCCESS: status={response.status}, body={res_body}")
-                        return
-
-                except urllib.error.HTTPError as http_err:
-                    try:
-                        err_body = http_err.read().decode("utf-8")
-                    except Exception:
-                        err_body = "(could not read error body)"
-                    print(f"Brevo HTTP API FAILED: status={http_err.code}, reason={http_err.reason}, body={err_body}")
-                    print("Falling back to SMTP...")
-                except Exception as api_err:
-                    print(f"Brevo HTTP API FAILED (unexpected error): {api_err}")
-                    print("Falling back to SMTP...")
-
             try:
-                print("Attempting to send email via SMTP...")
-                send_mail(subject, message, from_email, [recipient_email], fail_silently=False)
-                print("SMTP Email sent successfully!")
-            except Exception as e:
-                print(f"Error sending email via SMTP: {e}")
+                send_password_reset_email(user, code)
+            except Exception as ex:
+                print(f"Warning: Password reset email delivery error: {ex}")
 
         email_thread = threading.Thread(target=send_email_async)
+        email_thread.daemon = True
         email_thread.start()
 
-        res_data = {'message': 'If a matching account exists, a reset code has been sent.'}
-        if settings.DEBUG or not api_key:
+        res_data = {'message': 'A 6-digit verification code has been sent to your email address.'}
+        if settings.DEBUG or not (os.getenv('BREVO_API_KEY') or os.getenv('SENDINBLUE_API_KEY')):
             res_data['debug_code'] = code
             print(f"DEBUG: Password reset code for {email} is {code}")
 

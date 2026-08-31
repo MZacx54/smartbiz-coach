@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { User } from '../types';
 import { authService } from '../services/authService';
 import { NIGERIAN_STATES } from '../constants';
@@ -16,6 +18,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+
+  // Password Visibility Toggle State
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Sync state if route changes between /login and /register while mounted
   useEffect(() => {
@@ -67,7 +73,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
       }
     } catch (error) {
       console.error("Skip Registration failed", error);
-      alert("Unable to bypass registration right now. Please register manually.");
+      toast.error("Unable to bypass registration right now. Please register manually.");
     } finally {
       setIsSkipping(false);
     }
@@ -80,6 +86,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     try {
       if (authMode === 'login') {
         const response = await authService.login({ username: email, password });
+        toast.success("Welcome back!");
         onLogin(response.user);
       } else if (authMode === 'register') {
         const response = await authService.register({
@@ -94,6 +101,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           has_onboarded: true
         });
 
+        toast.success("Account created successfully!");
         if (response.token) {
           localStorage.setItem('sb_auth_token', response.token);
           onLogin(response.user);
@@ -103,12 +111,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         }
       } else if (authMode === 'forgot_password') {
         const response = await authService.forgotPassword(email);
-        let alertMessage = "A 6-digit reset code has been sent to your email.";
+        let alertMessage = "A 6-digit recovery code has been sent to your email.";
         if (response.debug_code) {
-          alertMessage += ` (Debug Code: ${response.debug_code})`;
           setCode(response.debug_code);
+          alertMessage += ` (Code: ${response.debug_code})`;
         }
-        alert(alertMessage);
+        toast.success(alertMessage, { duration: 6000 });
         setAuthMode('reset_password_code');
         setIsLoading(false);
       } else if (authMode === 'reset_password_code') {
@@ -117,7 +125,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           code,
           new_password: newPassword
         });
-        alert("Password has been reset successfully! You can now sign in with your new password.");
+        toast.success("Password reset successfully! You can now sign in with your new password.", { duration: 6000 });
         setAuthMode('login');
         setPassword('');
         setIsLoading(false);
@@ -125,6 +133,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     } catch (error: any) {
       console.error("Auth Error", error);
       let errorMsg = "Authentication failed. Please check your credentials.";
+
+      if (authMode === 'forgot_password') {
+        errorMsg = "Could not send reset code. Please check your email address and try again.";
+      } else if (authMode === 'reset_password_code') {
+        errorMsg = "Invalid or expired reset code. Please verify and try again.";
+      }
 
       if (error.response?.data) {
         const data = error.response.data;
@@ -134,9 +148,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           errorMsg = `${firstKey}: ${Array.isArray(firstError) ? firstError[0] : firstError}`;
         } else if (data.error) {
           errorMsg = data.error;
+        } else if (data.message) {
+          errorMsg = data.message;
         }
       }
-      alert(errorMsg);
+      toast.error(errorMsg, { duration: 5000 });
       setIsLoading(false);
     }
   };
@@ -293,14 +309,29 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             {(authMode === 'login' || authMode === 'register') && (
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Password</label>
-                <input
-                  type="password"
-                  required
-                  className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    className="w-full pl-4 pr-11 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 focus:outline-none transition-colors cursor-pointer"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-slate-500" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-slate-400" />
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -309,7 +340,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setAuthMode('forgot_password')}
-                  className="text-xs font-bold text-slate-500 hover:text-green-600 transition-colors"
+                  className="text-xs font-bold text-slate-500 hover:text-green-600 transition-colors cursor-pointer"
                 >
                   Forgot Password?
                 </button>
@@ -333,14 +364,29 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">New Password</label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
-                    placeholder="••••••••"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      required
+                      className="w-full pl-4 pr-11 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowNewPassword(prev => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 focus:outline-none transition-colors cursor-pointer"
+                      title={showNewPassword ? "Hide password" : "Show password"}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="w-4 h-4 text-slate-500" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-slate-400" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </>
             )}
