@@ -1,8 +1,8 @@
 from django.urls import path
 from .views import (
-    RegisterView, LoginView, ProfileView, UserStatsView, UserActionsView,
-    ForgotPasswordView, ResetPasswordView, ComplianceStatusView, AgentHireRequestView,
-    SetupAdminView, VerifyCACLiveView
+     RegisterView, LoginView, ProfileView, UserStatsView, UserActionsView,
+     ForgotPasswordView, ResetPasswordView, ComplianceStatusView, AgentHireRequestView,
+     SetupAdminView, VerifyCACLiveView, EmailDiagnosticTestView
 )
 
 urlpatterns = [
@@ -17,5 +17,6 @@ urlpatterns = [
     path('compliance/verify-cac/', VerifyCACLiveView.as_view(), name='verify-cac'),
     path('hire-agent/', AgentHireRequestView.as_view(), name='hire-agent'),
     path('setup-admin/', SetupAdminView.as_view(), name='setup-admin'),
+    path('test-email/', EmailDiagnosticTestView.as_view(), name='test-email'),
 ]
 

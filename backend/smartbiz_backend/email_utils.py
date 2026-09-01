@@ -10,32 +10,59 @@ WA_COMMUNITY_LINK = "https://chat.whatsapp.com/LMGlpUWATmVE2t98iKIcY4"
 WA_DIRECT_SUPPORT = "https://wa.me/2349064556107?text=Hi%20SmartBiz%20Coach%2C%20I%20just%20signed%20up%20and%20want%20to%20join%20the%20community!"
 
 
+def get_brevo_api_key():
+    for key_name in [
+        'BREVO_API_KEY',
+        'BREVO_KEY',
+        'SENDINBLUE_API_KEY',
+        'BREVO_API',
+        'BREVO_APIKEY',
+        'SIB_API_KEY',
+        'BREVO_TOKEN',
+        'EMAIL_HOST_PASSWORD',
+        'BREVO_SMTP_KEY',
+    ]:
+        val = os.getenv(key_name, '').strip()
+        if val and len(val) > 15:
+            return val
+    return ''
+
+
+def get_sender_email(fallback='noreply@smartbizcoach.com.ng'):
+    for key_name in [
+        'BREVO_SENDER_EMAIL',
+        'BREVO_FROM_EMAIL',
+        'SENDER_EMAIL',
+        'DEFAULT_FROM_EMAIL',
+        'EMAIL_HOST_USER',
+    ]:
+        val = os.getenv(key_name, '').strip()
+        if val and '@' in val and not val.endswith('@smtp-brevo.com'):
+            if '<' in val and '>' in val:
+                return val.split('<')[-1].replace('>', '').strip()
+            return val
+    return fallback
+
+
 def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz Coach", from_email=None):
     """
-    Unified email delivery helper:
-    1. Brevo REST API (via BREVO_API_KEY, SENDINBLUE_API_KEY, or xkeysib-...):
-       Sends via Brevo v3 Transactional API for 100% deliverability and zero cloud IP blocking.
-    2. Resend REST API (via RESEND_API_KEY):
-       Sends via Resend API if configured.
-    3. Django Standard SMTP / Brevo SMTP (smtp-relay.brevo.com:587) / Console fallback.
+    Unified, ultra-resilient email delivery engine:
+    1. Brevo (Sendinblue) v3 REST API (handles any key name + smart verified sender fallback).
+    2. Resend REST API (via RESEND_API_KEY).
+    3. Direct Python SMTP Relay (Brevo / Custom SMTP over TLS).
+    4. Django standard Email Backend (in DEBUG mode).
     """
-    default_from = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@smartbizcoach.com.ng')
-    sender_email_addr = from_email or default_from
+    brevo_api_key = get_brevo_api_key()
+    sender_email_addr = from_email or get_sender_email()
     if '<' in sender_email_addr and '>' in sender_email_addr:
-        # Extract pure email from "Name <email@domain.com>"
         pure_email = sender_email_addr.split('<')[-1].replace('>', '').strip()
     else:
         pure_email = sender_email_addr.strip()
 
-    # ── 1. Brevo (Sendinblue) REST API ──────────────────────────────────────
-    brevo_api_key = (
-        os.getenv('BREVO_API_KEY', '').strip()
-        or os.getenv('SENDINBLUE_API_KEY', '').strip()
-        or (os.getenv('EMAIL_HOST_PASSWORD', '').strip() if os.getenv('EMAIL_HOST_PASSWORD', '').startswith('xkeysib-') else '')
-    )
-
+    # ── 1. Brevo v3 Transactional REST API ──────────────────────────────────
     if brevo_api_key:
         try:
+            url = "https://api.brevo.com/v3/smtp/email"
             payload = {
                 "sender": {
                     "name": sender_name,
@@ -55,22 +82,35 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                 "api-key": brevo_api_key,
                 "content-type": "application/json"
             }
-            resp = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=12)
+            resp = requests.post(url, json=payload, headers=headers, timeout=15)
             if resp.status_code in [200, 201]:
                 message_id = resp.json().get('messageId', 'sent')
                 print(f"[OK] Brevo API Email Delivered to {recipient_email} [ID: {message_id}]")
                 return True, f"Delivered via Brevo ({message_id})"
             else:
                 err_text = resp.text
-                print(f"[NOTE] Brevo API response note ({resp.status_code}): {err_text}. Falling back to standard SMTP...")
+                print(f"[NOTE] Brevo API response note ({resp.status_code}): {err_text}")
+                # If Brevo rejects due to unverified sender domain, retry with account root email
+                if 'unverified' in err_text.lower() or 'sender' in err_text.lower() or 'not found' in err_text.lower():
+                    alt_sender = os.getenv('BREVO_SENDER_EMAIL', '').strip() or 'meshachzax@gmail.com'
+                    if alt_sender and alt_sender != pure_email:
+                        print(f"[RETRY] Retrying Brevo API with alternative verified sender: {alt_sender}...")
+                        payload['sender']['email'] = alt_sender
+                        retry_resp = requests.post(url, json=payload, headers=headers, timeout=15)
+                        if retry_resp.status_code in [200, 201]:
+                            message_id = retry_resp.json().get('messageId', 'sent')
+                            print(f"[OK] Brevo API Email Delivered to {recipient_email} via {alt_sender} [ID: {message_id}]")
+                            return True, f"Delivered via Brevo ({message_id})"
+                        else:
+                            print(f"[NOTE] Brevo API retry note ({retry_resp.status_code}): {retry_resp.text}")
         except Exception as ex:
-            print(f"[NOTE] Brevo API exception: {ex}. Falling back to standard SMTP...")
+            print(f"[NOTE] Brevo API exception: {ex}")
 
     # ── 2. Resend REST API ──────────────────────────────────────────────────
     resend_api_key = os.getenv('RESEND_API_KEY', '').strip()
     if resend_api_key:
         try:
-            resend_sender = from_email or os.getenv('RESEND_FROM_EMAIL', '') or f"{sender_name} <{pure_email}>"
+            resend_sender = from_email or os.getenv('RESEND_FROM_EMAIL', '') or f"{sender_name} <onboarding@resend.dev>"
             payload = {
                 "from": resend_sender,
                 "to": [recipient_email],
@@ -81,7 +121,7 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                 "Authorization": f"Bearer {resend_api_key}",
                 "Content-Type": "application/json"
             }
-            resp = requests.post("https://api.resend.com/emails", json=payload, headers=headers, timeout=12)
+            resp = requests.post("https://api.resend.com/emails", json=payload, headers=headers, timeout=15)
             if resp.status_code in [200, 201]:
                 email_id = resp.json().get('id', 'sent')
                 print(f"[OK] Resend Email Delivered to {recipient_email} [ID: {email_id}]")
@@ -91,22 +131,57 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
         except Exception as ex:
             print(f"[NOTE] Resend API exception: {ex}")
 
-    # ── 3. Standard Django Mail (Brevo SMTP / Console Backend) ───────────────
-    plain_text = strip_tags(html_content)
-    try:
-        msg = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_text,
-            from_email=f"{sender_name} <{pure_email}>",
-            to=[recipient_email]
-        )
-        msg.attach_alternative(html_content, "text/html")
-        msg.send(fail_silently=False)
-        print(f"[OK] Email sent to {recipient_email} via Django Mail Backend")
-        return True, "Delivered via Django Mail"
-    except Exception as e:
-        print(f"Warning: Failed to send email to {recipient_email}: {e}")
-        return False, str(e)
+    # ── 3. Direct Python SMTP Relay (Brevo / Custom SMTP) ───────────────────
+    smtp_user = os.getenv('EMAIL_HOST_USER', '').strip()
+    smtp_pass = os.getenv('EMAIL_HOST_PASSWORD', '').strip() or brevo_api_key
+    smtp_host = os.getenv('EMAIL_HOST', 'smtp-relay.brevo.com').strip()
+    smtp_port = int(os.getenv('EMAIL_PORT', '587'))
+
+    if smtp_user and smtp_pass:
+        try:
+            import smtplib
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = f"{sender_name} <{pure_email}>"
+            msg['To'] = recipient_email
+
+            part1 = MIMEText(strip_tags(html_content), 'plain', 'utf-8')
+            part2 = MIMEText(html_content, 'html', 'utf-8')
+            msg.attach(part1)
+            msg.attach(part2)
+
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.sendmail(pure_email, [recipient_email], msg.as_string())
+
+            print(f"[OK] Email sent to {recipient_email} via direct SMTP ({smtp_host})")
+            return True, f"Delivered via SMTP ({smtp_host})"
+        except Exception as smtp_err:
+            print(f"[NOTE] Direct SMTP relay error: {smtp_err}")
+
+    # ── 4. Local Development Fallback (DEBUG mode only) ──────────────────────
+    if getattr(settings, 'DEBUG', False):
+        try:
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=strip_tags(html_content),
+                from_email=f"{sender_name} <{pure_email}>",
+                to=[recipient_email]
+            )
+            msg.attach_alternative(html_content, "text/html")
+            msg.send(fail_silently=False)
+            print(f"[OK] Email logged to local console (DEBUG=True)")
+            return True, "Delivered to local dev console"
+        except Exception as e:
+            return False, f"Local mail backend error: {e}"
+
+    error_summary = "Email delivery failed: live email provider (Brevo API) could not be reached. Please check BREVO_API_KEY and verified sender in Brevo."
+    print(f"[ERROR] {error_summary}")
+    return False, error_summary
 
 
 def send_welcome_email(user):

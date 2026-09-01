@@ -563,3 +563,46 @@ class SetupAdminView(views.APIView):
         user.save()
 
         return HttpResponse(f"Successfully {'created' if created else 'updated'} admin account for {email}!<br/><br/><a href='/admin/'>Go to Django Admin</a>")
+
+
+class EmailDiagnosticTestView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        from django.utils import timezone
+        from smartbiz_backend.email_utils import get_brevo_api_key, get_sender_email, _deliver_email
+        
+        test_email = request.query_params.get('email', 'meshachzax@gmail.com').strip()
+        brevo_key = get_brevo_api_key()
+        sender_email = get_sender_email()
+        
+        masked_key = f"{brevo_key[:6]}...{brevo_key[-4:]}" if len(brevo_key) > 10 else ("None" if not brevo_key else "Present but short")
+        
+        subject = f"SmartBiz Coach Email Test ({timezone.now().strftime('%H:%M:%S')})"
+        html_body = f"""
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #4f46e5;">SmartBiz Coach Email Connectivity Test</h2>
+            <p>This is a live transactional email sent via your configured email provider.</p>
+            <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 15px 0;" />
+            <p><strong>Brevo API Key:</strong> {masked_key}</p>
+            <p><strong>Sender Email:</strong> {sender_email}</p>
+            <p><strong>Timestamp:</strong> {timezone.now().isoformat()}</p>
+        </div>
+        """
+
+        success, result_message = _deliver_email(
+            recipient_email=test_email,
+            subject=subject,
+            html_content=html_body,
+            sender_name="SmartBiz Diagnostic",
+            from_email=sender_email
+        )
+
+        return Response({
+            'success': success,
+            'result': result_message,
+            'recipient': test_email,
+            'detected_sender': sender_email,
+            'brevo_key_detected': bool(brevo_key),
+            'brevo_key_preview': masked_key
+        })
