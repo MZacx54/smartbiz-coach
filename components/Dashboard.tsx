@@ -285,14 +285,14 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
 
   // Mobile-friendly Touch Shortcuts
   const quickShortcuts = [
-    { label: 'Write Invoice', desc: 'Bill customers instantly', icon: '🧾', view: AppView.INVOICE_GENERATOR, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+    { label: 'Daily Day-Book', desc: '5-sec sales & petty cash', icon: '⚡', view: AppView.DAILY_CASHBOOK, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    { label: 'Write Invoice', desc: 'Bill customers instantly', icon: '🧾', view: AppView.INVOICE_GENERATOR, color: 'bg-blue-50 text-blue-700 border-blue-100' },
     { label: 'Gbege Book', desc: 'Track & remind debtors', icon: '📒', view: AppView.DEBTOR_BOOK, color: 'bg-rose-50 text-rose-700 border-rose-100' },
     { label: 'Manage Stock', desc: 'Inventory catalog', icon: '📦', view: AppView.PRODUCT_MANAGER, color: 'bg-amber-50 text-amber-700 border-amber-100' },
     { label: 'Broadcast HQ', desc: 'Launch marketing campaigns', icon: '📣', view: AppView.MARKETING_AGENT, color: 'bg-pink-50 text-pink-700 border-pink-100' },
     { label: 'AI Content', desc: 'Generate social copies', icon: '✍️', view: AppView.CONTENT_GENERATOR, color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-    { label: 'Photo Studio', desc: 'AI background remover', icon: '🎨', view: AppView.CONTENT_GENERATOR, color: 'bg-purple-50 text-purple-700 border-purple-100' },
     { label: 'Find Funding', desc: 'Grants & loans matching', icon: '💰', view: AppView.GRANT_MATCHER, color: 'bg-teal-50 text-teal-700 border-teal-100' },
-    { label: 'Sales Closer', desc: 'AI chats assistant', icon: '💬', view: AppView.SALES_ASSISTANT, color: 'bg-blue-50 text-blue-700 border-blue-100' },
+    { label: 'Sales Closer', desc: 'AI chats assistant', icon: '💬', view: AppView.SALES_ASSISTANT, color: 'bg-purple-50 text-purple-700 border-purple-100' },
   ];
 
   return (

@@ -201,12 +201,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                     <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
-                    <NavItem view={AppView.BRAND_BUILDER} label="Brand Builder" icon="✨" />
-                    <NavItem view={AppView.CONTENT_GENERATOR} label="Content Gen" icon="✍️" />
-                    <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices" icon="🧾" />
-                    <NavItem view={AppView.ORDER_GENERATOR} label="Order Gen" icon="📄" />
+                    <NavItem view={AppView.DAILY_CASHBOOK} label="Daily Day-Book" icon="⚡" />
                     <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory" icon="📦" />
                     <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
+                    <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices & Receipts" icon="🧾" />
+                    <NavItem view={AppView.BRAND_BUILDER} label="Brand Builder" icon="✨" />
+                    <NavItem view={AppView.CONTENT_GENERATOR} label="Content Gen" icon="✍️" />
 
                     {!isCollapsed ? (
                         <div className="pt-4 pb-1 px-3">

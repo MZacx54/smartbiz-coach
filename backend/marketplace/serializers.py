@@ -70,3 +70,19 @@ class LeadSerializer(serializers.ModelSerializer):
         model = Lead
         fields = '__all__'
         read_only_fields = ['brand']
+
+
+class DailySaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import DailySale
+        model = DailySale
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at']
+
+
+class DailyExpenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import DailyExpense
+        model = DailyExpense
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at']

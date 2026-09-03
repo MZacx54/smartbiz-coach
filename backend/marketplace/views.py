@@ -547,3 +547,121 @@ class VerifyVendorWithCreditsView(views.APIView):
             'remaining_credits': request.user.credits
         }, status=status.HTTP_200_OK)
 
+
+class DailySaleListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import DailySaleSerializer
+        return DailySaleSerializer
+
+    def get_queryset(self):
+        from .models import DailySale
+        import datetime
+        qs = DailySale.objects.filter(user=self.request.user)
+        date_str = self.request.query_params.get('date')
+        if date_str:
+            try:
+                target_date = datetime.date.fromisoformat(date_str)
+                qs = qs.filter(created_at__date=target_date)
+            except ValueError:
+                pass
+        return qs
+
+    def perform_create(self, serializer):
+        sale = serializer.save(user=self.request.user)
+        # If linked to a product in inventory, auto-decrement stock
+        if sale.product and sale.quantity > 0:
+            product = sale.product
+            product.stock_count = max(0, product.stock_count - sale.quantity)
+            product.save(update_fields=['stock_count'])
+
+
+class DailyExpenseListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import DailyExpenseSerializer
+        return DailyExpenseSerializer
+
+    def get_queryset(self):
+        from .models import DailyExpense
+        import datetime
+        qs = DailyExpense.objects.filter(user=self.request.user)
+        date_str = self.request.query_params.get('date')
+        if date_str:
+            try:
+                target_date = datetime.date.fromisoformat(date_str)
+                qs = qs.filter(created_at__date=target_date)
+            except ValueError:
+                pass
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class DailySummaryView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Sum, F
+        from django.utils import timezone
+        import datetime
+        from .models import DailySale, DailyExpense, Product
+
+        date_str = request.query_params.get('date')
+        if date_str:
+            try:
+                target_date = datetime.date.fromisoformat(date_str)
+            except ValueError:
+                target_date = timezone.now().date()
+        else:
+            target_date = timezone.now().date()
+
+        sales = DailySale.objects.filter(user=request.user, created_at__date=target_date)
+        expenses = DailyExpense.objects.filter(user=request.user, created_at__date=target_date)
+
+        total_sales_revenue = float(sales.aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        cash_sales = float(sales.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        transfer_sales = float(sales.filter(payment_method='TRANSFER').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        credit_sales = float(sales.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+
+        # Cost of goods sold (COGS)
+        cogs = 0.0
+        for s in sales:
+            cogs += float(s.cost_price or 0.0) * s.quantity
+        gross_profit = max(0.0, total_sales_revenue - cogs)
+
+        # Expenses
+        total_expenses = float(expenses.aggregate(total=Sum('amount'))['total'] or 0.00)
+        cash_expenses = float(expenses.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0.00)
+        transfer_expenses = float(expenses.filter(payment_method='TRANSFER').aggregate(total=Sum('amount'))['total'] or 0.00)
+
+        # Net Cash in Till
+        net_cash_in_till = cash_sales - cash_expenses
+
+        # Low stock alert items
+        low_stock_products = list(Product.objects.filter(
+            brand__user=request.user,
+            stock_count__lte=F('low_stock_threshold')
+        ).values('id', 'name', 'stock_count', 'low_stock_threshold')[:10])
+
+        return Response({
+            'date': target_date.isoformat(),
+            'total_sales_revenue': total_sales_revenue,
+            'cash_sales': cash_sales,
+            'transfer_sales': transfer_sales,
+            'credit_sales': credit_sales,
+            'sales_count': sales.count(),
+            'cogs': round(cogs, 2),
+            'gross_profit': round(gross_profit, 2),
+            'total_expenses': total_expenses,
+            'cash_expenses': cash_expenses,
+            'transfer_expenses': transfer_expenses,
+            'expenses_count': expenses.count(),
+            'net_cash_in_till': round(net_cash_in_till, 2),
+            'net_profit': round(gross_profit - total_expenses, 2),
+            'low_stock_products': low_stock_products,
+        })
+

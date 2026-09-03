@@ -5,11 +5,11 @@ import urllib.error
 import time
 import hashlib
 
-# Google Gemini defaults (Using Google's production Gemini 3.6 Flash & 3.5 Flash Lite engines)
-DEFAULT_TEXT_MODEL = "gemini-3.6-flash"
-DEFAULT_FAST_MODEL = "gemini-3.5-flash-lite"
+# Google Gemini defaults (Empowered by Gemini 3.8 Flash with automated multi-tier fallback)
+DEFAULT_TEXT_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+DEFAULT_FAST_MODEL = os.getenv("GEMINI_FAST_MODEL", "gemini-3.5-flash-lite")
 DEFAULT_FALLBACK_MODEL = "gemini-3.6-flash"
-DEFAULT_VISION_MODEL = "gemini-3.6-flash"
+DEFAULT_VISION_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 # In-memory prompt cache for free-tier optimization
 PROMPT_CACHE = {}
@@ -173,8 +173,8 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     max_retries = max(6, len(keys) * 2)
     backoff_delay = 1.5
 
-    # Target model cascade: Try requested model (gemini-3.6-flash), fallback to 3.5-flash-lite, then 2.0-flash
-    model_cascade = [model, DEFAULT_FAST_MODEL, DEFAULT_FALLBACK_MODEL]
+    # Target model cascade: Try requested model (e.g. gemini-3.8-flash), then 3.6-flash, 2.5-flash, 2.0-flash
+    model_cascade = list(dict.fromkeys([m for m in [model, DEFAULT_TEXT_MODEL, DEFAULT_FALLBACK_MODEL, "gemini-2.5-flash", "gemini-2.0-flash"] if m]))
 
     for attempt in range(max_retries):
         current_key = get_next_gemini_api_key(attempt_offset=attempt)

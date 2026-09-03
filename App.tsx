@@ -36,6 +36,7 @@ const PricingAssistant = lazy(() => import("./components/PricingAssistant"));
 const PublicAuditReport = lazy(() => import("./components/PublicAuditReport"));
 const StaticPage = lazy(() => import("./components/StaticPage"));
 const MarketingAgent = lazy(() => import("./components/MarketingAgent"));
+const DailyCashbook = lazy(() => import("./components/DailyCashbook").then(m => ({ default: m.DailyCashbook })));
 
 import {
   AppView,
@@ -115,10 +116,10 @@ const App: React.FC = () => {
     if (path.includes('/dashboard/brand')) setCurrentView(AppView.BRAND_BUILDER);
     else if (path.includes('/dashboard/content')) setCurrentView(AppView.CONTENT_GENERATOR);
     else if (path.includes('/dashboard/invoices')) setCurrentView(AppView.INVOICE_GENERATOR);
+    else if (path.includes('/dashboard/cashbook')) setCurrentView(AppView.DAILY_CASHBOOK);
     else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.INVENTORY);
     else if (path.includes('/dashboard/debtor')) setCurrentView(AppView.DEBTOR_BOOK);
     else if (path.includes('/dashboard/marketplace')) setCurrentView(AppView.MARKETPLACE);
-    else if (path.includes('/dashboard/smarthome')) setCurrentView(AppView.SMARTHOME_FINDER);
     else if (path.includes('/dashboard/cart')) setCurrentView(AppView.CART);
     else if (path.includes('/dashboard/business-plan')) setCurrentView(AppView.BUSINESS_PLAN);
     else if (path.includes('/dashboard/grants')) setCurrentView(AppView.GRANT_MATCHER);
@@ -153,8 +154,8 @@ const App: React.FC = () => {
       case AppView.LEARNING_HUB: return 'Learning Hub';
       case AppView.INVENTORY: return 'Inventory Tracker';
       case AppView.INVOICE_GENERATOR: return 'Invoice Generator';
+      case AppView.DAILY_CASHBOOK: return 'Daily Day-Book & Cashflow';
       case AppView.DEBTOR_BOOK: return 'Debtor Book (Gbege Book)';
-      case AppView.SMARTHOME_FINDER: return 'SmartHome Finder';
       case AppView.CART: return 'Shopping Cart';
       case AppView.COMPLIANCE: return 'Business Compliance Context';
       case AppView.DIGITAL_ROADMAP: return 'Digital Marketing Roadmap';
@@ -181,8 +182,8 @@ const App: React.FC = () => {
       case AppView.LEARNING_HUB: return 'Access expert courses on managing and growing Nigerian businesses.';
       case AppView.INVENTORY: return 'Keep track of an unlimited number of products directly connected to sales.';
       case AppView.INVOICE_GENERATOR: return 'Easily create professional invoices for clients out of the box.';
+      case AppView.DAILY_CASHBOOK: return 'Record 5-second sales, track generator fuel and petty cash, and generate daily WhatsApp business health reports.';
       case AppView.DEBTOR_BOOK: return 'Document and track outstanding debts, and automate reminders.';
-      case AppView.SMARTHOME_FINDER: return 'Explore affordable homes and agent property listings mapped for Nigerians.';
       case AppView.COMPLIANCE: return 'Learn precisely what business registrations, taxes, and documents are required.';
       case AppView.DIGITAL_ROADMAP: return 'Gain an actionable, step-by-step digital roadmap for marketing.';
       case AppView.SALES_ASSISTANT: return 'Leverage AI to close more deals and manage customer relationships.';
@@ -300,8 +301,8 @@ const App: React.FC = () => {
       case AppView.INVOICE_GENERATOR: navigate(`/dashboard/invoices${query}`); break;
       case AppView.INVENTORY: navigate(`/dashboard/inventory${query}`); break;
       case AppView.DEBTOR_BOOK: navigate(`/dashboard/debtor${query}`); break;
+      case AppView.DAILY_CASHBOOK: navigate(`/dashboard/cashbook${query}`); break;
       case AppView.MARKETPLACE: navigate(`/dashboard/marketplace${query}`); break;
-      case AppView.SMARTHOME_FINDER: navigate(`/dashboard/smarthome${query}`); break;
       case AppView.CART: navigate(`/dashboard/cart${query}`); break;
       case AppView.BUSINESS_PLAN: navigate(`/dashboard/business-plan${query}`); break;
       case AppView.GRANT_MATCHER: navigate(`/dashboard/grants${query}`); break;
@@ -624,8 +625,8 @@ const App: React.FC = () => {
                   <Route path="inventory" element={<ProductManager credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="debtor" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
+                  <Route path="cashbook" element={<DailyCashbook />} />
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" />} />
-                  <Route path="smarthome" element={<Marketplace onAddToCart={handleAddToCart} initialType="PROPERTY" />} />
                   <Route path="hub" element={<Marketplace onAddToCart={handleAddToCart} initialType="B2B" />} />
                   <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
                   <Route path="compliance" element={<Compliance brand={savedBrand} user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />

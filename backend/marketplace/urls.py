@@ -14,7 +14,10 @@ from .views import (
     ProductSnapAndListView,
     RelatedEcosystemProductsView,
     BoostProductView,
-    VerifyVendorWithCreditsView
+    VerifyVendorWithCreditsView,
+    DailySaleListCreateView,
+    DailyExpenseListCreateView,
+    DailySummaryView
 )
 
 from .payout_views import (
@@ -44,4 +47,7 @@ urlpatterns = [
     path('products/u/<slug:slug>/', PublicBrandProductListView.as_view(), name='public_brand_products'),
     path('global/', GlobalMarketplaceListView.as_view(), name='global_marketplace'),
     path('search/', DashboardSearchView.as_view(), name='dashboard_search'),
+    path('daily-sales/', DailySaleListCreateView.as_view(), name='daily_sales'),
+    path('daily-expenses/', DailyExpenseListCreateView.as_view(), name='daily_expenses'),
+    path('daily-summary/', DailySummaryView.as_view(), name='daily_summary'),
 ]

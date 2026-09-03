@@ -85,6 +85,7 @@ export interface Grant {
 
 export enum AppView {
   DASHBOARD = "DASHBOARD",
+  DAILY_CASHBOOK = "DAILY_CASHBOOK", // Daily Sales, Cashbook & Petty Cash
   BRAND_BUILDER = "BRAND_BUILDER",
   CONTENT_GENERATOR = "CONTENT_GENERATOR",
   BUSINESS_PLAN = "BUSINESS_PLAN",
@@ -92,9 +93,8 @@ export enum AppView {
   LEARNING_HUB = "LEARNING_HUB",
   INVENTORY = "INVENTORY",
   INVOICE_GENERATOR = "INVOICE_GENERATOR",
-  DEBTOR_BOOK = "DEBTOR_BOOK", // New
+  DEBTOR_BOOK = "DEBTOR_BOOK", // Gbege Book
   MARKETPLACE = "MARKETPLACE",
-  SMARTHOME_FINDER = "SMARTHOME_FINDER", // New
   CART = "CART",
   COMPLIANCE = 'COMPLIANCE',
   DIGITAL_ROADMAP = 'DIGITAL_ROADMAP',
@@ -476,4 +476,49 @@ export interface UnifiedItem {
     is_vendor_verified?: boolean;
     promoted_until?: string;
     stock_count: number; 
+}
+
+export interface DailySale {
+  id: number | string;
+  product?: number | null;
+  item_name: string;
+  quantity: number;
+  unit_price: number | string;
+  cost_price?: number | string;
+  total_amount: number | string;
+  payment_method: 'CASH' | 'TRANSFER' | 'CREDIT';
+  customer_name?: string;
+  customer_phone?: string;
+  is_debt?: boolean;
+  debt_due_date?: string;
+  notes?: string;
+  created_at?: string;
+}
+
+export interface DailyExpense {
+  id: number | string;
+  title: string;
+  category: 'FUEL_GEN' | 'LOGISTICS' | 'RENT_BILLS' | 'PACKAGING' | 'PERSONAL' | 'STAFF' | 'OTHER';
+  amount: number | string;
+  payment_method: 'CASH' | 'TRANSFER';
+  notes?: string;
+  created_at?: string;
+}
+
+export interface DailySummary {
+  date: string;
+  total_sales_revenue: number;
+  cash_sales: number;
+  transfer_sales: number;
+  credit_sales: number;
+  sales_count: number;
+  cogs: number;
+  gross_profit: number;
+  total_expenses: number;
+  cash_expenses: number;
+  transfer_expenses: number;
+  expenses_count: number;
+  net_cash_in_till: number;
+  net_profit: number;
+  low_stock_products: { id: number; name: string; stock_count: number; low_stock_threshold: number }[];
 }

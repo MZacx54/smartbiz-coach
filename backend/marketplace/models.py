@@ -156,3 +156,58 @@ class Lead(models.Model):
 
     def __str__(self):
         return f"{self.customer_name} - {self.product.name if self.product else 'General Inquiry'}"
+
+
+class DailySale(models.Model):
+    PAYMENT_METHODS = [
+        ('CASH', 'Cash in Till'),
+        ('TRANSFER', 'Bank Transfer / POS'),
+        ('CREDIT', 'Credit (Debtor / Owe Me)'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='daily_sales')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    item_name = models.CharField(max_length=255)
+    quantity = models.IntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='CASH')
+    customer_name = models.CharField(max_length=255, blank=True, default='')
+    customer_phone = models.CharField(max_length=50, blank=True, default='')
+    is_debt = models.BooleanField(default=False)
+    debt_due_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.item_name} (₦{self.total_amount:,.2f}) - {self.payment_method}"
+
+
+class DailyExpense(models.Model):
+    EXPENSE_CATEGORIES = [
+        ('FUEL_GEN', 'Fuel & Generator'),
+        ('LOGISTICS', 'Logistics & Dispatch'),
+        ('RENT_BILLS', 'Shop Rent, NEPA & Bills'),
+        ('PACKAGING', 'Packaging & Materials'),
+        ('PERSONAL', 'Personal / Oga Drawing'),
+        ('STAFF', 'Staff & Apprentice Pay'),
+        ('OTHER', 'Other Operating Cost'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='daily_expenses')
+    title = models.CharField(max_length=255)
+    category = models.CharField(max_length=30, choices=EXPENSE_CATEGORIES, default='OTHER')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_method = models.CharField(max_length=20, default='CASH') # CASH or TRANSFER
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.category}] {self.title} - ₦{self.amount:,.2f}"
