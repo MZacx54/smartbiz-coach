@@ -50,14 +50,16 @@ class ProductSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         is_promoted = attrs.get('is_promoted', False)
         request = self.context.get('request')
-        if is_promoted and request and request.user:
-            from marketing.views import get_plan_limits
-            limits = get_plan_limits(request.user)
-            is_pro = request.user.is_admin_or_owner or (limits['plan_name'] == 'Pro')
-            if not is_pro:
-                raise serializers.ValidationError({
-                    "is_promoted": "Promoting/featuring products on the Marketplace is a premium feature. Please upgrade to a Pro plan to feature your listings."
-                })
+        if is_promoted and request and getattr(request, 'user', None) and request.user.is_authenticated:
+            try:
+                from marketing.views import get_plan_limits
+                limits = get_plan_limits(request.user)
+                is_pro = getattr(request.user, 'is_admin_or_owner', False) or (limits.get('plan_name') == 'Pro')
+                if not is_pro:
+                    # Gracefully allow product creation by falling back to standard listing
+                    attrs['is_promoted'] = False
+            except Exception:
+                attrs['is_promoted'] = False
         return attrs
 
 class LeadSerializer(serializers.ModelSerializer):

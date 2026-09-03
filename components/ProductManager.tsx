@@ -541,6 +541,23 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
 
     const toastId = toast.loading('Saving listing...');
     try {
+      // Ensure image is compressed before dispatching over REST API
+      const compressedImage = currentProduct.image_url 
+        ? await compressBase64Url(currentProduct.image_url, 800, 0.75) 
+        : '';
+
+      const payload = {
+        ...currentProduct,
+        image_url: compressedImage,
+        price: parseFloat(currentProduct.price as string).toFixed(2),
+        price_max: currentProduct.price_max ? parseFloat(currentProduct.price_max as string).toFixed(2) : null,
+        cost_price: currentProduct.cost_price ? parseFloat(currentProduct.cost_price as string).toFixed(2) : "0.00",
+        stock_count: parseInt(currentProduct.stock_count as any) || 0,
+        low_stock_threshold: parseInt(currentProduct.low_stock_threshold as any) || 5,
+        is_public: currentProduct.is_public !== false,
+        is_promoted: !!currentProduct.is_promoted
+      };
+
       // Audit trail calculation
       const isEdit = !!currentProduct.id;
       const oldProduct = isEdit ? products.find(p => p.id === currentProduct.id) : null;
@@ -562,16 +579,23 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
           updatedList = [{ ...payload, id: Date.now() } as Product, ...products];
         }
         setProducts(updatedList);
-        toast.success('Listing synchronized locally (Traction Mode)', { id: toastId });
+        toast.success('Listing synchronized (Traction Mode)', { id: toastId });
       } else {
         if (currentProduct.id) {
-          await api.put(`/api/marketplace/products/${currentProduct.id}/`, payload);
-          toast.success('Listing updated!', { id: toastId });
+          const res = await api.put(`/api/marketplace/products/${currentProduct.id}/`, payload);
+          if (res.data) {
+            setProducts(prev => prev.map(p => p.id === currentProduct.id ? res.data : p));
+          }
+          toast.success('Listing updated & synced to Marketplace!', { id: toastId });
         } else {
-          await api.post('/api/marketplace/products/', payload);
-          toast.success('Listing added to ecosystem!', { id: toastId });
+          const res = await api.post('/api/marketplace/products/', payload);
+          if (res.data) {
+            setProducts(prev => [res.data, ...prev]);
+          }
+          toast.success('Listing saved & synced to Storefront and Marketplace!', { id: toastId });
         }
         fetchProducts();
+        window.dispatchEvent(new Event('smartbiz_products_updated'));
       }
 
       addAuditLog(
@@ -585,8 +609,19 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         memo
       );
       setIsEditing(false);
-    } catch (err) {
-      toast.error('Error saving listing', { id: toastId });
+    } catch (err: any) {
+      console.error('Error saving listing:', err);
+      let errorMsg = 'Error saving listing';
+      if (err?.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMsg = err.response.data;
+        } else if (typeof err.response.data === 'object') {
+          const firstKey = Object.keys(err.response.data)[0];
+          const firstErr = err.response.data[firstKey];
+          errorMsg = `${firstKey}: ${Array.isArray(firstErr) ? firstErr[0] : firstErr}`;
+        }
+      }
+      toast.error(errorMsg, { id: toastId });
     }
   };
 
@@ -1591,7 +1626,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                 {/* Settings Side */}
                 <div className="space-y-8">
                    <div className="bg-slate-50 rounded-[32px] p-8 space-y-6">
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Ecosystem Distribution</h3>
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Ecosystem Distribution & Sync</h3>
                       
                       <div className="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm border border-slate-100">
                         <div className="flex items-center gap-3">
@@ -1599,15 +1634,15 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <Globe className="w-5 h-5 text-emerald-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-slate-800">Public Storefront</p>
-                            <p className="text-[10px] text-slate-400">List on personal store website</p>
+                            <p className="text-xs font-bold text-slate-800">Storefront & Marketplace Sync</p>
+                            <p className="text-[10px] text-slate-400">List on your public store & Nigerian marketplace</p>
                           </div>
                         </div>
                         <input 
                           type="checkbox" 
-                          checked={currentProduct.is_public}
+                          checked={currentProduct.is_public !== false}
                           onChange={(e) => setCurrentProduct({ ...currentProduct, is_public: e.target.checked })}
-                          className="w-5 h-5 text-indigo-600 rounded-lg"
+                          className="w-5 h-5 text-indigo-600 rounded-lg cursor-pointer"
                         />
                       </div>
 
@@ -1617,15 +1652,15 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <Megaphone className="w-5 h-5 text-indigo-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-slate-800">Ecosystem Market Square</p>
-                            <p className="text-[10px] text-slate-400">List in global search & directory</p>
+                            <p className="text-xs font-bold text-slate-800">VIP Spotlight Featured Boost</p>
+                            <p className="text-[10px] text-slate-400">Promote in top spotlight carousels</p>
                           </div>
                         </div>
                         <input 
                           type="checkbox" 
-                          checked={currentProduct.is_promoted}
+                          checked={!!currentProduct.is_promoted}
                           onChange={(e) => setCurrentProduct({ ...currentProduct, is_promoted: e.target.checked })}
-                          className="w-5 h-5 text-indigo-600 rounded-lg"
+                          className="w-5 h-5 text-indigo-600 rounded-lg cursor-pointer"
                         />
                       </div>
                    </div>
@@ -1667,17 +1702,19 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                              type="file"
                              accept="image/*"
                              className="hidden"
-                             onChange={(e) => {
+                             onChange={async (e) => {
                                const file = e.target.files?.[0];
                                if (file) {
-                                 if (file.size > 10 * 1024 * 1024) {
-                                   toast.error('Image is too large (max 10MB)');
+                                 if (file.size > 15 * 1024 * 1024) {
+                                   toast.error('Image is too large (max 15MB)');
                                    return;
                                  }
                                  const reader = new FileReader();
-                                 reader.onloadend = () => {
-                                   setCurrentProduct(prev => ({ ...prev, image_url: reader.result as string }));
-                                   toast.success('Image loaded successfully');
+                                 reader.onloadend = async () => {
+                                   const rawUrl = reader.result as string;
+                                   const optimized = await compressBase64Url(rawUrl, 800, 0.75);
+                                   setCurrentProduct(prev => ({ ...prev, image_url: optimized }));
+                                   toast.success('Image optimized & attached');
                                  };
                                  reader.readAsDataURL(file);
                                }
@@ -1688,7 +1725,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                          <button
                            type="button"
                            onClick={() => setShowStudioModal(true)}
-                           className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 px-4 py-3 rounded-2xl text-xs font-bold text-indigo-650 transition-all border-0"
+                           className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 px-4 py-3 rounded-2xl text-xs font-bold text-indigo-650 transition-all border-0 cursor-pointer"
                          >
                            <span>🎨</span> Photo Studio
                          </button>
