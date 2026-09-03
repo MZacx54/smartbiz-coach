@@ -4,7 +4,7 @@ import {
   Clock, AlertTriangle, ArrowRight, RefreshCw, Send, Search, 
   Eye, Filter, CreditCard, Landmark, BookOpen, AlertCircle, ShoppingBag, X
 } from 'lucide-react';
-import { Debtor, DebtorPayment, Product, Invoice } from '../types';
+import { Debtor, DebtorPayment, Product, Invoice, SupplierPayable } from '../types';
 import { generateDebtReminder } from '../services/geminiService';
 import ShareActions from './ShareActions';
 import { usageLimiter } from '../utils/usageLimiter';
@@ -21,9 +21,27 @@ interface DebtorBookProps {
 }
 
 const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits }) => {
+  const [primaryMode, setPrimaryMode] = useState<'RECEIVABLES' | 'PAYABLES'>('RECEIVABLES');
+
   const [debtors, setDebtors] = useState<Debtor[]>(() => {
     const saved = localStorage.getItem('sb_debtors');
     return saved ? JSON.parse(saved) : [];
+  });
+
+  const [suppliers, setSuppliers] = useState<SupplierPayable[]>(() => {
+    const saved = localStorage.getItem('sb_supplier_payables');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [newSupplier, setNewSupplier] = useState({
+    supplierName: '',
+    phone: '',
+    amount: '',
+    itemsSupplied: '',
+    invoiceNumber: '',
+    dueDate: '',
+    notes: ''
   });
   
   const [showForm, setShowForm] = useState(false);
@@ -293,6 +311,62 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     toast.success("Debtor recorded successfully!");
   };
 
+  const handleSaveSupplier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSupplier.supplierName || !newSupplier.amount) {
+      toast.error('Supplier name and amount are required!');
+      return;
+    }
+    const sup: SupplierPayable = {
+      id: `sup-${Date.now()}`,
+      supplierName: newSupplier.supplierName,
+      phone: newSupplier.phone,
+      amount: parseFloat(newSupplier.amount) || 0,
+      paidAmount: 0,
+      itemsSupplied: newSupplier.itemsSupplied || 'Goods on Credit',
+      invoiceNumber: newSupplier.invoiceNumber,
+      dueDate: newSupplier.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      status: 'UNPAID',
+      date: new Date().toISOString().split('T')[0],
+      notes: newSupplier.notes
+    };
+    const updated = [sup, ...suppliers];
+    setSuppliers(updated);
+    localStorage.setItem('sb_supplier_payables', JSON.stringify(updated));
+    setNewSupplier({ supplierName: '', phone: '', amount: '', itemsSupplied: '', invoiceNumber: '', dueDate: '', notes: '' });
+    setShowSupplierForm(false);
+    toast.success('Supplier credit recorded successfully! 📦');
+  };
+
+  const handleToggleSupplierStatus = (id: string) => {
+    const updated = suppliers.map(s => {
+      if (s.id === id) {
+        const isPaid = s.status === 'PAID';
+        return {
+          ...s,
+          status: (isPaid ? 'UNPAID' : 'PAID') as 'UNPAID' | 'PAID',
+          paidAmount: isPaid ? 0 : s.amount
+        };
+      }
+      return s;
+    });
+    setSuppliers(updated);
+    localStorage.setItem('sb_supplier_payables', JSON.stringify(updated));
+    toast.success('Supplier payment status updated!');
+  };
+
+  const handleSupplierWhatsApp = (sup: SupplierPayable) => {
+    const text = `Hello ${sup.supplierName},\n\nRegarding the goods taken on credit (*${sup.itemsSupplied}*, Total: ₦${sup.amount.toLocaleString()}):\nConfirming payment is scheduled for ${sup.dueDate}.\nThank you for your trusted supply partnership! 🙏`;
+    const cleanPhone = sup.phone ? sup.phone.replace(/\D/g, '') : '';
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone.startsWith('0') ? '234' + cleanPhone.slice(1) : cleanPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const totalSupplierDebt = suppliers.filter(s => s.status !== 'PAID').reduce((acc, curr) => acc + (curr.amount - (curr.paidAmount || 0)), 0);
+  const totalSupplierPaid = suppliers.filter(s => s.status === 'PAID').reduce((acc, curr) => acc + curr.amount, 0);
+
   // Record payment installment
   const handleRecordPaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -512,32 +586,60 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-20">
       
       {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 font-heading flex items-center gap-2">
-            <span>📒</span> Gbege Book (Debtor Tracker)
+            <span>📒</span> Gbege Book (Credit & Debt Ledger)
           </h2>
-          <p className="text-slate-500 text-xs mt-1">Track outstanding balances, log payments, and recover business funds with smart AI WhatsApp reminders.</p>
+          <p className="text-slate-500 text-xs mt-1">Track customer debts and manage wholesale supplier payables so your cashflow stays healthy.</p>
         </div>
-        <div className="flex gap-2.5 w-full sm:w-auto">
+
+        {/* Primary Mode Tabs */}
+        <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full md:w-fit border border-slate-200">
           <button
-            onClick={handleSyncUnpaidInvoices}
-            disabled={isSyncing}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 px-5 py-3.5 rounded-2xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+            onClick={() => setPrimaryMode('RECEIVABLES')}
+            className={`flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              primaryMode === 'RECEIVABLES'
+                ? 'bg-white text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : 'Sync Invoices'}
+            <span>📒</span> Customers Who Owe Me ({debtors.filter(d => d.status !== 'PAID').length})
           </button>
-          
+
           <button
-            onClick={() => setShowForm(!showForm)}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-5 py-3.5 rounded-2xl text-xs font-black shadow-lg shadow-red-600/10 active:scale-95 transition-all border-0 cursor-pointer"
+            onClick={() => setPrimaryMode('PAYABLES')}
+            className={`flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              primaryMode === 'PAYABLES'
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
           >
-            <Plus className="w-4 h-4" />
-            {showForm ? 'Cancel' : 'Record New Debt'}
+            <span>📦</span> Suppliers I Owe ({suppliers.filter(s => s.status !== 'PAID').length})
           </button>
         </div>
       </div>
+
+      {primaryMode === 'RECEIVABLES' ? (
+        <>
+          <div className="flex justify-end gap-2.5">
+            <button
+              onClick={handleSyncUnpaidInvoices}
+              disabled={isSyncing}
+              className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 px-5 py-3 rounded-2xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync Invoices'}
+            </button>
+            
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-2xl text-xs font-black shadow-lg shadow-red-600/10 active:scale-95 transition-all border-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              {showForm ? 'Cancel' : 'Record New Debt'}
+            </button>
+          </div>
 
       {/* Analytics Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -975,6 +1077,257 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
           );
         })}
       </div>
+      </>
+      ) : (
+        /* PAYABLES MODE: SUPPLIERS I OWE */
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <span>📦</span> Wholesale Supplier Payables (Creditors)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Track goods collected on credit from importers and wholesalers to ensure you never default on your supplier terms.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowSupplierForm(true)}
+              className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-3 rounded-2xl text-xs font-black shadow-lg shadow-amber-600/20 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Log Goods on Credit
+            </button>
+          </div>
+
+          {/* Supplier Analytics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-3xl p-6">
+              <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">Total Supplier Balance Owed</p>
+              <h3 className="text-3xl font-black text-amber-950 font-heading mt-1">₦{totalSupplierDebt.toLocaleString()}</h3>
+              <p className="text-[10px] text-amber-700 mt-1">{suppliers.filter(s => s.status !== 'PAID').length} pending supplier balance(s)</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6">
+              <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Settled Supplier Invoices</p>
+              <h3 className="text-3xl font-black text-emerald-950 font-heading mt-1">₦{totalSupplierPaid.toLocaleString()}</h3>
+              <p className="text-[10px] text-emerald-700 mt-1">Fully cleared supplier debts</p>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col justify-between">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Supplier Creditors</p>
+              <h3 className="text-3xl font-black text-slate-800 font-heading mt-1">{suppliers.length}</h3>
+              <p className="text-[10px] text-slate-400 mt-1">Wholesalers & importers logged</p>
+            </div>
+          </div>
+
+          {/* Supplier Payables List */}
+          {suppliers.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
+              <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl mb-4">
+                📦
+              </div>
+              <h3 className="text-base font-bold text-slate-800">No supplier payables recorded yet</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                Log merchandise, raw materials, or stock taken on credit from your distributors and suppliers.
+              </p>
+              <button
+                onClick={() => setShowSupplierForm(true)}
+                className="mt-5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                + Record Supplier Credit
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {suppliers.map((sup) => {
+                const isPaid = sup.status === 'PAID';
+                const isOverdue = !isPaid && sup.dueDate && new Date(sup.dueDate) < new Date();
+                return (
+                  <div key={sup.id} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:border-amber-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-extrabold text-slate-900">{sup.supplierName}</span>
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                          isPaid 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : isOverdue 
+                            ? 'bg-rose-100 text-rose-800 animate-pulse' 
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {isPaid ? '✅ Settled' : isOverdue ? '🚨 Overdue' : `Due: ${sup.dueDate}`}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium">
+                        📦 Items: <strong className="text-slate-800">{sup.itemsSupplied}</strong>
+                      </p>
+                      {sup.phone && (
+                        <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-slate-400" /> {sup.phone}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-base font-black text-slate-900">₦{sup.amount.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400">Due: {sup.dueDate || 'No date'}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleToggleSupplierStatus(sup.id)}
+                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                            isPaid
+                              ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                              : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                          }`}
+                        >
+                          {isPaid ? 'Reopen' : 'Mark Settled'}
+                        </button>
+
+                        <button
+                          onClick={() => handleSupplierWhatsApp(sup)}
+                          className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-2 rounded-xl transition-all cursor-pointer"
+                          title="Send WhatsApp Payment Update"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this supplier record?')) {
+                              const updated = suppliers.filter(s => s.id !== sup.id);
+                              setSuppliers(updated);
+                              localStorage.setItem('sb_supplier_payables', JSON.stringify(updated));
+                            }
+                          }}
+                          className="text-slate-400 hover:text-rose-600 p-2 rounded-xl transition-all cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Modal to log supplier goods on credit */}
+          {showSupplierForm && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+              <div className="bg-white rounded-[32px] max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl animate-in zoom-in-95">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">📦 Log Goods on Credit from Supplier</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Track what you owe importers and wholesalers</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowSupplierForm(false)}
+                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-all cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveSupplier} className="space-y-4">
+                  <div>
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                      Supplier / Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newSupplier.supplierName}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, supplierName: e.target.value })}
+                      placeholder="e.g. Alhaji Sani Wholesales, Alaba"
+                      className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                        Supplier WhatsApp/Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={newSupplier.phone}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, phone: e.target.value })}
+                        placeholder="08012345678"
+                        className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                        Amount Owed (₦) *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        required
+                        value={newSupplier.amount}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, amount: e.target.value })}
+                        placeholder="0.00"
+                        className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                      Items / Merchandise Supplied on Credit *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newSupplier.itemsSupplied}
+                      onChange={(e) => setNewSupplier({ ...newSupplier, itemsSupplied: e.target.value })}
+                      placeholder="e.g. 10 Bales of Fabric, 20 Cartons of Noodles"
+                      className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                        Payment Due Date *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={newSupplier.dueDate}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, dueDate: e.target.value })}
+                        className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                        Invoice / Waybill Number
+                      </label>
+                      <input
+                        type="text"
+                        value={newSupplier.invoiceNumber}
+                        onChange={(e) => setNewSupplier({ ...newSupplier, invoiceNumber: e.target.value })}
+                        placeholder="WB-9102"
+                        className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold text-xs py-4 rounded-2xl shadow-lg transition-all cursor-pointer"
+                  >
+                    💾 Save Supplier Credit Record
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Record Payment Modal */}
       {paymentModalDebtor && (

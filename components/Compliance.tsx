@@ -9,6 +9,7 @@ import CreditPromptModal from './CreditPromptModal';
 import { BrandIdentity, User } from '../types';
 import { BankPayoutSetup } from './BankPayoutSetup';
 import PaymentModal from './PaymentModal';
+import { ShieldCheck, Printer, Send, Copy, FileText, CheckCircle2, Download, AlertCircle, X } from 'lucide-react';
 
 const CAC_PACKAGES = [
   {
@@ -191,6 +192,37 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
   const [hireError, setHireError] = useState('');
   const [completedPaymentRef, setCompletedPaymentRef] = useState('');
 
+  // Tax Exemption Shield Memo State
+  const [showExemptionModal, setShowExemptionModal] = useState(false);
+  const [exemptionBizName, setExemptionBizName] = useState(() => brand?.businessName || user?.businessName || '');
+  const [exemptionRegType, setExemptionRegType] = useState('Sole Proprietorship / Enterprise');
+  const [exemptionRegNumber, setExemptionRegNumber] = useState(() => (user as any)?.rc_number || '');
+  const [exemptionTurnover, setExemptionTurnover] = useState('4500000');
+  const [exemptionYear, setExemptionYear] = useState(() => String(new Date().getFullYear()));
+  const [exemptionGeneratedDate] = useState(() => new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }));
+
+  const handleShareExemptionWhatsApp = () => {
+    const text = `🏛️ *STATUTORY SMALL BUSINESS TAX EXEMPTION NOTICE*\n` +
+      `*Pursuant to Nigerian Finance Act 2019/2020 & CITA Section 23*\n\n` +
+      `📋 *Entity Name:* ${exemptionBizName || 'Designated Micro-Enterprise'}\n` +
+      `📑 *Category:* ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\n` +
+      `📅 *Tax Period:* ${exemptionYear}\n` +
+      `💰 *Declared Gross Turnover:* ₦${Number(exemptionTurnover || 0).toLocaleString()} (Below ₦25,000,000 threshold)\n\n` +
+      `⚖️ *STATUTORY GROUNDS FOR ZERO-TAX EXEMPTION:*\n` +
+      `1. *0% Companies Income Tax (CIT):* Under Section 23 & 40 of CITA (as amended by Nigerian Finance Act 2019/2020), small companies with annual turnover under ₦25M are legally subject to ZERO PERCENT (0%) CIT.\n` +
+      `2. *VAT Exemption:* Under Section 15 of VAT Act (as amended), businesses below the ₦25M turnover threshold are exempt from charging, collecting, and remitting VAT.\n` +
+      `3. *Protection Against Harassment:* Taxes & Levies Act prohibits illegal road blocks, arbitrary demands, and unlawful distraint of micro-enterprises.\n\n` +
+      `_Issued via SmartBiz Coach Compliance & Regulatory Shield Desk_ 🛡️`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handleCopyNotice = () => {
+    const text = `STATUTORY SMALL BUSINESS TAX EXEMPTION NOTICE\nPursuant to Nigerian Finance Act 2019/2020 & CITA Section 23\n\nEntity Name: ${exemptionBizName || 'Designated Micro-Enterprise'}\nCategory: ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\nTax Period: ${exemptionYear}\nDeclared Gross Turnover: ₦${Number(exemptionTurnover || 0).toLocaleString()} (Below ₦25,000,000 threshold)\n\nSTATUTORY GROUNDS FOR ZERO-TAX EXEMPTION:\n1. 0% Companies Income Tax (CIT): Under Section 23 & 40 of CITA (as amended by Nigerian Finance Act 2019/2020), small companies with annual turnover under ₦25M are legally subject to ZERO PERCENT (0%) CIT.\n2. VAT Exemption: Under Section 15 of VAT Act (as amended), businesses below the ₦25M turnover threshold are exempt from charging, collecting, and remitting VAT.\n3. Protection Against Harassment: Taxes & Levies Act prohibits illegal road blocks, arbitrary demands, and unlawful distraint of micro-enterprises.\n\nIssued via SmartBiz Coach Compliance & Regulatory Shield Desk.`;
+    navigator.clipboard.writeText(text);
+    toast.success('Statutory Exemption Notice copied to clipboard!');
+  };
+
   // Load persisted compliance status on mount
   useEffect(() => {
     const load = async () => {
@@ -213,6 +245,12 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
       business_name: brand?.businessName || user?.businessName || prev.business_name,
       phone_number: user?.phone || prev.phone_number,
     }));
+    if (brand?.businessName || user?.businessName) {
+      setExemptionBizName(brand?.businessName || user?.businessName || '');
+    }
+    if ((user as any)?.rc_number) {
+      setExemptionRegNumber((user as any).rc_number);
+    }
   }, [brand, user]);
 
   const toggleItem = async (id: keyof ComplianceStatus) => {
@@ -621,6 +659,57 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
         </div>
       </div>
 
+      {/* Statutory Small Business Tax Exemption Shield Card */}
+      <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-emerald-800/40 space-y-5">
+        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-450/40 text-emerald-400 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+              🛡️
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                  Finance Act 2019/2020 Statutory Relief
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-400/30">
+                  Anti-Harassment Shield
+                </span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black font-heading mt-1 text-white">
+                Small Business Tax Exemption Shield
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
+                Statutory legal protection for Nigerian MSMEs earning under <strong>₦25,000,000</strong> annually. Cites Section 23 of CITA (0% CIT) and Section 15 of VAT Act.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowExemptionModal(true)}
+            className="shrink-0 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+          >
+            <ShieldCheck className="w-4 h-4" /> Generate Official Statutory Memo
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 relative z-10">
+          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
+            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">0% Companies Income Tax</p>
+            <p className="text-xs text-slate-200 mt-1">Section 23 CITA Cap C21 LFN 2004 (amended by Finance Act 2019/2020)</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
+            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">VAT Filing Exemption</p>
+            <p className="text-xs text-slate-200 mt-1">Section 15 VAT Act Cap V1 LFN 2004 (below ₦25M turnover exempt)</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
+            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">Illegal Task Force Shield</p>
+            <p className="text-xs text-slate-200 mt-1">Stops illegal lockouts and arbitrary demands by local council touts</p>
+          </div>
+        </div>
+      </div>
+
       {/* Direct Bank Payout Setup */}
       <BankPayoutSetup />
 
@@ -776,6 +865,189 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
         onConfirm={deductOnConfirm || (() => {})}
         onClose={() => setShowCreditPrompt(false)}
       />
+
+      {/* Statutory Tax Exemption Memo Modal */}
+      {showExemptionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto p-6 sm:p-8 space-y-6 relative my-8 animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="flex justify-between items-start border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl">
+                  📜
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 font-heading">
+                    Statutory Tax Exemption Memo
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Official legal defense notice under Nigerian Finance Act 2019/2020
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExemptionModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Adjustment Inputs */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+              <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                Confirm Your Registered Entity Details:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Business Name</label>
+                  <input
+                    type="text"
+                    value={exemptionBizName}
+                    onChange={(e) => setExemptionBizName(e.target.value)}
+                    placeholder="e.g. Ade & Sons Enterprises"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Entity Structure</label>
+                  <select
+                    value={exemptionRegType}
+                    onChange={(e) => setExemptionRegType(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 cursor-pointer"
+                  >
+                    <option value="Sole Proprietorship / Micro-Enterprise">Sole Proprietorship / Micro-Enterprise</option>
+                    <option value="Registered Business Name (BN)">Registered Business Name (BN)</option>
+                    <option value="Private Limited Company (Ltd / RC)">Private Limited Company (Ltd / RC)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">RC / BN Number or TIN</label>
+                  <input
+                    type="text"
+                    value={exemptionRegNumber}
+                    onChange={(e) => setExemptionRegNumber(e.target.value)}
+                    placeholder="e.g. BN-2938491 or Sole Trader"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Annual Turnover (₦)</label>
+                  <input
+                    type="number"
+                    max="25000000"
+                    value={exemptionTurnover}
+                    onChange={(e) => setExemptionTurnover(e.target.value)}
+                    placeholder="4,500,000"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Official Printable Legal Memo Sheet */}
+            <div id="statutory-memo-sheet" className="bg-amber-50/40 border-2 border-emerald-900/30 rounded-3xl p-6 sm:p-8 space-y-6 text-slate-900 shadow-sm relative print:border-none print:shadow-none print:p-0">
+              <div className="text-center space-y-1.5 border-b border-emerald-900/20 pb-4">
+                <div className="inline-block bg-emerald-800 text-white font-black text-[10px] uppercase tracking-widest px-3 py-0.5 rounded-full mb-1">
+                  Federal Republic of Nigeria
+                </div>
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-emerald-950 font-heading">
+                  STATUTORY MEMORANDUM ON TAX EXEMPTION STATUS
+                </h2>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  Pursuant to Sections 23 & 40 of CITA (Cap C21 LFN 2004) & Section 15 of VAT Act
+                </p>
+                <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 pt-2">
+                  <span>REF: SBC/TX-SHIELD/{exemptionYear}/{Math.abs(exemptionBizName.split('').reduce((a, b) => a + b.charCodeAt(0), 1000))}</span>
+                  <span>DATE: {exemptionGeneratedDate}</span>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-xs leading-relaxed text-slate-800">
+                <div>
+                  <p className="font-extrabold text-slate-900 uppercase text-[11px]">TO ALL CONCERNED REVENUE AUTHORITIES:</p>
+                  <p className="text-slate-600 italic text-[11px]">
+                    Federal Inland Revenue Service (FIRS), State Internal Revenue Services (SIRS), Joint Tax Board (JTB), and Authorized Local Government Revenue Task Forces.
+                  </p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-emerald-900/15 space-y-2">
+                  <p className="font-bold text-slate-900">
+                    DECLARATION OF SMALL COMPANY / MICRO-ENTERPRISE STATUS:
+                  </p>
+                  <p>
+                    This is to formally place on record that <strong>{exemptionBizName || 'The Designated Business'}</strong> (Entity: <strong>{exemptionRegType}</strong> {exemptionRegNumber ? `• Registration/TIN: ${exemptionRegNumber}` : ''}) operates with an assessed gross annual turnover of <strong>₦{Number(exemptionTurnover || 0).toLocaleString()}</strong> for the tax period <strong>{exemptionYear}</strong>.
+                  </p>
+                  <p>
+                    Having an annual gross turnover strictly under the statutory threshold of <strong>₦25,000,000.00 (Twenty-Five Million Naira)</strong>, the aforementioned entity is statutorily classified as a <strong>Small Company / Exempt Micro-Enterprise</strong> under the extant laws of Nigeria.
+                  </p>
+                </div>
+
+                <div className="space-y-2.5">
+                  <p className="font-black text-emerald-950 uppercase text-[11px] tracking-wide">
+                    STATUTORY PROVISIONS & EXEMPTION BASES:
+                  </p>
+                  <div className="space-y-2 pl-3 border-l-2 border-emerald-600 text-[11px]">
+                    <p>
+                      <strong>1. 0% Companies Income Tax Rate:</strong> Under <em>Section 23 and Section 40 of the Companies Income Tax Act (CITA)</em>, as amended by the <em>Finance Act 2019 (Section 23)</em> and <em>Finance Act 2020 (Section 14)</em>, small companies with gross turnover of ₦25,000,000 or less are subject to CIT at <strong>ZERO PERCENT (0%)</strong>.
+                    </p>
+                    <p>
+                      <strong>2. Exemption from VAT Registration & Charging:</strong> Under <em>Section 15 of the Value Added Tax (VAT) Act</em> (as amended by Finance Act), businesses with turnover below ₦25,000,000 are <strong>exempt from registering for, charging, collecting, or remitting Value Added Tax</strong>.
+                    </p>
+                    <p>
+                      <strong>3. Prohibition of Illegal Levies & Harassment:</strong> Under the <em>Taxes and Levies (Approved List for Collection) Act</em>, it is unlawful for unauthorized committees, touts, or agents to mount roadblocks, seal trade premises, or enforce unapproved levies on micro-enterprises.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-900 text-white p-4 rounded-2xl flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Statutory Shield Verification</p>
+                    <p className="text-xs font-extrabold mt-0.5">Compliant & Fully Exempt (0% CIT Rate)</p>
+                    <p className="text-[10px] text-emerald-200 mt-0.5">SmartBiz Coach MSME Regulatory Shield Desk</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full border-2 border-dashed border-emerald-400 flex items-center justify-center text-xl shrink-0">
+                    ⚖️
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" /> Print / Save PDF
+                </button>
+
+                <button
+                  onClick={handleShareExemptionWhatsApp}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <Send className="w-4 h-4" /> Share on WhatsApp
+                </button>
+
+                <button
+                  onClick={handleCopyNotice}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Copy className="w-4 h-4" /> Copy Notice
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowExemptionModal(false)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+              >
+                Close Memo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

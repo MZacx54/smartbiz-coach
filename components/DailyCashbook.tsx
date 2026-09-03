@@ -3,7 +3,7 @@ import {
   DollarSign, Plus, Trash2, Calendar, CheckCircle, 
   ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, 
   Send, Share2, Download, Printer, RefreshCw, ShoppingCart, 
-  FileText, ShieldCheck, Sparkles, Filter, X
+  FileText, ShieldCheck, Sparkles, Filter, X, Lock, Unlock, Key
 } from 'lucide-react';
 import { DailySale, DailyExpense, DailySummary, Product } from '../types';
 import api from '../services/api';
@@ -57,6 +57,20 @@ export const DailyCashbook: React.FC = () => {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expensePaymentMethod, setExpensePaymentMethod] = useState<'CASH' | 'TRANSFER'>('CASH');
   const [expenseNotes, setExpenseNotes] = useState('');
+  // Anti-Theft Shift Mode & PIN security
+  const [isShiftMode, setIsShiftMode] = useState<boolean>(() => {
+    return localStorage.getItem('sb_shift_mode') === 'true';
+  });
+  const [ownerPin, setOwnerPin] = useState<string>(() => {
+    return localStorage.getItem('sb_owner_pin') || '0000';
+  });
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinAction, setPinAction] = useState<'ENTER' | 'SET'>('ENTER');
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+
+  // Payment Fraud Shield Checklist
+  const [transferFraudVerified, setTransferFraudVerified] = useState(false);
 
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -140,6 +154,13 @@ export const DailyCashbook: React.FC = () => {
       return;
     }
 
+    if (salePaymentMethod === 'TRANSFER' && !transferFraudVerified) {
+      toast.error('🛡️ Fraud Shield: Check the box confirming you verified credit in your bank app!', {
+        duration: 4000
+      });
+      return;
+    }
+
     const payload = {
       product: selectedProduct ? selectedProduct.id : null,
       item_name: saleItemName,
@@ -211,6 +232,7 @@ export const DailyCashbook: React.FC = () => {
       setSaleCustomerPhone('');
       setSaleDueDate('');
       setSaleNotes('');
+      setTransferFraudVerified(false);
 
       fetchDailyData();
     } catch (err: any) {
@@ -370,13 +392,89 @@ export const DailyCashbook: React.FC = () => {
               <Plus className="w-4 h-4" /> Record Sale / Service
             </button>
 
-            <button
-              onClick={() => setShowExpenseModal(true)}
-              className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all cursor-pointer"
-            >
-              <ArrowDownRight className="w-4 h-4" /> Petty Cash / Expense
-            </button>
+            {!isShiftMode && (
+              <button
+                onClick={() => setShowExpenseModal(true)}
+                className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <ArrowDownRight className="w-4 h-4" /> Petty Cash / Expense
+              </button>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Anti-Theft Shift Mode Controller */}
+      <div className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+        isShiftMode 
+          ? 'bg-amber-50 border-amber-200 text-amber-900 shadow-sm' 
+          : 'bg-slate-900 text-white border-slate-800 shadow-md'
+      }`}>
+        <div className="flex items-center gap-3.5">
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg shrink-0 ${
+            isShiftMode ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20' : 'bg-emerald-500/20 text-emerald-400'
+          }`}>
+            {isShiftMode ? '🧑‍💼' : '👔'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-black font-heading">
+                {isShiftMode ? 'Sales Attendant / Apprentice Shift Mode Active' : 'Owner Super-Admin Mode'}
+              </h3>
+              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                isShiftMode ? 'bg-amber-200 text-amber-900 border border-amber-300' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              }`}>
+                {isShiftMode ? 'Anti-Theft Active' : 'All Metrics Visible'}
+              </span>
+            </div>
+            <p className={`text-[11px] mt-0.5 ${isShiftMode ? 'text-amber-800' : 'text-slate-400'}`}>
+              {isShiftMode
+                ? 'Profit margins, COGS, and wholesale cost prices are locked. Only sales logging & receipts are accessible.'
+                : 'Full visibility enabled. Hand over to your shop attendant or apprentice when leaving your store.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {isShiftMode ? (
+            <button
+              onClick={() => {
+                setPinAction('ENTER');
+                setPinInput('');
+                setPinError('');
+                setShowPinModal(true);
+              }}
+              className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5" /> Exit Shift (Enter PIN)
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setPinAction('SET');
+                  setPinInput('');
+                  setPinError('');
+                  setShowPinModal(true);
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Change Owner PIN (Default: 0000)"
+              >
+                <Key className="w-3.5 h-3.5 text-amber-400" /> Change PIN
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsShiftMode(true);
+                  localStorage.setItem('sb_shift_mode', 'true');
+                  toast.success('Apprentice Shift Mode active! Financial margins are now locked 🔒');
+                }}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" /> Hand Over to Attendant
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -420,10 +518,21 @@ export const DailyCashbook: React.FC = () => {
         {/* Estimated Profit */}
         <div className="bg-white p-4 rounded-3xl border border-purple-100 shadow-sm bg-gradient-to-b from-white to-purple-50/30">
           <p className="text-[10px] font-black uppercase tracking-wider text-purple-650">🎯 Est. Net Profit</p>
-          <p className={`text-lg sm:text-xl font-black mt-1 ${netProfit >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
-            {formatNgn(netProfit)}
-          </p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Margin: {formatNgn(grossProfit)}</p>
+          {isShiftMode ? (
+            <div className="mt-2.5 flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-amber-500" />
+              <span className="text-[11px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-xl">
+                🔒 PIN Protected
+              </span>
+            </div>
+          ) : (
+            <>
+              <p className={`text-lg sm:text-xl font-black mt-1 ${netProfit >= 0 ? 'text-purple-700' : 'text-red-600'}`}>
+                {formatNgn(netProfit)}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Margin: {formatNgn(grossProfit)}</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -562,7 +671,28 @@ export const DailyCashbook: React.FC = () => {
       {/* TAB 2: EXPENSES / PETTY CASH */}
       {activeTab === 'EXPENSES' && (
         <div className="space-y-4">
-          {expenses.length === 0 ? (
+          {isShiftMode ? (
+            <div className="bg-white rounded-3xl p-10 text-center border border-amber-200 shadow-sm space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-3xl">
+                🔒
+              </div>
+              <h3 className="text-base font-black text-slate-800">Petty Cash & Expense Ledger Locked</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                Apprentice / Attendant Shift Mode is active. Petty cash withdrawals and operational expense records are restricted to the business owner to protect shop cashflow.
+              </p>
+              <button
+                onClick={() => {
+                  setPinAction('ENTER');
+                  setPinInput('');
+                  setPinError('');
+                  setShowPinModal(true);
+                }}
+                className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center gap-2"
+              >
+                <Lock className="w-4 h-4" /> Enter Owner PIN to Unlock
+              </button>
+            </div>
+          ) : expenses.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
               <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl mb-4">
                 ⛽
@@ -691,7 +821,11 @@ export const DailyCashbook: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-600">📦 Cost of Goods Sold (COGS)</span>
-                  <strong className="text-slate-700 font-extrabold">{formatNgn(cogs)}</strong>
+                  {isShiftMode ? (
+                    <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg text-[10px]">🔒 PIN Protected</span>
+                  ) : (
+                    <strong className="text-slate-700 font-extrabold">{formatNgn(cogs)}</strong>
+                  )}
                 </div>
                 <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm">
                   <span className="font-extrabold text-slate-800">Total Operational Expenses</span>
@@ -705,12 +839,21 @@ export const DailyCashbook: React.FC = () => {
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
             <div>
               <p className="text-[11px] font-black uppercase tracking-widest text-indigo-400">Net Estimated Profit After All Expenses</p>
-              <p className={`text-2xl sm:text-3xl font-black mt-1 ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {formatNgn(netProfit)}
-              </p>
-              <p className="text-xs text-slate-300 mt-1">
-                Gross Margin: {formatNgn(grossProfit)} • Expenses: {formatNgn(totalExpenses)}
-              </p>
+              {isShiftMode ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xl font-black text-amber-400">🔒 PIN Protected</span>
+                  <span className="text-xs text-slate-400">(Owner access only)</span>
+                </div>
+              ) : (
+                <>
+                  <p className={`text-2xl sm:text-3xl font-black mt-1 ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {formatNgn(netProfit)}
+                  </p>
+                  <p className="text-xs text-slate-300 mt-1">
+                    Gross Margin: {formatNgn(grossProfit)} • Expenses: {formatNgn(totalExpenses)}
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="text-left sm:text-right">
@@ -816,7 +959,7 @@ export const DailyCashbook: React.FC = () => {
                 </div>
                 <div>
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
-                    Unit Price (₦) *
+                    Unit Selling Price (₦) *
                   </label>
                   <input
                     type="number"
@@ -830,6 +973,24 @@ export const DailyCashbook: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Wholesale Cost Price (Owner Only - Hidden in Apprentice Shift Mode) */}
+              {!isShiftMode && (
+                <div>
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                    Wholesale Cost Price (₦) <span className="text-[10px] font-normal text-slate-400">(Owner only - for profit margin)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={saleCostPrice}
+                    onChange={(e) => setSaleCostPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              )}
 
               {/* Total Calculation Display */}
               <div className="bg-emerald-50 p-4 rounded-2xl flex justify-between items-center border border-emerald-100">
@@ -882,6 +1043,35 @@ export const DailyCashbook: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Payment Fraud Shield for Transfers */}
+              {salePaymentMethod === 'TRANSFER' && (
+                <div className="bg-blue-50/90 border border-blue-200 rounded-2xl p-4 space-y-3 animate-fade-in">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-blue-700 shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black text-blue-900 uppercase tracking-wider">
+                        🛡️ Bank Transfer Fraud Shield Checklist
+                      </h4>
+                      <p className="text-[10px] text-blue-700">85% of transfer fraud happens via fake SMS or doctored receipts</p>
+                    </div>
+                  </div>
+                  <ul className="text-xs text-blue-900 space-y-1.5 pl-4 list-disc font-medium">
+                    <li>Confirm alert came from <strong>your own banking app</strong> (never trust customer SMS/screenshot).</li>
+                    <li>Verify that your <strong>available balance</strong> actually increased.</li>
+                    <li>Verify sender account name matches the customer.</li>
+                  </ul>
+                  <label className="flex items-center gap-2.5 pt-1.5 border-t border-blue-200/80 text-xs font-black text-blue-950 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={transferFraudVerified}
+                      onChange={(e) => setTransferFraudVerified(e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <span>✅ I have verified credit alert inside my own bank app</span>
+                  </label>
+                </div>
+              )}
 
               {/* If Credit, ask for Customer Info & Due Date */}
               {salePaymentMethod === 'CREDIT' && (
@@ -1071,6 +1261,84 @@ export const DailyCashbook: React.FC = () => {
               >
                 💾 Log Petty Cash Expense
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: OWNER PIN / APPRENTICE LOCK MODAL */}
+      {showPinModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-[32px] max-w-sm w-full p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 text-center">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto text-2xl mb-4">
+              {pinAction === 'SET' ? '🔑' : '🔒'}
+            </div>
+            <h3 className="text-lg font-black text-slate-900">
+              {pinAction === 'SET' ? 'Set Owner 4-Digit PIN' : 'Enter Owner PIN'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              {pinAction === 'SET'
+                ? 'Choose a 4-digit security PIN to protect profit margins from staff & apprentices.'
+                : 'Enter your 4-digit PIN to exit shift mode and unlock full financial reports.'}
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (pinAction === 'SET') {
+                  if (pinInput.length !== 4 || !/^\d{4}$/.test(pinInput)) {
+                    setPinError('PIN must be exactly 4 digits.');
+                    return;
+                  }
+                  setOwnerPin(pinInput);
+                  localStorage.setItem('sb_owner_pin', pinInput);
+                  setShowPinModal(false);
+                  toast.success('Owner PIN updated successfully! 🔐');
+                } else {
+                  if (pinInput === ownerPin) {
+                    setIsShiftMode(false);
+                    localStorage.setItem('sb_shift_mode', 'false');
+                    setShowPinModal(false);
+                    toast.success('Owner Super-Admin Mode Unlocked! 👔');
+                  } else {
+                    setPinError('Incorrect PIN. Default PIN is 0000.');
+                  }
+                }
+              }}
+              className="mt-5 space-y-4"
+            >
+              <div>
+                <input
+                  type="password"
+                  maxLength={4}
+                  autoFocus
+                  required
+                  value={pinInput}
+                  onChange={(e) => {
+                    setPinInput(e.target.value.replace(/\D/g, ''));
+                    setPinError('');
+                  }}
+                  placeholder="••••"
+                  className="w-36 mx-auto text-center text-3xl font-black tracking-widest bg-slate-100 border border-slate-200 rounded-2xl py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                {pinError && <p className="text-xs text-rose-600 font-bold mt-2">{pinError}</p>}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPinModal(false)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  {pinAction === 'SET' ? 'Save PIN' : 'Unlock'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

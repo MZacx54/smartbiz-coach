@@ -436,6 +436,69 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 ></div>
             )}
 
+            {/* Mobile Bottom Navigation Dock (Sticky for 1-thumb quick action) */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-lg border-t border-emerald-900/40 px-2 py-1.5 flex justify-around items-center shadow-2xl">
+                <button
+                    onClick={() => handleNavigate(AppView.DASHBOARD)}
+                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+                        currentView === AppView.DASHBOARD
+                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
+                            : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                    <span className="text-lg leading-none">📊</span>
+                    <span className="text-[10px] mt-1 font-bold">Home</span>
+                </button>
+
+                <button
+                    onClick={() => handleNavigate(AppView.DAILY_CASHBOOK)}
+                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+                        currentView === AppView.DAILY_CASHBOOK
+                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
+                            : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                    <span className="text-lg leading-none">⚡</span>
+                    <span className="text-[10px] mt-1 font-bold">Day-Book</span>
+                </button>
+
+                <button
+                    onClick={() => handleNavigate(AppView.PRODUCT_MANAGER)}
+                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+                        currentView === AppView.PRODUCT_MANAGER
+                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
+                            : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                    <span className="text-lg leading-none">📦</span>
+                    <span className="text-[10px] mt-1 font-bold">Stock</span>
+                </button>
+
+                <button
+                    onClick={() => handleNavigate(AppView.DEBTOR_BOOK)}
+                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+                        currentView === AppView.DEBTOR_BOOK
+                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
+                            : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                    <span className="text-lg leading-none">📒</span>
+                    <span className="text-[10px] mt-1 font-bold">Gbege</span>
+                </button>
+
+                <button
+                    onClick={() => handleNavigate(AppView.INVOICE_GENERATOR)}
+                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
+                        currentView === AppView.INVOICE_GENERATOR
+                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
+                            : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                >
+                    <span className="text-lg leading-none">🧾</span>
+                    <span className="text-[10px] mt-1 font-bold">Invoices</span>
+                </button>
+            </nav>
+
             {/* Global Floating Live Support Widget */}
             <LiveSupportWidget credits={userStats.bizCredits} onUpdateCredits={onUpdateCredits} />
         </div>

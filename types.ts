@@ -261,6 +261,20 @@ export interface Debtor {
   remindersSentCount?: number;
 }
 
+export interface SupplierPayable {
+  id: string;
+  supplierName: string;
+  phone: string;
+  amount: number;
+  paidAmount: number;
+  itemsSupplied: string;
+  invoiceNumber?: string;
+  dueDate: string;
+  status: "UNPAID" | "PARTIAL" | "PAID";
+  date: string;
+  notes?: string;
+}
+
 export interface RoadmapStep {
   id: number;
   title: string;
