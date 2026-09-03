@@ -570,7 +570,9 @@ class EmailDiagnosticTestView(views.APIView):
 
     def get(self, request):
         from django.utils import timezone
-        from smartbiz_backend.email_utils import get_brevo_api_key, get_sender_email, _deliver_email
+        from smartbiz_backend.email_utils import (
+            get_brevo_api_key, get_sender_email, _deliver_email, check_brevo_account_and_senders
+        )
         
         test_email = request.query_params.get('email', 'meshachzax@gmail.com').strip()
         brevo_key = get_brevo_api_key()
@@ -578,15 +580,20 @@ class EmailDiagnosticTestView(views.APIView):
         
         masked_key = f"{brevo_key[:6]}...{brevo_key[-4:]}" if len(brevo_key) > 10 else ("None" if not brevo_key else "Present but short")
         
-        subject = f"SmartBiz Coach Email Test ({timezone.now().strftime('%H:%M:%S')})"
+        # Check Brevo verified senders list
+        is_api_valid, verified_senders, sender_info = check_brevo_account_and_senders(brevo_key)
+
+        subject = f"SmartBiz Coach Live Email Test ({timezone.now().strftime('%H:%M:%S')})"
         html_body = f"""
-        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-            <h2 style="color: #4f46e5;">SmartBiz Coach Email Connectivity Test</h2>
-            <p>This is a live transactional email sent via your configured email provider.</p>
+        <div style="font-family: sans-serif; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; max-width: 500px;">
+            <h2 style="color: #10b981; margin-top: 0;">✓ SmartBiz Coach Email Test Successful</h2>
+            <p style="color: #475569;">Your Brevo transactional email engine is working and delivering messages to inboxes.</p>
             <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 15px 0;" />
-            <p><strong>Brevo API Key:</strong> {masked_key}</p>
-            <p><strong>Sender Email:</strong> {sender_email}</p>
-            <p><strong>Timestamp:</strong> {timezone.now().isoformat()}</p>
+            <p style="font-size: 13px;"><strong>Recipient:</strong> {test_email}</p>
+            <p style="font-size: 13px;"><strong>API Key:</strong> {masked_key}</p>
+            <p style="font-size: 13px;"><strong>Sender Used:</strong> {sender_email}</p>
+            <p style="font-size: 13px;"><strong>Verified Senders on Brevo:</strong> {', '.join(verified_senders) if verified_senders else 'None retrieved'}</p>
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Timestamp: {timezone.now().isoformat()}</p>
         </div>
         """
 
@@ -594,7 +601,7 @@ class EmailDiagnosticTestView(views.APIView):
             recipient_email=test_email,
             subject=subject,
             html_content=html_body,
-            sender_name="SmartBiz Diagnostic",
+            sender_name="SmartBiz System Diagnostic",
             from_email=sender_email
         )
 
@@ -602,7 +609,10 @@ class EmailDiagnosticTestView(views.APIView):
             'success': success,
             'result': result_message,
             'recipient': test_email,
-            'detected_sender': sender_email,
+            'configured_sender': sender_email,
             'brevo_key_detected': bool(brevo_key),
-            'brevo_key_preview': masked_key
+            'brevo_key_preview': masked_key,
+            'brevo_api_key_valid': is_api_valid,
+            'brevo_verified_senders': verified_senders,
+            'brevo_account_check_details': sender_info if not is_api_valid else {'active_senders_count': len(verified_senders)}
         })
