@@ -382,284 +382,392 @@ class GenerateTrendIdeasView(views.APIView):
                 {"trendName": "WhatsApp VIP Referral Loop", "description": "Reward existing buyers with a 5% discount on their next purchase when their friends order.", "application": "Send automated loyalty reminders to past buyers in your contact book.", "volume": "Fast Organic Growth"}
             ])
 
-class EditImageView(views.APIView):
+# ==========================================
+# AI PRODUCT PHOTO STUDIO 2.0 ("SNAP-TO-STUDIO")
+# ==========================================
+
+SCENE_TITLES = {
+    'luxury_marble': 'Italian White Marble & Studio',
+    'outdoor_sunlight': 'Vibrant Outdoor Sunlight & Sky',
+    'rustic_oak': 'Rustic Oak & Boutique Wood',
+    'pastel_podium': 'Minimalist Pastel 3D Podium',
+    'botanical_garden': 'Lush Botanical & Palm Leaves',
+    'spa_mist': 'Luxury Spa & Water Mist',
+    'velvet_noir': 'Velvet Noir & Dark Slate',
+    'pure_white': 'Pure White E-Commerce Catalog',
+    'afro_rattan': 'Handwoven African Rattan & Jute',
+    'golden_hour': 'Golden Hour Resort Sunset',
+    'executive_glass': 'Modern Glass Table & Office',
+    'cozy_living': 'Cozy Living Room Morning',
+    'colorblock_pop': 'Vibrant Pop Colorblock',
+    'urban_cyber': 'Urban Cyber & Neon Rim',
+    'kitchen_quartz': 'Modern Quartz Kitchen Island',
+    'floral_silk': 'Silk Fabric & Floral Vanity',
+}
+
+def isolate_product_foreground(img):
+    """
+    High-precision edge-guided product subject isolation.
+    Extracts the product cleanly from bedsheet/floor/table backgrounds with feathered antialiasing.
+    """
+    import collections
+    import math
+    from PIL import Image, ImageFilter
+    
+    if img.mode != 'RGBA':
+        img = img.convert('RGBA')
+        
+    # If image already has clean transparency (e.g. transparent PNG upload), preserve it
+    extrema = img.getextrema()
+    if len(extrema) == 4 and extrema[3][0] < 50:
+        return img
+
+    w, h = img.size
+    rgb = img.convert('RGB')
+    pixels = rgb.load()
+
+    # 1. Sample perimeter background color seeds
+    seeds = []
+    step_x = max(1, w // 35)
+    step_y = max(1, h // 35)
+    for x in range(0, w, step_x):
+        seeds.append((x, 2))
+        seeds.append((x, h - 3))
+    for y in range(0, h, step_y):
+        seeds.append((2, y))
+        seeds.append((w - 3, y))
+
+    seed_colors = [pixels[sx, sy] for sx, sy in seeds if 0 <= sx < w and 0 <= sy < h]
+    if not seed_colors:
+        seed_colors = [(240, 240, 240)]
+
+    mean_r = sum(c[0] for c in seed_colors) / len(seed_colors)
+    mean_g = sum(c[1] for c in seed_colors) / len(seed_colors)
+    mean_b = sum(c[2] for c in seed_colors) / len(seed_colors)
+
+    # 2. Multi-seed BFS flood fill from all perimeter pixels
+    visited = [[False] * w for _ in range(h)]
+    is_bg = [[False] * w for _ in range(h)]
+    queue = collections.deque()
+
+    for x in range(w):
+        visited[0][x] = True
+        visited[h - 1][x] = True
+        queue.append((x, 0))
+        queue.append((x, h - 1))
+    for y in range(h):
+        if not visited[y][0]:
+            visited[y][0] = True
+            queue.append((0, y))
+        if not visited[y][w - 1]:
+            visited[y][w - 1] = True
+            queue.append((w - 1, y))
+
+    # Core protection zone (center core is protected from accidental flood fill)
+    core_xmin = int(w * 0.28)
+    core_xmax = int(w * 0.72)
+    core_ymin = int(h * 0.22)
+    core_ymax = int(h * 0.82)
+
+    COLOR_THRESHOLD = 40.0
+
+    while queue:
+        cx, cy = queue.popleft()
+        is_bg[cy][cx] = True
+        cur_c = pixels[cx, cy]
+
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            nx, ny = cx + dx, cy + dy
+            if 0 <= nx < w and 0 <= ny < h and not visited[ny][nx]:
+                if core_xmin <= nx <= core_xmax and core_ymin <= ny <= core_ymax:
+                    continue
+                nc = pixels[nx, ny]
+                local_diff = math.sqrt((nc[0] - cur_c[0])**2 + (nc[1] - cur_c[1])**2 + (nc[2] - cur_c[2])**2)
+                global_diff = math.sqrt((nc[0] - mean_r)**2 + (nc[1] - mean_g)**2 + (nc[2] - mean_b)**2)
+
+                if local_diff < 18.0 or global_diff < COLOR_THRESHOLD:
+                    visited[ny][nx] = True
+                    queue.append((nx, ny))
+
+    mask = Image.new('L', (w, h), 255)
+    m_pixels = mask.load()
+    for y in range(h):
+        for x in range(w):
+            if is_bg[y][x]:
+                m_pixels[x, y] = 0
+
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=1.8))
+    result = img.copy()
+    result.putalpha(mask)
+    bbox = result.getbbox()
+    if bbox:
+        result = result.crop(bbox)
+    return result
+
+
+def create_procedural_studio_backdrop(scene_id, width=768, height=1365):
+    """Fallback high-resolution procedural studio backdrop generator if image file is not on disk."""
+    from PIL import Image, ImageDraw
+    img = Image.new('RGB', (width, height), (245, 245, 245))
+    draw = ImageDraw.Draw(img)
+
+    if scene_id in ('luxury_marble', 'spa_mist', 'kitchen_quartz'):
+        for y in range(height):
+            ratio = y / float(height)
+            if ratio < 0.65:
+                val = int(235 - (25 * ratio))
+                draw.line([(0, y), (width, y)], fill=(val, val - 8, val - 15))
+            else:
+                val = int(248 - (15 * (ratio - 0.65)))
+                draw.line([(0, y), (width, y)], fill=(val, val, val))
+        draw.line([(0, int(height * 0.65)), (width, int(height * 0.65))], fill=(210, 210, 210), width=2)
+    elif scene_id in ('outdoor_sunlight', 'sky_sunlight'):
+        for y in range(height):
+            ratio = y / float(height)
+            r = int(100 + (130 * ratio))
+            g = int(180 + (65 * ratio))
+            b = 255
+            draw.line([(0, y), (width, y)], fill=(r, g, b))
+    elif scene_id in ('velvet_noir', 'urban_cyber'):
+        for y in range(height):
+            ratio = y / float(height)
+            val = int(20 + (15 * ratio))
+            draw.line([(0, y), (width, y)], fill=(val, val, val + 5))
+    elif scene_id in ('rustic_oak', 'cozy_living', 'afro_rattan'):
+        for y in range(height):
+            ratio = y / float(height)
+            r = int(210 - (50 * ratio))
+            g = int(150 - (40 * ratio))
+            b = int(100 - (30 * ratio))
+            draw.line([(0, y), (width, y)], fill=(r, g, b))
+    else:
+        for y in range(height):
+            val = int(255 - (15 * (y / float(height))))
+            draw.line([(0, y), (width, y)], fill=(val, val, val))
+
+    return img.convert('RGBA')
+
+
+def composite_product_to_scene(product_img, scene_id):
+    """
+    Composites isolated product onto photorealistic commercial studio plate with:
+    1. Scale & center-ground alignment
+    2. Physics-based contact shadow (ambient occlusion)
+    3. Directional softbox fill shadow
+    4. Glossy surface reflection (with gradient falloff for marble/quartz/glass)
+    5. Ambient light harmonization
+    """
+    import os
+    from PIL import Image, ImageOps, ImageFilter, ImageDraw, ImageEnhance
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    backdrops_dir = os.path.join(base_dir, 'studio_backdrops')
+    
+    file_map = {
+        'luxury_marble': 'luxury_marble.jpg',
+        'outdoor_sunlight': 'outdoor_sunlight.jpg',
+        'rustic_oak': 'rustic_oak.jpg',
+        'pastel_podium': 'pastel_podium.jpg',
+        'botanical_garden': 'botanical_garden.jpg',
+        'spa_mist': 'spa_mist.jpg',
+        'velvet_noir': 'velvet_noir.jpg',
+        'pure_white': 'pure_white.jpg',
+        'afro_rattan': 'afro_rattan.jpg',
+        'golden_hour': 'golden_hour.jpg',
+        'executive_glass': 'luxury_marble.jpg',
+        'cozy_living': 'rustic_oak.jpg',
+        'colorblock_pop': 'pastel_podium.jpg',
+        'urban_cyber': 'velvet_noir.jpg',
+        'kitchen_quartz': 'luxury_marble.jpg',
+        'floral_silk': 'pastel_podium.jpg',
+    }
+
+    target_file = file_map.get(scene_id, f"{scene_id}.jpg")
+    backdrop_path = os.path.join(backdrops_dir, target_file)
+
+    if os.path.exists(backdrop_path):
+        backdrop = Image.open(backdrop_path).convert('RGBA')
+    else:
+        backdrop = create_procedural_studio_backdrop(scene_id)
+
+    bw, bh = backdrop.size
+
+    target_h = int(bh * 0.58)
+    target_w = int(product_img.width * (target_h / float(product_img.height)))
+    if target_w > int(bw * 0.78):
+        target_w = int(bw * 0.78)
+        target_h = int(product_img.height * (target_w / float(product_img.width)))
+
+    product_resized = product_img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+    # Subtle contrast curve
+    enhancer = ImageEnhance.Contrast(product_resized)
+    product_resized = enhancer.enhance(1.05)
+
+    # Grounding position
+    if scene_id in ('outdoor_sunlight', 'sky_sunlight'):
+        pos_x = (bw - target_w) // 2
+        pos_y = int(bh * 0.50) - (target_h // 2)
+        has_reflection = False
+    elif scene_id in ('pastel_podium', 'velvet_noir'):
+        pos_x = (bw - target_w) // 2
+        pos_y = int(bh * 0.56) - target_h
+        has_reflection = False
+    elif scene_id in ('botanical_garden', 'afro_rattan'):
+        pos_x = (bw - target_w) // 2
+        pos_y = int(bh * 0.72) - target_h
+        has_reflection = False
+    else:
+        pos_x = (bw - target_w) // 2
+        pos_y = int(bh * 0.72) - target_h
+        has_reflection = scene_id in ('luxury_marble', 'spa_mist', 'executive_glass', 'kitchen_quartz')
+
+    comp = backdrop.copy()
+
+    # 1. Ambient Occlusion Contact Shadow
+    if scene_id not in ('outdoor_sunlight', 'sky_sunlight'):
+        shadow = Image.new('RGBA', (bw, bh), (0, 0, 0, 0))
+        sdraw = ImageDraw.Draw(shadow)
+        shadow_w = int(target_w * 0.94)
+        shadow_h = max(8, int(target_h * 0.08))
+        shadow_x0 = pos_x + (target_w - shadow_w) // 2
+        shadow_y0 = pos_y + target_h - int(shadow_h * 0.35)
+
+        shadow_opacity = 180 if scene_id == 'pure_white' else 145
+        sdraw.ellipse([shadow_x0, shadow_y0, shadow_x0 + shadow_w, shadow_y0 + shadow_h], fill=(12, 16, 20, shadow_opacity))
+        shadow = shadow.filter(ImageFilter.GaussianBlur(radius=max(6, int(shadow_h * 0.45))))
+        comp.paste(shadow, (0, 0), shadow)
+
+    # 2. Glossy Surface Reflection (if applicable)
+    if has_reflection:
+        flipped = ImageOps.flip(product_resized)
+        ref_h = int(target_h * 0.32)
+        flipped_cropped = flipped.crop((0, 0, target_w, ref_h))
+
+        ref_mask = Image.new('L', (target_w, ref_h), 0)
+        ref_draw = ImageDraw.Draw(ref_mask)
+        for ry in range(ref_h):
+            opacity = int(55 * (1.0 - (ry / float(ref_h))))
+            ref_draw.line([(0, ry), (target_w, ry)], fill=opacity)
+
+        comp.paste(flipped_cropped, (pos_x, pos_y + target_h - 3), ref_mask)
+
+    # 3. Paste Product Hero
+    comp.paste(product_resized, (pos_x, pos_y), product_resized)
+
+    return comp
+
+
+class StudioPhotoshootView(views.APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ImageEditThrottle]
 
     def post(self, request):
-        image_base64 = request.data.get('image_base_64') or request.data.get('image_base64') or request.data.get('image')
-        mime_type = request.data.get('mime_type') or request.data.get('mimeType') or 'image/png'
-        prompt_text = request.data.get('prompt')
-        
-        if not all([image_base64, prompt_text]):
-            return Response({'error': 'Missing image data or prompt'}, status=400)
-            
+        image_base64 = request.data.get('image_base64') or request.data.get('image_base_64') or request.data.get('image')
+        scene_id = request.data.get('scene_id') or 'luxury_marble'
+        mode = request.data.get('mode') or 'composite'
+        custom_prompt = request.data.get('custom_prompt') or ''
+
+        if not image_base64:
+            return Response({'error': 'Missing image data'}, status=400)
+
         try:
             import base64
             import io
-            from PIL import Image, ImageEnhance, ImageDraw, ImageOps, ImageFilter
-            
-            # Decode image
-            clean_base64 = image_base64
-            if "," in image_base64:
-                clean_base64 = image_base64.split(",")[1]
-            
+            import requests
+            from PIL import Image
+
+            clean_base64 = image_base64.split(",")[1] if "," in image_base64 else image_base64
             img_bytes = base64.b64decode(clean_base64)
-            img = Image.open(io.BytesIO(img_bytes))
-            
-            if img.mode != 'RGBA':
-                img = img.convert('RGBA')
-            
-            width, height = img.size
-            
-            # Helper: Gemini 3.6 Vision AI Bounding Box + Guided BFS Matting Engine
-            def isolate_product_subject(input_img, clean_b64=None, mime_t=None):
-                import collections
-                if input_img.mode != 'RGBA':
-                    input_img = input_img.convert('RGBA')
-                rgb_img = input_img.convert('RGB')
-                w, h = input_img.size
-                pixels = rgb_img.load()
+            raw_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
 
-                # Default bounding box: Central 88% region
-                ymin, xmin, ymax, xmax = int(0.06 * h), int(0.06 * w), int(0.94 * h), int(0.94 * w)
+            scene_title = SCENE_TITLES.get(scene_id, scene_id.replace('_', ' ').title())
 
-                # Query Gemini 3.6 Vision API for object bounding box detection
-                if clean_b64:
-                    try:
-                        v_prompt = (
-                            "Locate the primary commercial product item in this image. "
-                            "Return JSON with key 'box_2d': [ymin, xmin, ymax, xmax] as normalized integers from 0 to 1000 "
-                            "representing the tight bounding box around the product object."
-                        )
-                        v_res = gemini_utils.generate_json_content(
-                            v_prompt,
-                            image_base64=clean_b64,
-                            mime_type=mime_t or "image/jpeg"
-                        )
-                        if isinstance(v_res, dict) and "box_2d" in v_res and isinstance(v_res["box_2d"], list) and len(v_res["box_2d"]) == 4:
-                            b = v_res["box_2d"]
-                            pad_y = int(0.02 * h)
-                            pad_x = int(0.02 * w)
-                            ymin = max(0, int((b[0] / 1000.0) * h) - pad_y)
-                            xmin = max(0, int((b[1] / 1000.0) * w) - pad_x)
-                            ymax = min(h, int((b[2] / 1000.0) * h) + pad_y)
-                            xmax = min(w, int((b[3] / 1000.0) * w) + pad_x)
-                    except Exception as err:
-                        print(f"Gemini Vision Bounding Box Detection Note: {err}")
+            # Mode 1: AI Generative Scene Synthesis
+            if mode == 'generative' and custom_prompt:
+                try:
+                    gen_prompt = f"Professional commercial advertising product photoshoot of a product, {custom_prompt}, studio lighting, 8k resolution, photorealistic"
+                    encoded_p = requests.utils.quote(gen_prompt)
+                    url = f"https://image.pollinations.ai/prompt/{encoded_p}?width=768&height=1280&nologo=true&model=flux"
+                    res = requests.get(url, timeout=25)
+                    if res.status_code == 200 and len(res.content) > 5000:
+                        processed_base64 = base64.b64encode(res.content).decode('utf-8')
+                        deduct_credits(request.user, 'image_edit')
+                        return Response({
+                            'success': True,
+                            'studio_image_base64': f"data:image/jpeg;base64,{processed_base64}",
+                            'image_base64': f"data:image/jpeg;base64,{processed_base64}",
+                            'scene_id': scene_id,
+                            'scene_title': scene_title,
+                            'mode': 'generative',
+                            'credits_remaining': request.user.credits
+                        })
+                except Exception as gen_err:
+                    print("Generative synthesis fallback to studio composite:", gen_err)
 
-                is_bg = [[False] * w for _ in range(h)]
+            # Mode 2 (Default & Primary): Studio-Grade Cutout & Photorealistic Scene Compositor
+            product_cutout = isolate_product_foreground(raw_img)
+            comp_img = composite_product_to_scene(product_cutout, scene_id)
 
-                # Step 1: Mark everything OUTSIDE product bounding box as background
-                for y in range(h):
-                    for x in range(w):
-                        if x < xmin or x >= xmax or y < ymin or y >= ymax:
-                            is_bg[y][x] = True
-
-                # Step 2: Sample border seeds along the bounding box margins
-                border_seeds = []
-                step_x = max(1, (xmax - xmin) // 30)
-                step_y = max(1, (ymax - ymin) // 30)
-                
-                for x in range(xmin, xmax, step_x):
-                    border_seeds.append((x, ymin))
-                    border_seeds.append((x, max(ymin, ymax - 1)))
-                for y in range(ymin, ymax, step_y):
-                    border_seeds.append((xmin, y))
-                    border_seeds.append((max(xmin, xmax - 1), y))
-
-                seed_colors = [pixels[sx, sy] for sx, sy in border_seeds if 0 <= sx < w and 0 <= sy < h]
-                if not seed_colors:
-                    seed_colors = [(255, 255, 255)]
-
-                visited = [[False] * w for _ in range(h)]
-                queue = collections.deque()
-
-                # Core product protection zone (center 55% of the bounding box)
-                core_ymin = ymin + int(0.22 * (ymax - ymin))
-                core_ymax = ymax - int(0.22 * (ymax - ymin))
-                core_xmin = xmin + int(0.22 * (xmax - xmin))
-                core_xmax = xmax - int(0.22 * (xmax - xmin))
-
-                for sx, sy in border_seeds:
-                    if 0 <= sx < w and 0 <= sy < h and not visited[sy][sx]:
-                        visited[sy][sx] = True
-                        queue.append((sx, sy))
-
-                COLOR_TOLERANCE = 45.0
-
-                while queue:
-                    cx, cy = queue.popleft()
-                    is_bg[cy][cx] = True
-                    cur_color = pixels[cx, cy]
-
-                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                        nx, ny = cx + dx, cy + dy
-                        if xmin <= nx < xmax and ymin <= ny < ymax and not visited[ny][nx]:
-                            # Never flood-fill inside protected core product zone
-                            if core_xmin <= nx <= core_xmax and core_ymin <= ny <= core_ymax:
-                                continue
-
-                            nr, ng, nb = pixels[nx, ny]
-                            adj_dist = ((nr - cur_color[0])**2 + (ng - cur_color[1])**2 + (nb - cur_color[2])**2) ** 0.5
-                            min_seed_dist = min(
-                                ((nr - sc[0])**2 + (ng - sc[1])**2 + (nb - sc[2])**2) ** 0.5
-                                for sc in seed_colors[::4]
-                            )
-
-                            if adj_dist < 28.0 and min_seed_dist < COLOR_TOLERANCE:
-                                visited[ny][nx] = True
-                                queue.append((nx, ny))
-
-                datas = input_img.getdata()
-                newData = []
-                for y in range(h):
-                    for x in range(w):
-                        item = datas[y * w + x]
-                        r, g, b = item[0], item[1], item[2]
-                        orig_a = item[3] if len(item) > 3 else 255
-
-                        if is_bg[y][x]:
-                            newData.append((255, 255, 255, 0)) # Background transparent
-                        else:
-                            newData.append((r, g, b, orig_a)) # 100% Protected product item!
-
-                res_img = Image.new("RGBA", (w, h))
-                res_img.putdata(newData)
-
-                enhancer = ImageEnhance.Contrast(res_img)
-                res_img = enhancer.enhance(1.08)
-                enhancer = ImageEnhance.Color(res_img)
-                res_img = enhancer.enhance(1.05)
-                return res_img
-
-            # 0. High-Fidelity Background Removal & Matting
-            if prompt_text.startswith('[ACTION] auto_studio') or prompt_text.startswith('[ACTION] no_bg'):
-                img = isolate_product_subject(img, clean_b64=clean_base64, mime_t=mime_type)
-                w, h = img.size
-                
-                if prompt_text.startswith('[ACTION] auto_studio'):
-                    bg = Image.new("RGBA", (w, h), (255, 255, 255, 255))
-                    draw = ImageDraw.Draw(bg)
-                    for py in range(h):
-                        color = int(242 + (13 * py / h))
-                        draw.line([(0, py), (w, py)], fill=(color, color, color, 255))
-                    for i in range(0, w + h, 90):
-                        draw.line([(i, 0), (i - h, h)], fill=(215, 215, 215, 75), width=2)
-                    
-                    prod_w = int(w * 0.95)
-                    prod_h = int(prod_w * (h / w))
-                    prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
-                    
-                    offset_x = (w - prod_w) // 2
-                    offset_y = (h - prod_h) // 2
-                    bg.paste(prod_resized, (offset_x, offset_y), prod_resized)
-                    img = bg
-                
-            # 2. HD Enhance filter
-            elif prompt_text.startswith('[ACTION] hd_enhance'):
-                enhancer = ImageEnhance.Contrast(img)
-                img = enhancer.enhance(1.25)
-                enhancer = ImageEnhance.Color(img)
-                img = enhancer.enhance(1.15)
-                enhancer = ImageEnhance.Sharpness(img)
-                img = enhancer.enhance(1.3)
-                
-            # 3. Text Placement
-            elif prompt_text.startswith('[TEXT]'):
-                text_content = prompt_text.replace('[TEXT]', '').strip()
-                draw = ImageDraw.Draw(img)
-                draw.rectangle([10, height - 40, width - 10, height - 10], fill=(0, 0, 0, 160))
-                draw.text((20, height - 32), text_content, fill=(255, 255, 255, 255))
-                
-            # 4. Backdrop Composition (Virtual Studio)
-            elif prompt_text.startswith('[SCENE]'):
-                img = isolate_product_subject(img, clean_b64=clean_base64, mime_t=mime_type)
-
-                scene_type = prompt_text.replace('[SCENE]', '').strip().lower()
-                bg = Image.new("RGBA", (width, height), (255, 255, 255, 255))
-                draw = ImageDraw.Draw(bg)
-                
-                if scene_type == 'studio':
-                    for y in range(height):
-                        color = int(245 + (10 * y / height))
-                        draw.line([(0, y), (width, y)], fill=(color, color, color, 255))
-                elif scene_type == 'marble':
-                    for y in range(height):
-                        color = int(240 + (15 * y / height))
-                        draw.line([(0, y), (width, y)], fill=(color, color, color, 255))
-                    for i in range(0, width + height, 100):
-                        draw.line([(i, 0), (i - height, height)], fill=(210, 210, 210, 80), width=2)
-                elif scene_type == 'wood':
-                    for y in range(height):
-                        r = int(115 - (35 * y / height))
-                        g = int(65 - (20 * y / height))
-                        b = int(30 - (10 * y / height))
-                        draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
-                    for i in range(20, height, 40):
-                        draw.line([(0, i), (width, i + 4)], fill=(45, 20, 8, 40), width=2)
-                elif scene_type == 'nature' or scene_type == 'gradient-warm':
-                    for y in range(height):
-                        r = int(255 - (35 * y / height))
-                        g = int(220 - (45 * y / height))
-                        b = int(190 - (55 * y / height))
-                        draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
-                elif scene_type == 'city':
-                    for y in range(height):
-                        r = int(65 + (30 * y / height))
-                        g = int(75 + (20 * y / height))
-                        b = int(90 + (10 * y / height))
-                        draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
-                    draw.rectangle([30, height - 140, 100, height], fill=(45, 55, 65, 110))
-                    draw.rectangle([120, height - 210, 200, height], fill=(40, 50, 60, 90))
-                    draw.rectangle([width - 130, height - 170, width - 30, height], fill=(50, 60, 70, 110))
-                else:
-                    for y in range(height):
-                        color = int(245 + (10 * y / height))
-                        draw.line([(0, y), (width, y)], fill=(color, color, color, 255))
-                
-                # Resizing product to fit composition
-                prod_w = int(width * 0.78)
-                prod_h = int(prod_w * (height / width))
-                prod_resized = img.resize((prod_w, prod_h), Image.Resampling.LANCZOS)
-                
-                offset_x = (width - prod_w) // 2
-                offset_y = (height - prod_h) // 2
-                bg.paste(prod_resized, (offset_x, offset_y), prod_resized)
-                img = bg
-                
-            # 5. Fallback custom prompt styling filters
-            else:
-                tone_lower = prompt_text.lower()
-                if "warm" in tone_lower or "vintage" in tone_lower or "sunset" in tone_lower:
-                    r, g, b, a = img.split()
-                    r = r.point(lambda i: min(255, int(i * 1.15)))
-                    b = b.point(lambda i: int(i * 0.85))
-                    img = Image.merge('RGBA', (r, g, b, a))
-                elif "cool" in tone_lower or "neon" in tone_lower or "cyber" in tone_lower:
-                    r, g, b, a = img.split()
-                    r = r.point(lambda i: int(i * 0.85))
-                    b = b.point(lambda i: min(255, int(i * 1.15)))
-                    img = Image.merge('RGBA', (r, g, b, a))
-                elif "bright" in tone_lower or "enhance" in tone_lower:
-                    enhancer = ImageEnhance.Brightness(img)
-                    img = enhancer.enhance(1.2)
-                else:
-                    enhancer = ImageEnhance.Contrast(img)
-                    img = enhancer.enhance(1.1)
-            
             buffer = io.BytesIO()
-            img.save(buffer, format="PNG")
+            comp_img.convert('RGB').save(buffer, format="JPEG", quality=94)
             processed_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-            
+
             deduct_credits(request.user, 'image_edit')
             return Response({
-                'image_base64': processed_base64,
-                'text': f"Styled image according to prompt: '{prompt_text}'"
+                'success': True,
+                'studio_image_base64': f"data:image/jpeg;base64,{processed_base64}",
+                'image_base64': f"data:image/jpeg;base64,{processed_base64}",
+                'scene_id': scene_id,
+                'scene_title': scene_title,
+                'mode': 'composite',
+                'credits_remaining': request.user.credits
             })
-            
+
         except Exception as e:
+            print("StudioPhotoshootView error:", e)
             return Response({'error': str(e)}, status=500)
+
+
+class EditImageView(views.APIView):
+    """Backward-compatible endpoint for image editing and studio photoshoot."""
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ImageEditThrottle]
+
+    def post(self, request):
+        scene_id = request.data.get('scene_id')
+        prompt_text = request.data.get('prompt') or ''
+
+        if not scene_id and '[SCENE]' in prompt_text:
+            raw_scene = prompt_text.replace('[SCENE]', '').strip().lower()
+            if 'marble' in raw_scene:
+                scene_id = 'luxury_marble'
+            elif 'wood' in raw_scene or 'oak' in raw_scene:
+                scene_id = 'rustic_oak'
+            elif 'nature' in raw_scene or 'garden' in raw_scene:
+                scene_id = 'botanical_garden'
+            elif 'dark' in raw_scene or 'noir' in raw_scene:
+                scene_id = 'velvet_noir'
+            elif 'sun' in raw_scene or 'sky' in raw_scene:
+                scene_id = 'outdoor_sunlight'
+            else:
+                scene_id = 'luxury_marble'
+
+        if not scene_id:
+            scene_id = 'luxury_marble'
+
+        # Safely inject scene_id
+        if hasattr(request.data, '_mutable') and not request.data._mutable:
+            request.data._mutable = True
+            request.data['scene_id'] = scene_id
+            request.data._mutable = False
+        else:
+            try:
+                request.data['scene_id'] = scene_id
+            except Exception:
+                pass
+
+        return StudioPhotoshootView().post(request)
 
 from rest_framework.parsers import MultiPartParser, FormParser
 

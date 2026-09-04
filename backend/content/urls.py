@@ -5,7 +5,8 @@ from .views import (
     GenerateSeasonalTipsView, ChatWithSmartBizView, GenerateSuggestedPromptsView,
     GenerateWeeklyPlanView, GenerateMarketingVideoView, GenerateDebtReminderView,
     ListModelsView, GetTrendingTopicsView, AnalyzeProductView, GenerateSalesScriptView,
-    GenerateBlogPostView, GeneratePartnershipPitchView, RemoveBackgroundView
+    GenerateBlogPostView, GeneratePartnershipPitchView, RemoveBackgroundView,
+    StudioPhotoshootView
 )
 
 urlpatterns = [
@@ -15,6 +16,7 @@ urlpatterns = [
     path('generate-script/', GenerateVideoScriptView.as_view(), name='generate-script'),  # Alias
     path('generate-trend-ideas/', GenerateTrendIdeasView.as_view(), name='generate-trend-ideas'),
     path('generate-trends/', GenerateTrendIdeasView.as_view(), name='generate-trends'),  # Alias
+    path('studio-photoshoot/', StudioPhotoshootView.as_view(), name='studio-photoshoot'),
     path('edit-image/', EditImageView.as_view(), name='edit-image'),
     path('remove-bg/', RemoveBackgroundView.as_view(), name='remove-bg'),
     path('transcribe/', TranscribeAudioView.as_view(), name='transcribe'),

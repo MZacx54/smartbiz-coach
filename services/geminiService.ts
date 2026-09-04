@@ -162,6 +162,21 @@ export const editImage = async (imageBase64: string, mimeType: string, prompt: s
     return response.data;
 };
 
+export const generateStudioPhotoshoot = async (
+    imageBase64: string, 
+    sceneId: string = 'luxury_marble',
+    mode: 'composite' | 'generative' = 'composite',
+    customPrompt?: string
+) => {
+    const response = await api.post('/api/content/studio-photoshoot/', {
+        image_base64: imageBase64,
+        scene_id: sceneId,
+        mode,
+        custom_prompt: customPrompt
+    });
+    return response.data;
+};
+
 // Alias for backwards compatibility
 export const editProductImage = editImage;
 
