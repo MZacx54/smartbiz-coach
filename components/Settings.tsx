@@ -744,6 +744,167 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             </div>
           </div>
 
+          {/* MSME Fair-Use & Zero-Surprise Guarantee Matrix */}
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 flex items-center justify-center text-xl shrink-0">
+                  🛡️
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-black font-heading text-slate-900">
+                      MSME Fair-Use & Zero-Surprise Guarantee
+                    </h3>
+                    <span className="text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Transparency First
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    No hidden paywalls or surprise lockouts. Your everyday operational data belongs to you forever.
+                  </p>
+                </div>
+              </div>
+              <div className="text-[11px] font-bold text-slate-500 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200/70 shrink-0 self-start sm:self-auto">
+                🇳🇬 Built specifically for Nigerian MSMEs
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Column 1: 100% Free Forever */}
+              <div className="bg-emerald-50/40 border border-emerald-100/80 rounded-3xl p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950">
+                      100% Unlimited Free Utilities
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-black bg-emerald-500 text-white px-2.5 py-0.5 rounded-full shadow-sm">
+                    0 Credits Consumed
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-850 font-medium leading-relaxed">
+                  These core business utilities will never be restricted, paywalled, or gated behind credit packs:
+                </p>
+                <div className="space-y-2.5 text-xs text-slate-700">
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-emerald-100/50">
+                    <span className="text-base">🛒</span>
+                    <div>
+                      <p className="font-extrabold text-slate-900">Daily Cashbook & 5-Sec POS</p>
+                      <p className="text-[11px] text-slate-500">Record unlimited cash, bank transfer, and credit sales with instant WhatsApp receipts.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-emerald-100/50">
+                    <span className="text-base">⛽</span>
+                    <div>
+                      <p className="font-extrabold text-slate-900">Petty Cash & Operating Expense Log</p>
+                      <p className="text-[11px] text-slate-500">Track fuel, generator costs, dispatch fees, packaging, and personal drawings.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-emerald-100/50">
+                    <span className="text-base">📒</span>
+                    <div>
+                      <p className="font-extrabold text-slate-900">Debtor Ledger (Gbege Book) & Reminders</p>
+                      <p className="text-[11px] text-slate-500">Log customer debts, partial payments, and generate WhatsApp prompt messages.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-emerald-100/50">
+                    <span className="text-base">🤝</span>
+                    <div>
+                      <p className="font-extrabold text-slate-900">Supplier Payables ("Who I Owe")</p>
+                      <p className="text-[11px] text-slate-500">Manage wholesaler credit terms, due dates, and track repayment balances.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-emerald-100/50">
+                    <span className="text-base">📦</span>
+                    <div>
+                      <p className="font-extrabold text-slate-900">Inventory & Stock Manager</p>
+                      <p className="text-[11px] text-slate-500">Track quantities, low-stock warnings, auto-decrement on sales, and public store.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-emerald-100/50">
+                    <span className="text-base">🛡️</span>
+                    <div>
+                      <p className="font-extrabold text-slate-900">Tax Exemption Shield & Attendant PIN Lock</p>
+                      <p className="text-[11px] text-slate-500">Finance Act 0% CIT memo generator, POS fraud checklist, and anti-theft shift protection.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: BizCredits-Powered AI Engines */}
+              <div className="bg-indigo-50/40 border border-indigo-100/80 rounded-3xl p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-indigo-950">
+                      BizCredits-Powered Growth Engines
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-black bg-indigo-600 text-white px-2.5 py-0.5 rounded-full shadow-sm">
+                    Pay-As-You-Grow
+                  </span>
+                </div>
+                <p className="text-xs text-indigo-850 font-medium leading-relaxed">
+                  BizCredits are only used for heavy AI computation, automated creative assets, and telecom carrier messaging:
+                </p>
+                <div className="space-y-2.5 text-xs text-slate-700">
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-indigo-100/50">
+                    <span className="text-base">📋</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-extrabold text-slate-900">Bankable AI Business Plan</p>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">15 Credits</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">Comprehensive 3-year financial model, market feasibility, and grant/loan-ready document.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-indigo-100/50">
+                    <span className="text-base">🎨</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-extrabold text-slate-900">AI Brand Identity Kit</p>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">5 Credits</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">Brand strategy, logo concepts, typography pairings, and official color palette.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-indigo-100/50">
+                    <span className="text-base">✍️</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-extrabold text-slate-900">AI Social & Marketing Copywriter</p>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">1 Credit</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">Sales hooks, Instagram captions, WhatsApp promo broadcasts, and product pitches.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-indigo-100/50">
+                    <span className="text-base">🏥</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-extrabold text-slate-900">Deep Business Health Audit</p>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">2 Credits</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">Comprehensive operational and financial diagnosis with priority action score.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 bg-white/80 p-2.5 rounded-2xl border border-indigo-100/50">
+                    <span className="text-base">📣</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="font-extrabold text-slate-900">Bulk SMS Direct Broadcasts</p>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">Carrier Pass-Through</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">Instant SMS dispatch to customer contact lists via licensed Nigerian telecom gateways.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Ledger History & Transactions */}
           <div className="grid md:grid-cols-2 gap-6">
 

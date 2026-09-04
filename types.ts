@@ -504,9 +504,10 @@ export interface DailySale {
   customer_name?: string;
   customer_phone?: string;
   is_debt?: boolean;
-  debt_due_date?: string;
+  debt_due_date?: string | null;
   notes?: string;
   created_at?: string;
+  date?: string;
 }
 
 export interface DailyExpense {
@@ -517,6 +518,7 @@ export interface DailyExpense {
   payment_method: 'CASH' | 'TRANSFER';
   notes?: string;
   created_at?: string;
+  date?: string;
 }
 
 export interface DailySummary {

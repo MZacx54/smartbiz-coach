@@ -318,16 +318,19 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
         </div>
 
         {/* Credits & Status Bar */}
-        <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-2xl p-3 mt-1 z-10">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap justify-between items-center bg-white/5 border border-white/10 rounded-2xl p-3 mt-1 z-10 gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse"></span>
             <span className="text-[11px] font-bold text-slate-200">AI Engine Ready</span>
+            <span className="text-[10px] text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold hidden sm:inline-flex items-center gap-1">
+              🛡️ Daily Books 100% Free Forever
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-black text-emerald-300">{credits} Credits</span>
             <button 
               onClick={() => onNavigate(AppView.SETTINGS)} 
-              className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-2 py-0.5 rounded-lg border-0 cursor-pointer"
+              className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-2.5 py-1 rounded-lg border-0 cursor-pointer transition-all"
             >
               Top Up
             </button>
@@ -342,6 +345,30 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
         onNavigate={onNavigate}
         credits={credits}
       />
+
+      {/* MSME Zero-Surprise Fair-Use Guarantee Banner */}
+      <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/50 border border-emerald-200/80 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm shadow-emerald-500/30">
+            ✓
+          </div>
+          <div>
+            <p className="font-extrabold text-emerald-950 flex items-center gap-1.5">
+              <span>Zero-Surprise Guarantee</span>
+              <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-black">100% FREE</span>
+            </p>
+            <p className="text-[11px] text-emerald-800/90 mt-0.5">
+              Daily Cashbook, POS, Debtors, Supplier Payables, Stock & Tax Shield consume <strong>0 credits</strong>. Credits are only used for heavy AI tasks.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => onNavigate(AppView.SETTINGS)}
+          className="text-emerald-800 hover:text-emerald-950 text-[11px] font-black underline shrink-0 cursor-pointer self-start sm:self-auto"
+        >
+          View Guarantee Matrix →
+        </button>
+      </div>
 
       {/* SME Operations Core Metrics Panel */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -3,7 +3,8 @@ import {
   DollarSign, Plus, Trash2, Calendar, CheckCircle, 
   ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, 
   Send, Share2, Download, Printer, RefreshCw, ShoppingCart, 
-  FileText, ShieldCheck, Sparkles, Filter, X, Lock, Unlock, Key
+  FileText, ShieldCheck, Sparkles, Filter, X, Lock, Unlock, Key,
+  Wifi, WifiOff, Cloud
 } from 'lucide-react';
 import { DailySale, DailyExpense, DailySummary, Product } from '../types';
 import api from '../services/api';
@@ -72,6 +73,110 @@ export const DailyCashbook: React.FC = () => {
   // Payment Fraud Shield Checklist
   const [transferFraudVerified, setTransferFraudVerified] = useState(false);
 
+  // Offline-First Resilience & Sync Queue
+  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [isSyncingQueue, setIsSyncingQueue] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
+  const getOfflineSales = (): any[] => {
+    try {
+      return JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const getOfflineExpenses = (): any[] => {
+    try {
+      return JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const updatePendingCount = () => {
+    const s = getOfflineSales().length;
+    const e = getOfflineExpenses().length;
+    setPendingSyncCount(s + e);
+  };
+
+  const syncOfflineQueue = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    if (isSyncingQueue) return;
+
+    const offlineSales = getOfflineSales();
+    const offlineExpenses = getOfflineExpenses();
+
+    if (offlineSales.length === 0 && offlineExpenses.length === 0) {
+      updatePendingCount();
+      return;
+    }
+
+    setIsSyncingQueue(true);
+    let syncedSales = 0;
+    let syncedExpenses = 0;
+
+    const remainingSales: any[] = [];
+    for (const s of offlineSales) {
+      try {
+        const { id, ...payload } = s;
+        await api.post('/api/marketplace/daily-sales/', payload);
+        syncedSales++;
+      } catch (err) {
+        remainingSales.push(s);
+      }
+    }
+    localStorage.setItem('sb_offline_sales', JSON.stringify(remainingSales));
+
+    const remainingExpenses: any[] = [];
+    for (const e of offlineExpenses) {
+      try {
+        const { id, ...payload } = e;
+        await api.post('/api/marketplace/daily-expenses/', payload);
+        syncedExpenses++;
+      } catch (err) {
+        remainingExpenses.push(e);
+      }
+    }
+    localStorage.setItem('sb_offline_expenses', JSON.stringify(remainingExpenses));
+
+    const totalSynced = syncedSales + syncedExpenses;
+    updatePendingCount();
+    setIsSyncingQueue(false);
+
+    if (totalSynced > 0) {
+      toast.success(`Cloud Sync: ${totalSynced} offline record${totalSynced === 1 ? '' : 's'} synced to database! ☁️`, {
+        duration: 4000
+      });
+      fetchDailyData();
+    }
+  };
+
+  // Network listener & auto-sync
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success('Internet restored! Syncing offline records...', { icon: '📶' });
+      syncOfflineQueue();
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast('Network disconnected. Sales will save locally and auto-sync when online.', { icon: '📴' });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    updatePendingCount();
+    syncOfflineQueue();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Fetch Inventory Products for autocomplete
@@ -90,7 +195,7 @@ export const DailyCashbook: React.FC = () => {
     fetchInventory();
   }, []);
 
-  // Fetch Daily Records
+  // Fetch Daily Records (with offline-first merge)
   const fetchDailyData = async () => {
     setIsLoading(true);
     try {
@@ -100,23 +205,43 @@ export const DailyCashbook: React.FC = () => {
         api.get(`/api/marketplace/daily-summary/?date=${selectedDate}`)
       ]);
 
+      let loadedSales: DailySale[] = [];
+      let loadedExpenses: DailyExpense[] = [];
+
       if (salesRes.status === 'fulfilled' && salesRes.value.data) {
         const list = Array.isArray(salesRes.value.data) ? salesRes.value.data : (salesRes.value.data.results || []);
-        setSales(list);
+        loadedSales = list;
       }
 
       if (expensesRes.status === 'fulfilled' && expensesRes.value.data) {
         const list = Array.isArray(expensesRes.value.data) ? expensesRes.value.data : (expensesRes.value.data.results || []);
-        setExpenses(list);
+        loadedExpenses = list;
       }
 
       if (summaryRes.status === 'fulfilled' && summaryRes.value.data) {
         setSummary(summaryRes.value.data);
       }
+
+      // Merge cloud records with pending offline records for the selected date
+      const offlineSalesForDate = getOfflineSales().filter((s: any) => !s.date || s.date === selectedDate);
+      const offlineExpensesForDate = getOfflineExpenses().filter((e: any) => !e.date || e.date === selectedDate);
+
+      const cloudSaleIds = new Set(loadedSales.map(s => String(s.id)));
+      const unSyncedSales = offlineSalesForDate.filter(s => !cloudSaleIds.has(String(s.id)));
+      setSales([...unSyncedSales, ...loadedSales]);
+
+      const cloudExpIds = new Set(loadedExpenses.map(e => String(e.id)));
+      const unSyncedExpenses = offlineExpensesForDate.filter(e => !cloudExpIds.has(String(e.id)));
+      setExpenses([...unSyncedExpenses, ...loadedExpenses]);
     } catch (err) {
-      console.error('Error loading daily cashbook:', err);
+      console.warn('Network issue loading daily cashbook. Loading cached offline records:', err);
+      const offlineSalesForDate = getOfflineSales().filter((s: any) => !s.date || s.date === selectedDate);
+      const offlineExpensesForDate = getOfflineExpenses().filter((e: any) => !e.date || e.date === selectedDate);
+      setSales(offlineSalesForDate);
+      setExpenses(offlineExpensesForDate);
     } finally {
       setIsLoading(false);
+      updatePendingCount();
     }
   };
 
@@ -173,11 +298,16 @@ export const DailyCashbook: React.FC = () => {
       customer_phone: saleCustomerPhone,
       is_debt: salePaymentMethod === 'CREDIT',
       debt_due_date: salePaymentMethod === 'CREDIT' ? (saleDueDate || null) : null,
-      notes: saleNotes
+      notes: saleNotes,
+      date: selectedDate
     };
 
     const toastId = toast.loading('Recording sale...');
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       const res = await api.post('/api/marketplace/daily-sales/', payload);
       const savedSale: DailySale = res.data || { ...payload, id: Date.now() };
 
@@ -236,8 +366,66 @@ export const DailyCashbook: React.FC = () => {
 
       fetchDailyData();
     } catch (err: any) {
-      console.error('Error recording sale:', err);
-      toast.error(err.response?.data?.error || 'Failed to record sale. Check connection.', { id: toastId });
+      console.warn('Network issue saving sale. Saving to local offline queue:', err);
+      // Offline fallback: save locally to offline queue!
+      const offlineSale: DailySale = {
+        ...payload,
+        id: `offline-${Date.now()}` as any,
+        created_at: new Date().toISOString()
+      };
+      const existingQueue = getOfflineSales();
+      localStorage.setItem('sb_offline_sales', JSON.stringify([offlineSale, ...existingQueue]));
+      updatePendingCount();
+
+      setSales(prev => [offlineSale, ...prev]);
+
+      if (salePaymentMethod === 'CREDIT') {
+        try {
+          const existingDebtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
+          const newDebtor = {
+            id: `deb-${Date.now()}`,
+            name: saleCustomerName || 'Walk-in Customer',
+            phone: saleCustomerPhone || '',
+            amount: totalAmount,
+            paidAmount: 0,
+            itemsBought: `${saleItemName} (Qty: ${qtyNum})`,
+            dueDate: saleDueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+            status: 'UNPAID',
+            date: selectedDate,
+            createdAt: new Date().toISOString()
+          };
+          localStorage.setItem('sb_debtors', JSON.stringify([newDebtor, ...existingDebtors]));
+          window.dispatchEvent(new Event('smartbiz_debtors_updated'));
+        } catch (storageErr) {
+          console.error('Failed to sync to Gbege Book:', storageErr);
+        }
+      }
+
+      if (selectedProduct) {
+        setInventoryProducts(prev => prev.map(p => {
+          if (p.id === selectedProduct.id) {
+            return { ...p, stock_count: Math.max(0, (p.stock_count || 0) - qtyNum) };
+          }
+          return p;
+        }));
+      }
+
+      toast.success('📶 Saved offline! Will sync automatically when network returns.', { id: toastId, duration: 4500 });
+      setRecentSaleReceipt(offlineSale);
+      setShowSaleModal(false);
+
+      // Reset form
+      setSelectedProduct(null);
+      setSaleItemName('');
+      setSaleUnitPrice('');
+      setSaleCostPrice('');
+      setSaleQuantity(1);
+      setSalePaymentMethod('CASH');
+      setSaleCustomerName('');
+      setSaleCustomerPhone('');
+      setSaleDueDate('');
+      setSaleNotes('');
+      setTransferFraudVerified(false);
     }
   };
 
@@ -255,11 +443,16 @@ export const DailyCashbook: React.FC = () => {
       category: expenseCategory,
       amount: amountNum.toFixed(2),
       payment_method: expensePaymentMethod,
-      notes: expenseNotes
+      notes: expenseNotes,
+      date: selectedDate
     };
 
     const toastId = toast.loading('Logging petty cash expense...');
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       const res = await api.post('/api/marketplace/daily-expenses/', payload);
       const savedExpense: DailyExpense = res.data || { ...payload, id: Date.now() };
 
@@ -276,8 +469,26 @@ export const DailyCashbook: React.FC = () => {
 
       fetchDailyData();
     } catch (err: any) {
-      console.error('Error logging expense:', err);
-      toast.error(err.response?.data?.error || 'Failed to log expense.', { id: toastId });
+      console.warn('Network issue saving expense. Saving to local offline queue:', err);
+      const offlineExpense: DailyExpense = {
+        ...payload,
+        id: `offline-${Date.now()}` as any,
+        created_at: new Date().toISOString()
+      };
+      const existingQueue = getOfflineExpenses();
+      localStorage.setItem('sb_offline_expenses', JSON.stringify([offlineExpense, ...existingQueue]));
+      updatePendingCount();
+
+      setExpenses(prev => [offlineExpense, ...prev]);
+      toast.success('📶 Petty cash saved offline! Will sync to cloud when network returns.', { id: toastId, duration: 4000 });
+      setShowExpenseModal(false);
+
+      // Reset form
+      setExpenseTitle('');
+      setExpenseAmount('');
+      setExpenseCategory('FUEL_GEN');
+      setExpensePaymentMethod('CASH');
+      setExpenseNotes('');
     }
   };
 
@@ -385,6 +596,42 @@ export const DailyCashbook: React.FC = () => {
               />
             </div>
 
+            {/* Offline Sync Status Pill */}
+            <button
+              onClick={syncOfflineQueue}
+              disabled={isSyncingQueue || (!isOnline && pendingSyncCount === 0)}
+              title={!isOnline ? "Network is offline. Entries saved locally on device." : pendingSyncCount > 0 ? "Click to sync offline records to cloud" : "All records synced to cloud"}
+              className={`flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-bold transition-all border ${
+                !isOnline
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30 cursor-pointer'
+                  : pendingSyncCount > 0
+                    ? 'bg-amber-500/25 text-amber-300 border-amber-500/40 hover:bg-amber-500/35 animate-pulse cursor-pointer'
+                    : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 cursor-default'
+              }`}
+            >
+              {isSyncingQueue ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                  <span>Syncing...</span>
+                </>
+              ) : !isOnline ? (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Offline {pendingSyncCount > 0 ? `(${pendingSyncCount})` : ''}</span>
+                </>
+              ) : pendingSyncCount > 0 ? (
+                <>
+                  <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Sync {pendingSyncCount} offline</span>
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Synced</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={() => setShowSaleModal(true)}
               className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all cursor-pointer"
@@ -403,6 +650,44 @@ export const DailyCashbook: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Offline Alert & Pending Queue Banner */}
+      {(!isOnline || pendingSyncCount > 0) && (
+        <div className={`p-4 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-all ${
+          !isOnline 
+            ? 'bg-rose-950/40 border-rose-800/60 text-rose-200' 
+            : 'bg-amber-950/40 border-amber-800/60 text-amber-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 ${
+              !isOnline ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'
+            }`}>
+              {!isOnline ? <WifiOff className="w-4.5 h-4.5" /> : <Cloud className="w-4.5 h-4.5" />}
+            </div>
+            <div>
+              <p className="font-extrabold text-white text-xs sm:text-sm flex items-center gap-2">
+                <span>{!isOnline ? '📶 Offline Resilience Active (Slow or No Network)' : `☁️ ${pendingSyncCount} Local Record${pendingSyncCount === 1 ? '' : 's'} Ready for Cloud Sync`}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800/80 font-bold border border-slate-700">Zero Data Loss</span>
+              </p>
+              <p className="text-[11px] opacity-85 mt-0.5 max-w-2xl">
+                {!isOnline 
+                  ? 'No internet connection detected. Keep recording your daily sales and petty cash without delay — all transactions are saved safely on this device and will automatically sync when network returns.' 
+                  : 'You have records saved locally while offline. They are safe on this device. Click "Sync to Cloud Now" or let auto-sync upload them to your central database.'}
+              </p>
+            </div>
+          </div>
+          {isOnline && pendingSyncCount > 0 && (
+            <button
+              onClick={syncOfflineQueue}
+              disabled={isSyncingQueue}
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0 cursor-pointer self-start sm:self-auto"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingQueue ? 'animate-spin' : ''}`} />
+              {isSyncingQueue ? 'Syncing...' : 'Sync to Cloud Now'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Anti-Theft Shift Mode Controller */}
       <div className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
@@ -640,6 +925,11 @@ export const DailyCashbook: React.FC = () => {
                           }`}>
                             {sale.payment_method === 'CASH' ? 'Cash in Till' : sale.payment_method === 'TRANSFER' ? 'Bank Transfer' : 'Credit / Debt'}
                           </span>
+                          {String(sale.id).startsWith('offline-') && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                              <Cloud className="w-2.5 h-2.5" /> Local / Offline
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -729,6 +1019,11 @@ export const DailyCashbook: React.FC = () => {
                             <span className="text-slate-600 font-semibold">
                               Paid via {expense.payment_method === 'CASH' ? 'Cash from Till' : 'Bank Transfer'}
                             </span>
+                            {String(expense.id).startsWith('offline-') && (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                <Cloud className="w-2.5 h-2.5" /> Local / Offline
+                              </span>
+                            )}
                             {expense.notes && (
                               <>
                                 <span>•</span>
