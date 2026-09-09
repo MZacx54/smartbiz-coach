@@ -68,6 +68,9 @@ const NIGERIAN_GEO_HUBS = [
   { id: 'Ibadan', label: '📍 Ibadan / Oyo' },
 ];
 
+// Client-side in-memory cache for instant tab switching (2 minutes TTL)
+const marketplaceClientCache = new Map<string, { data: UnifiedItem[]; timestamp: number }>();
+
 const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'PHYSICAL' }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'>(initialType);
@@ -86,8 +89,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   const [rfqNotes, setRfqNotes] = useState<string>('');
   const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
 
-  const fetchItems = async () => {
-    setIsLoading(true);
+  const fetchItems = async (forceRefresh = false) => {
+    const cacheKey = `${activeTab}_${searchQuery}_${selectedCategory}_${selectedLocation}_${sortBy}`;
+    const cached = marketplaceClientCache.get(cacheKey);
+
+    if (cached && !forceRefresh && (Date.now() - cached.timestamp < 120000)) {
+      setItems(cached.data);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!cached) {
+      setIsLoading(true);
+    }
+
     try {
       const response = await api.get('/api/marketplace/global/', {
         params: { 
@@ -99,8 +114,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         }
       });
       setItems(response.data);
+      marketplaceClientCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
     } catch (err) {
-      toast.error('Failed to load marketplace');
+      if (!cached) toast.error('Failed to load marketplace');
     } finally {
       setIsLoading(false);
     }

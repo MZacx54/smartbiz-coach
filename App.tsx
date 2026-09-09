@@ -6,7 +6,7 @@ import SEO from "./components/SEO";
 
 // Layout & Core
 import DashboardLayout from "./components/DashboardLayout";
-import LandingPage from "./components/LandingPage";
+const LandingPage = lazy(() => import("./components/LandingPage"));
 
 // Eagerly loaded components (small, frequently used)
 import Dashboard from "./components/Dashboard";
@@ -72,6 +72,15 @@ const normalizeUser = (backendUser: any): User | null => {
     location: backendUser.location || '',
     currency: backendUser.currency || 'NGN'
   };
+};
+
+const isStandalonePWA = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true ||
+    window.location.search.includes('source=pwa')
+  );
 };
 
 const App: React.FC = () => {
@@ -506,7 +515,25 @@ const App: React.FC = () => {
       />
 
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            isStandalonePWA() ? (
+              user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white">
+                    <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-sm font-semibold text-emerald-400">Loading SmartBiz Coach...</p>
+                  </div>
+                }
+              >
+                <LandingPage />
+              </Suspense>
+            )
+          }
+        />
         
         {/* Static Pages Routes */}
         <Route path="/about" element={

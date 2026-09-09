@@ -4,6 +4,7 @@ import { AppView, User, CartItem, UserStats, ActionCard } from '../types';
 import GlobalSearch from './GlobalSearch';
 import { toast } from 'react-hot-toast';
 import LiveSupportWidget from './LiveSupportWidget';
+import { PWAInstallButton } from './PWAInstallPrompt';
 
 interface DashboardLayoutProps {
     user: User;
@@ -125,7 +126,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
                     <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <PWAInstallButton variant="nav" label="Install" />
                     {user?.email === 'meshachzax@gmail.com' && (
                         <button
                             onClick={toggleTraction}
@@ -301,7 +303,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <header className="hidden md:flex justify-between items-center bg-white/40 backdrop-blur-md p-4 rounded-3xl border border-white/60 sticky top-0 z-20 shadow-sm">
                         <GlobalSearch onResultClick={(item) => onNavigate(AppView.PRODUCT_MANAGER)} />
                         
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <PWAInstallButton variant="nav" label="📲 Install App" />
                             {user?.email === 'meshachzax@gmail.com' && (
                                 <button
                                     onClick={toggleTraction}

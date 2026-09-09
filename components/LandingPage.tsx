@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import SEO from './SEO';
+import { PWAInstallButton } from './PWAInstallPrompt';
 
 // --- Animated Counter Component ---
 const AnimatedCounter: React.FC<{ target: string; duration?: number }> = ({ target, duration = 2 }) => {
@@ -256,7 +257,8 @@ const LandingPage: React.FC = () => {
                             ))}
                         </div>
 
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
+                            <PWAInstallButton variant="nav" />
                             <button onClick={() => navigate('/login')} className="hidden md:block text-slate-600 hover:text-slate-900 font-semibold transition-colors text-sm px-4 py-2 rounded-lg hover:bg-slate-100">
                                 Sign In
                             </button>
@@ -279,6 +281,9 @@ const LandingPage: React.FC = () => {
                                 <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block py-2.5 px-3 text-slate-700 font-semibold hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">{label}</a>
                             ))}
                             <div className="pt-2 border-t border-slate-100 space-y-2">
+                                <div className="pb-1">
+                                    <PWAInstallButton variant="banner" className="w-full justify-center" label="📲 Install SmartBiz App" />
+                                </div>
                                 <button onClick={() => navigate('/login')} className="w-full text-left py-2.5 px-3 text-slate-700 font-semibold hover:bg-slate-50 rounded-xl">Sign In</button>
                                 <button onClick={() => navigate('/register')} className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-bold text-center">Get Started Free →</button>
                             </div>
@@ -329,11 +334,12 @@ const LandingPage: React.FC = () => {
                                 ))}
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-4 mb-12">
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-12">
                                 <button onClick={() => navigate('/register')} className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-base font-black rounded-2xl shadow-2xl shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-1 transition-all">
                                     🚀 Start Free — No Credit Card
                                 </button>
-                                <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 text-white text-base font-bold rounded-2xl border border-white/20 hover:border-white/40 transition-all">
+                                <PWAInstallButton variant="hero" label="📲 Install App on Phone / PC" />
+                                <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center justify-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 text-white text-base font-bold rounded-2xl border border-white/20 hover:border-white/40 transition-all">
                                     See All Features ↓
                                 </button>
                             </div>

@@ -211,10 +211,16 @@ class GlobalMarketplaceListView(generics.ListAPIView):
         from django.utils import timezone
         now = timezone.now()
 
-        # Housekeeping: update any expired promoted items
-        Product.objects.filter(is_promoted=True, promoted_until__lt=now).update(is_promoted=False)
+        # Housekeeping: update any expired promoted items only when expired items exist
+        expired_qs = Product.objects.filter(is_promoted=True, promoted_until__lt=now)
+        if expired_qs.exists():
+            expired_qs.update(is_promoted=False)
 
-        queryset = Product.objects.filter(is_public=True)
+        queryset = Product.objects.filter(is_public=True).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
+        )
         
         # Product type filter (PHYSICAL, SERVICE, PROPERTY, B2B)
         product_type = self.request.query_params.get('product_type')
@@ -263,6 +269,12 @@ class GlobalMarketplaceListView(generics.ListAPIView):
             queryset = queryset.order_by('-is_promoted', '-created_at')
             
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        # Fast caching: 60 seconds client cache, 120 seconds edge CDN
+        response['Cache-Control'] = 'public, max-age=60, s-maxage=120'
+        return response
 
 class DashboardSearchView(generics.ListAPIView):
     serializer_class = ProductSerializer
