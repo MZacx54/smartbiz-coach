@@ -1,0 +1,18 @@
+﻿name: Keep Database & API Alive
+
+on:
+  schedule:
+    # Runs every 6 hours to prevent Supabase inactivity pause and Render spin-down
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Health Endpoint & Supabase DB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API & Supabase Database
+        run: |
+          echo "Pinging SmartBiz Coach Health Endpoint to keep Supabase DB active..."
+          curl -f -s https://api.smartbizcoach.com.ng/health/ || exit 1
+          echo "Database health check succeeded. Supabase activity registered successfully."

@@ -10,7 +10,9 @@ def health_check(request):
     db_ok = False
     db_err = None
     try:
-        db_conn.ensure_connection()
+        with db_conn.cursor() as cursor:
+            cursor.execute("SELECT 1;")
+            cursor.fetchone()
         db_ok = True
     except Exception as e:
         db_err = str(e)
