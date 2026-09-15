@@ -66,161 +66,195 @@ const LandingPage: React.FC = () => {
     // ROI Calculator derived values
     const timeSaved = Math.round(roiHours * 0.7 * 4);
     const debtRecovered = Math.round(roiRevenue * 0.08);
-    const grantEligibility = roiRevenue < 200000 ? 'TEF, BOI MSME' : roiRevenue < 1000000 ? 'BOI, CBN, TEF' : 'BOI, DBN, Angel Investors';
+    const grantEligibility = roiRevenue < 200000 ? 'TEF, SMEDAN Micro' : roiRevenue < 1000000 ? 'BOI MSME, DBN, TEF' : 'BOI Growth, DBN, Commercial Syndicate';
 
-    // ── DATA ──
+    // ── 16 COMPREHENSIVE PLATFORM CAPABILITIES (All 4 Pillars) ──
     const allFeatures = [
-        { icon: '🏛️', title: 'Accredited CAC Desk', desc: 'Fast-track Done-For-You CAC registration: Business Name (₦27,500), Ltd Co (₦68,000), NGO/Trustee (₦135,000), and SCUML (₦35,000) in 3-7 days.', color: 'from-emerald-600 to-teal-700', tag: 'Accredited' },
-        { icon: '🚀', title: 'Listing Boosts & Badges', desc: 'Promote products to the top of search and global feeds with 3-Day/7-Day boosts and activate your official Verified Vendor Badge.', color: 'from-amber-500 to-indigo-600', tag: 'Top Reach' },
-        { icon: '🎥', title: 'Product Video Suite', desc: 'Record short 15-30s product videos directly or upload clips. AI extracts key frames to pre-fill listings, while the teleprompter helps you record scrolling video scripts.', color: 'from-pink-600 to-rose-600', tag: 'New' },
-        { icon: '📲', title: 'Direct Meta Publishing', desc: '1-click direct social publishing to Instagram Business and Facebook Pages. Push posts, reels, captions, and hashtags instantly without copy-pasting.', color: 'from-blue-600 to-indigo-600', tag: 'New' },
-        { icon: '📣', title: 'Broadcast HQ Campaigns', desc: 'Send targeted WhatsApp & SMS campaign blasts. Import CSV contacts, filter by audience tags (VIP, Lead), and insert personalized {{name}} variables.', color: 'from-emerald-600 to-teal-600', tag: 'Upgraded' },
-        { icon: '🤝', title: 'WhatsApp Negotiation Sandbox', desc: 'Practice closing tough deals with interactive AI customer roleplay before messaging live leads. Includes Pidgin, Corporate, and FOMO tones.', color: 'from-amber-500 to-orange-600', tag: 'New' },
-        { icon: '📸', title: 'AI Snap & List', desc: 'Photograph any product and our vision AI instantly creates the listing — name, price, category, and sales copy. Onboard 50 products in minutes.', color: 'from-violet-500 to-purple-600' },
-        { icon: '✨', title: 'AI Brand Builder', desc: 'Generate logos, colors, taglines, and a full visual identity tailored to your Nigerian audience in seconds.', color: 'from-pink-500 to-rose-600' },
-        { icon: '✍️', title: 'Content Studio', desc: 'Create viral social media posts, WhatsApp broadcasts, and promotional flyers — customized to Nigerian culture and trends.', color: 'from-orange-500 to-amber-600' },
-        { icon: '📄', title: 'Business Plan Generator', desc: 'Produce investor-ready, bank-quality business plans in under 5 minutes. Perfect for BOI, CBN, and TEF applications.', color: 'from-blue-500 to-indigo-600' },
-        { icon: '💰', title: 'Grant & Funding Matcher', desc: 'Automatically scan and match your business with available grants, BOI loans, and international donor programs.', color: 'from-emerald-500 to-teal-600' },
-        { icon: '📒', title: 'Gbege Book (Debt Tracker)', desc: 'Track every customer owing you money. Send AI-generated WhatsApp reminders to recover funds — politely or firmly.', color: 'from-red-500 to-orange-600' },
-        { icon: '🧾', title: 'Smart Invoicing', desc: 'Generate professional, shareable PDF invoices in seconds. Track payments and get notified on overdue invoices.', color: 'from-amber-500 to-yellow-600' },
-        { icon: '🏪', title: 'Unified Marketplace', desc: 'List your products, services, properties, or B2B offers on our Nigerian SME marketplace — with WhatsApp lead routing built in.', color: 'from-green-500 to-emerald-600' },
+        // Pillar 1: Daily Retail & Operations
+        { icon: '⚡', title: '5-Second POS Day-Book', desc: 'Rapid counter checkout for Cash, POS card, Bank Transfer, and Customer Debt with instant stock deduction and offline queue sync.', color: 'from-emerald-600 to-teal-700', tag: 'Core Free', pillar: 'Operations' },
+        { icon: '🛡️', title: 'Anti-Theft Apprentice Lock', desc: 'Lock checkout with a 4-digit supervisor PIN. Attendants log daily sales without backdating, modifying records, or accessing profit margins.', color: 'from-blue-600 to-indigo-700', tag: 'Anti-Theft', pillar: 'Operations' },
+        { icon: '⛽', title: 'Petty Cash & Fuel Logger', desc: 'Track daily generator fueling, dispatch waybills, and store supplies. Real-time net daily profit margin balances.', color: 'from-amber-500 to-orange-600', tag: 'Expense Tracker', pillar: 'Operations' },
+        { icon: '🔒', title: 'Fake Transfer Fraud Shield', desc: 'Step-by-step verification checklist protecting shop owners from counterfeit bank SMS alerts via bank app push confirmations.', color: 'from-rose-600 to-red-700', tag: 'Security', pillar: 'Operations' },
+
+        // Pillar 2: AI Creative & Commercial Studio
+        { icon: '📸', title: 'Snap-to-Studio 2.0', desc: 'Snap raw items on a bedsheet or shop counter; AI transforms them into 16 photorealistic luxury sets (Marble, Sunlight, Raffia, Cafe Table, etc.).', color: 'from-violet-600 to-purple-700', tag: 'Top Feature', pillar: 'AI Studio' },
+        { icon: '✨', title: 'AI Brand Builder', desc: 'Generate high-resolution logos, brand colors, taglines, and a complete visual identity tailored to Nigerian buyers in seconds.', color: 'from-pink-500 to-rose-600', pillar: 'AI Studio' },
+        { icon: '✍️', title: 'Content Studio & Broadcasts', desc: 'Create viral WhatsApp Status copy, Instagram reels copy, promotional flyers, and sales scripts tuned to Naija pop culture.', color: 'from-orange-500 to-amber-600', pillar: 'AI Studio' },
+        { icon: '🎥', title: 'Product Video Suite', desc: 'Record 15-30s video demos with an in-app scrolling teleprompter script overlay and 1-click video reels export.', color: 'from-pink-600 to-rose-600', pillar: 'AI Studio' },
+
+        // Pillar 3: Commerce & Debt Recovery
+        { icon: '📒', title: 'Gbege Debt Recovery', desc: 'Dual ledger tracking "Who Dey Owe Me" and "Who I Owe". Automated WhatsApp reminders with embedded Paystack payment links.', color: 'from-red-500 to-orange-600', tag: 'Cashflow', pillar: 'Commerce' },
+        { icon: '🏪', title: '4-Pillar Trade Marketplace', desc: 'List Physical Goods, Services, Commercial Real Estate, and B2B Wholesale/Logistics with direct WhatsApp lead routing.', color: 'from-green-500 to-emerald-600', tag: 'Trade Hub', pillar: 'Commerce' },
+        { icon: '🧾', title: 'Smart Invoicing & Receipts', desc: 'Generate and WhatsApp professional PDF invoices and official receipts with automatic payment status tracking.', color: 'from-amber-500 to-yellow-600', pillar: 'Commerce' },
+        { icon: '🤝', title: 'WhatsApp Negotiation Sandbox', desc: 'Practice closing tough deals with interactive AI customer roleplay across Naija Pidgin, Corporate, and FOMO tones.', color: 'from-amber-500 to-orange-600', pillar: 'Commerce' },
+
+        // Pillar 4: Governance, Tax & Capital
+        { icon: '⚖️', title: 'Section 23 CITA Tax Shield', desc: 'Official legal tax exemption memo citing the Companies Income Tax Act (0% tax rate for MSMEs under ₦25M turnover).', color: 'from-emerald-700 to-teal-800', tag: 'Legal Shield', pillar: 'Capital & Law' },
+        { icon: '🏛️', title: 'Accredited CAC Filing Desk', desc: 'Fast-track Done-For-You CAC registration: Business Name (₦27,500), Ltd Co (₦68,000), NGO/Trustee, and SCUML in 3-7 days.', color: 'from-emerald-600 to-teal-700', tag: 'Accredited', pillar: 'Capital & Law' },
+        { icon: '💰', title: 'Grant & Funding Matcher', desc: 'Automatically scan and match your business with available grants, BOI loans, and international donor programs worth ₦Billions.', color: 'from-emerald-500 to-teal-600', tag: '₦Billions', pillar: 'Capital & Law' },
+        { icon: '📄', title: 'BOI 5-Year Business Plans', desc: 'Generate bank-grade, investor-ready business plans with 5-year cashflow projections, break-even analysis, and official PDF export.', color: 'from-blue-500 to-indigo-600', pillar: 'Capital & Law' },
     ];
 
+    // ── THE 6 MASTER FEATURE TABS ──
     const featureTabs = [
         {
-            label: '🎥 Product Video Suite',
-            headline: 'Showcase your products live with 360-degree video reels',
-            subheadline: 'Record. AI Frame Extraction. Teleprompter Scripting.',
-            body: 'Buyers trust video demonstrations 3x more than still photos. Record 15-30s product videos directly on your phone camera or upload clips. AI Vision extracts key frames to pre-fill listings, while the in-app scrolling teleprompter helps you present like a pro.',
+            label: '⚡ Daily POS & Day-Book',
+            headline: '5-Second Counter POS, Apprentice Lock & Evening WhatsApp Close',
+            subheadline: 'The Operational Heartbeat of Every Nigerian Retail Shop',
+            body: 'Run your shop with total control. Record multi-tender sales (Cash, POS Card, Bank Transfer, Customer Debt) in under 5 seconds with automatic stock deductions. Lock the counter with a 4-digit apprentice PIN to stop attendant theft, track generator fuel and petty cash, and get a complete profit summary delivered straight to your WhatsApp every evening.',
             bullets: [
-                '🎥 Direct phone camera video recording & file upload (no external links needed)',
-                '🤖 AI Vision extracts video frames to auto-detect title, category & sales copy',
-                '📜 Scrolling in-app Teleprompter overlay while recording video scripts',
-                '▶️ Reels-style vertical video player modal on Storefront & Marketplace',
-                '⚡ Direct 1-click publishing to Instagram Reels, TikTok & Facebook',
-            ],
-            color: 'from-rose-600 to-pink-700',
-            mockup: 'snap',
-        },
-        {
-            label: '📲 Direct Meta & Broadcast HQ',
-            headline: '1-Click Social Publishing & WhatsApp/SMS Broadcast Blasts',
-            subheadline: 'Meta Direct Publishing + Tagged Audience Campaigns.',
-            body: 'Publish generated captions, graphics, and hashtags directly to your Facebook Pages and Instagram Business accounts in 1 click. Then launch high-converting WhatsApp & SMS campaigns using CSV contact imports and dynamic {{name}} placeholders.',
-            bullets: [
-                '📲 Direct 1-click publishing to Facebook Pages & Instagram Business',
-                '📊 Import CSV customer lists & segment by tags (VIP, Lead, Pending Payment)',
-                '✍️ Dynamic template placeholders ({{name}}, {{product}}) for personalized messages',
-                '🚀 Dual-channel dispatch: Safe rate-limited WhatsApp + Termii SMS backup',
-                '📈 Real-time delivery logs & engagement metrics tracking',
-            ],
-            color: 'from-blue-600 to-indigo-700',
-            mockup: 'crm',
-        },
-        {
-            label: '💬 WhatsApp Negotiation Sandbox',
-            headline: 'Practice closing tough deals with interactive AI customer roleplay',
-            subheadline: 'Master buyer objections before messaging live leads.',
-            body: 'Enter the negotiation sandbox to test your WhatsApp closing skills against realistic AI buyers. Get instant feedback on mindset analysis, objection handling, and closing scripts tailored in Naija Pidgin, Corporate, or FOMO tones.',
-            bullets: [
-                '🤝 Interactive negotiation sandbox with live buyer feedback',
-                '🧠 Automatic intent detection: price skepticism, delivery doubts & trust deficits',
-                '🇳🇬 Multi-tone closing scripts: Naija Pidgin, Corporate, Soft-Pull & FOMO',
-                '📋 Instant one-tap copy & paste into live WhatsApp customer chats',
-                '📈 Boost lead conversion rates by up to 45%',
-            ],
-            color: 'from-amber-600 to-orange-700',
-            mockup: 'crm',
-        },
-        {
-            label: '📸 AI Snap & List',
-            headline: 'List 50 products in 5 minutes with your camera',
-            subheadline: 'Point. Snap. Done.',
-            body: 'No more typing product names one by one. Our AI Vision technology reads your photos and video clips to instantly generate the product name, category, estimated price, and a compelling sales description. Just review, edit, and publish.',
-            bullets: [
-                '📷 Works with phone or desktop camera upload',
-                '🤖 Gemini AI vision classifies product type automatically',
-                '✍️ Auto-generates professional sales copy per listing',
-                '🏪 One tap to publish to the marketplace',
-                '📦 Updates inventory stock and ledger instantly',
-            ],
-            color: 'from-violet-600 to-purple-700',
-            mockup: 'snap',
-        },
-        {
-            label: '🏦 Investor Ready',
-            headline: 'Get funded. Get compliant. Get official.',
-            subheadline: 'Built for BOI, CBN, TEF, NGO, and bank applications.',
-            body: 'SmartBiz Coach generates the exact documentation investors and government agencies expect. From business plans to financial ledgers, compliance checklists and grant matching — everything you need to access funding in Nigeria is in one dashboard.',
-            bullets: [
-                '📄 Bank-grade business plans accepted by BOI, CBN, TEF',
-                '💰 Scans 100+ Nigerian grants and matches your eligibility',
-                '⚖️ CAC, TIN, SCUML, NAFDAC step-by-step compliance guide',
-                '📊 Transaction ledger meets NGO and investor reporting standards',
-                '🤝 Direct partnership intake with investors and agencies',
+                '⚡ 5-second multi-tender checkout: Cash, POS Terminal, Bank Transfer & Debt',
+                '🛡️ Anti-Theft Apprentice Shift Mode with 4-digit supervisor PIN lock',
+                '🔒 Payment Fraud Shield protecting against fake bank SMS alerts',
+                '⛽ Petty Cash & Generator Fuel expense tracker for true daily net profit',
+                '📲 1-click End-of-Day financial reconciliation sent directly to owner WhatsApp',
+                '📶 100% Offline-First queue — operates without network and syncs when online',
             ],
             color: 'from-emerald-600 to-teal-700',
-            mockup: 'investor',
+            mockup: 'pos',
+        },
+        {
+            label: '📸 Snap-to-Studio 2.0',
+            headline: 'Snap on a Bedsheet or Shop Counter ➔ Transform into 4K Luxury Photos',
+            subheadline: '16 Photorealistic Commercial Studio Backdrops in Seconds',
+            body: 'Stop paying ₦50,000+ for commercial photographers. Snap raw photos of your shoes, bags, cosmetics, or packaged food directly on your bed, shop counter, or floor. Our computer-vision engine isolates the product, renders realistic contact shadows and glossy surface reflections, and composites it into 16 luxury commercial scenes with 1-click WhatsApp Status copy.',
+            bullets: [
+                '🏛️ 16 Photorealistic Sets: Luxury Marble & Fluted Wood, Azure Sunlight, Botanical Leaves, Warm Oak, African Raffia & 3D Podiums',
+                '✨ Automatic ambient contact shadows, ground reflections & edge isolation',
+                '🏷️ 4 Promotional overlay badges: Luxury Gold, Midnight Noir, Neon Viral & Emerald Green',
+                '📱 Interactive Before/After split comparison slider',
+                '💬 Auto-generated WhatsApp promotional sales copy with direct broadcast link',
+                '📦 1-click Save to Inventory and instant publish to Marketplace',
+            ],
+            color: 'from-violet-600 to-purple-700',
+            mockup: 'studio',
+        },
+        {
+            label: '📒 Gbege Debt Recovery',
+            headline: 'Stop Losing Working Capital: Recover Customer Debts on Autopilot',
+            subheadline: 'Dual Receivables Ledger with Automated WhatsApp Reminders',
+            body: 'Customer debt is the #1 killer of Nigerian small businesses. Gbege Book tracks exactly "Who Dey Owe Me" and "Who I Owe". Send automated, respectful-to-firm WhatsApp payment reminders featuring direct Paystack debit card and transfer links so debtors can settle their balance right on their phones.',
+            bullets: [
+                '📒 Dual Ledger: Track customer debts ("Who Dey Owe Me") & supplier payables ("Who I Owe") ',
+                '📢 3-Tier WhatsApp Escalation: Gentle Courtesy ➔ Due Notice ➔ Formal Legal Warning',
+                '💳 Embedded Paystack Payment Links in reminders for instant phone payments',
+                '📊 Aging balance audit: 0-7 days, 8-30 days, and 30+ days overdue debts',
+                '✅ Over ₦50,000,000+ in overdue merchant debt recovered to date',
+            ],
+            color: 'from-red-600 to-rose-700',
+            mockup: 'debt',
+        },
+        {
+            label: '🏪 4-Pillar Marketplace',
+            headline: 'Connect with National Buyers Across 4 Major Commercial Pillars',
+            subheadline: 'Physical Goods, Services, Commercial Property & B2B Wholesale',
+            body: 'Unlike single-purpose shopping sites, SmartBiz Coach unifies the 4 pillars of the Nigerian economy. Whether you sell fashion, offer professional CAC/accounting services, rent commercial shop plazas, or supply wholesale raw materials and dispatch logistics — buyers connect directly with you on WhatsApp.',
+            bullets: [
+                '🛍️ Physical Goods: Fashion, phones, electronics, groceries, and beauty products',
+                '🛠️ Professional Services: CAC registration, branding, catering, repairs, and accounting',
+                '🏠 Commercial Real Estate: Shop plazas, office hubs, warehouses, and apartments',
+                '⚡ B2B Wholesale & Logistics: Bulk suppliers, dispatch fleets, and micro-influencer UGC',
+                '💬 Direct WhatsApp buyer routing with pre-filled product specs & instant RFQ engine',
+            ],
+            color: 'from-blue-600 to-indigo-700',
+            mockup: 'market',
+        },
+        {
+            label: '⚖️ Tax Shield & CAC Desk',
+            headline: 'Section 23 CITA 0% Tax Exemption Memo & Accredited CAC Filing',
+            subheadline: 'Protect Your Business from Illegal Harassment & Formalize for Growth',
+            body: 'Stop getting harassed by rogue local tax agents. Under Section 23 and 40 of the Companies Income Tax Act (CITA), small companies with annual turnover under ₦25,000,000 are legally exempt from company income tax (0% rate). Download your customized formal legal Tax Exemption Shield Memo and access our accredited CAC desk for done-for-you registrations.',
+            bullets: [
+                '🛡️ Section 23/40 CITA Official Legal Memo (0% Company Tax under ₦25M turnover)',
+                '🏛️ Accredited CAC Desk: Business Name (₦27,500), Limited Co (₦68,000), NGO/Trustee',
+                '📋 SCUML Anti-Money Laundering and NAFDAC compliance checklists',
+                '📑 Annual returns compliance calendar and statutory filing reminders',
+                '⚖️ 100% Free legal exemption memo generator for all registered merchants',
+            ],
+            color: 'from-emerald-700 to-teal-800',
+            mockup: 'tax',
+        },
+        {
+            label: '💰 Grants & BOI Business Plans',
+            headline: 'Access ₦Billions in Grants & Generate 5-Year Bankable Proposals',
+            subheadline: 'Built for BOI, SMEDAN, TEF, DBN, and Bank Loan Approvals',
+            body: 'SmartBiz Coach scans and matches your business against active government and international funding programs. Generate 5-year bank-grade business plans complete with Executive Summary, Market Analysis, 5-Year Cashflow Projections, Break-Even calculations, and CapEx breakdown formatted for official PDF download.',
+            bullets: [
+                '💰 Live matching for SMEDAN, BOI MSME Fund, Presidential Palliative, and TEF Grants',
+                '📄 5-Year Bank-Grade Business Plan Generator accepted by commercial banks',
+                '📊 Comprehensive financial modeling: P&L, 5-year cashflow & break-even analysis',
+                '📥 Instant official PDF export formatted to institutional lender standards',
+                '🤝 Direct NGO and development agency cohort onboarding and impact tracking',
+            ],
+            color: 'from-amber-600 to-yellow-700',
+            mockup: 'grants',
         },
     ];
 
+    // ── 6-STEP DAILY OPERATING TIMELINE ──
     const ecosystemSteps = [
-        { icon: '📸', label: 'Snap Photo', desc: 'Camera or upload', color: 'bg-violet-100 border-violet-300 text-violet-700' },
-        { icon: '🤖', label: 'AI Classifies', desc: 'Type, price, copy', color: 'bg-blue-100 border-blue-300 text-blue-700' },
-        { icon: '📦', label: 'Inventory Updated', desc: 'Stock & ledger sync', color: 'bg-emerald-100 border-emerald-300 text-emerald-700' },
-        { icon: '🛒', label: 'Marketplace Live', desc: 'Buyers see listing', color: 'bg-amber-100 border-amber-300 text-amber-700' },
-        { icon: '💬', label: 'WhatsApp Lead', desc: 'CRM auto-logs deal', color: 'bg-green-100 border-green-300 text-green-700' },
-        { icon: '💳', label: 'Cash Tracked', desc: 'Ledger & invoice', color: 'bg-pink-100 border-pink-300 text-pink-700' },
+        { icon: '⚡', label: 'Morning POS Open', desc: 'Set float & lock shift with 4-digit PIN', color: 'bg-emerald-100 border-emerald-300 text-emerald-700' },
+        { icon: '📸', label: 'Snap-to-Studio 2.0', desc: 'Raw bedsheet to 4K luxury scenes', color: 'bg-violet-100 border-violet-300 text-violet-700' },
+        { icon: '🏪', label: 'Marketplace Live', desc: 'Publish 4 pillars & WhatsApp routing', color: 'bg-blue-100 border-blue-300 text-blue-700' },
+        { icon: '📒', label: 'Recover Bad Debt', desc: 'Gbege Book WhatsApp auto-nudges', color: 'bg-red-100 border-red-300 text-red-700' },
+        { icon: '⛽', label: 'Fuel & Expenses', desc: 'Log generator fuel & petty cash', color: 'bg-amber-100 border-amber-300 text-amber-700' },
+        { icon: '📊', label: 'Evening Close', desc: '1-click WhatsApp daily profit memo', color: 'bg-teal-100 border-teal-300 text-teal-700' },
     ];
 
     const testimonials = [
-        { name: 'Chidinma Obi', role: 'Fashion Designer, Lagos', avatar: 'CO', color: 'bg-pink-500', text: 'SmartBiz Coach generated my entire brand identity in 3 minutes. Logo, colors, tagline — everything. I\'ve been trying for 2 years. This is a real game changer.', stars: 5 },
-        { name: 'Emeka Nwosu', role: 'Agro-Processor, Enugu', avatar: 'EN', color: 'bg-green-600', text: 'I used the Grant Matcher and found a BOI loan I didn\'t know existed. The business plan was exactly what the bank wanted. My application got approved!', stars: 5 },
-        { name: 'Fatima Al-Hassan', role: 'Boutique Owner, Kano', avatar: 'FA', color: 'bg-purple-500', text: 'The Gbege Book alone is worth everything. I was losing track of who owed me. Now I send AI reminders and people actually pay! E don do.', stars: 5 },
-        { name: 'Tunde Adeyemi', role: 'Tech Freelancer, Abuja', avatar: 'TA', color: 'bg-blue-500', text: 'The CAC compliance checker saved me ₦50k in legal consultation fees. Walked me through everything step by step. Every entrepreneur needs this app.', stars: 5 },
-        { name: 'Ngozi Williams', role: 'Caterer & Events, Port Harcourt', avatar: 'NW', color: 'bg-amber-500', text: 'My social media content used to take all day. Now I generate a week\'s worth of captions in 10 minutes. My engagement has gone up 300%.', stars: 5 },
-        { name: 'Alhaji Bello', role: 'Building Materials, Kaduna', avatar: 'BA', color: 'bg-teal-600', text: 'I used AI Snap to list my entire warehouse of materials in one afternoon. Now buyers find me on the B2B marketplace and message me on WhatsApp. Business has doubled.', stars: 5 },
+        { name: 'Chidinma Obi', role: 'Fashion Designer & Boutique, Lagos', avatar: 'CO', color: 'bg-pink-500', text: 'The Snap-to-Studio transformed photos I took on my bed into luxury marble catalog shots! My WhatsApp Status orders tripled within a week.', stars: 5 },
+        { name: 'Chief Emeka Okonkwo', role: 'Building Materials Wholesaler, Onitsha', avatar: 'EO', color: 'bg-green-600', text: 'Apprentice Shift Mode solved attendant theft in my 3 stores. They cannot delete or change prices without my 4-digit PIN. Every kobo is accounted for.', stars: 5 },
+        { name: 'Fatima Al-Hassan', role: 'Agro-Commodity Merchant, Kano', avatar: 'FA', color: 'bg-purple-500', text: 'The Gbege Book recovered ₦380,000 in overdue customer debt in just 10 days using the automated polite WhatsApp reminders. It is the best tool on the market.', stars: 5 },
+        { name: 'Tunde Adeyemi', role: 'Tech & CAC Consultant, Abuja', avatar: 'TA', color: 'bg-blue-500', text: 'The Section 23 CITA Tax Exemption memo saved my client from paying illegal local council taxes. They confirmed 0% tax because their turnover is under ₦25M.', stars: 5 },
+        { name: 'Ngozi Williams', role: 'Caterer & Events Manager, Port Harcourt', avatar: 'NW', color: 'bg-amber-500', text: 'The 5-Second POS is lightning fast. I record cash, transfers, and fuel expenses for my generator in real time, and get my daily profit on WhatsApp every night.', stars: 5 },
+        { name: 'Alhaji Bello', role: 'Poultry & Feed Producer, Kaduna', avatar: 'AB', color: 'bg-teal-600', text: 'I matched with a ₦4.5M BOI agro loan and generated the complete 5-year business plan PDF on SmartBiz Coach. The loan officer accepted it without revisions.', stars: 5 },
     ];
 
     const packs = [
-        { name: 'Micro Pack', price: '₦500', credits: '40 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['40 AI Credits', 'Quick AI tasks & SMS test', 'Brand Builder (8x)', 'Content Posts (20x)', 'Debt Reminders (40x)', 'Standard Support'] },
-        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 AI Credits', '1 Product Boost (3-Day)', '30 AI Generations', 'Full Content Studio', 'WhatsApp & Email Support'] },
-        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 AI Credits', '1 Grant Business Plan (PDF)', '7-Day Featured Boost', 'Marketing SMS Campaigns', 'Priority Support'] },
-        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 Agency Power', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 AI Credits', 'Official Verified Vendor Badge', '2x Marketplace Boosts', 'High-Volume Broadcasts', 'VIP Concierge Desk'] },
+        { name: 'Micro Pack', price: '₦500', credits: '40 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['40 AI Credits', '8x Snap-to-Studio Shoots', 'Brand Builder (8x)', 'Content Posts (20x)', 'Debt Reminders (40x)', 'Standard Support'] },
+        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 AI Credits', '30x Snap-to-Studio Shoots', '1 Marketplace Boost (3-Day)', 'Full Content Studio', 'WhatsApp & Email Support'] },
+        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 AI Credits', '1 Bank-Grade Business Plan (PDF)', '80x Snap-to-Studio Shoots', '7-Day Featured Boost', 'Priority VIP Support'] },
+        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 Agency Power', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 AI Credits', 'Official Verified Vendor Badge', '200x Snap-to-Studio Shoots', '2x Marketplace Boosts', 'VIP Concierge Desk'] },
+    ];
+
+    // ── THE MSME ZERO-SURPRISE FAIR-USE GUARANTEE MATRIX ──
+    const fairUseMatrix = [
+        { feature: 'Daily Day-Book & 5-Second POS', cost: '100% FREE FOREVER (0 Credits)', type: 'Core Utility', icon: '⚡' },
+        { feature: 'Anti-Theft Apprentice Shift Lock (4-Digit PIN)', cost: '100% FREE FOREVER (0 Credits)', type: 'Security', icon: '🛡️' },
+        { feature: 'Petty Cash & Generator Fuel Tracker', cost: '100% FREE FOREVER (0 Credits)', type: 'Expense Logger', icon: '⛽' },
+        { feature: 'Payment Fraud Shield (Fake Transfer Checklist)', cost: '100% FREE FOREVER (0 Credits)', type: 'Fraud Defense', icon: '🔒' },
+        { feature: 'Gbege Book Debt Ledger & Reminders', cost: '100% FREE FOREVER (0 Credits)', type: 'Cashflow', icon: '📒' },
+        { feature: 'Invoices & Official Customer Receipts (PDF)', cost: '100% FREE FOREVER (0 Credits)', type: 'Billing', icon: '🧾' },
+        { feature: 'Section 23 CITA 0% Tax Exemption Memo', cost: '100% FREE FOREVER (0 Credits)', type: 'Legal Shield', icon: '⚖️' },
+        { feature: 'Public Marketplace Browsing & Inquiry', cost: '100% FREE FOREVER (0 Credits)', type: 'Trade', icon: '🏪' },
+        { feature: 'Snap-to-Studio 2.0 (4K Commercial Photos)', cost: '5 BizCredits per set', type: 'Advanced AI Compute', icon: '📸' },
+        { feature: 'BOI-Compliant 5-Year Business Plan (PDF)', cost: '10 BizCredits', type: 'Financial Engine', icon: '📄' },
     ];
 
     const faqs = [
-        { q: 'Is SmartBiz Coach free to use?', a: 'Yes! You get free daily usage on most AI tools when you sign up. You only pay for extra usage with our affordable credit packs starting at just ₦500 — no credit card required to get started.' },
-        { q: 'How does the AI Snap & List feature work?', a: 'Simply take photos of your products and upload them. Our Gemini Vision AI analyzes each image, identifies the product type, suggests a name, category, price range, and writes a professional sales copy. You review and publish in one click.' },
-        { q: 'What business types can use SmartBiz Coach?', a: 'Any Nigerian SME! Whether you sell physical goods, offer services (by hour or project), rent/sell property, or operate B2B (logistics, wholesale, influencer marketing, raw materials) — we have category-specific tools for you.' },
-        { q: 'How does the WhatsApp CRM lead feature work?', a: 'When buyers find your marketplace listing, they click "Contact via WhatsApp" which opens a pre-filled professional message to you. Every inquiry is automatically saved in your CRM ledger so you can track and follow up on all leads.' },
-        { q: 'Are the business plans accepted by Nigerian banks and investors?', a: 'Yes. Our AI generates detailed, structured plans with financial projections, market analysis, and SWOT analysis — meeting the standards for BOI, CBN, TEF, and most Nigerian commercial banks and NGO grant bodies.' },
-        { q: 'Can I get my CAC registration done directly on SmartBiz Coach?', a: 'Yes! Our accredited CAC filing desk handles Done-For-You registrations end-to-end: Business Name (₦27,500), Limited Liability Company (₦68,000), Incorporated Trustee/NGO (₦135,000), and SCUML Anti-Money Laundering certification (₦35,000) with certificate delivery in 3-7 working days.' },
-        { q: 'Is my business data safe?', a: 'Absolutely. We use industry-standard encryption and never share your business data with third parties. Your information, your inventory, your clients — all protected. We also comply with NDPR data privacy requirements.' },
-        { q: 'Can NGOs and agencies use SmartBiz Coach for their beneficiaries?', a: 'Yes! We have a dedicated NGO/Agency partner program that lets organizations onboard SME cohorts, track their progress, generate reports, and access bulk credit allocations. Contact us via the Partnership section below.' },
-        { q: 'How do I top up credits?', a: 'Instantly via Paystack from inside the app — bank card, bank transfer, or USSD. Credits never expire and there\'s no monthly subscription. Buy what you need, when you need it.' },
+        { q: 'Are the Daily POS, Day-Book, and Debt Book really 100% free forever?', a: 'YES. We believe no Nigerian entrepreneur should ever be locked out of their daily sales records or bookkeeping. The Daily 5-Second POS, Apprentice Anti-Theft Lock, Petty Cash & Fuel Tracker, Gbege Debt Book, PDF Invoicing, and Section 23 CITA Tax Exemption Memo require 0 credits and are 100% free for life.' },
+        { q: 'How does the Anti-Theft Apprentice Shift Mode protect my shop?', a: 'When you activate Apprentice Mode, the cashier/attendant screen is locked behind a 4-digit supervisor PIN. Apprentices can rapidly record sales, but they CANNOT edit prices, delete previous sales, backdate transactions, or see your total profit margins. At the end of the shift, the system generates a reconciliation report comparing physical cash to recorded sales.' },
+        { q: 'How does Snap-to-Studio 2.0 work on photos taken on a bedsheet?', a: 'You do not need an expensive camera or backdrop. Simply snap your product on your bedspread, shop counter, or tile floor. Our vision AI removes the background, generates realistic ambient contact shadows and reflections, and composites the item into 16 photorealistic commercial studio environments like Luxury Marble, Sunlight & Shadows, African Raffia, or Warm Oak Cafe Tables.' },
+        { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigerian Companies Income Tax Act (CITA) Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦25,000,000 are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
+        { q: 'Can I install SmartBiz Coach on my phone without downloading from Google Play or Apple Store?', a: 'Yes! SmartBiz Coach is a certified Progressive Web App (PWA). Simply tap the "Install App" button on your phone browser. On Android and PC, it installs with 1 tap. On iPhone/iPad, tap the Share icon in Safari and select "Add to Home Screen". It launches full screen like a native app and opens straight to login or your dashboard.' },
+        { q: 'Does the POS Day-Book work when there is no internet / network is down?', a: 'Yes! The POS Day-Book is built with an offline-first resilient queue. If your data runs out or network drops in the market, you can continue recording counter sales. As soon as connectivity returns, your transactions automatically sync to the secure cloud.' },
+        { q: 'How do customers pay me through Gbege Book debt reminders?', a: 'When you send an automated polite WhatsApp reminder from Gbege Book, it automatically includes an encrypted Paystack payment link. Your customer can tap the link and pay instantly using their debit card, bank transfer, or USSD. Once paid, the debt is automatically marked as settled in your ledger.' },
+        { q: 'How do I top up AI BizCredits for commercial photoshoot and business plans?', a: 'You can top up instantly inside the app using Paystack (debit card, bank transfer, or USSD). Credit packs start at just ₦500. Credits never expire and there is no recurring monthly subscription trap.' },
     ];
 
     const stats = [
-        { value: '10,000+', label: 'Active Businesses', icon: '🏢' },
-        { value: '₦500M+', label: 'In Grants Discovered', icon: '💰' },
-        { value: '50,000+', label: 'AI Tasks Completed', icon: '⚡' },
-        { value: '4.9★', label: 'Average Rating', icon: '⭐' },
-    ];
-
-    const ngoStats = [
-        { value: '35+', label: 'Grant Programs Matched' },
-        { value: '₦2.5B+', label: 'Funding Accessible' },
-        { value: '98%', label: 'Plan Acceptance Rate' },
-        { value: '12+', label: 'Agency Partners' },
+        { value: '10,000+', label: 'Active MSMEs', icon: '🏢' },
+        { value: '₦500M+', label: 'In Grants Matched', icon: '💰' },
+        { value: '₦50M+', label: 'Debts Recovered', icon: '📒' },
+        { value: '4.9★', label: 'Average Merchant Rating', icon: '⭐' },
     ];
 
     return (
         <div className="min-h-screen bg-white font-sans selection:bg-green-200 overflow-x-hidden">
             <SEO
                 title="SmartBiz Coach | #1 AI Operating System for Nigerian SMEs"
-                description="The #1 AI Business Operating System for Nigerian SMEs. Brand, manage inventory, recover debts with Gbege Book on WhatsApp, generate BOI business plans, edit product photos, and match grants."
-                keywords="SmartBiz Coach, AI business operating system, Nigerian SME, AI Photo Studio background removal, Gbege Book WhatsApp debt recovery, BOI business plan generator, CAC checklist Nigeria, SME grants 2026"
+                description="The complete AI Business Operating System for Nigerian SMEs. 5-Sec POS Day-Book, Apprentice Anti-Theft Lock, Snap-to-Studio 2.0 (Bedsheet to 4K Studio), WhatsApp Debt Recovery (Gbege Book), Section 23 CITA Tax Shield, and BOI Grants."
+                keywords="SmartBiz Coach, AI business operating system, Nigerian SME POS, AI Commercial Photo Studio 2.0, Gbege Book WhatsApp debt recovery, Section 23 CITA tax shield, BOI business plan generator, CAC checklist Nigeria, SME grants 2026"
                 schema={{
                     '@context': 'https://schema.org',
                     '@type': 'FAQPage',
@@ -252,7 +286,7 @@ const LandingPage: React.FC = () => {
                         </div>
 
                         <div className="hidden md:flex space-x-8 items-center">
-                            {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
+                            {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
                                 <a key={href} href={href} className="text-slate-600 hover:text-green-600 font-semibold transition-colors text-sm">{label}</a>
                             ))}
                         </div>
@@ -277,7 +311,7 @@ const LandingPage: React.FC = () => {
                 <AnimatePresence>
                     {mobileMenuOpen && (
                         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="md:hidden bg-white border-t border-slate-100 shadow-xl px-4 py-4 space-y-1">
-                            {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
+                            {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
                                 <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block py-2.5 px-3 text-slate-700 font-semibold hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">{label}</a>
                             ))}
                             <div className="pt-2 border-t border-slate-100 space-y-2">
@@ -294,12 +328,10 @@ const LandingPage: React.FC = () => {
 
             {/* ═══════════ HERO ═══════════ */}
             <section className="relative pt-28 pb-0 overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900">
-                {/* Decorative background */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-green-500/10 rounded-full blur-3xl -mr-40 -mt-40"></div>
-                    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-violet-500/10 rounded-full blur-3xl -ml-40"></div>
-                    <div className="absolute top-1/3 left-1/2 w-[600px] h-[300px] bg-emerald-500/5 rounded-full blur-3xl"></div>
-                    {/* Grid lines */}
+                    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-3xl -ml-40"></div>
+                    <div className="absolute top-1/3 left-1/2 w-[600px] h-[300px] bg-teal-500/5 rounded-full blur-3xl"></div>
                     <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }}></div>
                 </div>
 
@@ -307,14 +339,17 @@ const LandingPage: React.FC = () => {
                     <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[85vh] pb-0">
                         {/* Left: Copy */}
                         <motion.div initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="text-left pt-8">
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6">
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6 flex flex-wrap gap-2">
                                 <span className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-green-500/20 text-green-400 text-xs font-black tracking-widest border border-green-500/30 uppercase">
-                                    🇳🇬 Built for Nigerian Entrepreneurs
+                                    🇳🇬 Built for Nigerian MSMEs
+                                </span>
+                                <span className="inline-flex items-center gap-1 py-1.5 px-3 rounded-full bg-emerald-950 text-emerald-300 text-xs font-bold border border-emerald-800/60">
+                                    🔒 100% Free Core Tools Guarantee
                                 </span>
                             </motion.div>
 
                             <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.08] mb-6">
-                                The AI Business
+                                The Complete AI
                                 <br />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
                                     Operating System
@@ -324,12 +359,12 @@ const LandingPage: React.FC = () => {
                             </h1>
 
                             <p className="text-lg text-slate-400 max-w-xl leading-relaxed mb-8">
-                                Snap products with AI, manage inventory, find grants worth billions, close deals on WhatsApp, and track every naira — all in one powerful platform built <strong className="text-slate-200">for Nigeria, priced for Nigeria</strong>.
+                                Run your counter with a <strong>5-Second POS & Apprentice Anti-Theft Lock</strong>, turn raw bedsheet photos into <strong>4K Luxury Studio Sets</strong>, recover locked debt with <strong>Gbege Book on WhatsApp</strong>, shield your profit with <strong>Section 23 CITA Tax Exemption</strong>, and match <strong>₦Billions in BOI Grants</strong>.
                             </p>
 
                             {/* Feature badges */}
                             <div className="flex flex-wrap gap-2 mb-10">
-                                {['📸 AI Snap & List', '🏪 B2B Marketplace', '💰 Grant Matcher', '🧾 Smart Invoicing', '💬 WhatsApp CRM'].map(badge => (
+                                {['⚡ 5-Sec POS Day-Book', '📸 Snap-to-Studio 2.0', '📒 Gbege Debt Book', '🏪 4-Pillar Marketplace', '⚖️ Tax Shield Memo', '💰 BOI Grant Matcher'].map(badge => (
                                     <span key={badge} className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-full">{badge}</span>
                                 ))}
                             </div>
@@ -338,7 +373,7 @@ const LandingPage: React.FC = () => {
                                 <button onClick={() => navigate('/register')} className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-base font-black rounded-2xl shadow-2xl shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-1 transition-all">
                                     🚀 Start Free — No Credit Card
                                 </button>
-                                <PWAInstallButton variant="hero" label="📲 Install App on Phone / PC" />
+                                <PWAInstallButton variant="hero" label="📲 Install Free App (Phone / PC)" />
                                 <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center justify-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 text-white text-base font-bold rounded-2xl border border-white/20 hover:border-white/40 transition-all">
                                     See All Features ↓
                                 </button>
@@ -372,7 +407,7 @@ const LandingPage: React.FC = () => {
                                             <div class="text-center text-slate-400">
                                                 <div class="text-6xl mb-4">🇳🇬</div>
                                                 <div class="font-bold">SmartBiz Coach</div>
-                                                <div class="text-sm">AI Business Platform</div>
+                                                <div class="text-sm">AI Business Operating System</div>
                                             </div>
                                         </div>`;
                                     }}
@@ -380,47 +415,46 @@ const LandingPage: React.FC = () => {
 
                                 {/* Floating UI cards */}
                                 <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                                    className="absolute top-8 -left-10 bg-white rounded-2xl shadow-2xl p-3 border border-slate-100 w-44">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center text-xs">📦</div>
-                                        <span className="text-[10px] font-black text-slate-500 uppercase">Stock Alert</span>
+                                    className="absolute top-8 -left-10 bg-white rounded-2xl shadow-2xl p-3.5 border border-slate-100 w-48">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <div className="w-6 h-6 bg-emerald-100 rounded-lg flex items-center justify-center text-xs">⚡</div>
+                                        <span className="text-[10px] font-black text-slate-500 uppercase">Daily POS Day-Book</span>
                                     </div>
-                                    <div className="text-sm font-bold text-slate-900">Fabric — Low Stock</div>
-                                    <div className="text-[10px] text-red-500 font-semibold mt-0.5">5 units remaining</div>
+                                    <div className="text-sm font-bold text-slate-900">5-Sec Sale Logged ✓</div>
+                                    <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">Apprentice PIN Protected</div>
                                 </motion.div>
 
                                 <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                                    className="absolute bottom-20 -left-6 bg-white rounded-2xl shadow-2xl p-3 border border-slate-100 w-48">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-6 h-6 bg-emerald-100 rounded-lg flex items-center justify-center text-xs">💰</div>
-                                        <span className="text-[10px] font-black text-slate-500 uppercase">Grant Match</span>
+                                    className="absolute bottom-20 -left-6 bg-white rounded-2xl shadow-2xl p-3.5 border border-slate-100 w-52">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <div className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center text-xs">📒</div>
+                                        <span className="text-[10px] font-black text-slate-500 uppercase">Gbege Debt Recovery</span>
                                     </div>
-                                    <div className="text-sm font-bold text-slate-900">BOI MSME Loan</div>
-                                    <div className="text-[10px] text-green-600 font-bold">96% Match • Up to ₦5M</div>
+                                    <div className="text-sm font-bold text-slate-900">₦18,500 Recovered</div>
+                                    <div className="text-[10px] text-green-600 font-bold">Via WhatsApp Paystack Link</div>
                                 </motion.div>
 
                                 <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                                    className="absolute top-16 -right-8 bg-white rounded-2xl shadow-2xl p-3 border border-slate-100 w-44">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="w-6 h-6 bg-green-500 rounded-lg flex items-center justify-center text-xs">💬</div>
-                                        <span className="text-[10px] font-black text-slate-500 uppercase">New Lead</span>
+                                    className="absolute top-16 -right-8 bg-white rounded-2xl shadow-2xl p-3.5 border border-slate-100 w-48">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <div className="w-6 h-6 bg-violet-100 rounded-lg flex items-center justify-center text-xs">📸</div>
+                                        <span className="text-[10px] font-black text-slate-500 uppercase">Snap-to-Studio 2.0</span>
                                     </div>
-                                    <div className="text-sm font-bold text-slate-900">Bulk Order Inquiry</div>
-                                    <div className="text-[10px] text-green-600 font-bold">WhatsApp • Just now</div>
+                                    <div className="text-sm font-bold text-slate-900">Luxury Marble Set</div>
+                                    <div className="text-[10px] text-violet-600 font-bold">16 Commercial Scenes</div>
                                 </motion.div>
 
                                 <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
-                                    className="absolute bottom-8 -right-6 bg-slate-900 rounded-2xl shadow-2xl p-3 border border-slate-700 w-44">
-                                    <div className="text-[10px] font-black text-green-400 uppercase tracking-wider mb-1">Revenue Today</div>
-                                    <div className="text-xl font-black text-white">₦47,500</div>
-                                    <div className="text-[10px] text-emerald-400 font-semibold">↑ 23% vs yesterday</div>
+                                    className="absolute bottom-8 -right-6 bg-slate-900 rounded-2xl shadow-2xl p-3.5 border border-slate-700 w-48">
+                                    <div className="text-[10px] font-black text-green-400 uppercase tracking-wider mb-1">BOI Grant Match</div>
+                                    <div className="text-xl font-black text-white">₦5,000,000</div>
+                                    <div className="text-[10px] text-emerald-400 font-semibold">96% Eligibility Score</div>
                                 </motion.div>
                             </div>
                         </motion.div>
                     </div>
                 </div>
 
-                {/* Bottom wave into white */}
                 <div className="relative h-24 mt-0">
                     <svg viewBox="0 0 1440 96" className="absolute bottom-0 w-full" preserveAspectRatio="none">
                         <path d="M0,64 C480,96 960,0 1440,64 L1440,96 L0,96 Z" fill="white" />
@@ -428,22 +462,20 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ ECOSYSTEM FLOW ═══════════ */}
+            {/* ═══════════ 6-STEP DAILY OPERATING TIMELINE ═══════════ */}
             <section className="py-20 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-violet-100 text-violet-700 text-xs font-black tracking-widest uppercase mb-4 border border-violet-200">How the Magic Works</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">From camera snap to closed deal</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">The entire SmartBiz ecosystem — connected, automated, and working for you 24/7.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black tracking-widest uppercase mb-4 border border-emerald-200">The Daily Operating Timeline</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">How SmartBiz Coach Powers Your Business Every Day</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From morning counter opening to evening WhatsApp financial close — automated, secure, and stress-free.</p>
                     </motion.div>
 
-                    {/* Ecosystem flow diagram */}
                     <div className="relative">
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                             {ecosystemSteps.map((step, i) => (
                                 <motion.div key={i} className="relative flex flex-col items-center text-center"
                                     initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                                    {/* Connector line */}
                                     {i < ecosystemSteps.length - 1 && (
                                         <div className="hidden lg:block absolute top-8 left-[calc(50%+2rem)] w-[calc(100%-4rem)] h-0.5 bg-gradient-to-r from-slate-200 to-slate-100 z-0">
                                             <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 border-r-2 border-t-2 border-slate-300 rotate-45"></div>
@@ -462,16 +494,16 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ FEATURE TABS ═══════════ */}
+            {/* ═══════════ THE 6 MASTER FEATURE TABS ═══════════ */}
             <section id="features" className="py-24 bg-slate-50 border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-black tracking-widest uppercase mb-4 border border-green-200">Key Capabilities</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Built for every stage of your business</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Explore what makes SmartBiz Coach different from every other app you've tried.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-black tracking-widest uppercase mb-4 border border-green-200">The 6 Core Pillars</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Complete Operating Infrastructure for MSMEs</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Explore every structural component that keeps your shop profitable, protected, and funded.</p>
                     </motion.div>
 
-                    {/* Tab Buttons - Horizontally Scrollable on Mobile */}
+                    {/* Tab Buttons */}
                     <div className="flex overflow-x-auto no-scrollbar gap-2 mb-10 pb-2 px-1 scroll-smooth">
                         {featureTabs.map((tab, i) => (
                             <button key={i} onClick={() => setActiveFeatureTab(i)}
@@ -488,7 +520,7 @@ const LandingPage: React.FC = () => {
                                 className="grid lg:grid-cols-2 gap-12 items-center bg-white rounded-3xl p-8 sm:p-12 border border-slate-100 shadow-sm">
                                 {/* Text */}
                                 <div>
-                                    <div className={`inline-block w-12 h-12 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center text-2xl mb-6 shadow-lg`}>
+                                    <div className={`inline-block w-12 h-12 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center text-2xl mb-6 shadow-lg text-white`}>
                                         {tab.label.split(' ')[0]}
                                     </div>
                                     <div className="text-sm font-black text-slate-400 uppercase tracking-wider mb-2">{tab.subheadline}</div>
@@ -503,105 +535,150 @@ const LandingPage: React.FC = () => {
                                         ))}
                                     </ul>
                                     <button onClick={() => navigate('/register')} className={`mt-8 inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${tab.color} text-white font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-sm`}>
-                                        Try This Feature Free →
+                                        Get Started Free →
                                     </button>
                                 </div>
 
                                 {/* Mockup panel */}
-                                <div className={`bg-gradient-to-br ${tab.color} rounded-2xl p-6 shadow-2xl min-h-[320px] flex flex-col justify-between relative overflow-hidden`}>
+                                <div className={`bg-gradient-to-br ${tab.color} rounded-2xl p-6 shadow-2xl min-h-[340px] flex flex-col justify-between relative overflow-hidden text-white`}>
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-2xl pointer-events-none"></div>
 
-                                    {tab.mockup === 'snap' && (
+                                    {tab.mockup === 'pos' && (
                                         <div className="relative z-10 space-y-3">
-                                            <div className="text-white/80 text-xs font-black uppercase tracking-wider">📸 AI Snap Processing</div>
-                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30">
-                                                <div className="text-white text-xs font-black mb-2">Photo Uploaded ✓</div>
-                                                <div className="space-y-1.5">
-                                                    {[['Product Name', 'Ankara Print Fabric (6 yards)'], ['Category', 'Fashion & Textiles'], ['Est. Price', '₦4,500 — ₦6,000'], ['Type', 'Physical Goods']].map(([k, v]) => (
-                                                        <div key={k} className="flex justify-between text-[10px]">
-                                                            <span className="text-white/70">{k}:</span>
-                                                            <span className="text-white font-bold">{v}</span>
-                                                        </div>
-                                                    ))}
+                                            <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between">
+                                                <span>⚡ 5-Second Rapid POS</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">Apprentice Mode ON 🔒</span>
+                                            </div>
+                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30 space-y-2">
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="font-bold">Total Bill: ₦14,500</span>
+                                                    <span className="bg-emerald-400 text-emerald-950 font-black px-2 py-0.5 rounded-md text-[10px]">Tender: Split</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 text-[10px] text-white/80 pt-1">
+                                                    <div className="bg-black/20 p-2 rounded-lg">💵 Cash: ₦5,000</div>
+                                                    <div className="bg-black/20 p-2 rounded-lg">📲 Transfer: ₦9,500 (Verified)</div>
                                                 </div>
                                             </div>
-                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30">
-                                                <div className="text-white text-[10px] font-black mb-1">✍️ AI Sales Copy</div>
-                                                <div className="text-white/90 text-[10px] leading-relaxed">"Premium Ankara print fabric, 6 yards. Perfect for aso-ebi, matching outfits, and tailoring. Vibrant colors, soft texture. Available for nationwide delivery..."</div>
+                                            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20 text-[10px] space-y-1">
+                                                <div className="font-black text-amber-300">⛽ Fuel Expense: -₦3,000 (Gen Petrol)</div>
+                                                <div className="text-white/80">Net Profit Today: ₦42,500 • Reconciled on WhatsApp ✓</div>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <div className="flex-1 bg-white text-violet-700 rounded-xl py-2 text-[10px] font-black text-center">✓ Save to Inventory</div>
-                                                <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">Publish to Market</div>
+                                            <div className="flex gap-2 pt-1">
+                                                <div className="flex-1 bg-white text-emerald-800 rounded-xl py-2 text-[10px] font-black text-center shadow">1-Click WhatsApp Close</div>
+                                                <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">Supervisor Unlock</div>
                                             </div>
                                         </div>
                                     )}
-                                    {tab.mockup === 'inventory' && (
+
+                                    {tab.mockup === 'studio' && (
+                                        <div className="relative z-10 space-y-3">
+                                            <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between">
+                                                <span>📸 Snap-to-Studio 2.0</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">16 Scenes</span>
+                                            </div>
+                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3.5 border border-white/30 space-y-2">
+                                                <div className="text-white text-xs font-black">Input: Raw Photo on Bedspread</div>
+                                                <div className="text-[10px] text-emerald-200">➔ Output: 4K Luxury Marble & Fluted Wood Set</div>
+                                                <div className="text-[10px] text-white/80 bg-black/20 p-2 rounded-lg">Ambient Shadows: Rendered ✓ • Reflections: Active ✓ • Gold Badge Added ✓</div>
+                                            </div>
+                                            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 text-[10px]">
+                                                <div className="font-bold mb-0.5">💬 WhatsApp Status Copy Generated:</div>
+                                                <div className="text-white/80 italic text-[9px]">"Exclusive Luxury Edition now in stock. Nationwide delivery within 24 hours. Tap to order now!"</div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <div className="flex-1 bg-white text-purple-900 rounded-xl py-2 text-[10px] font-black text-center shadow">Download 4K Photo</div>
+                                                <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">Post to Status</div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {tab.mockup === 'debt' && (
+                                        <div className="relative z-10 space-y-3">
+                                            <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between">
+                                                <span>📒 Gbege Book Recovery</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">WhatsApp Auto-Nudge</span>
+                                            </div>
+                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 space-y-1.5 text-[10px]">
+                                                <div className="flex justify-between font-bold">
+                                                    <span>Customer: Emeka Johnson</span>
+                                                    <span className="text-amber-300">Owing: ₦35,000</span>
+                                                </div>
+                                                <div className="text-white/70">Due: 14 Days Ago • Tone: Level 2 Firm Reminder</div>
+                                            </div>
+                                            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20 text-[10px]">
+                                                <div className="text-white font-black mb-1">📲 WhatsApp Message Dispatched:</div>
+                                                <div className="text-white/85 text-[9px] leading-relaxed">"Good day Mr. Emeka, this is a gentle reminder regarding your outstanding invoice of ₦35,000. Kindly settle via instant Paystack link: paystack.com/pay/sb-928..."</div>
+                                            </div>
+                                            <div className="bg-emerald-400 text-emerald-950 rounded-xl p-2 text-center text-[10px] font-black">
+                                                ✓ Payment Received: ₦35,000 Settled via Transfer!
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {tab.mockup === 'market' && (
                                         <div className="relative z-10 space-y-2">
-                                            <div className="text-white/80 text-xs font-black uppercase tracking-wider">📦 Inventory Categories</div>
+                                            <div className="text-white/90 text-xs font-black uppercase tracking-wider">🏪 4-Pillar Commercial Trade Hub</div>
                                             {[
-                                                { icon: '🛍️', type: 'Physical Goods', example: 'Fabric, Electronics, Food', count: '45 items' },
-                                                { icon: '🛠️', type: 'Services', example: 'Tailoring per hour', count: '3 offers' },
-                                                { icon: '🏠', type: 'Properties', example: '3-bed Lagos Island flat', count: '1 listing' },
-                                                { icon: '🤝', type: 'B2B Hub', example: 'Wholesale, Logistics, Influencer', count: '8 listings' },
-                                            ].map(({ icon, type, example, count }) => (
-                                                <div key={type} className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20 flex items-center gap-3">
-                                                    <span className="text-lg">{icon}</span>
+                                                { icon: '🛍️', type: 'Physical Goods', example: 'Fabrics, Phones, Groceries, Beauty' },
+                                                { icon: '🛠️', type: 'Professional Services', example: 'CAC Legal, Accounting, Repairs, Media' },
+                                                { icon: '🏠', type: 'Commercial Real Estate', example: 'Plaza Shops, Warehouses, Office Hubs' },
+                                                { icon: '⚡', type: 'B2B Wholesale Hub', example: 'Raw Materials, Dispatch Fleets, Influencers' },
+                                            ].map(({ icon, type, example }) => (
+                                                <div key={type} className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 flex items-center gap-3">
+                                                    <span className="text-base">{icon}</span>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="text-white text-[10px] font-black">{type}</div>
                                                         <div className="text-white/70 text-[9px] truncate">{example}</div>
                                                     </div>
-                                                    <span className="text-white/80 text-[9px] font-bold bg-white/10 px-2 py-0.5 rounded-full">{count}</span>
+                                                    <span className="text-white/90 text-[9px] font-bold bg-white/20 px-2 py-0.5 rounded-full">WhatsApp Direct</span>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
-                                    {tab.mockup === 'crm' && (
+
+                                    {tab.mockup === 'tax' && (
                                         <div className="relative z-10 space-y-3">
-                                            <div className="text-white/80 text-xs font-black uppercase tracking-wider">💬 Active Leads</div>
-                                            {[
-                                                { name: 'Kola Adesanya', type: 'Wholesale Inquiry', time: '2 min ago', status: 'New' },
-                                                { name: 'Amaka Traders', type: 'Logistics Quote', time: '15 min ago', status: 'Replied' },
-                                                { name: 'TechVault Ltd', type: 'B2B Service Deal', time: '1 hr ago', status: 'Pending' },
-                                            ].map(({ name, type, time, status }) => (
-                                                <div key={name} className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20">
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <div className="text-white text-[11px] font-black">{name}</div>
-                                                            <div className="text-white/70 text-[9px]">{type}</div>
-                                                        </div>
-                                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${status === 'New' ? 'bg-emerald-400 text-emerald-900' : status === 'Replied' ? 'bg-blue-400 text-blue-900' : 'bg-amber-400 text-amber-900'}`}>{status}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 mt-2">
-                                                        <div className="flex-1 bg-white text-green-700 rounded-lg py-1 text-[9px] font-black text-center">💬 WhatsApp</div>
-                                                        <div className="text-white/50 text-[9px]">{time}</div>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                            <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between">
+                                                <span>⚖️ Legal Compliance Shield</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">CITA Section 23/40</span>
+                                            </div>
+                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30 space-y-2">
+                                                <div className="text-white font-black text-xs">Section 23 CITA Exemption Memo ✓</div>
+                                                <div className="text-[10px] text-emerald-200">Statutory Tax Rate: 0% (Turnover &lt; ₦25,000,000)</div>
+                                                <div className="text-[9px] text-white/80 leading-relaxed">Official legal certificate confirming immunity from company income tax for micro & small enterprises in Nigeria.</div>
+                                            </div>
+                                            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20 text-[10px] space-y-1">
+                                                <div className="font-bold text-amber-300">🏛️ Accredited CAC Filing Desk</div>
+                                                <div className="text-white/80">Business Name (₦27.5k) • Ltd Co (₦68k) • SCUML • 3-7 Days Delivery</div>
+                                            </div>
                                         </div>
                                     )}
-                                    {tab.mockup === 'investor' && (
+
+                                    {tab.mockup === 'grants' && (
                                         <div className="relative z-10 space-y-3">
-                                            <div className="text-white/80 text-xs font-black uppercase tracking-wider">🏦 Funding Dashboard</div>
+                                            <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between">
+                                                <span>💰 Institutional Funding Matcher</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">₦Billions Active</span>
+                                            </div>
                                             {[
-                                                { name: 'BOI MSME Loan', amount: 'Up to ₦5M', match: '96%', status: 'Apply Now' },
-                                                { name: 'TEF Entrepreneurship', amount: '$5,000 USD', match: '88%', status: 'Eligible' },
-                                                { name: 'CBN Creative Fund', amount: 'Up to ₦2.5M', match: '78%', status: 'Eligible' },
-                                            ].map(({ name, amount, match, status }) => (
-                                                <div key={name} className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20 flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-lg">💰</div>
+                                                { name: 'BOI MSME Growth Fund', amount: 'Up to ₦10M', match: '96%' },
+                                                { name: 'Presidential Palliative Grant', amount: '₦50,000 Free', match: '98%' },
+                                                { name: 'Tony Elumelu Foundation', amount: '$5,000 USD', match: '88%' },
+                                            ].map(({ name, amount, match }) => (
+                                                <div key={name} className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm">💰</div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="text-white text-[10px] font-black truncate">{name}</div>
                                                         <div className="text-white/70 text-[9px]">{amount}</div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-emerald-300 text-[10px] font-black">{match}</div>
-                                                        <div className="text-white/50 text-[8px]">{status}</div>
+                                                        <div className="text-emerald-300 text-[10px] font-black">{match} Match</div>
                                                     </div>
                                                 </div>
                                             ))}
-                                            <div className="bg-white text-blue-800 rounded-xl p-3 text-[10px] font-black flex items-center gap-2">
-                                                <span>📄</span> Business Plan: Ready for Download
+                                            <div className="bg-white text-slate-900 rounded-xl p-2 text-[10px] font-black text-center shadow">
+                                                📄 5-Year Bankable Business Plan Ready for PDF Download
                                             </div>
                                         </div>
                                     )}
@@ -612,31 +689,77 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ ALL FEATURES GRID ═══════════ */}
+            {/* ═══════════ ALL 16 PLATFORM FEATURES GRID ═══════════ */}
             <section className="py-24 bg-white border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Full Feature Suite</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">One platform. Every tool you need.</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Replace 10+ separate apps with a single Nigerian-focused AI platform that costs less than a bowl of suya.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Full Architectural Suite</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">16 Powerful Modules. Zero Missing Pieces.</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From daily cashbook POS and apprentice anti-theft protection to commercial photo studio and BOI business plans — everything an MSME needs to thrive.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                         {allFeatures.map((f, i) => (
-                            <motion.div key={i} className="group bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:bg-white hover:border-slate-200 hover:shadow-md transition-all duration-300 cursor-pointer relative"
-                                initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
+                            <motion.div key={i} className="group bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:bg-white hover:border-emerald-200 hover:shadow-lg transition-all duration-300 cursor-pointer relative"
+                                initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.04 }}>
                                 {f.tag && (
-                                    <span className={`absolute top-4 right-4 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${f.tag === 'New' ? 'bg-green-100 text-green-700' : f.tag === 'Upgraded' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                                    <span className={`absolute top-4 right-4 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${f.tag === 'Core Free' ? 'bg-emerald-100 text-emerald-800' : f.tag === 'Anti-Theft' ? 'bg-blue-100 text-blue-800' : f.tag === 'Top Feature' ? 'bg-purple-100 text-purple-800' : 'bg-amber-100 text-amber-800'}`}>
                                         {f.tag}
                                     </span>
                                 )}
-                                <div className={`w-11 h-11 bg-gradient-to-br ${f.color} rounded-xl flex items-center justify-center text-xl shadow-md mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                                <div className={`w-11 h-11 bg-gradient-to-br ${f.color} rounded-xl flex items-center justify-center text-xl shadow-md mb-4 group-hover:scale-110 transition-transform duration-300 text-white`}>
                                     {f.icon}
                                 </div>
+                                <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">{f.pillar}</div>
                                 <h3 className="text-base font-bold text-slate-900 mb-2">{f.title}</h3>
                                 <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
                             </motion.div>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════ THE MSME ZERO-SURPRISE FAIR-USE GUARANTEE ═══════════ */}
+            <section id="guarantee" className="py-24 bg-slate-900 text-white relative overflow-hidden border-t border-slate-800">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                    <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                        <span className="inline-block py-1 px-3 rounded-full bg-emerald-900/60 text-emerald-400 text-xs font-black tracking-widest uppercase mb-4 border border-emerald-800">Fair-Use & Zero Surprise Policy</span>
+                        <h2 className="text-4xl font-extrabold text-white mb-4">Core Tools are 100% Free Forever. No Lockouts.</h2>
+                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">We do not believe in holding small business sales records hostage. See our transparent guarantee below.</p>
+                    </motion.div>
+
+                    <div className="bg-slate-800/80 rounded-3xl border border-slate-700 overflow-hidden shadow-2xl">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-700 bg-slate-950/60 text-[11px] font-black uppercase text-slate-400 tracking-wider">
+                                        <th className="py-4 px-6">Platform Feature / Tool</th>
+                                        <th className="py-4 px-6">Operational Category</th>
+                                        <th className="py-4 px-6">Cost / Credits Required</th>
+                                        <th className="py-4 px-6">Guarantee Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700/60 text-sm">
+                                    {fairUseMatrix.map((row, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-700/30 transition-colors">
+                                            <td className="py-3.5 px-6 font-semibold text-white flex items-center gap-2.5">
+                                                <span>{row.icon}</span>
+                                                <span>{row.feature}</span>
+                                            </td>
+                                            <td className="py-3.5 px-6 text-slate-400 text-xs">{row.type}</td>
+                                            <td className="py-3.5 px-6">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${row.cost.includes('FREE') ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/60' : 'bg-purple-900/60 text-purple-300 border border-purple-700/60'}`}>
+                                                    {row.cost}
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 px-6 text-xs text-slate-300">
+                                                {row.cost.includes('FREE') ? '✅ Guaranteed Unlimited Access' : '⚡ Affordable Pay-As-You-Go'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -682,7 +805,7 @@ const LandingPage: React.FC = () => {
                                 </div>
                             </div>
                             <p className="text-slate-500 text-xs leading-relaxed border-t border-slate-700 pt-6">
-                                Estimates are based on average SME outcomes reported by SmartBiz Coach users across Lagos, Abuja, Kano, and Port Harcourt.
+                                Estimates are based on average MSME outcomes reported by SmartBiz Coach merchants across Lagos, Onitsha, Kano, Abuja, and Port Harcourt.
                             </p>
                         </motion.div>
 
@@ -690,12 +813,12 @@ const LandingPage: React.FC = () => {
                         <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
                             className="space-y-4">
                             {[
-                                { icon: '⏱️', label: 'Hours Saved Monthly', value: `${timeSaved} hrs`, sub: 'From automated invoicing, debt reminders & content', color: 'from-violet-600 to-purple-700' },
-                                { icon: '💸', label: 'Avg. Debt Recovered/Month', value: `₦${debtRecovered.toLocaleString('en-NG')}`, sub: 'Via AI-powered WhatsApp debt reminders (Gbege Book)', color: 'from-red-600 to-rose-700' },
+                                { icon: '⏱️', label: 'Hours Saved Monthly', value: `${timeSaved} hrs`, sub: 'From 5-Sec POS, automated day-book & WhatsApp close', color: 'from-violet-600 to-purple-700' },
+                                { icon: '💸', label: 'Avg. Debt Recovered/Month', value: `₦${debtRecovered.toLocaleString('en-NG')}`, sub: 'Via Gbege Book WhatsApp auto-nudges and Paystack links', color: 'from-red-600 to-rose-700' },
                                 { icon: '💰', label: 'Grant Programs Eligible', value: grantEligibility, sub: 'Based on your revenue tier — matched automatically', color: 'from-emerald-600 to-teal-700' },
-                                { icon: '🚀', label: 'Potential Revenue Uplift', value: `+₦${Math.round(roiRevenue * 0.15).toLocaleString('en-NG')}`, sub: 'From content automation, marketplace visibility & CRM', color: 'from-amber-600 to-orange-700' },
+                                { icon: '🚀', label: 'Potential Revenue Uplift', value: `+₦${Math.round(roiRevenue * 0.15).toLocaleString('en-NG')}`, sub: 'From Snap-to-Studio 4K photos, marketplace reach & CRM', color: 'from-amber-600 to-orange-700' },
                             ].map(({ icon, label, value, sub, color }, i) => (
-                                <motion.div key={i} className={`bg-gradient-to-r ${color} rounded-2xl p-5 shadow-lg`}
+                                <motion.div key={i} className={`bg-gradient-to-r ${color} rounded-2xl p-5 shadow-lg text-white`}
                                     initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                                     <div className="flex items-start gap-4">
                                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">{icon}</div>
@@ -722,15 +845,15 @@ const LandingPage: React.FC = () => {
                     <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                         <span className="inline-block py-1 px-3 rounded-full bg-blue-100 text-blue-700 text-xs font-black tracking-widest uppercase mb-4 border border-blue-200">Simple Setup</span>
                         <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Running in under 5 minutes</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">No tech degree needed. If you can send a WhatsApp voice note, you can use SmartBiz Coach.</p>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">No tech degree needed. If you can use WhatsApp and take a phone picture, you can run your entire business on SmartBiz Coach.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
-                            { num: '01', icon: '🚀', title: 'Create Free Account', desc: 'Sign up in 60 seconds. No credit card. No hidden fees. Just your email and you\'re in.' },
-                            { num: '02', icon: '🏢', title: 'Set Up Your Business', desc: 'Tell us your business name, type, location, and industry. AI personalizes everything to your context.' },
-                            { num: '03', icon: '📸', title: 'Snap, List & Publish', desc: 'Use AI Snap to onboard your products, or manually create listings. Publish to the marketplace in one click.' },
-                            { num: '04', icon: '📈', title: 'Grow & Get Funded', desc: 'Attract buyers via WhatsApp, track leads in your CRM, apply for matched grants, and watch your business grow.' },
+                            { num: '01', icon: '🚀', title: 'Create Free Account', desc: 'Sign up in 60 seconds. No credit card. No setup fees. Free lifetime access to core POS and bookkeeping.' },
+                            { num: '02', icon: '🏢', title: 'Set Up Your Shop', desc: 'Add your business name, set your 4-digit apprentice shift PIN, and enter your opening cash balance.' },
+                            { num: '03', icon: '⚡', title: 'Sell, Snap & Collect', desc: 'Check out sales in 5 seconds, turn raw bedsheet photos into 4K studio sets, and log customer debts.' },
+                            { num: '04', icon: '📈', title: 'Get Funded & Grow', desc: 'Receive WhatsApp daily profit summaries, match government grants, and download BOI business plans.' },
                         ].map((s, i) => (
                             <motion.div key={i} className="relative" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
                                 {i < 3 && <div className="hidden lg:block absolute top-10 left-full w-full h-0.5 bg-gradient-to-r from-green-300/60 to-transparent z-0"></div>}
@@ -750,20 +873,25 @@ const LandingPage: React.FC = () => {
             <section className="py-24 bg-slate-50 border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-amber-100 text-amber-700 text-xs font-black tracking-widest uppercase mb-4 border border-amber-200">🇳🇬 Real Stories</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Nigerian entrepreneurs love it</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Join thousands of business owners already using SmartBiz Coach to grow faster and smarter.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-amber-100 text-amber-800 text-xs font-black tracking-widest uppercase mb-4 border border-amber-200">Merchant Voices</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Loved by 10,000+ Nigerian Business Owners</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From Alaba and Balogun to Onitsha Main Market and Kano Kurmi, here is how Nigerian merchants win with SmartBiz Coach.</p>
                     </motion.div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {testimonials.map((t, i) => (
-                            <motion.div key={i} className="bg-white border border-slate-100 rounded-2xl p-6 hover:shadow-md hover:border-slate-200 transition-all"
+                            <motion.div key={i} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
                                 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
-                                <div className="flex mb-3">
-                                    {[...Array(t.stars)].map((_, si) => <span key={si} className="text-amber-400 text-sm">★</span>)}
+                                <div>
+                                    <div className="flex items-center gap-1 text-amber-400 mb-4">
+                                        {[...Array(t.stars)].map((_, si) => <span key={si}>★</span>)}
+                                    </div>
+                                    <p className="text-slate-600 text-sm leading-relaxed italic mb-6">"{t.text}"</p>
                                 </div>
-                                <p className="text-slate-600 text-sm leading-relaxed mb-5 italic">"{t.text}"</p>
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 ${t.color} rounded-full flex items-center justify-center text-white text-xs font-black shadow`}>{t.avatar}</div>
+                                <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
+                                    <div className={`w-10 h-10 ${t.color} text-white rounded-full flex items-center justify-center font-black text-sm flex-shrink-0`}>
+                                        {t.avatar}
+                                    </div>
                                     <div>
                                         <div className="font-bold text-slate-900 text-sm">{t.name}</div>
                                         <div className="text-xs text-slate-400">{t.role}</div>
@@ -775,94 +903,81 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ PRICING ═══════════ */}
+            {/* ═══════════ PRICING PACKS ═══════════ */}
             <section id="pricing" className="py-24 bg-white border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-black tracking-widest uppercase mb-4 border border-green-200">Naira-Friendly Pricing</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Pay only for what you use</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">No monthly subscriptions. No hidden fees. Top up with Paystack via card, bank transfer, or USSD. Credits never expire.</p>
+                    <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                        <span className="inline-block py-1 px-3 rounded-full bg-purple-100 text-purple-700 text-xs font-black tracking-widest uppercase mb-4 border border-purple-200">Affordable AI Top-Ups</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Priced for Nigerian Reality. No Monthly Subscriptions.</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Core operating tools are 100% free. When you need heavy AI compute (commercial photoshoots, business plans), top up as you go starting at ₦500.</p>
                     </motion.div>
 
-                    <motion.div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 mb-8 text-white text-center shadow-xl shadow-green-600/20"
-                        initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}>
-                        <div className="text-2xl font-extrabold mb-1">🎉 Start Free — Always</div>
-                        <p className="text-green-100 text-sm">Every new account gets free daily usage on most tools. No credit card required to get started.</p>
-                    </motion.div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {packs.map((p, i) => (
-                            <motion.div key={i} className={`relative bg-white rounded-2xl p-6 sm:p-8 border-2 ${p.color} ${p.popular ? 'shadow-2xl shadow-green-500/20 md:scale-105' : 'shadow-sm'} transition-all hover:shadow-lg`}
+                            <motion.div key={i} className={`rounded-3xl p-6 border-2 ${p.color} bg-white flex flex-col justify-between relative shadow-sm hover:shadow-xl transition-all`}
                                 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                                {p.tag && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-bold px-4 py-1 rounded-full shadow">{p.tag}</div>}
-                                <div className="text-center mb-6">
-                                    <div className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">{p.name}</div>
-                                    <div className="text-5xl font-extrabold text-slate-900">{p.price}</div>
-                                    <div className="text-sm text-slate-500 mt-1">{p.credits}</div>
+                                {p.tag && (
+                                    <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-green-600 to-emerald-600 text-white text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-wider shadow">
+                                        {p.tag}
+                                    </span>
+                                )}
+                                <div>
+                                    <div className="text-slate-900 font-extrabold text-lg mb-1">{p.name}</div>
+                                    <div className="text-xs text-slate-400 font-semibold mb-4">{p.credits}</div>
+                                    <div className="text-3xl font-black text-slate-900 mb-6">{p.price}</div>
+                                    <ul className="space-y-3 mb-8">
+                                        {p.perks.map((perk, pi) => (
+                                            <li key={pi} className="flex items-center gap-2 text-xs text-slate-600">
+                                                <span className="text-green-600 font-black">✓</span>
+                                                {perk}
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
-                                <ul className="space-y-3 mb-8">
-                                    {p.perks.map((perk, pi) => (
-                                        <li key={pi} className="flex items-center gap-3 text-sm text-slate-600">
-                                            <span className="w-5 h-5 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">✓</span>
-                                            {perk}
-                                        </li>
-                                    ))}
-                                </ul>
-                                <button onClick={() => navigate('/register')} className={`w-full py-3 ${p.btnColor} text-white font-bold rounded-xl transition-all hover:-translate-y-0.5 shadow-md`}>
-                                    Get Started →
+                                <button onClick={() => navigate('/register')} className={`w-full py-3 rounded-xl text-white font-bold text-xs transition-all shadow-md ${p.btnColor}`}>
+                                    Get {p.name} →
                                 </button>
                             </motion.div>
                         ))}
                     </div>
-                    <p className="text-center text-slate-400 text-sm mt-8">All packs are one-time top-ups via Paystack. Secure payment guaranteed 🔒</p>
                 </div>
             </section>
 
-            {/* ═══════════ NGO & INVESTOR HUB ═══════════ */}
-            <section id="partnership" className="py-24 bg-gradient-to-br from-slate-950 to-slate-900 relative overflow-hidden">
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-3xl"></div>
-                    <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-green-500/5 rounded-full blur-3xl"></div>
-                </div>
-
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-blue-900/60 text-blue-400 text-xs font-black tracking-widest uppercase mb-4 border border-blue-800">For Investors & Agencies</span>
-                        <h2 className="text-4xl font-extrabold text-white mb-4">Partner in the African SME Digital Revolution</h2>
-                        <p className="text-lg text-slate-400 max-w-2xl mx-auto">SmartBiz Coach is building the infrastructure for 40 million Nigerian micro-entrepreneurs to access capital, markets, and tools. Join us.</p>
-                    </motion.div>
-
-                    {/* NGO Stats */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
-                        {ngoStats.map((s, i) => (
-                            <motion.div key={i} className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 text-center"
-                                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                                <div className="text-3xl font-extrabold text-white mb-1"><AnimatedCounter target={s.value} /></div>
-                                <div className="text-xs text-slate-400 font-semibold">{s.label}</div>
-                            </motion.div>
-                        ))}
-                    </div>
-
-                    <div className="grid lg:grid-cols-2 gap-12 items-start">
-                        {/* Left: Value propositions */}
+            {/* ═══════════ NGO & INSTITUTIONAL PARTNERSHIP ═══════════ */}
+            <section id="partnership" className="py-24 bg-slate-900 text-white relative overflow-hidden border-t border-slate-800">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                    <div className="grid lg:grid-cols-2 gap-12 items-center">
+                        {/* Left Info */}
                         <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6">
-                            {[
-                                { icon: '🏦', title: 'Bank & BOI Compliant Business Plans', desc: 'Our AI generates plans structured to meet Nigerian banking requirements and government agency templates (BOI, CBN, BOA, DBN).' },
-                                { icon: '📊', title: 'Investor-Grade Transaction Ledger', desc: 'SMEs get a professional cash flow ledger and income statement. NGOs can pull aggregate impact reports on beneficiary businesses.' },
-                                { icon: '🎓', title: 'Cohort Management for NGOs', desc: 'Onboard hundreds of SMEs under your program, track their digital readiness progress, and generate reporting dashboards for your funders.' },
-                                { icon: '🌍', title: 'International Donor Ready', desc: 'Supports USAID, World Bank, GIZ, and EU digital inclusion grant documentation formats. Perfect for SME support organizations.' },
-                            ].map(({ icon, title, desc }, i) => (
-                                <div key={i} className="flex items-start gap-4">
-                                    <div className="w-12 h-12 bg-slate-800 border border-slate-700 text-2xl rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">{icon}</div>
-                                    <div>
-                                        <h4 className="font-bold text-white text-base mb-1">{title}</h4>
-                                        <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
-                                    </div>
+                            <span className="inline-block py-1 px-3 rounded-full bg-emerald-900/60 text-emerald-400 text-xs font-black tracking-widest uppercase border border-emerald-800">
+                                Institutional & NGO Desk
+                            </span>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+                                Partner with SmartBiz Coach to Formalize & Empower Nigerian MSMEs
+                            </h2>
+                            <p className="text-slate-400 leading-relaxed text-sm">
+                                We collaborate with government agencies (SMEDAN, BOI), microfinance institutions, development partners, and NGOs to deliver digital bookkeeping, tax formalization, and financial inclusion to grassroots business clusters nationwide.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700">
+                                    <div className="text-2xl font-black text-emerald-400">100%</div>
+                                    <div className="text-xs text-slate-400">Audit-Ready POS & Ledger</div>
                                 </div>
-                            ))}
+                                <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700">
+                                    <div className="text-2xl font-black text-teal-400">Section 23</div>
+                                    <div className="text-xs text-slate-400">CITA Tax Legal Shield</div>
+                                </div>
+                            </div>
+
+                            <div className="pt-2">
+                                <a href="mailto:partners@smartbizcoach.com.ng" className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold text-sm">
+                                    <span>📩 Email Corporate Partnership Desk: partners@smartbizcoach.com.ng</span>
+                                </a>
+                            </div>
                         </motion.div>
 
-                        {/* Right: Partnership Form */}
+                        {/* Right: Partner Intake Form */}
                         <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
                             className="bg-slate-800/50 border border-slate-700 rounded-3xl p-8 backdrop-blur-sm">
                             {partnerSubmitted ? (
@@ -870,7 +985,7 @@ const LandingPage: React.FC = () => {
                                     <div className="w-16 h-16 bg-green-900/50 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl shadow-md border border-green-800">✓</div>
                                     <h3 className="text-2xl font-bold text-white mb-3">Proposal Submitted!</h3>
                                     <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
-                                        Thank you, <strong className="text-white">{partnerName}</strong>. We received your <strong className="text-green-400">{partnerType}</strong> inquiry. We'll reach out to <strong className="text-white">{partnerEmail}</strong> shortly.
+                                        Thank you, <strong className="text-white">{partnerName}</strong>. We received your <strong className="text-green-400">{partnerType}</strong> inquiry. We will reach out to <strong className="text-white">{partnerEmail}</strong> shortly.
                                     </p>
                                     <a href={`https://wa.me/2349064556107?text=Hello%20Meshach,%20I%20just%20submitted%20a%20partnership%20proposal%20for%20SmartBiz%20Coach%20as%20a%20${encodeURIComponent(partnerType)}.`}
                                         target="_blank" rel="noopener noreferrer"
@@ -879,45 +994,44 @@ const LandingPage: React.FC = () => {
                                     </a>
                                 </motion.div>
                             ) : (
-                                <form onSubmit={handlePartnerSubmit} className="space-y-5">
+                                <form onSubmit={handlePartnerSubmit} className="space-y-4">
                                     <div>
-                                        <h3 className="text-xl font-bold text-white mb-1">Partnership Inquiry</h3>
-                                        <p className="text-xs text-slate-400 mb-6">Let's discuss how we can work together to scale SmartBiz Coach across Nigeria and Africa.</p>
+                                        <h3 className="text-xl font-bold text-white mb-1">Partnership & Institutional Inquiry</h3>
+                                        <p className="text-xs text-slate-400 mb-4">Let's discuss cohort onboarding, banking integrations, or grant disbursement.</p>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Name</label>
+                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Name</label>
                                             <input type="text" required value={partnerName} onChange={e => setPartnerName(e.target.value)}
                                                 className="w-full px-4 py-2.5 bg-slate-900/70 border border-slate-600 text-white rounded-xl text-sm focus:outline-none focus:border-green-500 transition-colors placeholder-slate-500" placeholder="Full Name" />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Email</label>
+                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
                                             <input type="email" required value={partnerEmail} onChange={e => setPartnerEmail(e.target.value)}
                                                 className="w-full px-4 py-2.5 bg-slate-900/70 border border-slate-600 text-white rounded-xl text-sm focus:outline-none focus:border-green-500 transition-colors placeholder-slate-500" placeholder="email@firm.com" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Organization</label>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Organization</label>
                                         <input type="text" required value={partnerOrg} onChange={e => setPartnerOrg(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-slate-900/70 border border-slate-600 text-white rounded-xl text-sm focus:outline-none focus:border-green-500 transition-colors placeholder-slate-500" placeholder="Company / NGO / Investment Firm" />
+                                            className="w-full px-4 py-2.5 bg-slate-900/70 border border-slate-600 text-white rounded-xl text-sm focus:outline-none focus:border-green-500 transition-colors placeholder-slate-500" placeholder="Company / NGO / Bank / Agency" />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Partnership Type</label>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Partnership Type</label>
                                         <select value={partnerType} onChange={e => setPartnerType(e.target.value)}
                                             className="w-full px-4 py-2.5 bg-slate-900/70 border border-slate-600 text-white rounded-xl text-sm focus:outline-none focus:border-green-500 transition-colors">
-                                            <option value="Equity Investment">Equity Investment / VC Funding</option>
-                                            <option value="NGO Program Integration">NGO / Development Agency Program</option>
-                                            <option value="Government Agency">Government Agency (BOI, CBN, etc.)</option>
-                                            <option value="Corporate Sponsorship">Corporate Sponsorship</option>
-                                            <option value="Creative Hub Integration">Creative Hub / Incubator Integration</option>
-                                            <option value="International Donor">International Donor / Grant Body</option>
+                                            <option value="SME Training & NGO Cohorts">SME Training & NGO Cohorts</option>
+                                            <option value="Bank / Microfinance Credit Scoring">Bank / Microfinance Credit Scoring</option>
+                                            <option value="Government Agency (SMEDAN, BOI)">Government Agency (SMEDAN, BOI)</option>
+                                            <option value="Market Association / Cooperative">Market Association / Cooperative</option>
+                                            <option value="Equity Investment / Venture Capital">Equity Investment / Venture Capital</option>
                                             <option value="Other">Other Strategic Partnership</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Message</label>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Message</label>
                                         <textarea required rows={3} value={partnerMessage} onChange={e => setPartnerMessage(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-slate-900/70 border border-slate-600 text-white rounded-xl text-sm focus:outline-none focus:border-green-500 transition-colors resize-none placeholder-slate-500" placeholder="Describe your collaboration interest or investment thesis..."></textarea>
+                                            className="w-full px-4 py-2.5 bg-slate-900/70 border border-slate-600 text-white rounded-xl text-sm focus:outline-none focus:border-green-500 transition-colors resize-none placeholder-slate-500" placeholder="Describe your collaboration interest or cohort size..."></textarea>
                                     </div>
                                     <button type="submit" disabled={partnerLoading}
                                         className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:opacity-50 text-white font-black rounded-xl text-sm transition-all shadow-lg flex items-center justify-center gap-2">
@@ -934,7 +1048,7 @@ const LandingPage: React.FC = () => {
             <section id="faq" className="py-24 bg-white border-t border-slate-100">
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Got Questions?</span>
+                        <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Answers to Your Questions</span>
                         <h2 className="text-4xl font-extrabold text-slate-900">Frequently Asked Questions</h2>
                     </motion.div>
                     <div className="space-y-3">
@@ -959,7 +1073,7 @@ const LandingPage: React.FC = () => {
             </section>
 
             {/* ═══════════ FINAL CTA ═══════════ */}
-            <section className="relative py-28 bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900 overflow-hidden">
+            <section className="relative py-28 bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900 overflow-hidden text-white">
                 <div className="absolute inset-0 pointer-events-none">
                     <div className="absolute top-0 left-1/4 w-96 h-96 bg-green-400/10 rounded-full blur-3xl"></div>
                     <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl"></div>
@@ -970,20 +1084,20 @@ const LandingPage: React.FC = () => {
                         <div className="text-6xl mb-6">🇳🇬</div>
                         <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-6 leading-tight">
                             Your business deserves<br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-300">world-class tools</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-300">world-class operating tools</span>
                         </h2>
                         <p className="text-xl text-green-100/80 mb-10 max-w-2xl mx-auto leading-relaxed">
-                            Join 10,000+ Nigerian entrepreneurs using SmartBiz Coach to brand, manage, sell, and get funded. Start completely free today.
+                            Join 10,000+ Nigerian entrepreneurs using SmartBiz Coach to check out sales in 5 seconds, transform photos to 4K studio quality, recover debts, and access institutional grants.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <button onClick={() => navigate('/register')} className="bg-white hover:bg-green-50 text-green-800 px-10 py-4 rounded-2xl text-lg font-extrabold transition-all shadow-2xl hover:-translate-y-1 hover:shadow-white/20">
                                 Create Your Free Account →
                             </button>
                             <button onClick={() => navigate('/login')} className="border-2 border-white/30 hover:border-white/60 text-white px-10 py-4 rounded-2xl text-lg font-bold transition-all hover:bg-white/10">
-                                Already have an account?
+                                Already have an account? Sign In
                             </button>
                         </div>
-                        <p className="text-green-200/60 text-sm mt-8">No credit card • No monthly fee • Cancel anytime • Paystack secured 🔒</p>
+                        <p className="text-green-200/60 text-sm mt-8">No credit card • Free core tools forever • Paystack secured 🔒 • NDPR Compliant</p>
                     </motion.div>
                 </div>
             </section>
@@ -997,7 +1111,7 @@ const LandingPage: React.FC = () => {
                                 <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-white font-extrabold shadow-lg">S</div>
                                 <span className="font-bold text-xl text-white">SmartBiz<span className="text-green-500">Coach</span></span>
                             </div>
-                            <p className="text-slate-400 text-sm leading-relaxed max-w-xs mb-6">The most comprehensive AI business management platform built specifically for Nigerian SMEs. Brand, manage, and grow — all in one place.</p>
+                            <p className="text-slate-400 text-sm leading-relaxed max-w-xs mb-6">Nigeria's premier AI Business Operating System. 5-Second POS, Apprentice Lock, Snap-to-Studio 2.0, Debt Recovery, and CITA Tax Shield.</p>
 
                             <div className="space-y-3">
                                 <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Follow Us</p>
@@ -1019,9 +1133,9 @@ const LandingPage: React.FC = () => {
                         </div>
 
                         <div>
-                            <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Product</h4>
+                            <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Platform</h4>
                             <ul className="space-y-3">
-                                {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#pricing', 'Pricing'], ['#faq', 'FAQ']].map(([href, label]) => (
+                                {[['#features', '6 Core Pillars'], ['#how-it-works', 'Operating Timeline'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing Top-Ups'], ['#faq', 'FAQ']].map(([href, label]) => (
                                     <li key={label}><a href={href} className="text-sm text-slate-400 hover:text-green-400 transition-colors">{label}</a></li>
                                 ))}
                             </ul>
@@ -1030,19 +1144,18 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Resources</h4>
                             <ul className="space-y-3">
-                                <li><a href="#blog" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Blog & Guides</a></li>
-                                <li><span onClick={() => navigate('/help')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Help Center</span></li>
-                                <li><span onClick={() => navigate('/grants-guide')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Grants Guide</span></li>
-                                <li><span onClick={() => navigate('/cac-checklist')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">CAC Checklist</span></li>
+                                <li><span onClick={() => navigate('/help')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Help & Guides</span></li>
+                                <li><span onClick={() => navigate('/grants-guide')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Grant Matcher Guide</span></li>
+                                <li><span onClick={() => navigate('/cac-checklist')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">CAC Compliance Guide</span></li>
                             </ul>
                         </div>
 
                         <div>
-                            <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Company</h4>
+                            <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Legal & Trust</h4>
                             <ul className="space-y-3">
-                                <li><span onClick={() => navigate('/about')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">About Us</span></li>
-                                <li><a href="#partnership" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Investors & NGOs</a></li>
-                                <li><span onClick={() => navigate('/privacy')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Privacy Policy</span></li>
+                                <li><span onClick={() => navigate('/about')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">About SmartBiz</span></li>
+                                <li><a href="#partnership" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Institutional Partners</a></li>
+                                <li><span onClick={() => navigate('/privacy')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Privacy Policy (NDPR)</span></li>
                                 <li><span onClick={() => navigate('/terms')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Terms of Service</span></li>
                             </ul>
                         </div>
@@ -1052,7 +1165,7 @@ const LandingPage: React.FC = () => {
                         <p>© {new Date().getFullYear()} SmartBiz Coach. All rights reserved. 🇳🇬 Made in Nigeria, for Nigeria.</p>
                         <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full">
                             <span className="text-green-400 text-xs">🔒</span>
-                            <span className="text-xs text-slate-400">Secured by Paystack · NDPR Compliant</span>
+                            <span className="text-xs text-slate-400">Secured by Paystack · NDPR Compliant · CITA Section 23/40 Verified</span>
                         </div>
                     </div>
                 </div>
@@ -1064,7 +1177,7 @@ const LandingPage: React.FC = () => {
                     <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
                     <div>
                         <div className="text-white text-xs font-bold font-heading leading-tight">SmartBiz Coach</div>
-                        <div className="text-[9px] text-green-400 font-semibold">10,000+ Nigerian SMEs</div>
+                        <div className="text-[9px] text-green-400 font-semibold">10,000+ Nigerian MSMEs</div>
                     </div>
                 </div>
                 <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-lg shadow-green-600/30 active:scale-95 transition-all">
