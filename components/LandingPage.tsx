@@ -243,10 +243,10 @@ const LandingPage: React.FC = () => {
     ];
 
     const stats = [
-        { value: '10,000+', label: 'Active MSMEs', icon: '🏢' },
-        { value: '₦500M+', label: 'In Grants Matched', icon: '💰' },
-        { value: '₦50M+', label: 'Debts Recovered', icon: '📒' },
-        { value: '4.9★', label: 'Average Merchant Rating', icon: '⭐' },
+        { value: '5-Sec', label: 'Counter POS Speed', icon: '⚡' },
+        { value: '16 Sets', label: 'Commercial 4K Backdrops', icon: '📸' },
+        { value: '100% Free', label: 'Core Tools Guarantee', icon: '🔒' },
+        { value: 'Pilot Live', label: 'Early Access Cohort', icon: '🚀' },
     ];
 
     return (
@@ -358,15 +358,40 @@ const LandingPage: React.FC = () => {
                                 <span className="text-slate-300 text-2xl sm:text-4xl font-bold">for every Nigerian SME</span>
                             </h1>
 
-                            <p className="text-lg text-slate-400 max-w-xl leading-relaxed mb-8">
-                                Run your counter with a <strong>5-Second POS & Apprentice Anti-Theft Lock</strong>, turn raw bedsheet photos into <strong>4K Luxury Studio Sets</strong>, recover locked debt with <strong>Gbege Book on WhatsApp</strong>, shield your profit with <strong>Section 23 CITA Tax Exemption</strong>, and match <strong>₦Billions in BOI Grants</strong>.
+                            <p className="text-lg text-slate-300 max-w-xl leading-relaxed mb-6 font-normal">
+                                The practical digital operating system built to help Nigerian MSMEs organize counter sales, present products professionally, recover customer debts, and protect profits.
                             </p>
 
-                            {/* Feature badges */}
-                            <div className="flex flex-wrap gap-2 mb-10">
-                                {['⚡ 5-Sec POS Day-Book', '📸 Snap-to-Studio 2.0', '📒 Gbege Debt Book', '🏪 4-Pillar Marketplace', '⚖️ Tax Shield Memo', '💰 BOI Grant Matcher'].map(badge => (
-                                    <span key={badge} className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-full">{badge}</span>
-                                ))}
+                            {/* Structured Provision Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-8 max-w-xl">
+                                <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
+                                    <span className="text-emerald-400 text-sm mt-0.5">⚡</span>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">Daily POS & Shift Lock</div>
+                                        <div className="text-[11px] text-slate-400">5-second counter sales & apprentice anti-theft PIN.</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
+                                    <span className="text-purple-400 text-sm mt-0.5">📸</span>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">Snap-to-Studio 2.0</div>
+                                        <div className="text-[11px] text-slate-400">Transform raw phone photos into 4K luxury scenes.</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
+                                    <span className="text-red-400 text-sm mt-0.5">📒</span>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">Gbege Debt Recovery</div>
+                                        <div className="text-[11px] text-slate-400">Automated WhatsApp payment reminders with Paystack.</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
+                                    <span className="text-teal-400 text-sm mt-0.5">⚖️</span>
+                                    <div>
+                                        <div className="text-xs font-bold text-white">Tax & Legal Shield</div>
+                                        <div className="text-[11px] text-slate-400">Section 23 CITA 0% tax memo & CAC guidance.</div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-12">
@@ -446,9 +471,9 @@ const LandingPage: React.FC = () => {
 
                                 <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
                                     className="absolute bottom-8 -right-6 bg-slate-900 rounded-2xl shadow-2xl p-3.5 border border-slate-700 w-48">
-                                    <div className="text-[10px] font-black text-green-400 uppercase tracking-wider mb-1">BOI Grant Match</div>
-                                    <div className="text-xl font-black text-white">₦5,000,000</div>
-                                    <div className="text-[10px] text-emerald-400 font-semibold">96% Eligibility Score</div>
+                                    <div className="text-[10px] font-black text-teal-400 uppercase tracking-wider mb-1">Section 23 CITA</div>
+                                    <div className="text-xl font-black text-white">0% Tax Rate</div>
+                                    <div className="text-[10px] text-emerald-400 font-semibold">MSME Legal Exemption</div>
                                 </motion.div>
                             </div>
                         </motion.div>
@@ -874,7 +899,7 @@ const LandingPage: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                         <span className="inline-block py-1 px-3 rounded-full bg-amber-100 text-amber-800 text-xs font-black tracking-widest uppercase mb-4 border border-amber-200">Merchant Voices</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Loved by 10,000+ Nigerian Business Owners</h2>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Real Feedback from Nigerian Business Owners & Pilot Merchants</h2>
                         <p className="text-lg text-slate-500 max-w-2xl mx-auto">From Alaba and Balogun to Onitsha Main Market and Kano Kurmi, here is how Nigerian merchants win with SmartBiz Coach.</p>
                     </motion.div>
 
@@ -1087,7 +1112,7 @@ const LandingPage: React.FC = () => {
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-300">world-class operating tools</span>
                         </h2>
                         <p className="text-xl text-green-100/80 mb-10 max-w-2xl mx-auto leading-relaxed">
-                            Join 10,000+ Nigerian entrepreneurs using SmartBiz Coach to check out sales in 5 seconds, transform photos to 4K studio quality, recover debts, and access institutional grants.
+                            Join Nigerian entrepreneurs and pilot merchants using SmartBiz Coach to check out sales in 5 seconds, transform photos to 4K studio quality, recover debts, and formalize with ease.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <button onClick={() => navigate('/register')} className="bg-white hover:bg-green-50 text-green-800 px-10 py-4 rounded-2xl text-lg font-extrabold transition-all shadow-2xl hover:-translate-y-1 hover:shadow-white/20">
@@ -1177,7 +1202,7 @@ const LandingPage: React.FC = () => {
                     <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
                     <div>
                         <div className="text-white text-xs font-bold font-heading leading-tight">SmartBiz Coach</div>
-                        <div className="text-[9px] text-green-400 font-semibold">10,000+ Nigerian MSMEs</div>
+                        <div className="text-[9px] text-green-400 font-semibold">Active Pilot Cohort</div>
                     </div>
                 </div>
                 <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-lg shadow-green-600/30 active:scale-95 transition-all">
