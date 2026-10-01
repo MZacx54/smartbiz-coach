@@ -358,33 +358,9 @@ const LandingPage: React.FC = () => {
                                 <span className="text-slate-300 text-2xl sm:text-4xl font-bold">for every Nigerian SME</span>
                             </h1>
 
-                            {/* Problem - Solution - Outcome Framework */}
-                            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 mb-6 max-w-xl backdrop-blur-md shadow-xl space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <span className="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-400 font-black uppercase tracking-wider text-[10px] shrink-0 border border-rose-500/30 mt-0.5">
-                                        Problem
-                                    </span>
-                                    <p className="text-xs sm:text-sm text-slate-300 leading-snug">
-                                        Staff cash leakage, fake bank transfer alerts, uncollected customer debt, and expensive product photography draining your margins.
-                                    </p>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 font-black uppercase tracking-wider text-[10px] shrink-0 border border-emerald-500/30 mt-0.5">
-                                        Solution
-                                    </span>
-                                    <p className="text-xs sm:text-sm text-slate-300 leading-snug">
-                                        SmartBiz Coach gives you a 5-second anti-theft POS, 4K commercial photo studio, automated WhatsApp debt recovery, and CITA tax protection.
-                                    </p>
-                                </div>
-                                <div className="flex items-start gap-3">
-                                    <span className="px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-300 font-black uppercase tracking-wider text-[10px] shrink-0 border border-teal-500/30 mt-0.5">
-                                        Outcome
-                                    </span>
-                                    <p className="text-xs sm:text-sm text-emerald-300 font-medium leading-snug">
-                                        Zero cashier theft, faster WhatsApp sales, recovered working capital, and an automated profit report on your phone every night.
-                                    </p>
-                                </div>
-                            </div>
+                            <p className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed mb-6 font-normal">
+                                Built to empower Nigerian MSMEs with essential digital infrastructure — securing counter sales against leakages, elevating product presentation, automating debt recovery, and turning everyday trade into structured, profitable, and bankable enterprises.
+                            </p>
 
                             {/* Structured Provision Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-8 max-w-xl">
