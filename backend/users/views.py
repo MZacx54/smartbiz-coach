@@ -2,6 +2,7 @@ import os
 import random
 import threading
 from rest_framework import generics, permissions, status, views
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, get_user_model
@@ -18,6 +19,8 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -75,6 +78,8 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(views.APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request):
         username = request.data.get('username')
@@ -231,6 +236,8 @@ class UserActionsView(views.APIView):
 
 class ForgotPasswordView(views.APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request):
         email_raw = request.data.get('email')
@@ -267,7 +274,7 @@ class ForgotPasswordView(views.APIView):
         email_thread.start()
 
         res_data = {'message': 'A 6-digit verification code has been sent to your email address.'}
-        if settings.DEBUG or not (os.getenv('BREVO_API_KEY') or os.getenv('SENDINBLUE_API_KEY')):
+        if getattr(settings, 'DEBUG', False):
             res_data['debug_code'] = code
             print(f"DEBUG: Password reset code for {email} is {code}")
 
@@ -276,6 +283,8 @@ class ForgotPasswordView(views.APIView):
 
 class ResetPasswordView(views.APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request):
         email_raw = request.data.get('email')
@@ -299,7 +308,15 @@ class ResetPasswordView(views.APIView):
         if not reset_code or not reset_code.is_valid():
             return Response({'error': 'Invalid or expired reset code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Code is valid, update password
+        # Code is valid, validate password complexity
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        try:
+            validate_password(new_password, user)
+        except ValidationError as err:
+            return Response({'error': err.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update password
         user.set_password(new_password)
         user.save()
 

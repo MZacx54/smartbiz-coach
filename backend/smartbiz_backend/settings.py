@@ -150,11 +150,21 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS/CSRF Settings
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'https://smartbizcoach.com.ng',
+    'https://www.smartbizcoach.com.ng',
+    'https://api.smartbizcoach.com.ng',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+]
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.smartbizcoach\.com\.ng$",
-    r"^https://smartbizcoach\.com\.ng$",
+    r"^https://.*\.vercel\.app$",
+    r"^https://.*\.onrender\.com$",
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -254,6 +264,8 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     X_FRAME_OPTIONS = 'DENY'
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # Validate critical environment variables
 import sys
@@ -296,7 +308,7 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 if not EMAIL_HOST_USER:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# ─── DRF Throttling (Rate Limiting) ──────────────────────────────────────────
+# ─── DRF Throttling (Rate Limiting & Anti-Brute-Force) ────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -305,15 +317,21 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '100000/day',
-        'brand_gen': '100000/day',
-        'content_gen': '100000/day',
-        'business_plan': '100000/day',
-        'video_gen': '100000/day',
-        'image_edit': '100000/day',
+        'anon': '120/minute',
+        'user': '1200/minute',
+        'auth': '6/minute',
+        'ai': '25/minute',
+        'payment': '30/minute',
+        'brand_gen': '60/minute',
+        'content_gen': '60/minute',
+        'business_plan': '30/minute',
+        'video_gen': '20/minute',
+        'image_edit': '30/minute',
     }
 }
 

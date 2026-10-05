@@ -1,6 +1,11 @@
+import hmac
+import hashlib
 import requests
 from django.conf import settings
+from django.db import transaction
+from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Transaction, CreditPurchase, CreditLedger
@@ -29,6 +34,8 @@ class CreditPurchaseView(generics.CreateAPIView):
 
 class VerifyPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'payment'
 
     def post(self, request, *args, **kwargs):
         reference = request.data.get('reference')
@@ -43,70 +50,71 @@ class VerifyPaymentView(APIView):
         }
 
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=15)
             response_data = response.json()
 
-            if response_data.get('status') and response_data['data']['status'] == 'success':
+            if response_data.get('status') and response_data.get('data', {}).get('status') == 'success':
                 paystack_amount_naira = response_data['data']['amount'] / 100
                 
-                # Check if this transaction was already processed
-                if Transaction.objects.filter(reference=reference, status='SUCCESS').exists():
+                # Concurrency-safe atomic transaction block with row-level locking
+                with transaction.atomic():
+                    User = get_user_model()
+                    user = User.objects.select_for_update().get(id=request.user.id)
+
+                    # Check if this transaction was already processed
+                    if Transaction.objects.filter(reference=reference, status='SUCCESS').exists():
+                        return Response({
+                            "message": "Payment already processed",
+                            "credits": user.credits
+                        }, status=status.HTTP_200_OK)
+
+                    # Create transaction record
+                    Transaction.objects.create(
+                        user=user,
+                        amount=paystack_amount_naira,
+                        description=f"Direct Credit Purchase - Ref: {reference}",
+                        status='SUCCESS',
+                        provider='PAYSTACK',
+                        type='CREDIT_TOPUP',
+                        reference=reference
+                    )
+
+                    # Map Naira amount to Credit Packs:
+                    credits_purchased = 0
+                    if abs(paystack_amount_naira - 500) < 5:
+                        credits_purchased = 40
+                    elif abs(paystack_amount_naira - 1500) < 5:
+                        credits_purchased = 150
+                    elif abs(paystack_amount_naira - 3500) < 5:
+                        credits_purchased = 400
+                    elif abs(paystack_amount_naira - 7500) < 5:
+                        credits_purchased = 1000
+                    # Legacy packs compatibility
+                    elif abs(paystack_amount_naira - 300) < 5:
+                        credits_purchased = 30
+                    elif abs(paystack_amount_naira - 1000) < 5:
+                        credits_purchased = 120
+                    elif abs(paystack_amount_naira - 3000) < 5:
+                        credits_purchased = 400
+                    else:
+                        # Generic fallback: N10 per credit
+                        credits_purchased = max(1, int(paystack_amount_naira / 10))
+
+                    # Update user credits
+                    user.credits += credits_purchased
+                    user.save(update_fields=['credits'])
+
+                    # Record in CreditLedger
+                    CreditLedger.objects.create(
+                        user=user,
+                        amount=credits_purchased,
+                        activity=f"Purchased credit pack ({credits_purchased} credits)"
+                    )
+
                     return Response({
-                        "message": "Payment already processed",
-                        "credits": request.user.credits
+                        "message": "Payment verified successfully",
+                        "credits": user.credits
                     }, status=status.HTTP_200_OK)
-
-                # Create transaction record
-                Transaction.objects.create(
-                    user=request.user,
-                    amount=paystack_amount_naira,
-                    description=f"Direct Credit Purchase - Ref: {reference}",
-                    status='SUCCESS',
-                    provider='PAYSTACK',
-                    type='CREDIT_TOPUP',
-                    reference=reference
-                )
-
-                # Map Naira amount to Credit Packs:
-                # - Micro Pack: N500 = 40 Credits
-                # - Starter Pack: N1,500 = 150 Credits
-                # - Grower Pack: N3,500 = 400 Credits
-                # - Vendor Pro Pack: N7,500 = 1,000 Credits
-                credits_purchased = 0
-                if abs(paystack_amount_naira - 500) < 5:
-                    credits_purchased = 40
-                elif abs(paystack_amount_naira - 1500) < 5:
-                    credits_purchased = 150
-                elif abs(paystack_amount_naira - 3500) < 5:
-                    credits_purchased = 400
-                elif abs(paystack_amount_naira - 7500) < 5:
-                    credits_purchased = 1000
-                # Legacy packs compatibility
-                elif abs(paystack_amount_naira - 300) < 5:
-                    credits_purchased = 30
-                elif abs(paystack_amount_naira - 1000) < 5:
-                    credits_purchased = 120
-                elif abs(paystack_amount_naira - 3000) < 5:
-                    credits_purchased = 400
-                else:
-                    # Generic fallback: N10 per credit
-                    credits_purchased = max(1, int(paystack_amount_naira / 10))
-
-                # Update user credits
-                request.user.credits += credits_purchased
-                request.user.save()
-
-                # Record in CreditLedger
-                CreditLedger.objects.create(
-                    user=request.user,
-                    amount=credits_purchased,
-                    activity=f"Purchased credit pack ({credits_purchased} credits)"
-                )
-
-                return Response({
-                    "message": "Payment verified successfully",
-                    "credits": request.user.credits
-                }, status=status.HTTP_200_OK)
             else:
                 return Response({
                     "error": "Payment verification failed",
@@ -153,13 +161,13 @@ class AdminTransactionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # Allow staff, superusers, Pro users, or admin emails
-        user_email = (getattr(request.user, 'email', '') or '').lower()
+        # Allow staff, superusers, or designated admin emails only
+        user_email = (getattr(request.user, 'email', '') or '').strip().lower()
+        trusted_admins = {'meshachzax@gmail.com', 'admin@smartbizcoach.com.ng', 'mzacs54@gmail.com'}
         is_admin_authorized = (
             request.user.is_staff or 
             request.user.is_superuser or 
-            getattr(request.user, 'plan', '') == 'Pro' or
-            any(admin_email in user_email for admin_email in ['meshachzax@gmail.com', 'admin@smartbizcoach.com.ng', 'mzacs54@gmail.com', 'admin'])
+            user_email in trusted_admins
         )
         if not is_admin_authorized:
             return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
@@ -291,3 +299,69 @@ class AdminTransactionsView(APIView):
             'storefront_orders': order_txs_data,
             'merchant_payout_directory': vendors_data
         }, status=status.HTTP_200_OK)
+
+
+class PaystackWebhookView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        paystack_signature = request.headers.get('x-paystack-signature')
+        secret_key = getattr(settings, 'PAYSTACK_SECRET_KEY', '') or ''
+
+        if not paystack_signature or not secret_key:
+            return Response({"error": "Signature or secret key missing"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Cryptographically verify webhook authenticity via HMAC SHA-512
+        computed_signature = hmac.new(
+            secret_key.encode('utf-8'),
+            request.body,
+            hashlib.sha512
+        ).hexdigest()
+
+        if not hmac.compare_digest(paystack_signature, computed_signature):
+            return Response({"error": "Invalid HMAC signature"}, status=status.HTTP_400_BAD_REQUEST)
+
+        event_data = request.data
+        if event_data.get('event') == 'charge.success':
+            data = event_data.get('data', {})
+            reference = data.get('reference')
+            amount_naira = (data.get('amount') or 0) / 100
+            customer_email = data.get('customer', {}).get('email')
+
+            if reference and customer_email:
+                User = get_user_model()
+                user = User.objects.filter(email__iexact=customer_email).first()
+                if user:
+                    with transaction.atomic():
+                        user = User.objects.select_for_update().get(id=user.id)
+                        if not Transaction.objects.filter(reference=reference, status='SUCCESS').exists():
+                            Transaction.objects.create(
+                                user=user,
+                                amount=amount_naira,
+                                description=f"Webhook Credit Purchase - Ref: {reference}",
+                                status='SUCCESS',
+                                provider='PAYSTACK',
+                                type='CREDIT_TOPUP',
+                                reference=reference
+                            )
+                            # Calculate credits
+                            if abs(amount_naira - 500) < 5:
+                                credits_purchased = 40
+                            elif abs(amount_naira - 1500) < 5:
+                                credits_purchased = 150
+                            elif abs(amount_naira - 3500) < 5:
+                                credits_purchased = 400
+                            elif abs(amount_naira - 7500) < 5:
+                                credits_purchased = 1000
+                            else:
+                                credits_purchased = max(1, int(amount_naira / 10))
+
+                            user.credits += credits_purchased
+                            user.save(update_fields=['credits'])
+                            CreditLedger.objects.create(
+                                user=user,
+                                amount=credits_purchased,
+                                activity=f"Webhook credit allocation ({credits_purchased} credits)"
+                            )
+
+        return Response({"status": "received"}, status=status.HTTP_200_OK)

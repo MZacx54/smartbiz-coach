@@ -12,6 +12,12 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['credits', 'plan']
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
 
+    def validate_password(self, value):
+        if value:
+            from django.contrib.auth.password_validation import validate_password
+            validate_password(value)
+        return value
+
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
         for attr, value in validated_data.items():

@@ -8,27 +8,25 @@ from django.db import connections
 def health_check(request):
     db_conn = connections['default']
     db_ok = False
-    db_err = None
     try:
         with db_conn.cursor() as cursor:
             cursor.execute("SELECT 1;")
             cursor.fetchone()
         db_ok = True
-    except Exception as e:
-        db_err = str(e)
+    except Exception:
+        db_ok = False
         
-    return JsonResponse({
+    response_payload = {
         'status': 'ok' if db_ok else 'unhealthy',
-        'database': 'connected' if db_ok else 'failed',
-        'database_error': db_err,
-        'database_info': {
-            'host': db_conn.settings_dict.get('HOST'),
-            'port': db_conn.settings_dict.get('PORT'),
-            'name': db_conn.settings_dict.get('NAME'),
-            'user': db_conn.settings_dict.get('USER'),
-            'has_url': bool(os.environ.get('DATABASE_URL')),
+        'service': 'SmartBiz Engine',
+        'database': 'connected' if db_ok else 'disconnected'
+    }
+    # Only expose detailed diagnostics in local debug mode
+    if getattr(settings, 'DEBUG', False):
+        response_payload['debug'] = {
+            'has_database_url': bool(os.environ.get('DATABASE_URL'))
         }
-    })
+    return JsonResponse(response_payload, status=200 if db_ok else 503)
 
 urlpatterns = [
     path('health/', health_check),
