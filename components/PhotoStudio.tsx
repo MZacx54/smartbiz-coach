@@ -294,9 +294,35 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
         const reader = new FileReader();
         reader.onload = (event) => {
             const result = event.target?.result as string;
-            setRawImage(result);
-            setStudioImage(null);
-            toast.success('Raw photo loaded! Now choose a commercial scene.');
+            const img = new Image();
+            img.onload = () => {
+                const maxDim = 1200;
+                let w = img.width;
+                let h = img.height;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) {
+                        h = Math.round((h * maxDim) / w);
+                        w = maxDim;
+                    } else {
+                        w = Math.round((w * maxDim) / h);
+                        h = maxDim;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.85);
+                    setRawImage(compressed);
+                } else {
+                    setRawImage(result);
+                }
+                setStudioImage(null);
+                toast.success('Raw photo loaded! Now choose a commercial scene.');
+            };
+            img.src = result;
         };
         reader.readAsDataURL(file);
     };
