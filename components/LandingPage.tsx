@@ -274,10 +274,15 @@ const LandingPage: React.FC = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
                         <div className="flex items-center cursor-pointer gap-2" onClick={() => navigate('/')}>
-                            <img src="/logo-horizontal.png" alt="SmartBiz Coach" className="h-9 w-auto object-contain" onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                                const sibling = e.currentTarget.nextSibling as HTMLElement;
-                                if (sibling) sibling.style.display = 'flex';
+                            <img src="/logo-horizontal.webp" alt="SmartBiz Coach" className="h-9 w-auto object-contain" width="180" height="36" decoding="async" onError={(e) => {
+                                const target = e.currentTarget;
+                                if (target.src.endsWith('.webp')) {
+                                    target.src = '/logo-horizontal.png';
+                                } else {
+                                    target.style.display = 'none';
+                                    const sibling = target.nextSibling as HTMLElement;
+                                    if (sibling) sibling.style.display = 'flex';
+                                }
                             }} />
                             <div className="hidden items-center gap-2">
                                 <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-black shadow">S</div>
@@ -423,18 +428,25 @@ const LandingPage: React.FC = () => {
                         <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.2 }} className="relative hidden lg:block">
                             <div className="relative">
                                 <img
-                                    src="/hero-illustration.png"
+                                    src="/hero-illustration.webp"
                                     alt="Nigerian entrepreneur using SmartBiz Coach"
                                     className="w-full h-auto max-h-[600px] object-contain drop-shadow-2xl"
+                                    fetchPriority="high"
+                                    decoding="async"
                                     onError={(e) => {
-                                        e.currentTarget.parentElement!.innerHTML = `
-                                        <div class="w-full aspect-square bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl border border-slate-700 flex items-center justify-center">
-                                            <div class="text-center text-slate-400">
-                                                <div class="text-6xl mb-4">🇳🇬</div>
-                                                <div class="font-bold">SmartBiz Coach</div>
-                                                <div class="text-sm">AI Business Operating System</div>
-                                            </div>
-                                        </div>`;
+                                        const target = e.currentTarget;
+                                        if (target.src.endsWith('.webp')) {
+                                            target.src = '/hero-illustration.png';
+                                        } else {
+                                            target.parentElement!.innerHTML = `
+                                            <div class="w-full aspect-square bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl border border-slate-700 flex items-center justify-center">
+                                                <div class="text-center text-slate-400">
+                                                    <div class="text-6xl mb-4">🇳🇬</div>
+                                                    <div class="font-bold">SmartBiz Coach</div>
+                                                    <div class="text-sm">AI Business Operating System</div>
+                                                </div>
+                                            </div>`;
+                                        }
                                     }}
                                 />
 

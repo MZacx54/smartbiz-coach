@@ -1,9 +1,10 @@
 // SmartBiz Coach Service Worker - Progressive Web App
-const CACHE_NAME = 'smartbiz-cache-v1';
+const CACHE_NAME = 'smartbiz-cache-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/favicon.ico',
   '/favicon.png',
+  '/logo-horizontal.webp',
   '/apple-touch-icon.png',
   '/icon-192.png',
   '/icon-512.png',
@@ -38,9 +39,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for images, fonts, icons
+  // Cache-first for immutable hashed Vite assets, images, fonts, and scripts
   if (
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2?|ttf)$/) ||
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2?|ttf|css|js)$/) ||
     url.hostname.includes('fonts.googleapis.com') ||
     url.hostname.includes('fonts.gstatic.com')
   ) {

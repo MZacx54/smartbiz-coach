@@ -8,10 +8,10 @@ import SEO from "./components/SEO";
 import DashboardLayout from "./components/DashboardLayout";
 const LandingPage = lazy(() => import("./components/LandingPage"));
 
-// Eagerly loaded components (small, frequently used)
-import Dashboard from "./components/Dashboard";
-import Auth from "./components/Auth";
-import Settings from "./components/Settings";
+// Lazy loaded core components
+const Dashboard = lazy(() => import("./components/Dashboard"));
+const Auth = lazy(() => import("./components/Auth"));
+const Settings = lazy(() => import("./components/Settings"));
 
 // Lazy loaded components (large, less frequently used)
 const BrandBuilder = lazy(() => import("./components/BrandBuilder"));
@@ -585,11 +585,27 @@ const App: React.FC = () => {
         } />
 
         <Route path="/login" element={
-          user ? <Navigate to="/dashboard" replace /> : <Auth onLogin={handleLogin} />
+          user ? <Navigate to="/dashboard" replace /> : (
+            <Suspense fallback={
+              <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }>
+              <Auth onLogin={handleLogin} />
+            </Suspense>
+          )
         } />
 
         <Route path="/register" element={
-          user ? <Navigate to="/dashboard" replace /> : <Auth onLogin={handleLogin} />
+          user ? <Navigate to="/dashboard" replace /> : (
+            <Suspense fallback={
+              <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }>
+              <Auth onLogin={handleLogin} />
+            </Suspense>
+          )
         } />
 
         <Route path="/dashboard/*" element={
