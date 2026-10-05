@@ -178,6 +178,8 @@ class DailySale(models.Model):
     is_debt = models.BooleanField(default=False)
     debt_due_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True, default='')
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -204,6 +206,8 @@ class DailyExpense(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_method = models.CharField(max_length=20, default='CASH') # CASH or TRANSFER
     notes = models.TextField(blank=True, default='')
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

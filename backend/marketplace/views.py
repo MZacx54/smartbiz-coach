@@ -677,3 +677,219 @@ class DailySummaryView(views.APIView):
             'low_stock_products': low_stock_products,
         })
 
+
+class DailySaleDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import DailySaleSerializer
+        return DailySaleSerializer
+
+    def get_queryset(self):
+        from .models import DailySale
+        return DailySale.objects.filter(user=self.request.user)
+
+    def perform_update(self, serializer):
+        from django.utils import timezone
+        instance = self.get_object()
+        old_qty = instance.quantity
+        old_product = instance.product
+
+        updated_sale = serializer.save(is_edited=True, edited_at=timezone.now())
+
+        # If connected to product, adjust inventory differential
+        if updated_sale.product:
+            if old_product == updated_sale.product:
+                qty_diff = updated_sale.quantity - old_qty
+                if qty_diff != 0:
+                    updated_sale.product.stock_count = max(0, (updated_sale.product.stock_count or 0) - qty_diff)
+                    updated_sale.product.save(update_fields=['stock_count'])
+
+    def perform_destroy(self, instance):
+        if instance.product and instance.quantity > 0:
+            instance.product.stock_count = (instance.product.stock_count or 0) + instance.quantity
+            instance.product.save(update_fields=['stock_count'])
+        instance.delete()
+
+
+class DailyExpenseDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import DailyExpenseSerializer
+        return DailyExpenseSerializer
+
+    def get_queryset(self):
+        from .models import DailyExpense
+        return DailyExpense.objects.filter(user=self.request.user)
+
+    def perform_update(self, serializer):
+        from django.utils import timezone
+        serializer.save(is_edited=True, edited_at=timezone.now())
+
+
+class DailyAIInsightsView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from django.db.models import Sum
+        from django.utils import timezone
+        import datetime
+        from smartbiz_backend import gemini_utils
+        from .models import DailySale, DailyExpense
+
+        date_str = request.data.get('date') or request.query_params.get('date')
+        if date_str:
+            try:
+                target_date = datetime.date.fromisoformat(date_str)
+            except ValueError:
+                target_date = timezone.now().date()
+        else:
+            target_date = timezone.now().date()
+
+        sales = DailySale.objects.filter(user=request.user, created_at__date=target_date)
+        expenses = DailyExpense.objects.filter(user=request.user, created_at__date=target_date)
+
+        total_sales_revenue = float(sales.aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        cash_sales = float(sales.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        transfer_sales = float(sales.filter(payment_method='TRANSFER').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        credit_sales = float(sales.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+
+        # COGS & Margins
+        cogs = sum(float(s.cost_price or 0.0) * s.quantity for s in sales)
+        gross_profit = max(0.0, total_sales_revenue - cogs)
+        margin_pct = round((gross_profit / total_sales_revenue * 100), 1) if total_sales_revenue > 0 else 0
+
+        # Expenses breakdown
+        total_expenses = float(expenses.aggregate(total=Sum('amount'))['total'] or 0.00)
+        cash_expenses = float(expenses.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0.00)
+        transfer_expenses = float(expenses.filter(payment_method='TRANSFER').aggregate(total=Sum('amount'))['total'] or 0.00)
+        net_cash_in_till = cash_sales - cash_expenses
+        net_profit = gross_profit - total_expenses
+
+        # Details
+        sales_summary_list = [f"{s.item_name} (Qty: {s.quantity}, ₦{s.total_amount:,.2f}, {s.payment_method})" for s in sales[:15]]
+        expense_summary_list = [f"{e.get_category_display()}: {e.title} (₦{e.amount:,.2f})" for e in expenses[:10]]
+        debt_sales_list = [f"{s.customer_name or 'Customer'} owes ₦{s.total_amount:,.2f} for {s.item_name}" for s in sales.filter(payment_method='CREDIT')[:5]]
+
+        biz_name = getattr(request.user, 'business_name', '') or request.user.username
+
+        prompt = f"""You are an elite Chief Financial Officer & Senior Retail Operations Director for Nigerian MSMEs.
+Analyze this Nigerian merchant's daily trading ledger for {target_date.strftime('%A, %d %B %Y')} and provide an executive operational intelligence brief.
+
+Business Name: {biz_name}
+Daily Trading Figures (Nigerian Naira ₦):
+- Total Sales Revenue: ₦{total_sales_revenue:,.2f} ({sales.count()} transactions)
+  • Cash in Till: ₦{cash_sales:,.2f}
+  • Bank Transfer / POS: ₦{transfer_sales:,.2f}
+  • Debt / Credit Given: ₦{credit_sales:,.2f} ({len(debt_sales_list)} debtor sales)
+- Cost of Goods Sold (COGS): ₦{cogs:,.2f}
+- Estimated Gross Profit: ₦{gross_profit:,.2f} (Margin: {margin_pct}%)
+- Operational Petty Cash / Expenses: ₦{total_expenses:,.2f} ({expenses.count()} expense entries)
+  • Cash paid from Till: ₦{cash_expenses:,.2f}
+  • Transfer paid: ₦{transfer_expenses:,.2f}
+- Net Cash in Till: ₦{net_cash_in_till:,.2f}
+- Net Estimated Profit: ₦{net_profit:,.2f}
+
+Sales logged: {', '.join(sales_summary_list) if sales_summary_list else 'No sales logged today'}
+Expenses logged: {', '.join(expense_summary_list) if expense_summary_list else 'No expenses logged today'}
+Debtors from today: {', '.join(debt_sales_list) if debt_sales_list else 'Zero customer debt'}
+
+TASK:
+Return a JSON dictionary matching this structure EXACTLY:
+{{
+    "headline": "Punchy 1-sentence headline capturing today's business outcome (e.g., 'Strong cash day with 42% net margin, watch generator fuel overhead')",
+    "executiveSummary": "2-3 comprehensive paragraphs summarizing today's performance, customer purchase patterns, till liquidity, and profit health in realistic Nigerian retail context.",
+    "performanceGrade": "A+ or A or B or C or D (based on profitability and cashflow)",
+    "healthScore": 85,
+    "leakagesAndRisks": [
+        "Identified leak or risk 1 (e.g. Generator fuel was ₦X which is high relative to gross profit)",
+        "Identified leak or risk 2 (e.g. Customer credit exposure of ₦Y with no deposits)"
+    ],
+    "tomorrowActionPlan": [
+        "Immediate practical operational step 1 to take tomorrow morning",
+        "Step 2 to drive higher sales or recover pending balances",
+        "Step 3 for stock/inventory management"
+    ],
+    "recommendedFeatures": [
+        {{
+            "title": "Feature Name (e.g. Gbege Debt Recovery or AI Photo Studio or Done-for-You CAC)",
+            "description": "Specific reason why activating this feature directly solves today's challenge.",
+            "actionRoute": "debtor or content or brand or marketplace or inventory"
+        }}
+    ],
+    "whatsappBriefText": "Complete ready-to-share WhatsApp evening summary formatted with Naija emojis, bullet points, and actionable takeaways."
+}}
+Return ONLY valid JSON.
+"""
+
+        try:
+            ai_data = gemini_utils.generate_json_content(prompt)
+            if isinstance(ai_data, dict) and 'executiveSummary' in ai_data:
+                return Response(ai_data)
+        except Exception as e:
+            print(f"Daily AI Insights notice: {e}")
+
+        # Zero-fail fallback
+        grade = "A" if net_profit > 15000 else "B" if net_profit > 0 else "C" if total_sales_revenue > 0 else "D"
+        score = 85 if net_profit > 15000 else 72 if net_profit > 0 else 50
+        
+        leakages = []
+        if total_expenses > (gross_profit * 0.5) and gross_profit > 0:
+            leakages.append(f"Operating expenses (₦{total_expenses:,.2f}) consumed over 50% of your gross margins today.")
+        if credit_sales > 0:
+            leakages.append(f"₦{credit_sales:,.2f} in unpaid customer credit given out today. Follow up before debts age.")
+        if net_cash_in_till < 0:
+            leakages.append("Cash paid out of the till exceeded cash collected today. Reconcile with bank transfer balance.")
+        if not leakages:
+            leakages.append("Maintain strict attendant shift handovers and avoid unlogged petty cash drawings.")
+
+        actions = [
+            "Review low stock items in Product Manager to prevent morning stockouts.",
+            "Send polite automated WhatsApp payment links for any credit sales logged today.",
+            "Reconcile bank transfer notifications against actual bank app balances before closing shift."
+        ]
+
+        recommended_features = []
+        if credit_sales > 0:
+            recommended_features.append({
+                "title": "Gbege Book Debt Recovery",
+                "description": f"You have ₦{credit_sales:,.2f} in credit sales today. Send automated Paystack payment links via WhatsApp.",
+                "actionRoute": "debtor"
+            })
+        recommended_features.append({
+            "title": "Product Catalog & Reordering",
+            "description": "Track stock movements automatically from your 5-second Day-Book checkouts.",
+            "actionRoute": "inventory"
+        })
+
+        whatsapp_text = (
+            f"📊 *SmartBiz Daily Executive Brief • {biz_name}*\n"
+            f"📅 *Date:* {target_date.strftime('%a, %d %b %Y')}\n\n"
+            f"💰 *Revenue:* ₦{total_sales_revenue:,.2f} ({sales.count()} sales)\n"
+            f"💵 *Cash in Till:* ₦{cash_sales:,.2f} | 🏦 *Transfer/POS:* ₦{transfer_sales:,.2f}\n"
+            f"📒 *Credit Given:* ₦{credit_sales:,.2f}\n"
+            f"💸 *Total Expenses:* ₦{total_expenses:,.2f}\n"
+            f"🎯 *Net Profit:* ₦{net_profit:,.2f} (Grade: {grade})\n\n"
+            f"💡 *Key Takeaway for Tomorrow:*\n"
+            f"• {actions[0]}\n"
+            f"• {actions[1]}\n\n"
+            f"_Automated AI Intelligence via SmartBiz Coach OS 🚀_"
+        )
+
+        return Response({
+            "headline": f"{biz_name} recorded ₦{total_sales_revenue:,.2f} revenue with ₦{net_profit:,.2f} net profit today.",
+            "executiveSummary": (
+                f"Today's trading generated ₦{total_sales_revenue:,.2f} across {sales.count()} sales, "
+                f"delivering an estimated gross margin of ₦{gross_profit:,.2f}. Operational expenses totaled "
+                f"₦{total_expenses:,.2f}, leaving a net operational profit of ₦{net_profit:,.2f}. "
+                f"Physical cash remaining in till is ₦{net_cash_in_till:,.2f}."
+            ),
+            "performanceGrade": grade,
+            "healthScore": score,
+            "leakagesAndRisks": leakages,
+            "tomorrowActionPlan": actions,
+            "recommendedFeatures": recommended_features,
+            "whatsappBriefText": whatsapp_text
+        })
+

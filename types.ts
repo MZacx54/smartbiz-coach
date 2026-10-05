@@ -506,6 +506,8 @@ export interface DailySale {
   is_debt?: boolean;
   debt_due_date?: string | null;
   notes?: string;
+  is_edited?: boolean;
+  edited_at?: string;
   created_at?: string;
   date?: string;
 }
@@ -517,6 +519,8 @@ export interface DailyExpense {
   amount: number | string;
   payment_method: 'CASH' | 'TRANSFER';
   notes?: string;
+  is_edited?: boolean;
+  edited_at?: string;
   created_at?: string;
   date?: string;
 }
@@ -537,4 +541,19 @@ export interface DailySummary {
   net_cash_in_till: number;
   net_profit: number;
   low_stock_products: { id: number; name: string; stock_count: number; low_stock_threshold: number }[];
+}
+
+export interface DailyAIInsights {
+  headline: string;
+  executiveSummary: string;
+  performanceGrade: 'A+' | 'A' | 'B' | 'C' | 'D';
+  healthScore: number;
+  leakagesAndRisks: string[];
+  tomorrowActionPlan: string[];
+  recommendedFeatures: {
+    title: string;
+    description: string;
+    actionRoute?: string;
+  }[];
+  whatsappBriefText?: string;
 }

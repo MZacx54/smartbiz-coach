@@ -16,8 +16,11 @@ from .views import (
     BoostProductView,
     VerifyVendorWithCreditsView,
     DailySaleListCreateView,
+    DailySaleDetailView,
     DailyExpenseListCreateView,
-    DailySummaryView
+    DailyExpenseDetailView,
+    DailySummaryView,
+    DailyAIInsightsView
 )
 
 from .payout_views import (
@@ -48,6 +51,9 @@ urlpatterns = [
     path('global/', GlobalMarketplaceListView.as_view(), name='global_marketplace'),
     path('search/', DashboardSearchView.as_view(), name='dashboard_search'),
     path('daily-sales/', DailySaleListCreateView.as_view(), name='daily_sales'),
+    path('daily-sales/<int:pk>/', DailySaleDetailView.as_view(), name='daily_sale_detail'),
     path('daily-expenses/', DailyExpenseListCreateView.as_view(), name='daily_expenses'),
+    path('daily-expenses/<int:pk>/', DailyExpenseDetailView.as_view(), name='daily_expense_detail'),
     path('daily-summary/', DailySummaryView.as_view(), name='daily_summary'),
+    path('daily-ai-insights/', DailyAIInsightsView.as_view(), name='daily_ai_insights'),
 ]

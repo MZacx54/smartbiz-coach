@@ -4,9 +4,10 @@ import {
   ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, 
   Send, Share2, Download, Printer, RefreshCw, ShoppingCart, 
   FileText, ShieldCheck, Sparkles, Filter, X, Lock, Unlock, Key,
-  Wifi, WifiOff, Cloud
+  Wifi, WifiOff, Cloud, Edit2, Bot, Zap, TrendingUp, Check
 } from 'lucide-react';
-import { DailySale, DailyExpense, DailySummary, Product } from '../types';
+import { useNavigate } from 'react-router-dom';
+import { DailySale, DailyExpense, DailySummary, DailyAIInsights, Product } from '../types';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,15 +23,20 @@ const EXPENSE_CATEGORY_LABELS: Record<string, { label: string; icon: string; col
 };
 
 export const DailyCashbook: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     return new Date().toISOString().split('T')[0];
   });
 
-  const [activeTab, setActiveTab] = useState<'SALES' | 'EXPENSES' | 'REPORT'>('SALES');
+  const [activeTab, setActiveTab] = useState<'SALES' | 'EXPENSES' | 'REPORT' | 'AI_INSIGHTS'>('SALES');
   const [sales, setSales] = useState<DailySale[]>([]);
   const [expenses, setExpenses] = useState<DailyExpense[]>([]);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // AI Daily Intelligence
+  const [aiInsights, setAiInsights] = useState<DailyAIInsights | null>(null);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
 
   // Products from inventory for quick selection
   const [inventoryProducts, setInventoryProducts] = useState<Product[]>([]);
@@ -39,6 +45,28 @@ export const DailyCashbook: React.FC = () => {
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [recentSaleReceipt, setRecentSaleReceipt] = useState<DailySale | null>(null);
+
+  // Edit Sale modal state
+  const [editingSale, setEditingSale] = useState<DailySale | null>(null);
+  const [showEditSaleModal, setShowEditSaleModal] = useState(false);
+  const [editSaleItemName, setEditSaleItemName] = useState('');
+  const [editSaleQuantity, setEditSaleQuantity] = useState(1);
+  const [editSaleUnitPrice, setEditSaleUnitPrice] = useState('');
+  const [editSaleCostPrice, setEditSaleCostPrice] = useState('');
+  const [editSalePaymentMethod, setEditSalePaymentMethod] = useState<'CASH' | 'TRANSFER' | 'CREDIT'>('CASH');
+  const [editSaleCustomerName, setEditSaleCustomerName] = useState('');
+  const [editSaleCustomerPhone, setEditSaleCustomerPhone] = useState('');
+  const [editSaleDueDate, setEditSaleDueDate] = useState('');
+  const [editSaleNotes, setEditSaleNotes] = useState('');
+
+  // Edit Expense modal state
+  const [editingExpense, setEditingExpense] = useState<DailyExpense | null>(null);
+  const [showEditExpenseModal, setShowEditExpenseModal] = useState(false);
+  const [editExpenseTitle, setEditExpenseTitle] = useState('');
+  const [editExpenseCategory, setEditExpenseCategory] = useState<'FUEL_GEN' | 'LOGISTICS' | 'RENT_BILLS' | 'PACKAGING' | 'PERSONAL' | 'STAFF' | 'OTHER'>('FUEL_GEN');
+  const [editExpenseAmount, setEditExpenseAmount] = useState('');
+  const [editExpensePaymentMethod, setEditExpensePaymentMethod] = useState<'CASH' | 'TRANSFER'>('CASH');
+  const [editExpenseNotes, setEditExpenseNotes] = useState('');
 
   // Sale form state
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -58,6 +86,7 @@ export const DailyCashbook: React.FC = () => {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expensePaymentMethod, setExpensePaymentMethod] = useState<'CASH' | 'TRANSFER'>('CASH');
   const [expenseNotes, setExpenseNotes] = useState('');
+
   // Anti-Theft Shift Mode & PIN security
   const [isShiftMode, setIsShiftMode] = useState<boolean>(() => {
     return localStorage.getItem('sb_shift_mode') === 'true';
@@ -66,9 +95,18 @@ export const DailyCashbook: React.FC = () => {
     return localStorage.getItem('sb_owner_pin') || '0000';
   });
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pinAction, setPinAction] = useState<'ENTER' | 'SET'>('ENTER');
+  const [pinAction, setPinAction] = useState<'ENTER' | 'SET' | 'EDIT_AUTH'>('ENTER');
+  const [pendingEditTarget, setPendingEditTarget] = useState<{ type: 'SALE' | 'EXPENSE'; item: any } | null>(null);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+
+  // Physical Cash Till Reconciliation
+  const [openingCashInTill, setOpeningCashInTill] = useState<string>(() => {
+    return localStorage.getItem(`sb_opening_till_${new Date().toISOString().split('T')[0]}`) || '0';
+  });
+  const [actualCountedCash, setActualCountedCash] = useState<string>(() => {
+    return localStorage.getItem(`sb_actual_till_${new Date().toISOString().split('T')[0]}`) || '';
+  });
 
   // Payment Fraud Shield Checklist
   const [transferFraudVerified, setTransferFraudVerified] = useState(false);
@@ -565,6 +603,221 @@ export const DailyCashbook: React.FC = () => {
     window.open(url, '_blank');
   };
 
+  // --- AI Operations Intelligence Handler ---
+  const fetchAIInsights = async () => {
+    setIsLoadingAI(true);
+    const toastId = toast.loading('🤖 Generating AI daily operations brief...');
+    try {
+      const res = await api.post('marketplace/daily-ai-insights/', { date: selectedDate });
+      setAiInsights(res.data);
+      toast.success('AI Daily Intelligence generated! 🚀', { id: toastId });
+    } catch (err: any) {
+      console.error('Failed to fetch AI insights:', err);
+      toast.error('Failed to generate AI insights.', { id: toastId });
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  const handleShareAIBriefWhatsApp = () => {
+    if (!aiInsights) return;
+    const text = aiInsights.whatsappBriefText || `🤖 *AI Operations Brief*\n${aiInsights.headline}\n\n${aiInsights.executiveSummary}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  // --- Physical Till Handlers ---
+  const handleUpdateOpeningTill = (val: string) => {
+    setOpeningCashInTill(val);
+    localStorage.setItem(`sb_opening_till_${selectedDate}`, val);
+  };
+
+  const handleUpdateCountedTill = (val: string) => {
+    setActualCountedCash(val);
+    localStorage.setItem(`sb_actual_till_${selectedDate}`, val);
+  };
+
+  const openingTillNum = parseFloat(openingCashInTill) || 0;
+  const countedTillNum = actualCountedCash !== '' ? parseFloat(actualCountedCash) || 0 : null;
+  const expectedClosingTill = openingTillNum + cashSales - cashExpenses;
+  const tillVariance = countedTillNum !== null ? countedTillNum - expectedClosingTill : null;
+
+  // --- Edit Sale Handlers ---
+  const handleTriggerEditSale = (sale: DailySale) => {
+    if (isShiftMode) {
+      setPendingEditTarget({ type: 'SALE', item: sale });
+      setPinAction('EDIT_AUTH');
+      setPinInput('');
+      setPinError('');
+      setShowPinModal(true);
+    } else {
+      openSaleEditModal(sale);
+    }
+  };
+
+  const openSaleEditModal = (sale: DailySale) => {
+    setEditingSale(sale);
+    setEditSaleItemName(sale.item_name);
+    setEditSaleQuantity(sale.quantity || 1);
+    setEditSaleUnitPrice(String(sale.unit_price || ''));
+    setEditSaleCostPrice(String(sale.cost_price || '0'));
+    setEditSalePaymentMethod(sale.payment_method);
+    setEditSaleCustomerName(sale.customer_name || '');
+    setEditSaleCustomerPhone(sale.customer_phone || '');
+    setEditSaleDueDate(sale.debt_due_date || '');
+    setEditSaleNotes(sale.notes || '');
+    setShowEditSaleModal(true);
+  };
+
+  const handleSaveUpdatedSale = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSale) return;
+    const unitPriceNum = parseFloat(editSaleUnitPrice) || 0;
+    const qtyNum = parseInt(String(editSaleQuantity), 10) || 1;
+    const totalAmount = unitPriceNum * qtyNum;
+
+    if (!editSaleItemName || totalAmount <= 0) {
+      toast.error('Please enter a valid item name and price.');
+      return;
+    }
+
+    const payload = {
+      item_name: editSaleItemName,
+      quantity: qtyNum,
+      unit_price: unitPriceNum.toFixed(2),
+      cost_price: (parseFloat(editSaleCostPrice) || 0).toFixed(2),
+      total_amount: totalAmount.toFixed(2),
+      payment_method: editSalePaymentMethod,
+      customer_name: editSaleCustomerName,
+      customer_phone: editSaleCustomerPhone,
+      is_debt: editSalePaymentMethod === 'CREDIT',
+      debt_due_date: editSalePaymentMethod === 'CREDIT' ? (editSaleDueDate || null) : null,
+      notes: editSaleNotes,
+      is_edited: true
+    };
+
+    const toastId = toast.loading('Updating sale record...');
+    try {
+      if (String(editingSale.id).startsWith('offline-')) {
+        const offlineSales = getOfflineSales().map(s => s.id === editingSale.id ? { ...s, ...payload } : s);
+        localStorage.setItem('sb_offline_sales', JSON.stringify(offlineSales));
+        setSales(prev => prev.map(s => s.id === editingSale.id ? { ...s, ...payload } : s));
+      } else {
+        const res = await api.patch(`marketplace/daily-sales/${editingSale.id}/`, payload);
+        const updated = res.data;
+        setSales(prev => prev.map(s => s.id === editingSale.id ? updated : s));
+      }
+      toast.success('Sale record updated successfully! ✓', { id: toastId });
+      setShowEditSaleModal(false);
+      setEditingSale(null);
+      fetchDailyData();
+    } catch (err: any) {
+      console.error('Failed to update sale:', err);
+      toast.error(err.response?.data?.error || 'Failed to update sale record.', { id: toastId });
+    }
+  };
+
+  const handleDeleteSale = async (sale: DailySale) => {
+    if (!window.confirm(`Are you sure you want to delete "${sale.item_name}"?`)) return;
+    const toastId = toast.loading('Deleting sale...');
+    try {
+      if (String(sale.id).startsWith('offline-')) {
+        const offlineSales = getOfflineSales().filter(s => s.id !== sale.id);
+        localStorage.setItem('sb_offline_sales', JSON.stringify(offlineSales));
+      } else {
+        await api.delete(`marketplace/daily-sales/${sale.id}/`);
+      }
+      setSales(prev => prev.filter(s => s.id !== sale.id));
+      toast.success('Sale deleted.', { id: toastId });
+      setShowEditSaleModal(false);
+      setEditingSale(null);
+      fetchDailyData();
+    } catch (err) {
+      toast.error('Failed to delete sale.', { id: toastId });
+    }
+  };
+
+  // --- Edit Expense Handlers ---
+  const handleTriggerEditExpense = (expense: DailyExpense) => {
+    if (isShiftMode) {
+      setPendingEditTarget({ type: 'EXPENSE', item: expense });
+      setPinAction('EDIT_AUTH');
+      setPinInput('');
+      setPinError('');
+      setShowPinModal(true);
+    } else {
+      openExpenseEditModal(expense);
+    }
+  };
+
+  const openExpenseEditModal = (expense: DailyExpense) => {
+    setEditingExpense(expense);
+    setEditExpenseTitle(expense.title);
+    setEditExpenseCategory(expense.category);
+    setEditExpenseAmount(String(expense.amount || ''));
+    setEditExpensePaymentMethod(expense.payment_method);
+    setEditExpenseNotes(expense.notes || '');
+    setShowEditExpenseModal(true);
+  };
+
+  const handleSaveUpdatedExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+    const amountNum = parseFloat(editExpenseAmount) || 0;
+    if (!editExpenseTitle || amountNum <= 0) {
+      toast.error('Please enter expense description and amount.');
+      return;
+    }
+
+    const payload = {
+      title: editExpenseTitle,
+      category: editExpenseCategory,
+      amount: amountNum.toFixed(2),
+      payment_method: editExpensePaymentMethod,
+      notes: editExpenseNotes,
+      is_edited: true
+    };
+
+    const toastId = toast.loading('Updating expense record...');
+    try {
+      if (String(editingExpense.id).startsWith('offline-')) {
+        const offlineExpenses = getOfflineExpenses().map(e => e.id === editingExpense.id ? { ...e, ...payload } : e);
+        localStorage.setItem('sb_offline_expenses', JSON.stringify(offlineExpenses));
+        setExpenses(prev => prev.map(e => e.id === editingExpense.id ? { ...e, ...payload } : e));
+      } else {
+        const res = await api.patch(`marketplace/daily-expenses/${editingExpense.id}/`, payload);
+        const updated = res.data;
+        setExpenses(prev => prev.map(e => e.id === editingExpense.id ? updated : e));
+      }
+      toast.success('Expense record updated successfully! ✓', { id: toastId });
+      setShowEditExpenseModal(false);
+      setEditingExpense(null);
+      fetchDailyData();
+    } catch (err: any) {
+      console.error('Failed to update expense:', err);
+      toast.error(err.response?.data?.error || 'Failed to update expense record.', { id: toastId });
+    }
+  };
+
+  const handleDeleteExpense = async (expense: DailyExpense) => {
+    if (!window.confirm(`Are you sure you want to delete "${expense.title}"?`)) return;
+    const toastId = toast.loading('Deleting expense...');
+    try {
+      if (String(expense.id).startsWith('offline-')) {
+        const offlineExpenses = getOfflineExpenses().filter(e => e.id !== expense.id);
+        localStorage.setItem('sb_offline_expenses', JSON.stringify(offlineExpenses));
+      } else {
+        await api.delete(`marketplace/daily-expenses/${expense.id}/`);
+      }
+      setExpenses(prev => prev.filter(e => e.id !== expense.id));
+      toast.success('Expense deleted.', { id: toastId });
+      setShowEditExpenseModal(false);
+      setEditingExpense(null);
+      fetchDailyData();
+    } catch (err) {
+      toast.error('Failed to delete expense.', { id: toastId });
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       {/* Top Banner */}
@@ -630,6 +883,16 @@ export const DailyCashbook: React.FC = () => {
                   <span className="hidden sm:inline">Synced</span>
                 </>
               )}
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('AI_INSIGHTS');
+                if (!aiInsights) fetchAIInsights();
+              }}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Bot className="w-4 h-4 text-purple-200" /> AI Daily Brief
             </button>
 
             <button
@@ -822,8 +1085,8 @@ export const DailyCashbook: React.FC = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveTab('SALES')}
             className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
@@ -856,6 +1119,22 @@ export const DailyCashbook: React.FC = () => {
           >
             🌙 End-of-Day Report & Reconciliation
           </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('AI_INSIGHTS');
+              if (!aiInsights) fetchAIInsights();
+            }}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'AI_INSIGHTS'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 text-purple-400" />
+            <span>AI Operations Brief</span>
+            <span className="bg-purple-100 text-purple-700 text-[9px] font-black px-1.5 py-0.5 rounded-full">New</span>
+          </button>
         </div>
 
         {activeTab === 'REPORT' && (
@@ -865,6 +1144,17 @@ export const DailyCashbook: React.FC = () => {
               className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <span>📲</span> Send to WhatsApp
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'AI_INSIGHTS' && aiInsights && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShareAIBriefWhatsApp}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              <span>📲</span> Send AI Brief to WhatsApp
             </button>
           </div>
         )}
@@ -925,6 +1215,11 @@ export const DailyCashbook: React.FC = () => {
                           }`}>
                             {sale.payment_method === 'CASH' ? 'Cash in Till' : sale.payment_method === 'TRANSFER' ? 'Bank Transfer' : 'Credit / Debt'}
                           </span>
+                          {sale.is_edited && (
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                              ✏️ Edited
+                            </span>
+                          )}
                           {String(sale.id).startsWith('offline-') && (
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                               <Cloud className="w-2.5 h-2.5" /> Local / Offline
@@ -934,13 +1229,21 @@ export const DailyCashbook: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <div className="text-right">
                         <p className="text-sm font-black text-slate-900">{formatNgn(parseFloat(String(sale.total_amount)))}</p>
                         <p className="text-[10px] text-slate-400">
                           {sale.created_at ? new Date(sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                         </p>
                       </div>
+
+                      <button
+                        onClick={() => handleTriggerEditSale(sale)}
+                        className="bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 p-2 rounded-xl transition-all cursor-pointer"
+                        title="Edit / Correct Sale (PIN Protected)"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
 
                       <button
                         onClick={() => handleShareSaleReceipt(sale)}
@@ -1019,6 +1322,11 @@ export const DailyCashbook: React.FC = () => {
                             <span className="text-slate-600 font-semibold">
                               Paid via {expense.payment_method === 'CASH' ? 'Cash from Till' : 'Bank Transfer'}
                             </span>
+                            {expense.is_edited && (
+                              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                                ✏️ Edited
+                              </span>
+                            )}
                             {String(expense.id).startsWith('offline-') && (
                               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1">
                                 <Cloud className="w-2.5 h-2.5" /> Local / Offline
@@ -1034,11 +1342,21 @@ export const DailyCashbook: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <p className="text-sm font-black text-rose-600">-{formatNgn(parseFloat(String(expense.amount)))}</p>
-                        <p className="text-[10px] text-slate-400">
-                          {expense.created_at ? new Date(expense.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="text-sm font-black text-rose-600">-{formatNgn(parseFloat(String(expense.amount)))}</p>
+                          <p className="text-[10px] text-slate-400">
+                            {expense.created_at ? new Date(expense.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => handleTriggerEditExpense(expense)}
+                          className="bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-600 p-2 rounded-xl transition-all cursor-pointer"
+                          title="Edit / Correct Expense (PIN Protected)"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -1158,6 +1476,122 @@ export const DailyCashbook: React.FC = () => {
             </div>
           </div>
 
+          {/* PHYSICAL CASH TILL RECONCILIATION CALCULATOR */}
+          <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-800 space-y-6 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🧮</span>
+                  <h3 className="text-base font-black font-heading text-white">
+                    Physical Cash Drawer Reconciliation Calculator
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Anti-theft cash audit: Verify that physical bank notes in your till match registered sales and expenses.
+                </p>
+              </div>
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase px-2.5 py-1 rounded-xl self-start sm:self-auto">
+                Till Audit Tool
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Step 1: Opening Till */}
+              <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 space-y-2">
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
+                  1. Morning Float / Opening Cash (₦)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={openingCashInTill}
+                  onChange={(e) => handleUpdateOpeningTill(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-[10px] text-slate-500">Money in cash drawer at start of business today</p>
+              </div>
+
+              {/* Step 2: System Calculated Expected */}
+              <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 space-y-1">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
+                  2. Formula Expected Till Tonight
+                </span>
+                <p className="text-xl font-black text-emerald-400 mt-1">{formatNgn(expectedClosingTill)}</p>
+                <p className="text-[10px] text-slate-400">
+                  Opening ({formatNgn(openingTillNum)}) + Cash In ({formatNgn(cashSales)}) - Cash Out ({formatNgn(cashExpenses)})
+                </p>
+              </div>
+
+              {/* Step 3: Counted Physical Cash */}
+              <div className="bg-slate-800/80 p-4 rounded-2xl border border-slate-700/60 space-y-2">
+                <label className="text-[11px] font-black uppercase tracking-wider text-amber-400 block">
+                  3. Counted Cash in Till Tonight (₦) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={actualCountedCash}
+                  onChange={(e) => handleUpdateCountedTill(e.target.value)}
+                  placeholder="Count notes and type total"
+                  className="w-full bg-slate-900 border border-amber-500/50 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <p className="text-[10px] text-slate-400">Total physical naira notes and coins counted tonight</p>
+              </div>
+            </div>
+
+            {/* Reconciliation Outcome */}
+            {countedTillNum !== null && tillVariance !== null && (
+              <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                tillVariance === 0
+                  ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-200'
+                  : tillVariance > 0
+                  ? 'bg-blue-950/60 border-blue-500/40 text-blue-200'
+                  : 'bg-rose-950/70 border-rose-500/50 text-rose-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
+                    tillVariance === 0
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : tillVariance > 0
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-rose-500/20 text-rose-400 animate-pulse'
+                  }`}>
+                    {tillVariance === 0 ? '🎯' : tillVariance > 0 ? '📈' : '🚨'}
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-white">
+                      {tillVariance === 0
+                        ? 'Till Balanced Perfectly! Zero Variance'
+                        : tillVariance > 0
+                        ? `Cash Overage in Drawer: +${formatNgn(tillVariance)}`
+                        : `Cash Shortage / Missing: -${formatNgn(Math.abs(tillVariance))}`}
+                    </h4>
+                    <p className="text-[11px] opacity-85 mt-0.5">
+                      {tillVariance === 0
+                        ? 'Physical cash in drawer exactly equals all recorded sales and expenses. No discrepancy found.'
+                        : tillVariance > 0
+                        ? 'There is more physical cash in drawer than recorded. You may have forgotten to log a sale or tips.'
+                        : 'Physical cash is LESS than expected! Possible unrecorded petty cash spending, change giving error, or till theft.'}
+                    </p>
+                  </div>
+                </div>
+
+                <span className={`text-xs font-black px-3 py-1.5 rounded-xl shrink-0 self-start sm:self-auto ${
+                  tillVariance === 0
+                    ? 'bg-emerald-500 text-slate-950'
+                    : tillVariance > 0
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-rose-600 text-white'
+                }`}>
+                  Variance: {tillVariance > 0 ? `+${formatNgn(tillVariance)}` : formatNgn(tillVariance)}
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* LOW STOCK ALERT (Restock for tomorrow) */}
           {summary?.low_stock_products && summary.low_stock_products.length > 0 && (
             <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-6 space-y-4">
@@ -1179,6 +1613,282 @@ export const DailyCashbook: React.FC = () => {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: AI OPERATIONS INTELLIGENCE BRIEF */}
+      {activeTab === 'AI_INSIGHTS' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-900 rounded-[32px] p-6 sm:p-8 text-white border border-purple-800/40 relative overflow-hidden shadow-xl">
+            <div className="absolute right-0 top-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+              <div>
+                <div className="inline-flex items-center gap-2 bg-purple-500/20 border border-purple-400/40 px-3 py-1 rounded-full text-[11px] font-bold text-purple-300 tracking-wide uppercase mb-3">
+                  <Bot className="w-3.5 h-3.5 text-purple-300" /> Powered by Gemini AI
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black font-heading text-white">
+                  AI Operations & Financial Executive Brief
+                </h2>
+                <p className="text-purple-200 text-xs sm:text-sm mt-1 max-w-xl">
+                  Automated intelligence assessing sales momentum, gross margins, petty cash leakages, and actionable growth steps for {new Date(selectedDate).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={fetchAIInsights}
+                  disabled={isLoadingAI}
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingAI ? 'animate-spin' : ''}`} />
+                  {isLoadingAI ? 'Analyzing Day...' : aiInsights ? 'Refresh Brief' : 'Generate Brief'}
+                </button>
+
+                {aiInsights && (
+                  <button
+                    onClick={handleShareAIBriefWhatsApp}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>📲</span> WhatsApp Share
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Body States */}
+          {isLoadingAI ? (
+            <div className="bg-white rounded-3xl p-16 text-center border border-purple-100 shadow-sm space-y-4">
+              <div className="w-16 h-16 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto text-3xl animate-bounce">
+                🤖
+              </div>
+              <h3 className="text-base font-black text-slate-800">
+                Gemini AI is analyzing your cashbook & transaction flow...
+              </h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Auditing sales velocity, verifying payment tenders, calculating gross margin efficiency, and identifying cost leakages across your registers.
+              </p>
+            </div>
+          ) : !aiInsights ? (
+            <div className="bg-white rounded-3xl p-14 text-center border border-slate-100 shadow-sm space-y-4">
+              <div className="w-16 h-16 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center mx-auto text-3xl">
+                📊
+              </div>
+              <h3 className="text-base font-black text-slate-800">
+                Ready to generate today's operations brief
+              </h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Get an instant executive audit of your business performance, cost risk flags, tomorrow's action checklist, and tailored platform recommendations.
+              </p>
+              <button
+                onClick={fetchAIInsights}
+                className="mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs px-6 py-3 rounded-2xl shadow-lg shadow-purple-500/20 transition-all cursor-pointer inline-flex items-center gap-2"
+              >
+                <Bot className="w-4 h-4" /> Generate AI Daily Brief
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Performance Grade & Health Score Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Grade */}
+                <div className="bg-gradient-to-br from-purple-900 to-indigo-950 text-white p-6 rounded-3xl shadow-md border border-purple-800/40 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-purple-300">Daily Performance Grade</p>
+                    <p className="text-3xl sm:text-4xl font-black mt-1 text-white">{aiInsights.performanceGrade || 'B+'}</p>
+                    <p className="text-[11px] text-purple-200 mt-1">Operational discipline rating</p>
+                  </div>
+                  <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-3xl">
+                    🏆
+                  </div>
+                </div>
+
+                {/* Health Score */}
+                <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-3 md:col-span-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Financial Health Score</p>
+                      <p className="text-xl font-black text-slate-900 mt-0.5">
+                        {aiInsights.healthScore}/100 • {aiInsights.healthScore >= 80 ? 'Excellent Day 🌟' : aiInsights.healthScore >= 60 ? 'Healthy Cashflow 📈' : 'Needs Optimization ⚠️'}
+                      </p>
+                    </div>
+                    <span className="text-2xl font-black text-purple-600">{aiInsights.healthScore}%</span>
+                  </div>
+                  {/* Progress meter */}
+                  <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        aiInsights.healthScore >= 80 
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
+                          : aiInsights.healthScore >= 60
+                          ? 'bg-gradient-to-r from-purple-500 to-indigo-500'
+                          : 'bg-gradient-to-r from-amber-500 to-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(5, aiInsights.healthScore))}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Calculated from revenue margin coverage, petty cash ratio, and cash-in-till verification.
+                  </p>
+                </div>
+              </div>
+
+              {/* Executive Summary Card */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm font-bold">
+                    📌
+                  </span>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900">
+                      {aiInsights.headline}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Executive Summary for Business Owner</p>
+                  </div>
+                </div>
+
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed bg-slate-50/70 p-4 rounded-2xl border border-slate-100 font-medium">
+                  {aiInsights.executiveSummary}
+                </p>
+
+                {aiInsights.revenueBreakdownText && (
+                  <p className="text-xs text-slate-500 italic">
+                    💡 {aiInsights.revenueBreakdownText}
+                  </p>
+                )}
+              </div>
+
+              {/* 2-Column Matrix: Leakages vs Tomorrow Action Plan */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Cost Leakages & Till Risks */}
+                <div className="bg-rose-50/50 border border-rose-200/80 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-black text-rose-950 font-heading">
+                        ⚠️ Cost Leakages & Till Risks
+                      </h3>
+                      <p className="text-[10px] text-rose-700">Financial drain points requiring caution</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {aiInsights.costLeakages && aiInsights.costLeakages.length > 0 ? (
+                      aiInsights.costLeakages.map((leak, idx) => (
+                        <div key={idx} className="bg-white p-3.5 rounded-2xl border border-rose-100 flex items-start gap-2.5 text-xs text-slate-700 shadow-xs">
+                          <span className="text-rose-500 font-bold shrink-0 mt-0.5">•</span>
+                          <span>{leak}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 italic">No significant cost leakages detected today.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tomorrow Action Plan */}
+                <div className="bg-emerald-50/50 border border-emerald-200/80 rounded-3xl p-6 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-black text-emerald-950 font-heading">
+                        🚀 Action Plan for Tomorrow Morning
+                      </h3>
+                      <p className="text-[10px] text-emerald-700">Immediate operational priorities</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {aiInsights.tomorrowActionPlan && aiInsights.tomorrowActionPlan.length > 0 ? (
+                      aiInsights.tomorrowActionPlan.map((action, idx) => (
+                        <div key={idx} className="bg-white p-3.5 rounded-2xl border border-emerald-100 flex items-start gap-2.5 text-xs text-slate-700 shadow-xs">
+                          <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                            {idx + 1}
+                          </span>
+                          <span>{action}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 italic">Keep maintaining current sales rhythm.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recommended Platform Features to Activate */}
+              {aiInsights.recommendedFeatures && aiInsights.recommendedFeatures.length > 0 && (
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-bold">
+                      💡
+                    </span>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900 font-heading">
+                        Recommended Platform Features to Activate
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Tailored tools in SmartBiz Coach to maximize profits and prevent business loss
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                    {aiInsights.recommendedFeatures.map((rec, idx) => (
+                      <div 
+                        key={idx} 
+                        className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-between hover:border-purple-300 transition-all group"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{rec.icon || '⚡'}</span>
+                            <h4 className="text-xs font-black text-slate-900 group-hover:text-purple-600 transition-colors">
+                              {rec.featureName}
+                            </h4>
+                          </div>
+                          <p className="text-[11px] text-slate-600 leading-relaxed">
+                            {rec.whyRecommended}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            if (rec.featureRoute) {
+                              navigate(rec.featureRoute);
+                            }
+                          }}
+                          className="mt-4 w-full bg-white hover:bg-purple-600 hover:text-white text-slate-800 border border-slate-200 text-xs font-extrabold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <span>Open Tool</span>
+                          <span>➜</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom WhatsApp Share Banner */}
+              <div className="bg-gradient-to-r from-emerald-900 via-teal-950 to-slate-900 text-white rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                    📲
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black text-white">Share Brief with Co-owner / Manager</h4>
+                    <p className="text-[11px] text-emerald-200/80">Send clean formatted WhatsApp message containing today's summary and tomorrow's targets.</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleShareAIBriefWhatsApp}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md shrink-0"
+                >
+                  Send to WhatsApp Now
+                </button>
               </div>
             </div>
           )}
@@ -1561,6 +2271,342 @@ export const DailyCashbook: React.FC = () => {
         </div>
       )}
 
+      {/* MODAL 4: EDIT SALE (ADMIN / OWNER) */}
+      {showEditSaleModal && editingSale && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-[32px] max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <div className="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
+                  <Edit2 className="w-3 h-3" /> Owner Correction Mode
+                </div>
+                <h3 className="text-lg font-black text-slate-900">Edit Sale Transaction</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Correct item details, quantity, or payment method</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowEditSaleModal(false);
+                  setEditingSale(null);
+                }}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUpdatedSale} className="space-y-4">
+              {/* Item Name */}
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Item or Service Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editSaleItemName}
+                  onChange={(e) => setEditSaleItemName(e.target.value)}
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Quantity and Price */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                    Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={editSaleQuantity}
+                    onChange={(e) => setEditSaleQuantity(parseInt(e.target.value, 10) || 1)}
+                    className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                    Unit Price (₦) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={editSaleUnitPrice}
+                    onChange={(e) => setEditSaleUnitPrice(e.target.value)}
+                    className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Wholesale Cost Price (Owner) */}
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Wholesale Cost Price (₦)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editSaleCostPrice}
+                  onChange={(e) => setEditSaleCostPrice(e.target.value)}
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Total Calculation Display */}
+              <div className="bg-blue-50 p-4 rounded-2xl flex justify-between items-center border border-blue-100">
+                <span className="text-xs font-bold text-blue-800">Recalculated Sale Total:</span>
+                <span className="text-base font-black text-blue-700">
+                  {formatNgn((parseFloat(editSaleUnitPrice) || 0) * (editSaleQuantity || 1))}
+                </span>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+                  Payment Method *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditSalePaymentMethod('CASH')}
+                    className={`py-3 rounded-2xl text-xs font-extrabold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                      editSalePaymentMethod === 'CASH'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>💵</span> Cash
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditSalePaymentMethod('TRANSFER')}
+                    className={`py-3 rounded-2xl text-xs font-extrabold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                      editSalePaymentMethod === 'TRANSFER'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>🏦</span> Transfer
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditSalePaymentMethod('CREDIT')}
+                    className={`py-3 rounded-2xl text-xs font-extrabold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                      editSalePaymentMethod === 'CREDIT'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-md'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>📒</span> Debt
+                  </button>
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={editSaleCustomerName}
+                  onChange={(e) => setEditSaleCustomerName(e.target.value)}
+                  placeholder="Customer Name (Optional)"
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800"
+                />
+                <input
+                  type="tel"
+                  value={editSaleCustomerPhone}
+                  onChange={(e) => setEditSaleCustomerPhone(e.target.value)}
+                  placeholder="WhatsApp Phone"
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800"
+                />
+              </div>
+
+              {editSalePaymentMethod === 'CREDIT' && (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 block mb-1">Debt Due Date</label>
+                  <input
+                    type="date"
+                    value={editSaleDueDate}
+                    onChange={(e) => setEditSaleDueDate(e.target.value)}
+                    className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800"
+                  />
+                </div>
+              )}
+
+              <div>
+                <input
+                  type="text"
+                  value={editSaleNotes}
+                  onChange={(e) => setEditSaleNotes(e.target.value)}
+                  placeholder="Reason for edit / Audit note (Optional)"
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSale(editingSale)}
+                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs px-4 py-3.5 rounded-2xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-lg transition-all cursor-pointer"
+                >
+                  💾 Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: EDIT EXPENSE (ADMIN / OWNER) */}
+      {showEditExpenseModal && editingExpense && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-[32px] max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
+                  <Edit2 className="w-3 h-3" /> Owner Correction Mode
+                </div>
+                <h3 className="text-lg font-black text-slate-900">Edit Petty Cash Record</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Correct expense amount, category, or payment method</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowEditExpenseModal(false);
+                  setEditingExpense(null);
+                }}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUpdatedExpense} className="space-y-4">
+              {/* Category */}
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Expense Category *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(EXPENSE_CATEGORY_LABELS).map(([catKey, meta]) => (
+                    <button
+                      key={catKey}
+                      type="button"
+                      onClick={() => setEditExpenseCategory(catKey as any)}
+                      className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all text-left cursor-pointer ${
+                        editExpenseCategory === catKey
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-md'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-base">{meta.icon}</span>
+                      <span className="truncate">{meta.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Expense Description *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editExpenseTitle}
+                  onChange={(e) => setEditExpenseTitle(e.target.value)}
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Amount Spent (₦) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  required
+                  value={editExpenseAmount}
+                  onChange={(e) => setEditExpenseAmount(e.target.value)}
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Paid From */}
+              <div>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                  Paid From *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditExpensePaymentMethod('CASH')}
+                    className={`py-3 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                      editExpensePaymentMethod === 'CASH'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>💵</span> Cash in Till
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditExpensePaymentMethod('TRANSFER')}
+                    className={`py-3 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 border transition-all cursor-pointer ${
+                      editExpensePaymentMethod === 'TRANSFER'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>🏦</span> Bank Transfer
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  value={editExpenseNotes}
+                  onChange={(e) => setEditExpenseNotes(e.target.value)}
+                  placeholder="Audit reason / notes (Optional)"
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteExpense(editingExpense)}
+                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold text-xs px-4 py-3.5 rounded-2xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-lg transition-all cursor-pointer"
+                >
+                  💾 Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 3: OWNER PIN / APPRENTICE LOCK MODAL */}
       {showPinModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -1569,11 +2615,17 @@ export const DailyCashbook: React.FC = () => {
               {pinAction === 'SET' ? '🔑' : '🔒'}
             </div>
             <h3 className="text-lg font-black text-slate-900">
-              {pinAction === 'SET' ? 'Set Owner 4-Digit PIN' : 'Enter Owner PIN'}
+              {pinAction === 'SET' 
+                ? 'Set Owner 4-Digit PIN' 
+                : pinAction === 'EDIT_AUTH'
+                ? 'Authorize Transaction Edit'
+                : 'Enter Owner PIN'}
             </h3>
             <p className="text-xs text-slate-500 mt-1">
               {pinAction === 'SET'
                 ? 'Choose a 4-digit security PIN to protect profit margins from staff & apprentices.'
+                : pinAction === 'EDIT_AUTH'
+                ? 'Modifying past transactions requires owner authorization to prevent till theft.'
                 : 'Enter your 4-digit PIN to exit shift mode and unlock full financial reports.'}
             </p>
 
@@ -1589,6 +2641,19 @@ export const DailyCashbook: React.FC = () => {
                   localStorage.setItem('sb_owner_pin', pinInput);
                   setShowPinModal(false);
                   toast.success('Owner PIN updated successfully! 🔐');
+                } else if (pinAction === 'EDIT_AUTH') {
+                  if (pinInput === ownerPin) {
+                    setShowPinModal(false);
+                    if (pendingEditTarget?.type === 'SALE') {
+                      openSaleEditModal(pendingEditTarget.item);
+                    } else if (pendingEditTarget?.type === 'EXPENSE') {
+                      openExpenseEditModal(pendingEditTarget.item);
+                    }
+                    setPendingEditTarget(null);
+                    toast.success('Owner Authorized! Record unlocked for editing. 🔓');
+                  } else {
+                    setPinError('Incorrect PIN. Default PIN is 0000.');
+                  }
                 } else {
                   if (pinInput === ownerPin) {
                     setIsShiftMode(false);
@@ -1631,7 +2696,7 @@ export const DailyCashbook: React.FC = () => {
                   type="submit"
                   className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all cursor-pointer"
                 >
-                  {pinAction === 'SET' ? 'Save PIN' : 'Unlock'}
+                  {pinAction === 'SET' ? 'Save PIN' : pinAction === 'EDIT_AUTH' ? 'Authorize Edit' : 'Unlock'}
                 </button>
               </div>
             </form>
