@@ -680,6 +680,8 @@ class StudioPhotoshootView(views.APIView):
             clean_base64 = image_base64.split(",")[1] if "," in image_base64 else image_base64
             img_bytes = base64.b64decode(clean_base64)
             raw_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+            # Downscale high-resolution mobile camera uploads to 1280x1280 max for speed and memory safety
+            raw_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
 
             scene_title = SCENE_TITLES.get(scene_id, scene_id.replace('_', ' ').title())
 
@@ -1913,6 +1915,8 @@ class RemoveBackgroundView(views.APIView):
             clean_base64 = image_base64.split(',')[1] if ',' in image_base64 else image_base64
             img_bytes = base64.b64decode(clean_base64)
             raw_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+            # Downscale high-resolution mobile camera uploads to 1280x1280 max for speed and memory safety
+            raw_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
             w, h = raw_img.size
 
             # 1. Ask Gemini Vision AI to detect the exact normalized bounding box around the primary person or product
