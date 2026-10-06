@@ -11,7 +11,6 @@ import api from '../services/api';
 import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
-import ActivationChecklist from './ActivationChecklist';
 
 interface DashboardProps {
   userStats: UserStats;
@@ -337,14 +336,6 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           </div>
         </div>
       </div>
-
-      {/* MSME Foundation & Activation Checklist */}
-      <ActivationChecklist
-        savedBrand={savedBrand}
-        user={currentUser}
-        onNavigate={onNavigate}
-        credits={credits}
-      />
 
       {/* MSME Zero-Surprise Fair-Use Guarantee Banner */}
       <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50/50 border border-emerald-200/80 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">

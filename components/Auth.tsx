@@ -262,26 +262,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     </select>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Currency</label>
-                  <div className="flex gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setCurrency('NGN')}
-                      className={`flex-1 py-2.5 border rounded-xl text-sm font-bold transition-all ${currency === 'NGN' ? 'bg-green-600 text-white border-green-600 shadow-md shadow-green-500/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-green-50/50 hover:border-green-300'}`}
-                    >
-                      ₦ Naira
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCurrency('USD')}
-                      className={`flex-1 py-2.5 border rounded-xl text-sm font-bold transition-all ${currency === 'USD' ? 'bg-green-600 text-white border-green-600 shadow-md shadow-green-500/20' : 'bg-white text-slate-600 border-slate-200 hover:bg-green-50/50 hover:border-green-300'}`}
-                    >
-                      $ Dollar
-                    </button>
-                  </div>
-                </div>
               </>
             )}
 

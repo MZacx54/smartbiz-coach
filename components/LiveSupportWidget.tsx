@@ -76,11 +76,11 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 font-sans">
+    <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-40 font-sans">
       {/* Floating Support Bubble Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 transform active:scale-95 focus:outline-none focus:ring-0 outline-none border-0 ${
+        className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-300 transform active:scale-95 focus:outline-none focus:ring-0 outline-none border-0 ${
           isOpen ? 'bg-red-500 hover:bg-red-600 rotate-90' : 'bg-emerald-600 hover:bg-emerald-500 hover:shadow-emerald-500/25'
         }`}
         title="Live Support Chat"
@@ -89,8 +89,8 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
           <span className="text-xl">✕</span>
         ) : (
           <div className="relative">
-            <span className="text-2xl">💬</span>
-            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5">
+            <span className="text-xl sm:text-2xl">💬</span>
+            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-500 border-2 border-white"></span>
             </span>
@@ -100,7 +100,7 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
 
       {/* Floating Chat Panel overlay */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-[340px] sm:w-[390px] h-[520px] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-350 z-50">
+        <div className="fixed bottom-36 md:bottom-24 right-3 sm:right-6 w-[340px] sm:w-[390px] max-w-[calc(100vw-24px)] h-[480px] sm:h-[520px] max-h-[calc(100vh-160px)] bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-350 z-50">
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-4 text-white flex-shrink-0">
             <div className="flex justify-between items-center">

@@ -127,6 +127,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* Mobile Credits Quick Badge */}
+                    <button
+                        onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
+                        className="flex items-center gap-1 bg-emerald-950/90 border border-emerald-500/40 hover:border-emerald-400 px-2.5 py-1 rounded-xl text-emerald-300 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                        title="Available Credits. Tap to top up."
+                    >
+                        <span className="text-emerald-400">⚡</span>
+                        <span>{userStats.bizCredits}</span>
+                    </button>
                     <PWAInstallButton variant="nav" label="Install" />
                     {user?.email === 'meshachzax@gmail.com' && (
                         <button
@@ -153,21 +162,49 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     )}
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="text-slate-300 focus:outline-none text-xl"
+                        className="text-slate-300 focus:outline-none text-xl p-1 cursor-pointer"
+                        title="Toggle Navigation Menu"
                     >
                         {isMenuOpen ? "✕" : "☰"}
                     </button>
                 </div>
             </div>
 
+            {/* Mobile Drawer Backdrop Overlay */}
+            {isMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                />
+            )}
+
             {/* Sidebar Navigation */}
             <div
                 className={`
           fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}
           md:relative md:translate-x-0 transition-all duration-300 ease-in-out
-          ${isCollapsed ? "md:w-20" : "md:w-64"} w-64 bg-slate-950 border-r border-emerald-950/20 z-30 flex flex-col h-screen text-slate-100
+          ${isCollapsed ? "md:w-20" : "md:w-64"} w-72 sm:w-64 bg-slate-950 border-r border-emerald-950/20 z-50 md:z-30 flex flex-col h-screen text-slate-100 shadow-2xl md:shadow-none
         `}
             >
+                {/* Mobile Drawer Header */}
+                <div className="p-4 border-b border-emerald-950/60 flex md:hidden items-center justify-between gap-2 bg-slate-950">
+                    <div
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={() => { handleNavigate(AppView.DASHBOARD); setIsMenuOpen(false); }}
+                    >
+                        <img src="/favicon.png" alt="SmartBiz Coach" className="w-7 h-7 rounded-lg object-cover" />
+                        <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
+                    </div>
+                    <button
+                        onClick={() => setIsMenuOpen(false)}
+                        className="text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold cursor-pointer"
+                        title="Close Menu"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {/* Desktop Header */}
                 <div
                     className="p-5 border-b border-emerald-950/60 hidden md:flex items-center justify-between gap-2"
                 >
@@ -266,7 +303,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
                 </nav>
 
-                <div className="p-2 border-t border-emerald-950/60">
+                <div className="p-3 pb-24 md:pb-3 border-t border-emerald-950/60 bg-slate-950 shrink-0">
                     {!isCollapsed ? (
                         <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 rounded-2xl text-white text-center shadow-lg relative overflow-hidden border border-emerald-900/40">
                             <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
@@ -297,8 +334,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
 
             {/* Main Content Area */}
-            <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen bg-slate-50/30">
-                <div className="max-w-5xl mx-auto space-y-8 pb-20 md:pb-0">
+            <main className="flex-1 p-3 sm:p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen bg-slate-50/30">
+                <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 pb-28 md:pb-8">
                     {/* Header with Search */}
                     <header className="hidden md:flex justify-between items-center bg-white/40 backdrop-blur-md p-4 rounded-3xl border border-white/60 sticky top-0 z-20 shadow-sm">
                         <GlobalSearch onResultClick={(item) => onNavigate(AppView.PRODUCT_MANAGER)} />
@@ -431,13 +468,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </div>
             )}
 
-            {/* Overlay for mobile menu */}
-            {isMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
-                    onClick={() => setIsMenuOpen(false)}
-                ></div>
-            )}
 
             {/* Mobile Bottom Navigation Dock (Sticky for 1-thumb quick action) */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-lg border-t border-emerald-900/40 px-2 py-1.5 flex justify-around items-center shadow-2xl">
