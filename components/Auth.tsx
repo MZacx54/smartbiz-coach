@@ -17,7 +17,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     routerLocation.pathname.includes('register') ? 'register' : 'login'
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [isSkipping, setIsSkipping] = useState(false);
 
   // Password Visibility Toggle State
   const [showPassword, setShowPassword] = useState(false);
@@ -45,39 +44,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  const handleSkip = async () => {
-    setIsSkipping(true);
-    const guestId = Math.floor(Math.random() * 10000000);
-    const guestEmail = `guest_${guestId}@smartbizcoach.com.ng`;
-    const guestPassword = `guestpwd_${guestId}`;
-    
-    try {
-      const response = await authService.register({
-        username: guestEmail,
-        email: guestEmail,
-        password: guestPassword,
-        first_name: 'Guest Partner',
-        business_name: 'Demo Venture',
-        phone: '08000000000',
-        location: 'Lagos',
-        currency: 'NGN',
-        has_onboarded: true
-      });
 
-      if (response.token) {
-        localStorage.setItem('sb_auth_token', response.token);
-        onLogin(response.user);
-      } else {
-        const loginResponse = await authService.login({ username: guestEmail, password: guestPassword });
-        onLogin(loginResponse.user);
-      }
-    } catch (error) {
-      console.error("Skip Registration failed", error);
-      toast.error("Unable to bypass registration right now. Please register manually.");
-    } finally {
-      setIsSkipping(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -375,8 +342,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={isLoading || isSkipping}
-                className="w-full py-3.5 bg-green-600 text-white font-extrabold rounded-xl hover:bg-green-500 transition-all shadow-lg shadow-green-550/20 flex justify-center items-center text-sm tracking-wide"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-green-600 text-white font-extrabold rounded-xl hover:bg-green-500 transition-all shadow-lg shadow-green-550/20 flex justify-center items-center text-sm tracking-wide cursor-pointer"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -389,25 +356,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   </>
                 )}
               </button>
-
-              {/* Enhanced SKIP option for instant access */}
-              {authMode === 'register' && (
-                <button
-                  type="button"
-                  disabled={isLoading || isSkipping}
-                  onClick={handleSkip}
-                  className="w-full py-3.5 mt-3 border-2 border-green-600 hover:bg-green-50 text-green-700 font-extrabold rounded-xl transition-all shadow-sm flex justify-center items-center text-sm"
-                >
-                  {isSkipping ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-green-700 border-t-transparent rounded-full animate-spin"></div>
-                      <span>Initializing Demo Workspace...</span>
-                    </div>
-                  ) : (
-                    '⚡ Skip & Explore Platform as Guest'
-                  )}
-                </button>
-              )}
             </div>
           </form>
 
