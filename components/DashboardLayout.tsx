@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppView, User, CartItem, UserStats, ActionCard } from '../types';
 import GlobalSearch from './GlobalSearch';
@@ -34,7 +34,48 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const navigate = useNavigate();
     const [tractionMode, setTractionMode] = useState(() => localStorage.getItem('sb_idice_traction_mode') === 'true');
 
+    // Recommendation 3: Offline-First PWA Mode state
+    const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
 
+    // Recommendation 4: Cashier vs Owner Mode state
+    const [isCashierMode, setIsCashierMode] = useState(() => localStorage.getItem('sb_cashier_mode') === 'true');
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [enteredPin, setEnteredPin] = useState('');
+    const [pinError, setPinError] = useState('');
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            toast.success('Internet connection restored! Cloud synchronization active.', { icon: '☁️' });
+        };
+        const handleOffline = () => {
+            setIsOnline(false);
+            toast('📶 Network dropped. Open Market Offline Mode active.', { duration: 5000 });
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    const handleUnlockOwnerMode = (e: React.FormEvent) => {
+        e.preventDefault();
+        const actualPin = localStorage.getItem('sb_owner_pin') || '1234';
+        if (enteredPin === actualPin) {
+            localStorage.setItem('sb_cashier_mode', 'false');
+            setIsCashierMode(false);
+            setShowUnlockModal(false);
+            setEnteredPin('');
+            setPinError('');
+            toast.success('Owner Mode Unlocked! Full privileges restored.', { icon: '👑' });
+        } else {
+            setPinError('Incorrect Owner PIN. (Default PIN: 1234)');
+        }
+    };
 
     const toggleTraction = () => {
         const newVal = !tractionMode;
@@ -44,6 +85,20 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     };
 
     const handleNavigate = (view: AppView, params?: string) => {
+        const ownerOnlyViews = [
+            AppView.SETTINGS,
+            AppView.PRICING_ASSISTANT,
+            AppView.BUSINESS_PLAN,
+            AppView.GRANT_MATCHER,
+            AppView.COMPLIANCE,
+            AppView.DIGITAL_ROADMAP
+        ];
+
+        if (isCashierMode && ownerOnlyViews.includes(view)) {
+            setShowUnlockModal(true);
+            return;
+        }
+
         onNavigate(view, params);
         setIsMenuOpen(false);
         window.scrollTo(0, 0);
@@ -76,6 +131,21 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     return (
         <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row font-sans selection:bg-green-200">
 
+            {/* Recommendation 3: Open Market Offline Mode Banner */}
+            {!isOnline && (
+                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md z-50 sticky top-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-base animate-pulse">📶</span>
+                        <span>
+                            <strong>Open Market Offline Mode Active (Alaba/Balogun):</strong> Internet disconnected. Day-book sales, debtor records, and stock changes are saved safely on this device and will auto-sync to cloud when online.
+                        </span>
+                    </div>
+                    <span className="bg-amber-900/60 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider hidden sm:inline-block">
+                        Offline Safe
+                    </span>
+                </div>
+            )}
+
             {/* Mobile Header */}
             <div className="md:hidden bg-slate-950 border-b border-emerald-950/45 p-4 flex justify-between items-center sticky top-0 z-20 text-white">
                 <div
@@ -86,15 +156,26 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Mobile Credits Quick Badge */}
-                    <button
-                        onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                        className="flex items-center gap-1 bg-emerald-950/90 border border-emerald-500/40 hover:border-emerald-400 px-2.5 py-1 rounded-xl text-emerald-300 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
-                        title="Available Credits. Tap to top up."
-                    >
-                        <span className="text-emerald-400">⚡</span>
-                        <span>{userStats.bizCredits}</span>
-                    </button>
+                    {/* Recommendation 4: Cashier Badge / Credits on Mobile */}
+                    {isCashierMode ? (
+                        <button
+                            onClick={() => setShowUnlockModal(true)}
+                            className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-1 rounded-xl text-xs font-bold transition-all active:scale-95"
+                            title="Cashier Mode active. Tap to enter Owner PIN."
+                        >
+                            <span>👤</span>
+                            <span>Cashier</span>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
+                            className="flex items-center gap-1 bg-emerald-950/90 border border-emerald-500/40 hover:border-emerald-400 px-2.5 py-1 rounded-xl text-emerald-300 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
+                            title="Available Credits. Tap to top up."
+                        >
+                            <span className="text-emerald-400">⚡</span>
+                            <span>{userStats.bizCredits}</span>
+                        </button>
+                    )}
                     <PWAInstallButton variant="nav" label="Install" />
                     {user?.email === 'meshachzax@gmail.com' && (
                         <button
@@ -198,96 +279,137 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 )}
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
-                    <NavItem view={AppView.DAILY_CASHBOOK} label="Daily Day-Book" icon="⚡" />
-                    <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory" icon="📦" />
-                    <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
-                    <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices & Receipts" icon="🧾" />
-                    <NavItem view={AppView.BRAND_BUILDER} label="Brand Builder" icon="✨" />
-                    <NavItem view={AppView.CONTENT_GENERATOR} label="Content Gen" icon="✍️" />
-
-                    {!isCollapsed ? (
-                        <div className="pt-4 pb-1 px-3">
-                            <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
-                                Marketplace Ecosystem
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="border-t border-slate-800/40 my-3" />
-                    )}
-                    
-                    <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🏛️" />
-                    <NavItem view={AppView.MARKETING_AGENT} label="Broadcast HQ" icon="📣" />
-                    <NavItem view={AppView.LEAD_MANAGER} label="Lead Inbox" icon="📬" />
-                    <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
-                    <NavItem view={AppView.SALES_ASSISTANT} label="Sales Closer" icon="💬" />
-
-                    {cartItems.length > 0 && (
-                        <button
-                            onClick={() => handleNavigate(AppView.CART)}
-                            className={`flex items-center justify-between w-full p-2.5 rounded-xl transition-all ${currentView === AppView.CART
-                                ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
-                                : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
-                                }`}
-                            title={isCollapsed ? "Cart" : undefined}
-                        >
-                            <div className="flex items-center gap-3">
-                                <span>🛍️</span>
-                                {!isCollapsed && <span className="text-sm">Cart</span>}
+                    {isCashierMode ? (
+                        <>
+                            <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl mb-3 text-center">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">👤 Staff / Cashier Mode</p>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Sales & Stock tools only</p>
                             </div>
-                            {!isCollapsed && (
-                                <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                                    {cartItems.length}
-                                </span>
-                            )}
-                        </button>
-                    )}
-
-                    <NavItem view={AppView.BUSINESS_PLAN} label="Business Plan" icon="📈" />
-                    <NavItem view={AppView.GRANT_MATCHER} label="Find Funding" icon="💰" />
-                    <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
-                    <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
-
-                    {!isCollapsed ? (
-                        <div className="pt-4 pb-1 px-3">
-                            <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
-                                Help
-                            </p>
-                        </div>
+                            <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
+                            <NavItem view={AppView.DAILY_CASHBOOK} label="Daily Day-Book" icon="⚡" />
+                            <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory & Stock" icon="📦" />
+                            <NavItem view={AppView.DEBTOR_BOOK} label="Gbege (Debtors)" icon="📒" />
+                            <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices & Receipts" icon="🧾" />
+                            <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
+                        </>
                     ) : (
-                        <div className="border-t border-slate-800/40 my-3" />
+                        <>
+                            <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
+                            <NavItem view={AppView.DAILY_CASHBOOK} label="Daily Day-Book" icon="⚡" />
+                            <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory" icon="📦" />
+                            <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
+                            <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices & Receipts" icon="🧾" />
+                            <NavItem view={AppView.BRAND_BUILDER} label="Brand Builder" icon="✨" />
+                            <NavItem view={AppView.CONTENT_GENERATOR} label="Content Gen" icon="✍️" />
+
+                            {!isCollapsed ? (
+                                <div className="pt-4 pb-1 px-3">
+                                    <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
+                                        Marketplace Ecosystem
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="border-t border-slate-800/40 my-3" />
+                            )}
+                            
+                            <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🏛️" />
+                            <NavItem view={AppView.MARKETING_AGENT} label="Broadcast HQ" icon="📣" />
+                            <NavItem view={AppView.LEAD_MANAGER} label="Lead Inbox" icon="📬" />
+                            <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
+                            <NavItem view={AppView.SALES_ASSISTANT} label="Sales Closer" icon="💬" />
+
+                            {cartItems.length > 0 && (
+                                <button
+                                    onClick={() => handleNavigate(AppView.CART)}
+                                    className={`flex items-center justify-between w-full p-2.5 rounded-xl transition-all ${currentView === AppView.CART
+                                        ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
+                                        : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
+                                        }`}
+                                    title={isCollapsed ? "Cart" : undefined}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span>🛍️</span>
+                                        {!isCollapsed && <span className="text-sm">Cart</span>}
+                                    </div>
+                                    {!isCollapsed && (
+                                        <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                            {cartItems.length}
+                                        </span>
+                                    )}
+                                </button>
+                            )}
+
+                            <NavItem view={AppView.BUSINESS_PLAN} label="Business Plan" icon="📈" />
+                            <NavItem view={AppView.GRANT_MATCHER} label="Find Funding" icon="💰" />
+                            <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
+                            <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
+
+                            {!isCollapsed ? (
+                                <div className="pt-4 pb-1 px-3">
+                                    <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
+                                        Help
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="border-t border-slate-800/40 my-3" />
+                            )}
+                            <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
+                            <NavItem view={AppView.WHATSAPP_SUPPORT} label="Live Support" icon="🎧" />
+                            <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
+                        </>
                     )}
-                    <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
-                    <NavItem view={AppView.WHATSAPP_SUPPORT} label="Live Support" icon="🎧" />
-                    <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
                 </nav>
 
                 <div className="p-3 pb-24 md:pb-3 border-t border-emerald-950/60 bg-slate-950 shrink-0">
-                    {!isCollapsed ? (
-                        <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 rounded-2xl text-white text-center shadow-lg relative overflow-hidden border border-emerald-900/40">
-                            <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
-                                Available Credits
-                            </p>
-                            <p className="text-3xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
-                                {userStats.bizCredits}
-                            </p>
+                    {isCashierMode ? (
+                        !isCollapsed ? (
+                            <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl text-center space-y-2">
+                                <span className="text-xl">🔒</span>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">Owner Access Locked</p>
+                                <p className="text-[10px] text-slate-400 leading-tight">Financial payouts & billing hidden</p>
+                                <button
+                                    onClick={() => setShowUnlockModal(true)}
+                                    className="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs py-2 rounded-xl transition-all border border-amber-500/20 cursor-pointer"
+                                >
+                                    Unlock with PIN
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setShowUnlockModal(true)}
+                                className="w-full bg-slate-900 p-2 rounded-xl text-center border border-slate-800 text-amber-400 text-xs font-bold"
+                                title="Unlock Owner Mode"
+                            >
+                                🔒
+                            </button>
+                        )
+                    ) : (
+                        !isCollapsed ? (
+                            <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 rounded-2xl text-white text-center shadow-lg relative overflow-hidden border border-emerald-900/40">
+                                <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
+                                    Available Credits
+                                </p>
+                                <p className="text-3xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
+                                    {userStats.bizCredits}
+                                </p>
+                                <button
+                                    onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
+                                    className="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+                                >
+                                    ⚡ Top Up Balance
+                                </button>
+                            </div>
+                        ) : (
                             <button
                                 onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                                className="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
+                                className="w-full bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-2 rounded-xl text-center shadow-md border border-emerald-900/40 flex flex-col items-center justify-center gap-1 hover:border-emerald-500/60 transition-all"
+                                title="Available Credits. Click to Top Up."
                             >
-                                ⚡ Top Up Balance
+                                <span className="text-[9px] font-bold text-emerald-450">⚡</span>
+                                <span className="text-xs font-black text-green-400">{userStats.bizCredits}</span>
                             </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                            className="w-full bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-2 rounded-xl text-center shadow-md border border-emerald-900/40 flex flex-col items-center justify-center gap-1 hover:border-emerald-500/60 transition-all"
-                            title="Available Credits. Click to Top Up."
-                        >
-                            <span className="text-[9px] font-bold text-emerald-450">⚡</span>
-                            <span className="text-xs font-black text-green-400">{userStats.bizCredits}</span>
-                        </button>
+                        )
                     )}
                 </div>
             </div>
@@ -300,6 +422,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <GlobalSearch onResultClick={(item) => onNavigate(AppView.PRODUCT_MANAGER)} />
                         
                         <div className="flex items-center gap-3">
+                            {isCashierMode ? (
+                                <button
+                                    onClick={() => setShowUnlockModal(true)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-700 font-bold text-xs hover:bg-amber-500/25 transition-all cursor-pointer"
+                                    title="Click to enter Owner PIN and return to Owner Mode"
+                                >
+                                    <span>👤 Cashier Mode</span>
+                                    <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black">Unlock</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        localStorage.setItem('sb_cashier_mode', 'true');
+                                        setIsCashierMode(true);
+                                        toast('👤 Cashier Mode Activated. Handing device to staff.', { duration: 4000 });
+                                    }}
+                                    className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+                                    title="Lock sensitive financial and payout settings before handing device to sales attendants"
+                                >
+                                    <span>🔒 Staff Mode</span>
+                                </button>
+                            )}
+
                             <PWAInstallButton variant="nav" label="📲 Install App" />
                             {user?.email === 'meshachzax@gmail.com' && (
                                 <button
@@ -314,16 +459,31 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                     <span>Traction Mode: {tractionMode ? 'ON' : 'OFF'}</span>
                                 </button>
                             )}
-                            <div
-                              onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"
-                            >
-                                <span className="text-sm">⚡</span>
-                                <span className="text-sm font-bold text-slate-700">{userStats.bizCredits}</span>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Credits</span>
-                            </div>
+                            
+                            {!isCashierMode ? (
+                                <div
+                                  onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
+                                  className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"
+                                >
+                                    <span className="text-sm">⚡</span>
+                                    <span className="text-sm font-bold text-slate-700">{userStats.bizCredits}</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Credits</span>
+                                </div>
+                            ) : (
+                                <div
+                                  onClick={() => setShowUnlockModal(true)}
+                                  className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"
+                                  title="Credits hidden in Cashier Mode. Tap to unlock."
+                                >
+                                    <span className="text-sm">⚡</span>
+                                    <span className="text-sm font-bold text-slate-700">••••</span>
+                                </div>
+                            )}
+
                             <div className="text-right ml-2 hidden sm:block">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logged in as</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    {isCashierMode ? 'Attendant Session' : 'Logged in as'}
+                                </p>
                                 <p className="text-xs font-bold text-slate-800">{user.businessName}</p>
                             </div>
                             <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-emerald-100">
@@ -403,6 +563,63 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             {/* Global Floating Live Support Widget */}
             <LiveSupportWidget credits={userStats.bizCredits} onUpdateCredits={onUpdateCredits} />
+
+            {/* Cashier / Staff Mode PIN Unlock Modal */}
+            {showUnlockModal && (
+                <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in no-print">
+                    <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+                        <div className="text-center">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl mx-auto mb-2">
+                                🔐
+                            </div>
+                            <h3 className="font-extrabold text-slate-900 text-base font-heading">
+                                Enter Owner PIN
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Enter your 4-digit security PIN to unlock full administrative features.
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleUnlockOwnerMode} className="space-y-3">
+                            <div>
+                                <input
+                                    type="password"
+                                    maxLength={8}
+                                    autoFocus
+                                    placeholder="••••"
+                                    value={enteredPin}
+                                    onChange={(e) => {
+                                        setEnteredPin(e.target.value);
+                                        setPinError('');
+                                    }}
+                                    className="w-full text-center tracking-[0.5em] text-2xl font-black py-3 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:border-amber-500 focus:bg-white transition-all"
+                                />
+                                {pinError && (
+                                    <p className="text-[11px] text-rose-500 font-bold mt-1 text-center">{pinError}</p>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-600/20 cursor-pointer"
+                            >
+                                Unlock Full Access
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowUnlockModal(false);
+                                    setEnteredPin('');
+                                    setPinError('');
+                                }}
+                                className="w-full py-2 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+                            >
+                                Keep in Cashier Mode
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

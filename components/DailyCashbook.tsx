@@ -4,13 +4,14 @@ import {
   ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, 
   Send, Share2, Download, Printer, RefreshCw, ShoppingCart, 
   FileText, ShieldCheck, Sparkles, Filter, X, Lock, Unlock, Key,
-  Wifi, WifiOff, Cloud, Edit2, Bot, Zap, TrendingUp, Check
+  Wifi, WifiOff, Cloud, Edit2, Bot, Zap, TrendingUp, Check, Camera
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DailySale, DailyExpense, DailySummary, DailyAIInsights, Product } from '../types';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import BarcodeScannerModal from './BarcodeScannerModal';
 
 const EXPENSE_CATEGORY_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   FUEL_GEN: { label: 'Fuel & Generator', icon: '⛽', color: 'bg-amber-100 text-amber-800' },
@@ -45,6 +46,7 @@ export const DailyCashbook: React.FC = () => {
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [recentSaleReceipt, setRecentSaleReceipt] = useState<DailySale | null>(null);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
   // Edit Sale modal state
   const [editingSale, setEditingSale] = useState<DailySale | null>(null);
@@ -217,7 +219,7 @@ export const DailyCashbook: React.FC = () => {
 
   const reportRef = useRef<HTMLDivElement>(null);
 
-  // Fetch Inventory Products for autocomplete
+  // Fetch Inventory Products for autocomplete (with offline cache support)
   useEffect(() => {
     const fetchInventory = async () => {
       try {
@@ -225,9 +227,16 @@ export const DailyCashbook: React.FC = () => {
         if (res.data) {
           const list = Array.isArray(res.data) ? res.data : (res.data.results || []);
           setInventoryProducts(list);
+          if (list.length > 0) {
+            localStorage.setItem('sb_cached_products', JSON.stringify(list));
+          }
         }
       } catch (err) {
-        console.error('Failed to fetch inventory:', err);
+        console.warn('Network issue fetching inventory. Reading cached products:', err);
+        const cached = JSON.parse(localStorage.getItem('sb_cached_products') || '[]');
+        if (cached.length > 0) {
+          setInventoryProducts(cached);
+        }
       }
     };
     fetchInventory();
@@ -302,6 +311,25 @@ export const DailyCashbook: React.FC = () => {
       setSaleItemName(found.name);
       setSaleUnitPrice(String(found.price || 0));
       setSaleCostPrice(String((found as any).cost_price || 0));
+    }
+  };
+
+  // Recommendation 5: Handle Barcode Scan to auto-fill sale item
+  const handleBarcodeScanned = (scannedCode: string) => {
+    const match = inventoryProducts.find(p =>
+      (p.sku && p.sku.toLowerCase() === scannedCode.toLowerCase()) ||
+      p.name.toLowerCase().includes(scannedCode.toLowerCase()) ||
+      String(p.id) === scannedCode
+    );
+
+    if (match) {
+      handleProductSelect(String(match.id));
+      setShowSaleModal(true);
+      toast.success(`Scanned: ${match.name} (₦${Number(match.price).toLocaleString()})`, { icon: '🏷️' });
+    } else {
+      setSaleItemName(scannedCode);
+      setShowSaleModal(true);
+      toast(`Scanned code: "${scannedCode}". Enter selling price to record.`, { icon: '🏷️' });
     }
   };
 
@@ -893,6 +921,15 @@ export const DailyCashbook: React.FC = () => {
               className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all cursor-pointer"
             >
               <Bot className="w-4 h-4 text-purple-200" /> AI Daily Brief
+            </button>
+
+            <button
+              onClick={() => setShowBarcodeScanner(true)}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Point camera at product barcode to record sale instantly"
+            >
+              <Camera className="w-4 h-4 text-emerald-400" />
+              <span>📷 Scan Sale</span>
             </button>
 
             <button
@@ -1922,9 +1959,20 @@ export const DailyCashbook: React.FC = () => {
             <form onSubmit={handleSaveSale} className="space-y-4">
               {/* Select from Inventory (Optional) */}
               <div>
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">
-                  Pick from Catalog or Type Custom Item
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest block">
+                    Pick from Catalog or Type Custom Item
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowBarcodeScanner(true)}
+                    className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                    title="Scan product barcode to auto-fill item name and price"
+                  >
+                    <Camera className="w-3 h-3 text-emerald-600" />
+                    <span>📷 Scan Barcode</span>
+                  </button>
+                </div>
                 <select
                   value={selectedProduct ? String(selectedProduct.id) : ''}
                   onChange={(e) => handleProductSelect(e.target.value)}
@@ -2710,6 +2758,15 @@ export const DailyCashbook: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Barcode & QR Code Scanner Modal for Fast POS Sales */}
+      <BarcodeScannerModal
+        isOpen={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onScan={handleBarcodeScanned}
+        title="Scan Item Barcode for Sale"
+        description="Point camera at product barcode or packaging to record purchase in 1 second"
+      />
     </div>
   );
 };

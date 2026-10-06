@@ -35,6 +35,11 @@ const PublicStorefront: React.FC = () => {
   const [cart, setCart] = useState<{ product: any; quantity: number }[]>([]);
   const [showCartModal, setShowCartModal] = useState(false);
   const [selectedVideoProduct, setSelectedVideoProduct] = useState<any | null>(null);
+  const [paymentConfirmation, setPaymentConfirmation] = useState<{
+    reference: string;
+    total: number;
+    waDispatch?: any;
+  } | null>(null);
   const [checkoutForm, setCheckoutForm] = useState({
     name: '',
     phone: '',
@@ -388,8 +393,9 @@ const PublicStorefront: React.FC = () => {
           toast.dismiss();
           toast.success("Payment successful! Transaction Ref: " + res.reference);
           
+          let dispatchData = null;
           try {
-            await api.post('/api/marketplace/orders/create/', {
+            const orderRes = await api.post('/api/marketplace/orders/create/', {
               items: cart.map(i => ({ productId: i.product.id, price: i.product.price, quantity: i.quantity })),
               reference: res.reference,
               total_amount: cartTotal,
@@ -398,12 +404,18 @@ const PublicStorefront: React.FC = () => {
               customer_address: checkoutForm.address,
               notes: checkoutForm.notes
             });
+            dispatchData = orderRes.data?.whatsapp_dispatch || null;
           } catch (err) {
             console.error('Order lead log notice:', err);
           }
 
           setShowCartModal(false);
           setCart([]);
+          setPaymentConfirmation({
+            reference: res.reference,
+            total: cartTotal,
+            waDispatch: dispatchData
+          });
         },
         onClose: () => {
           toast.dismiss();
@@ -1114,6 +1126,68 @@ const PublicStorefront: React.FC = () => {
                 {isSavingStoreProfile ? 'Saving Details...' : 'Save & Publish Storefront Profile'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Confirmation & Instant WhatsApp Dispatch Modal */}
+      {paymentConfirmation && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in no-print">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl text-center space-y-5 animate-in zoom-in-95">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center text-3xl shadow-lg shadow-emerald-100">
+              ✓
+            </div>
+            <div>
+              <span className="text-[10px] font-black tracking-widest uppercase bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
+                Paystack Verified
+              </span>
+              <h3 className="font-black text-slate-900 text-xl font-heading mt-2">
+                Payment Confirmed!
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Amount Paid: <strong className="text-slate-800">₦{paymentConfirmation.total.toLocaleString()}</strong>
+              </p>
+              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                Ref: {paymentConfirmation.reference}
+              </p>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left space-y-2 text-xs">
+              <p className="text-slate-600 font-semibold">
+                🔔 Your order has been registered in the merchant's live dashboard and confirmed via payment gateway.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              {paymentConfirmation.waDispatch?.merchant_wa_url && (
+                <a
+                  href={paymentConfirmation.waDispatch.merchant_wa_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all active:scale-98"
+                >
+                  <span>💬</span> Notify Merchant on WhatsApp
+                </a>
+              )}
+
+              {paymentConfirmation.waDispatch?.customer_wa_url && (
+                <a
+                  href={paymentConfirmation.waDispatch.customer_wa_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 transition-all"
+                >
+                  <span>🧾</span> Send Receipt to WhatsApp
+                </a>
+              )}
+
+              <button
+                onClick={() => setPaymentConfirmation(null)}
+                className="w-full py-2.5 text-slate-500 hover:text-slate-800 font-bold text-xs transition-colors"
+              >
+                Close & Continue Shopping
+              </button>
+            </div>
           </div>
         </div>
       )}

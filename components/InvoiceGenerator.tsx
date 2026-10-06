@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem } from '../types';
 import ShareActions from './ShareActions';
-import { ArrowLeft, Plus, Trash2, Download, CheckCircle, FileText, DollarSign, Calendar, Eye, Send } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Download, CheckCircle, FileText, DollarSign, Calendar, Eye, Send, Copy, Check, MessageSquare } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const mockInvoices: Invoice[] = [
@@ -345,35 +345,95 @@ const InvoiceGenerator: React.FC = () => {
   const totalPaid = invoices.filter(inv => inv.paymentStatus === 'PAID').reduce((acc, curr) => acc + calculateTotal(curr), 0);
   const totalOutstanding = invoices.filter(inv => inv.paymentStatus !== 'PAID').reduce((acc, curr) => acc + calculateTotal(curr), 0);
 
+  const generateInvoiceWhatsAppMessage = (inv: Invoice) => {
+    const tot = calculateTotal(inv);
+    const itemsText = inv.items.map(it => `• ${it.description} (x${it.quantity}) - ₦${(it.quantity * it.price).toLocaleString()}`).join('\n');
+    
+    const text = `🧾 *OFFICIAL INVOICE: #${inv.id}*
+🏢 *From:* ${inv.bankAccountName || 'SmartBiz Merchant'}
+
+👤 *Billed To:* ${inv.clientName}
+📅 *Date:* ${inv.date}
+⏳ *Due Date:* ${inv.dueDate || 'Upon Receipt'}
+
+📋 *ITEMS:*
+${itemsText}
+---------------------------------
+💰 *TOTAL DUE:* ₦${tot.toLocaleString()}
+---------------------------------
+
+🏦 *BANK PAYMENT DETAILS:*
+• *Bank:* ${inv.bankName || 'Access Bank PLC'}
+• *Account Name:* ${inv.bankAccountName || 'SmartBiz Solutions'}
+• *Account Number:* ${inv.bankAccountNumber || 'N/A'}
+
+${inv.note ? `📝 *Note:* ${inv.note}\n` : ''}Thank you for your valued business!
+Generated via SmartBiz Coach`;
+
+    const cleanPhone = (inv.clientPhone || '').replace(/\D/g, '');
+    let phoneTarget = '';
+    if (cleanPhone.startsWith('0') && cleanPhone.length === 11) {
+      phoneTarget = '234' + cleanPhone.slice(1);
+    } else if (cleanPhone.startsWith('234')) {
+      phoneTarget = cleanPhone;
+    }
+    
+    const encodedText = encodeURIComponent(text);
+    const waUrl = phoneTarget 
+      ? `https://wa.me/${phoneTarget}?text=${encodedText}` 
+      : `https://wa.me/?text=${encodedText}`;
+
+    return { text, waUrl, phoneTarget };
+  };
+
   if (step === 'PREVIEW' && selectedInvoice) {
     const total = calculateTotal(selectedInvoice);
     const subtotal = calculateSubtotal(selectedInvoice);
-    const shareText = `Hello ${selectedInvoice.clientName}, please find your official invoice (${selectedInvoice.id}) for ₦${total.toLocaleString()} from ${selectedInvoice.bankAccountName}. Due date: ${selectedInvoice.dueDate}.`;
+    const waDetails = generateInvoiceWhatsAppMessage(selectedInvoice);
+    const shareText = waDetails.text;
 
     return (
       <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 pb-12">
-        <div className="flex justify-between items-center mb-6 no-print">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 no-print">
           <button 
             onClick={() => setStep('LIST')} 
             className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 font-bold"
           >
             <ArrowLeft className="w-4 h-4" /> Back to List
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <a 
+              href={waDetails.waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+            >
+              <span>💬</span> 1-Tap WhatsApp Dispatch
+            </a>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(waDetails.text);
+                toast.success('Invoice text copied to clipboard!');
+              }}
+              className="px-3 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-bold text-xs flex items-center gap-1.5"
+              title="Copy formatted invoice text"
+            >
+              <Copy className="w-3.5 h-3.5" /> Copy Text
+            </button>
             <button 
               onClick={() => {
                 setFormInvoice(selectedInvoice);
                 setStep('EDIT');
               }} 
-              className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 font-bold text-xs"
+              className="px-3 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 font-bold text-xs"
             >
-              Edit Invoice
+              Edit
             </button>
             <button 
               onClick={() => window.print()} 
-              className="px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold text-xs flex items-center gap-1.5"
+              className="px-3.5 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold text-xs flex items-center gap-1.5"
             >
-              <Download className="w-3.5 h-3.5" /> Print / Save PDF
+              <Download className="w-3.5 h-3.5" /> PDF
             </button>
           </div>
         </div>
@@ -836,7 +896,16 @@ const InvoiceGenerator: React.FC = () => {
                           {inv.paymentStatus}
                         </span>
                       </td>
-                      <td className="p-4 text-center flex items-center justify-center gap-1">
+                      <td className="p-4 text-center flex items-center justify-center gap-1.5">
+                        <a 
+                          href={generateInvoiceWhatsAppMessage(inv).waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 text-emerald-600 hover:text-white hover:bg-emerald-600 rounded-lg transition-all"
+                          title="1-Tap WhatsApp to Client"
+                        >
+                          <span className="text-sm">💬</span>
+                        </a>
                         <button 
                           onClick={() => {
                             setSelectedInvoice(inv);

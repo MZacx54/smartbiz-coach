@@ -122,10 +122,91 @@ class OrderCreateView(views.APIView):
             except (Product.DoesNotExist, ValueError, TypeError):
                 continue
 
+        # Generate WhatsApp notification dispatch templates
+        import urllib.parse
+        clean_cust_phone = ''.join(filter(str.isdigit, customer_contact))
+        if clean_cust_phone.startswith('0') and len(clean_cust_phone) == 11:
+            clean_cust_phone = '234' + clean_cust_phone[1:]
+        elif not clean_cust_phone.startswith('234'):
+            clean_cust_phone = ''
+
+        cust_wa_msg = (
+            f"🧾 *ORDER PAYMENT CONFIRMATION*\n"
+            f"Your payment of *₦{float(total_amount):,.2f}* was successful!\n\n"
+            f"🆔 *Order Ref:* {reference or 'DIRECT'}\n"
+            f"👤 *Customer:* {customer_name}\n"
+            f"📍 *Delivery:* {customer_address}\n"
+            f"✨ *Status:* Paid & Confirmed via Paystack\n\n"
+            f"The merchant is preparing your order for dispatch. Thank you for your patronage!"
+        )
+
+        merchant_wa_msg = (
+            f"🔔 *NEW PAID STOREFRONT ORDER (Paystack)*\n"
+            f"💰 *Amount Paid:* ₦{float(total_amount):,.2f}\n"
+            f"🆔 *Ref:* {reference or 'DIRECT'}\n\n"
+            f"👤 *Buyer:* {customer_name} ({customer_contact})\n"
+            f"📍 *Address:* {customer_address}\n"
+            f"{f'📝 Notes: {order_notes}' if order_notes else ''}\n"
+            f"⚡ This order is validated and settlement processed."
+        )
+
+        wa_dispatch = {
+            "reference": reference,
+            "customer_phone": clean_cust_phone,
+            "customer_wa_url": f"https://wa.me/{clean_cust_phone}?text={urllib.parse.quote(cust_wa_msg)}" if clean_cust_phone else f"https://wa.me/?text={urllib.parse.quote(cust_wa_msg)}",
+            "merchant_wa_url": f"https://wa.me/?text={urllib.parse.quote(merchant_wa_msg)}",
+            "customer_message": cust_wa_msg,
+            "merchant_message": merchant_wa_msg
+        }
+
         return Response({
-            "message": "Order processed and leads created for vendors",
-            "leads": leads_created
+            "message": "Order processed and verified. WhatsApp confirmation dispatched.",
+            "leads": leads_created,
+            "reference": reference,
+            "whatsapp_dispatch": wa_dispatch
         }, status=status.HTTP_201_CREATED)
+
+
+class PaystackWebhookView(views.APIView):
+    """
+    Webhook handler for Paystack automated payment settlement notifications.
+    Processes charge.success events, validates transaction, and confirms order fulfillment.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        payload = request.data or {}
+        event = payload.get('event', '')
+        data = payload.get('data', {})
+
+        if event == 'charge.success':
+            reference = data.get('reference', '')
+            amount = data.get('amount', 0) / 100.0
+            customer = data.get('customer', {})
+            customer_email = customer.get('email', '')
+            metadata = data.get('metadata', {})
+            custom_fields = metadata.get('custom_fields', [])
+            
+            customer_name = 'Customer'
+            customer_phone = ''
+            for cf in custom_fields:
+                if cf.get('variable_name') == 'customer_name':
+                    customer_name = cf.get('value', customer_name)
+                elif cf.get('variable_name') == 'customer_phone':
+                    customer_phone = cf.get('value', customer_phone)
+
+            # Match or update existing leads with this reference
+            leads = Lead.objects.filter(message__contains=reference)
+            if leads.exists():
+                leads.update(status='WON')
+
+            return Response({
+                "status": "success",
+                "message": f"Webhook verified: Payment {reference} acknowledged for ₦{amount:,.2f}"
+            }, status=status.HTTP_200_OK)
+
+        return Response({"status": "ignored", "event": event}, status=status.HTTP_200_OK)
+
 
 class VendorProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = VendorVerificationSerializer

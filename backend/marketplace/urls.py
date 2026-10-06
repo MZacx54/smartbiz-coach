@@ -11,6 +11,7 @@ from .views import (
     LeadDetailView,
     EcosystemAnalyticsView,
     OrderCreateView,
+    PaystackWebhookView,
     ProductSnapAndListView,
     RelatedEcosystemProductsView,
     BoostProductView,
@@ -33,6 +34,7 @@ from .payout_views import (
 urlpatterns = [
     path('analytics/', EcosystemAnalyticsView.as_view(), name='ecosystem_analytics'),
     path('orders/create/', OrderCreateView.as_view(), name='order_create'),
+    path('webhook/paystack/', PaystackWebhookView.as_view(), name='paystack_webhook'),
     path('leads/', LeadListCreateView.as_view(), name='lead_list_create'),
     path('leads/<int:pk>/', LeadDetailView.as_view(), name='lead_detail'),
     path('vendor/profile/', VendorProfileView.as_view(), name='vendor_profile'),

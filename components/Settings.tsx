@@ -67,6 +67,8 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   const [defaultTone, setDefaultTone] = useState(() => localStorage.getItem('sb_default_tone') || 'Exciting');
   const [invoiceCurrency, setInvoiceCurrency] = useState(() => localStorage.getItem('sb_invoice_currency') || 'NGN');
   const [invoicePaymentTerms, setInvoicePaymentTerms] = useState(() => localStorage.getItem('sb_invoice_payment_terms') || 'DUE_ON_RECEIPT');
+  const [ownerPin, setOwnerPin] = useState(() => localStorage.getItem('sb_owner_pin') || '1234');
+  const [isCashierActive, setIsCashierActive] = useState(() => localStorage.getItem('sb_cashier_mode') === 'true');
 
   // Data Management states
   const [dataStats, setDataStats] = useState({
@@ -341,6 +343,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     localStorage.setItem('sb_default_tone', defaultTone);
     localStorage.setItem('sb_invoice_currency', invoiceCurrency);
     localStorage.setItem('sb_invoice_payment_terms', invoicePaymentTerms);
+    localStorage.setItem('sb_owner_pin', ownerPin.trim() || '1234');
     toast.success("Preferences saved successfully!");
   };
 
@@ -1174,6 +1177,67 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                     <option value="NET_30">Net 30 Days</option>
                     <option value="NET_60">Net 60 Days</option>
                   </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recommendation 4: Staff & Cashier PIN Protection Card */}
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🛡️</span>
+                <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">
+                  Shop Staff & Cashier Role Protection
+                </h3>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                isCashierActive ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                {isCashierActive ? '👤 Cashier Mode Active' : '👑 Owner Admin Mode'}
+              </span>
+            </div>
+            <div className="p-6 sm:p-8 space-y-5">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                When you activate Cashier Mode, shop attendants can only record daily sales, manage stock, and issue invoices. Your bank payout account, credit top-up, and business plans are locked behind your Owner PIN.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    4-Digit Owner Security PIN
+                  </label>
+                  <input
+                    type="password"
+                    maxLength={8}
+                    value={ownerPin}
+                    onChange={(e) => setOwnerPin(e.target.value)}
+                    placeholder="1234"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-xs font-mono font-bold tracking-widest focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                  <p className="text-[10px] text-slate-400">Default PIN is 1234. Change it to secure your owner dashboard.</p>
+                </div>
+
+                <div className="flex flex-col justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextState = !isCashierActive;
+                      localStorage.setItem('sb_cashier_mode', String(nextState));
+                      setIsCashierActive(nextState);
+                      toast(nextState ? '👤 Cashier Mode activated! Hand device to staff.' : '👑 Owner Mode restored!', {
+                        icon: nextState ? '🔒' : '🔓'
+                      });
+                      setTimeout(() => window.location.reload(), 800);
+                    }}
+                    className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      isCashierActive
+                        ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-md'
+                        : 'bg-slate-900 hover:bg-slate-800 text-white'
+                    }`}
+                  >
+                    <span>{isCashierActive ? '🔓 Exit Cashier Mode' : '👤 Hand Device to Staff (Lock to Cashier Mode)'}</span>
+                  </button>
                 </div>
               </div>
             </div>

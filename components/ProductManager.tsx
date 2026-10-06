@@ -5,6 +5,7 @@ import api from '../services/api';
 import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 import CreditPromptModal from './CreditPromptModal';
+import BarcodeScannerModal from './BarcodeScannerModal';
 
 interface Product {
   id: number;
@@ -501,6 +502,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     low_stock_threshold: 5
   });
 
+  // Recommendation 5: Barcode & QR Code Scanner State
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [scannerContext, setScannerContext] = useState<'LOOKUP' | 'SKU_FIELD'>('LOOKUP');
+
   const fetchProducts = async () => {
     try {
       const response = await api.get('/api/marketplace/products/');
@@ -509,14 +514,51 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         data = mockProducts;
       }
       setProducts(data);
+      if (data.length > 0) {
+        localStorage.setItem('sb_cached_products', JSON.stringify(data));
+      }
     } catch (err) {
-      if (isTractionMode) {
+      const cached = JSON.parse(localStorage.getItem('sb_cached_products') || '[]');
+      if (cached.length > 0) {
+        setProducts(cached);
+        toast('📶 Offline Market Mode: Loaded cached product catalog.', { icon: '📦' });
+      } else if (isTractionMode) {
         setProducts(mockProducts);
       } else {
         toast.error('Failed to load catalog');
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleBarcodeScanned = (scannedCode: string) => {
+    if (scannerContext === 'SKU_FIELD' && isEditing) {
+      setCurrentProduct(prev => ({ ...prev, sku: scannedCode }));
+      toast.success(`SKU set: ${scannedCode}`, { icon: '🏷️' });
+      return;
+    }
+
+    // Lookup mode: find product by SKU or name or ID
+    const match = products.find(p => 
+      (p.sku && p.sku.toLowerCase() === scannedCode.toLowerCase()) ||
+      p.name.toLowerCase().includes(scannedCode.toLowerCase()) ||
+      String(p.id) === scannedCode
+    );
+
+    if (match) {
+      toast.success(`Found: ${match.name} (Stock: ${match.stock_count})`, { icon: '📦', duration: 4500 });
+      setCurrentProduct(match);
+      setIsEditing(true);
+    } else {
+      toast(`No existing item with barcode "${scannedCode}". Creating new listing...`, { icon: '➕' });
+      setCurrentProduct({
+        name: '', description: '', price: '', price_max: '', image_url: '', category: '',
+        product_type: 'PHYSICAL', location: '', metadata: {},
+        is_public: true, is_promoted: false, stock_count: 1,
+        cost_price: '', sku: scannedCode, low_stock_threshold: 5
+      });
+      setIsEditing(true);
     }
   };
 
@@ -802,6 +844,19 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                 onChange={handleBulkSelect} 
               />
             </label>
+
+            <button 
+              type="button"
+              onClick={() => {
+                setScannerContext('LOOKUP');
+                setShowBarcodeScanner(true);
+              }}
+              className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-4 rounded-3xl font-bold transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer text-xs"
+              title="Point phone camera to scan product barcode or QR code"
+            >
+              <Camera className="w-4 h-4 text-emerald-400" />
+              <span>📷 Scan Barcode</span>
+            </button>
 
             <button 
               onClick={() => {
@@ -1200,13 +1255,26 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                           {/* Stock SKU */}
                           <div className="space-y-1.5">
                             <div className="flex justify-between items-center">
-                              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock SKU</label>
-                              <button 
-                                onClick={generateSku}
-                                className="text-[9px] font-bold text-indigo-650 bg-indigo-50 px-2 py-0.5 rounded-lg"
-                              >
-                                Generate SKU
-                              </button>
+                              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock SKU / Barcode</label>
+                              <div className="flex items-center gap-1.5">
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    setScannerContext('SKU_FIELD');
+                                    setShowBarcodeScanner(true);
+                                  }}
+                                  className="text-[9px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-lg flex items-center gap-1 cursor-pointer"
+                                >
+                                  📷 Scan Barcode
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={generateSku}
+                                  className="text-[9px] font-bold text-indigo-650 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-lg cursor-pointer"
+                                >
+                                  Generate SKU
+                                </button>
+                              </div>
                             </div>
                             <input 
                               type="text" 
@@ -2212,6 +2280,15 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
           window.location.href = '/settings?tab=billing';
         }}
         onClose={() => setShowCreditPrompt(false)}
+      />
+
+      {/* Barcode & QR Code Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onScan={handleBarcodeScanned}
+        title={scannerContext === 'SKU_FIELD' ? "Scan Barcode for Product SKU" : "Scan Product Barcode / SKU"}
+        description={scannerContext === 'SKU_FIELD' ? "Scan item packaging to set SKU code automatically" : "Point camera at item barcode to lookup or create product"}
       />
     </div>
   );

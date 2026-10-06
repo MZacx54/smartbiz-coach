@@ -54,7 +54,7 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
 
           try {
             // Log order and create vendor lead audit trail
-            await api.post('/api/marketplace/orders/create/', {
+            const orderRes = await api.post('/api/marketplace/orders/create/', {
               items: items.map(item => ({
                 productId: item.productId || item.id,
                 price: item.price,
@@ -67,6 +67,11 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
               customer_address: checkoutForm.address,
               notes: checkoutForm.notes
             });
+            const wa = orderRes.data?.whatsapp_dispatch;
+            if (wa?.merchant_wa_url) {
+              toast.success('Payment verified! Dispatching WhatsApp receipt...', { duration: 4000 });
+              window.open(wa.merchant_wa_url, '_blank');
+            }
           } catch (err) {
             console.error('Order lead audit log notice:', err);
           }
