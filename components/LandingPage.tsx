@@ -1157,7 +1157,7 @@ const LandingPage: React.FC = () => {
                                 Already have an account? Sign In
                             </button>
                         </div>
-                        <p className="text-green-200/60 text-sm mt-8">No credit card • Free core tools forever • Paystack secured 🔒 • NDPR Compliant</p>
+                        <p className="text-green-200/60 text-sm mt-8">No credit card required • 50 Free Welcome Credits 🎁 • Free core tools forever • Paystack secured 🔒 • NDPR Compliant</p>
                     </motion.div>
                 </div>
             </section>
@@ -1171,7 +1171,7 @@ const LandingPage: React.FC = () => {
                                 <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-white font-extrabold shadow-lg">S</div>
                                 <span className="font-bold text-xl text-white">SmartBiz<span className="text-green-500">Coach</span></span>
                             </div>
-                            <p className="text-slate-400 text-sm leading-relaxed max-w-xs mb-6">Nigeria's premier AI Business Operating System. 5-Second POS, Apprentice Lock, Snap-to-Studio 2.0, Debt Recovery, and CITA Tax Shield.</p>
+                            <p className="text-slate-400 text-sm leading-relaxed max-w-sm mb-6">The complete AI Business Operating System for Nigerian MSMEs. Phone Camera Barcode POS, Apprentice Shift Lock, Snap-to-Studio 2.0, Central MSME Market Square, WhatsApp Debt Recovery, and Section 23 CITA Tax Shield.</p>
 
                             <div className="space-y-3">
                                 <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Follow Us</p>
@@ -1195,9 +1195,12 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Platform</h4>
                             <ul className="space-y-3">
-                                {[['#features', '6 Core Pillars'], ['#how-it-works', 'Operating Timeline'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing Top-Ups'], ['#faq', 'FAQ']].map(([href, label]) => (
-                                    <li key={label}><a href={href} className="text-sm text-slate-400 hover:text-green-400 transition-colors">{label}</a></li>
-                                ))}
+                                <li><a href="#features" className="text-sm text-slate-400 hover:text-green-400 transition-colors">6 Core Pillars</a></li>
+                                <li><span onClick={() => navigate('/marketplace')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Central Market Square</span></li>
+                                <li><a href="#how-it-works" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Operating Timeline</a></li>
+                                <li><a href="#guarantee" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Free Tools Guarantee</a></li>
+                                <li><a href="#pricing" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Pricing Top-Ups</a></li>
+                                <li><a href="#faq" className="text-sm text-slate-400 hover:text-green-400 transition-colors">FAQ</a></li>
                             </ul>
                         </div>
 
@@ -1222,10 +1225,10 @@ const LandingPage: React.FC = () => {
                     </div>
 
                     <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500 gap-4">
-                        <p>© {new Date().getFullYear()} SmartBiz Coach. All rights reserved. 🇳🇬 Made in Nigeria, for Nigeria.</p>
-                        <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full">
+                        <p>© {new Date().getFullYear()} SmartBiz Coach. All rights reserved. 🇳🇬 Made in Nigeria, for Nigerian MSMEs.</p>
+                        <div className="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full">
                             <span className="text-green-400 text-xs">🔒</span>
-                            <span className="text-xs text-slate-400">Secured by Paystack · NDPR Compliant · CITA Section 23/40 Verified</span>
+                            <span className="text-xs text-slate-400">Secured by Paystack · NDPR Compliant · CITA Section 23/40 0% Tax Verified · Offline PWA</span>
                         </div>
                     </div>
                 </div>
