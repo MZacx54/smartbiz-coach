@@ -5,11 +5,13 @@ import {
   ShoppingBag, Search, Filter, MapPin, Star, ArrowRight, Tag, 
   ShieldCheck, Zap, Home, Briefcase, Globe, X, Megaphone, 
   ChevronRight, Phone, MessageCircle, Sparkles, CheckCircle2,
-  Building, Truck, Users, Package, Award, ArrowUpDown
+  Building, Truck, Users, Package, Award, ArrowUpDown, Store,
+  Share2, Copy, ExternalLink, HelpCircle, Check
 } from 'lucide-react';
 import { UnifiedItem, User } from '../types';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { MerchantProfileDrawer } from './MerchantProfileDrawer';
 
 interface MarketplaceProps {
   onAddToCart?: (item: UnifiedItem) => void;
@@ -17,7 +19,7 @@ interface MarketplaceProps {
   initialType?: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B';
 }
 
-// ── Subcategories for ALL 4 Core Pillars (Equal Visibility) ──────────────────
+// ── Subcategories for ALL 4 Core Pillars ──────────────────
 const PILLAR_SUBCATEGORIES = {
   PHYSICAL: [
     { value: '', label: 'All Shop', icon: '🛍️' },
@@ -57,15 +59,27 @@ const PILLAR_SUBCATEGORIES = {
   ],
 };
 
-// ── Major Nigerian Commercial Trade Hubs ─────────────────────────────────────
+// ── Major Nigerian Commercial Trade Hubs & States ─────────
 const NIGERIAN_GEO_HUBS = [
   { id: '', label: '🇳🇬 All Nigeria' },
-  { id: 'Lagos', label: '📍 Lagos (Yaba/Alaba/Ikeja)' },
+  { id: 'Lagos', label: '📍 Lagos (Alaba/Balogun/Ikeja)' },
   { id: 'Abuja', label: '📍 Abuja (FCT)' },
-  { id: 'Port Harcourt', label: '📍 Port Harcourt' },
-  { id: 'Onitsha', label: '📍 Onitsha / Aba' },
+  { id: 'Port Harcourt', label: '📍 Port Harcourt / Rivers' },
+  { id: 'Onitsha', label: '📍 Onitsha / Aba / SE' },
   { id: 'Kano', label: '📍 Kano / North' },
   { id: 'Ibadan', label: '📍 Ibadan / Oyo' },
+  { id: 'Ogun', label: '📍 Ogun (Abeokuta/Ota)' },
+  { id: 'Benin', label: '📍 Benin / Edo / Delta' },
+  { id: 'Enugu', label: '📍 Enugu' },
+];
+
+// ── Price Range Buckets ──────────────────────────────────
+const PRICE_BUCKETS = [
+  { id: '', label: 'All Prices' },
+  { id: '0-5000', label: 'Under ₦5k', min: '0', max: '5000' },
+  { id: '5000-25000', label: '₦5k – ₦25k', min: '5000', max: '25000' },
+  { id: '25000-100000', label: '₦25k – ₦100k', min: '25000', max: '100000' },
+  { id: '100000-99999999', label: '₦100k+', min: '100000', max: '99999999' },
 ];
 
 // Client-side in-memory cache for instant tab switching (2 minutes TTL)
@@ -79,8 +93,14 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [selectedPriceBucket, setSelectedPriceBucket] = useState<string>('');
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState<string>('boosted');
   const [selectedItem, setSelectedItem] = useState<UnifiedItem | null>(null);
+
+  // Merchant Profile Drawer state
+  const [selectedMerchant, setSelectedMerchant] = useState<any | null>(null);
+  const [isMerchantDrawerOpen, setIsMerchantDrawerOpen] = useState(false);
 
   // B2B Request for Quote (RFQ) Modal state
   const [rfqItem, setRfqItem] = useState<UnifiedItem | null>(null);
@@ -89,8 +109,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   const [rfqNotes, setRfqNotes] = useState<string>('');
   const [isSubmittingRfq, setIsSubmittingRfq] = useState(false);
 
+  // Copy listing link state
+  const [hasCopiedLink, setHasCopiedLink] = useState(false);
+
   const fetchItems = async (forceRefresh = false) => {
-    const cacheKey = `${activeTab}_${searchQuery}_${selectedCategory}_${selectedLocation}_${sortBy}`;
+    const bucket = PRICE_BUCKETS.find(b => b.id === selectedPriceBucket);
+    const minPrice = bucket?.min || '';
+    const maxPrice = bucket?.max || '';
+
+    const cacheKey = `${activeTab}_${searchQuery}_${selectedCategory}_${selectedLocation}_${selectedPriceBucket}_${verifiedOnly}_${sortBy}`;
     const cached = marketplaceClientCache.get(cacheKey);
 
     if (cached && !forceRefresh && (Date.now() - cached.timestamp < 120000)) {
@@ -110,6 +137,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           search: searchQuery,
           category: selectedCategory,
           location: selectedLocation,
+          min_price: minPrice,
+          max_price: maxPrice,
+          verified_only: verifiedOnly ? 'true' : '',
           sort_by: sortBy
         }
       });
@@ -123,18 +153,35 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   };
 
   useEffect(() => {
-    // Reset subcategory filter when switching top tabs
     setSelectedCategory('');
     fetchItems();
   }, [activeTab]);
 
   useEffect(() => {
     fetchItems();
-  }, [selectedCategory, selectedLocation, sortBy]);
+  }, [selectedCategory, selectedLocation, selectedPriceBucket, verifiedOnly, sortBy]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchItems();
+    fetchItems(true);
+  };
+
+  const handleOpenMerchantProfile = (item: UnifiedItem) => {
+    setSelectedMerchant({
+      brand_name: item.brand_name || 'Verified Merchant',
+      brand_slug: item.brand_slug,
+      brand_logo: item.brand_logo,
+      brand_niche: item.brand_niche,
+      brand_address: item.brand_address,
+      cac_number: item.cac_number,
+      smedan_number: item.smedan_number,
+      corporate_entity_type: item.corporate_entity_type,
+      trust_badge_text: item.trust_badge_text,
+      is_vendor_verified: item.is_vendor_verified,
+      whatsapp_number: item.whatsapp_number,
+      location: item.location
+    });
+    setIsMerchantDrawerOpen(true);
   };
 
   // Filter boosted items for the VIP Spotlight banner
@@ -155,12 +202,14 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         quoted_price: (Number(rfqItem.price) || 0) * (Number(rfqQuantity) || 1)
       });
 
-      // Direct WhatsApp click-to-chat
-      const whatsappNum = rfqItem.whatsapp_number || '2349064556107';
+      const rawNum = rfqItem.whatsapp_number || '2349064556107';
+      const cleanNum = rawNum.replace(/\D/g, '');
+      const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
+      
       const text = encodeURIComponent(
         `Hello ${rfqItem.brand_name || 'Vendor'}! 💼\n\nI am requesting a B2B quotation for:\n📦 "${rfqItem.name}"\n• Quantity Needed: ${rfqQuantity} units\n• Destination: ${rfqLocation}\n• Notes: ${rfqNotes || 'Please share wholesale pricing & delivery schedule'}\n\nSent via SmartBiz Marketplace.`
       );
-      window.open(`https://wa.me/${whatsappNum}?text=${text}`, '_blank');
+      window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
 
       toast.success('B2B Quote Request Sent! Opening WhatsApp chat...');
       setRfqItem(null);
@@ -172,10 +221,27 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
     }
   };
 
+  const handleShareListing = (item: UnifiedItem) => {
+    const rawNum = item.whatsapp_number || '2349064556107';
+    const cleanNum = rawNum.replace(/\D/g, '');
+    const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum;
+
+    const shareText = `🔥 *CHECK THIS OUT ON SMARTBIZ MARKET SQUARE!*\n\n📦 *${item.name}*\n💰 *Price:* ₦${Number(item.price).toLocaleString()}\n🏪 *Vendor:* ${item.brand_name || 'Verified Merchant'}\n📍 *Location:* ${item.location || 'Nigeria'}\n\nChat with the vendor directly on WhatsApp: https://wa.me/${waNum}`;
+    
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareText);
+      setHasCopiedLink(true);
+      toast.success('Listing copied! Share it to your WhatsApp Status or customer chat.');
+      setTimeout(() => setHasCopiedLink(false), 2500);
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 pb-24 px-3 sm:px-6">
       
-      {/* ── 1. Hero Banner (Clean, Modern, Mobile-First) ── */}
+      {/* ── 1. Hero Banner (Nationwide MSME Commerce Hub) ── */}
       <section className="relative rounded-3xl sm:rounded-[36px] overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-10 md:p-14 shadow-2xl border border-slate-800">
         <div className="absolute top-0 right-0 w-72 sm:w-96 h-72 sm:h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-60 sm:w-80 h-60 sm:h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -183,22 +249,22 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         <div className="relative z-10 max-w-3xl space-y-4 sm:space-y-5">
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[10px] font-extrabold uppercase tracking-widest">
-                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> #1 Nigerian MSME Commerce Hub
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-[10px] font-extrabold uppercase tracking-widest">
+                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> #1 Nigerian MSME Central Market Square
                 </div>
                 <button
                   onClick={() => navigate('/dashboard/inventory')}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold transition-all cursor-pointer shadow-sm"
                 >
-                   <Sparkles className="w-3 h-3 text-emerald-400" /> List & Boost Your Product ➔
+                   <Sparkles className="w-3 h-3 text-emerald-400" /> 🏪 Showcase Your Business (1-Click) ➔
                 </button>
              </div>
 
              <h1 className="text-2xl sm:text-4xl md:text-5xl font-black font-heading tracking-tight leading-tight">
-               The <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">Unified</span> Market Square
+               Showcasing Nigerian <span className="bg-gradient-to-r from-emerald-400 via-indigo-300 to-pink-400 bg-clip-text text-transparent">MSMEs</span> Nationwide
              </h1>
              <p className="text-slate-300 text-xs sm:text-sm md:text-base max-w-xl leading-relaxed">
-               Buy & sell verified products, B2B wholesale commodities, logistics dispatch, and professional business services across Nigeria.
+               Discover authentic products, verified artisans, B2B wholesale commodities, and commercial trade spaces across all 36 Nigerian states.
              </p>
           </motion.div>
  
@@ -210,28 +276,50 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products, wholesale MOQ, services, locations..."
+                placeholder="Search products, services, Alaba merchants, Abuja hubs..."
                 className="w-full bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all shadow-inner"
               />
+              {searchQuery && (
+                <button 
+                  type="button" 
+                  onClick={() => { setSearchQuery(''); fetchItems(true); }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
             <button 
               type="submit"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-7 py-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-indigo-600/30 active:scale-95 cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-7 py-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-600/30 active:scale-95 cursor-pointer"
             >
-              Search
+              Search Hub
             </button>
           </form>
+
+          {/* Trust Guarantees Strip */}
+          <div className="flex flex-wrap items-center gap-4 pt-2 text-[11px] text-slate-300 font-medium">
+            <span className="flex items-center gap-1.5 text-emerald-400">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Verified CAC & Identity Checks
+            </span>
+            <span className="flex items-center gap-1.5 text-indigo-300">
+              <Truck className="w-3.5 h-3.5" /> Nationwide Waybill & In-Store Pickup
+            </span>
+            <span className="flex items-center gap-1.5 text-amber-300">
+              <Zap className="w-3.5 h-3.5" /> 1-Tap Direct WhatsApp Negotiation
+            </span>
+          </div>
         </div>
       </section>
 
-      {/* ── 2. Top Navigation Tabs (4 Equal Core Pillars) ── */}
-      <div className="sticky top-2 z-30 bg-white/90 backdrop-blur-xl border border-slate-200/80 p-1.5 sm:p-2 rounded-2xl sm:rounded-[28px] shadow-lg shadow-slate-200/40">
+      {/* ── 2. Top Navigation Tabs (4 Core MSME Pillars) ── */}
+      <div className="sticky top-2 z-30 bg-white/95 backdrop-blur-xl border border-slate-200/80 p-1.5 sm:p-2 rounded-2xl sm:rounded-[28px] shadow-lg shadow-slate-200/40">
         <div className="grid grid-cols-4 gap-1 sm:gap-2">
           {[
             { id: 'PHYSICAL' as const, label: 'Shop', sub: 'Retail Goods', icon: ShoppingBag, color: 'text-indigo-600' },
-            { id: 'SERVICE' as const, label: 'Services', sub: 'Experts', icon: Briefcase, color: 'text-purple-600' },
+            { id: 'SERVICE' as const, label: 'Services', sub: 'MSME Experts', icon: Briefcase, color: 'text-purple-600' },
             { id: 'PROPERTY' as const, label: 'Real Estate', sub: 'Commercial', icon: Home, color: 'text-emerald-600' },
-            { id: 'B2B' as const, label: 'B2B Hub', sub: 'Wholesale', icon: Zap, color: 'text-amber-600' },
+            { id: 'B2B' as const, label: 'B2B Hub', sub: 'Wholesale & MOQ', icon: Zap, color: 'text-amber-600' },
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -245,7 +333,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
                 }`}
               >
-                <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isActive ? 'text-indigo-400' : tab.color}`} />
+                <Icon className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${isActive ? 'text-emerald-400' : tab.color}`} />
                 <div className="text-center sm:text-left">
                   <span className="text-[11px] sm:text-xs font-black block tracking-tight">{tab.label}</span>
                   <span className={`text-[9px] font-bold hidden sm:block ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>
@@ -280,20 +368,24 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           })}
         </div>
 
-        {/* ── 4. Nigerian Commercial Trade Hubs & Sorter Bar ── */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
-          {/* Geo-Filter Dropdown / Horizontal Scroll */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-2 px-2">
+        {/* ── 4. Multi-Faceted Nigerian Discovery Filter Bar ── */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-3 shadow-sm space-y-3">
+          
+          {/* Nigerian Commercial Trade Hubs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 mr-1 flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-indigo-600" /> Hub:
+            </span>
             {NIGERIAN_GEO_HUBS.map(hub => {
               const isSelected = selectedLocation === hub.id;
               return (
                 <button
                   key={hub.id}
                   onClick={() => setSelectedLocation(hub.id)}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap transition-all border cursor-pointer ${
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border cursor-pointer ${
                     isSelected
                       ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 border-transparent text-slate-600 hover:bg-slate-200/70'
+                      : 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   {hub.label}
@@ -302,22 +394,63 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
             })}
           </div>
 
-          {/* Sorter Selector */}
-          <div className="flex items-center justify-end gap-2 text-xs">
-            <span className="text-slate-400 font-bold hidden sm:inline flex items-center gap-1">
-              <ArrowUpDown className="w-3.5 h-3.5" /> Sort:
-            </span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
-            >
-              <option value="boosted">⚡ Boosted & Featured First</option>
-              <option value="price_low">💵 Price: Low to High</option>
-              <option value="price_high">💎 Price: High to Low</option>
-              <option value="newest">✨ Newest Listed</option>
-            </select>
+          {/* Price Buckets & Verified Toggle & Sorter */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+            
+            {/* Price Buckets */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 mr-1 flex items-center gap-1">
+                <Tag className="w-3 h-3 text-emerald-600" /> Price:
+              </span>
+              {PRICE_BUCKETS.map(bucket => {
+                const isSelected = selectedPriceBucket === bucket.id;
+                return (
+                  <button
+                    key={bucket.id}
+                    onClick={() => setSelectedPriceBucket(bucket.id)}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap transition-all border cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-600 border-emerald-600 text-white'
+                        : 'bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {bucket.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right Controls: Verified MSME Only + Sorter */}
+            <div className="flex items-center gap-3 ml-auto">
+              {/* Verified Toggle */}
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700 bg-emerald-50/60 border border-emerald-200/70 px-2.5 py-1 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={verifiedOnly}
+                  onChange={(e) => setVerifiedOnly(e.target.checked)}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-[11px]">Verified MSMEs Only</span>
+              </label>
+
+              {/* Sorter Selector */}
+              <div className="flex items-center gap-1 text-xs">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
+                >
+                  <option value="boosted">⚡ Featured & Boosted</option>
+                  <option value="price_low">💵 Price: Low to High</option>
+                  <option value="price_high">💎 Price: High to Low</option>
+                  <option value="newest">✨ Newest Listed</option>
+                </select>
+              </div>
+            </div>
+
           </div>
+
         </div>
       </div>
 
@@ -328,11 +461,11 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
               <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <span>🔥</span> Verified VIP Featured Spotlight
+                <span>🔥</span> Verified VIP Featured MSME Spotlight
               </h3>
             </div>
             <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full uppercase tracking-widest">
-              Top Ranked
+              Top Ranked Nationwide
             </span>
           </div>
 
@@ -340,10 +473,12 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
             {boostedItems.map(item => (
               <div
                 key={`boosted-${item.id}`}
-                onClick={() => setSelectedItem(item)}
-                className="flex-shrink-0 w-64 sm:w-72 bg-white rounded-2xl p-3 border border-amber-200/80 shadow-md hover:shadow-xl transition-all cursor-pointer group"
+                className="flex-shrink-0 w-64 sm:w-72 bg-white rounded-2xl p-3 border border-amber-200/80 shadow-md hover:shadow-xl transition-all group"
               >
-                <div className="aspect-[16/10] rounded-xl overflow-hidden bg-slate-100 relative mb-2.5">
+                <div 
+                  onClick={() => setSelectedItem(item)}
+                  className="aspect-[16/10] rounded-xl overflow-hidden bg-slate-100 relative mb-2.5 cursor-pointer"
+                >
                   {item.image_url ? (
                     <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
@@ -353,15 +488,38 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     ⚡ SPONSORED
                   </span>
                 </div>
-                <p className="text-[10px] font-bold text-indigo-600 truncate">{item.brand_name || 'Verified Merchant'}</p>
-                <h4 className="text-xs font-extrabold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">{item.name}</h4>
-                <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-100">
+
+                <div 
+                  onClick={() => handleOpenMerchantProfile(item)}
+                  className="flex items-center justify-between cursor-pointer group/merch"
+                >
+                  <p className="text-[10px] font-black text-indigo-600 truncate group-hover/merch:underline flex items-center gap-1">
+                    <Store className="w-3 h-3" /> {item.brand_name || 'Verified Merchant'}
+                  </p>
+                  {item.is_vendor_verified && (
+                    <span className="text-[9px] font-black text-emerald-600 flex items-center gap-0.5">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                    </span>
+                  )}
+                </div>
+
+                <h4 
+                  onClick={() => setSelectedItem(item)}
+                  className="text-xs font-extrabold text-slate-900 truncate group-hover:text-indigo-600 transition-colors cursor-pointer mt-0.5"
+                >
+                  {item.name}
+                </h4>
+
+                <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100">
                   <span className="text-sm font-black text-slate-900 font-heading">
                     ₦{Number(item.price).toLocaleString()}
                   </span>
-                  <span className="text-[10px] font-extrabold text-indigo-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                    View ➔
-                  </span>
+                  <button
+                    onClick={() => setSelectedItem(item)}
+                    className="text-[10px] font-extrabold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-0.5 cursor-pointer"
+                  >
+                    Inspect ➔
+                  </button>
                 </div>
               </div>
             ))}
@@ -430,14 +588,27 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 {/* Card Content Details */}
                 <div className="p-4 sm:p-5 flex flex-col flex-1 space-y-3">
                   
-                  {/* Vendor Brand & Verified Badge */}
+                  {/* Vendor Brand & Verified Badge (Click to open Drawer) */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider truncate">
-                      {item.brand_name || 'Verified Merchant'}
-                    </span>
+                    <button
+                      onClick={() => handleOpenMerchantProfile(item)}
+                      className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-wider truncate flex items-center gap-1 cursor-pointer transition-colors"
+                      title="View Merchant Profile & Catalog"
+                    >
+                      <Store className="w-3 h-3" />
+                      <span className="truncate">{item.brand_name || 'Verified Merchant'}</span>
+                    </button>
+
                     {item.is_vendor_verified ? (
-                      <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <span 
+                        onClick={() => handleOpenMerchantProfile(item)}
+                        className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-emerald-100 transition-colors"
+                      >
                         <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified MSME
+                      </span>
+                    ) : item.cac_number ? (
+                      <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                        RC: {item.cac_number}
                       </span>
                     ) : (
                       <span className="text-[9px] font-bold text-slate-400">
@@ -491,13 +662,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                           🛏️ {item.metadata?.bedrooms || 0} Beds
                         </span>
                         <span className="bg-emerald-50 px-2 py-0.5 rounded-md">
-                          🛁 {item.metadata?.bathrooms || 0} Baths
+                          🏢 {item.metadata?.propertyType || 'Commercial'}
                         </span>
-                        {item.metadata?.propertyType && (
-                          <span className="bg-emerald-50 px-2 py-0.5 rounded-md">
-                            🏢 {item.metadata.propertyType}
-                          </span>
-                        )}
                       </div>
                     )}
 
@@ -512,16 +678,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                             🚚 {item.metadata.vehicleType}
                           </span>
                         )}
-                        {item.category === 'INFLUENCER' && item.metadata?.followers && (
-                          <span className="bg-pink-50 text-pink-700 px-2 py-0.5 rounded-md">
-                            📣 {item.metadata.followers} Reach
-                          </span>
-                        )}
-                        {item.metadata?.leadTime && (
-                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
-                            ⏳ {item.metadata.leadTime}
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
@@ -534,7 +690,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                           onAddToCart && onAddToCart(item);
                           toast.success(`Added "${item.name}" to cart!`);
                         }}
-                        className="flex-1 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
                         <ShoppingBag className="w-3.5 h-3.5" /> Buy / Bag
                       </button>
@@ -557,16 +713,27 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     {/* Direct WhatsApp Quick Chat */}
                     <button
                       onClick={() => {
-                        const whatsappNum = item.whatsapp_number || '2349064556107';
+                        const rawNum = item.whatsapp_number || '2349064556107';
+                        const cleanNum = rawNum.replace(/\D/g, '');
+                        const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
                         const text = encodeURIComponent(
-                          `Hello! I saw your listing "${item.name}" (₦${Number(item.price).toLocaleString()}) on the SmartBiz Marketplace and would like to make an inquiry.`
+                          `Hello ${item.brand_name || 'Vendor'}! I saw your listing "${item.name}" (₦${Number(item.price).toLocaleString()}) on the SmartBiz Nigerian Market Square and would like to make an inquiry.`
                         );
-                        window.open(`https://wa.me/${whatsappNum}?text=${text}`, '_blank');
+                        window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
                       }}
-                      className="w-9 h-9 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors cursor-pointer"
-                      title="Chat directly on WhatsApp"
+                      className="w-9 h-9 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      title="Chat directly with vendor on WhatsApp"
                     >
                       <MessageCircle className="w-4 h-4 text-emerald-600" />
+                    </button>
+
+                    {/* Share Button */}
+                    <button
+                      onClick={() => handleShareListing(item)}
+                      className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      title="Share to WhatsApp Status"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-slate-600" />
                     </button>
                   </div>
                 </div>
@@ -579,18 +746,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         {items.length === 0 && !isLoading && (
           <div className="col-span-full py-20 text-center space-y-4 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-8">
             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-md text-2xl">
-               🌍
+               🇳🇬
             </div>
             <div className="space-y-1">
               <h3 className="text-lg font-extrabold text-slate-800">No Listings Found</h3>
               <p className="text-slate-400 max-w-md mx-auto text-xs leading-relaxed">
-                No listings matching your current category or location filters. Try clearing your search or switching trade hubs.
+                No listings match your current filters. Clear your location, budget, or category to discover other products across Nigeria.
               </p>
             </div>
             <button
               onClick={() => {
                 setSelectedCategory('');
                 setSelectedLocation('');
+                setSelectedPriceBucket('');
+                setVerifiedOnly(false);
                 setSearchQuery('');
               }}
               className="text-xs font-extrabold text-indigo-600 underline cursor-pointer"
@@ -669,7 +838,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 <div className="bg-amber-50 border border-amber-200/70 p-3.5 rounded-2xl text-[11px] text-amber-900 space-y-1">
                   <p className="font-bold">⚡ Instant Multi-Channel Dispatch:</p>
                   <p className="text-amber-800 leading-relaxed">
-                    Submitting this RFQ logs the opportunity in the seller's CRM Lead Manager and opens their verified WhatsApp line with your exact specifications.
+                    Submitting this RFQ notifies the merchant and connects directly to their verified WhatsApp line with your exact specifications.
                   </p>
                 </div>
 
@@ -716,12 +885,26 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                       <ShoppingBag className="w-20 h-20" />
                     </div>
                   )}
-                  <div className="absolute bottom-4 left-4 right-4 bg-slate-900/80 backdrop-blur-md p-3.5 rounded-2xl text-white">
-                     <p className="text-[9px] font-black uppercase tracking-widest text-indigo-300">Listed By</p>
-                     <p className="font-extrabold text-sm">{selectedItem.brand_name || 'Verified Merchant'}</p>
+
+                  {/* Merchant badge overlay on photo */}
+                  <div 
+                    onClick={() => {
+                      handleOpenMerchantProfile(selectedItem);
+                    }}
+                    className="absolute bottom-4 left-4 right-4 bg-slate-900/85 backdrop-blur-md p-3.5 rounded-2xl text-white cursor-pointer hover:bg-slate-900 transition-all border border-white/10"
+                  >
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Listed By Verified MSME</p>
+                         <p className="font-extrabold text-sm">{selectedItem.brand_name || 'Verified Merchant'}</p>
+                       </div>
+                       <span className="text-[10px] font-bold text-indigo-300 flex items-center gap-1">
+                         View Store ➔
+                       </span>
+                     </div>
                      {selectedItem.location && (
-                       <p className="text-xs text-slate-300 flex items-center gap-1 mt-0.5">
-                         <MapPin className="w-3 h-3 text-indigo-400" /> {selectedItem.location}
+                       <p className="text-xs text-slate-300 flex items-center gap-1 mt-1">
+                         <MapPin className="w-3 h-3 text-emerald-400" /> {selectedItem.location}
                        </p>
                      )}
                   </div>
@@ -736,7 +919,12 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                         </span>
                         {selectedItem.is_vendor_verified && (
                           <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md text-[9px] font-extrabold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified MSME
+                          </span>
+                        )}
+                        {selectedItem.cac_number && (
+                          <span className="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-md text-[9px] font-bold">
+                            RC: {selectedItem.cac_number}
                           </span>
                         )}
                      </div>
@@ -752,7 +940,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
                      {/* Specs Grid */}
                      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Specifications</h4>
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Specifications & Fulfillment</h4>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           {selectedItem.category && (
                             <div>
@@ -760,12 +948,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                               <strong className="text-slate-800">{selectedItem.category}</strong>
                             </div>
                           )}
-                          {selectedItem.product_type === 'PHYSICAL' && selectedItem.metadata?.brand && (
-                            <div>
-                              <span className="text-slate-400 font-medium block">Brand:</span>
-                              <strong className="text-slate-800">{selectedItem.metadata.brand}</strong>
-                            </div>
-                          )}
+                          <div>
+                            <span className="text-slate-400 font-medium block">Stock Status:</span>
+                            <strong className="text-emerald-700">{selectedItem.stock_count && selectedItem.stock_count > 0 ? `${selectedItem.stock_count} units available` : 'In Stock'}</strong>
+                          </div>
                           {selectedItem.product_type === 'B2B' && (
                             <div>
                               <span className="text-slate-400 font-medium block">Min Order (MOQ):</span>
@@ -781,56 +967,104 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                           {selectedItem.product_type === 'SERVICE' && (
                             <div>
                               <span className="text-slate-400 font-medium block">Turnaround:</span>
-                              <strong className="text-slate-800">{selectedItem.metadata?.duration || 'Flexible'}</strong>
+                              <strong className="text-slate-800">{selectedItem.metadata?.duration || 'Flexible Delivery'}</strong>
                             </div>
                           )}
+                          <div>
+                            <span className="text-slate-400 font-medium block">Fulfillment:</span>
+                            <strong className="text-slate-800">Nationwide Waybill</strong>
+                          </div>
                         </div>
                      </div>
                   </div>
 
-                  {/* Actions in Modal */}
-                  <div className="mt-auto pt-4 flex items-center gap-3">
-                     {selectedItem.product_type === 'PHYSICAL' ? (
-                       <button 
-                        onClick={() => {
-                          onAddToCart && onAddToCart(selectedItem);
-                          toast.success(`Added "${selectedItem.name}" to bag!`);
-                          setSelectedItem(null);
-                        }}
-                        className="flex-1 bg-slate-900 hover:bg-indigo-600 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 cursor-pointer"
-                       >
-                         Add to Shopping Bag
-                       </button>
-                     ) : selectedItem.product_type === 'B2B' ? (
-                       <button 
-                        onClick={() => {
-                          setRfqItem(selectedItem);
-                          setSelectedItem(null);
-                        }}
-                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 cursor-pointer"
-                       >
-                         Request Bulk Quotation
-                       </button>
-                     ) : null}
+                  {/* Trust badge note */}
+                  <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-3 flex items-center gap-2.5 text-[11px] text-emerald-900">
+                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <p className="leading-tight">
+                      <strong>Safe Nigerian Commerce:</strong> Chat directly with the business owner, agree on waybill delivery, or pay securely via Paystack.
+                    </p>
+                  </div>
 
-                     <button 
-                      onClick={() => {
-                        const whatsappNum = selectedItem.whatsapp_number || '2349064556107';
-                        const text = encodeURIComponent(
-                          `Hello! I'm interested in your listing "${selectedItem.name}" (₦${Number(selectedItem.price).toLocaleString()}) on the SmartBiz Marketplace.`
-                        );
-                        window.open(`https://wa.me/${whatsappNum}?text=${text}`, '_blank');
-                      }}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-                     >
-                       <MessageCircle className="w-4 h-4" /> WhatsApp Chat
-                     </button>
+                  {/* Actions in Modal */}
+                  <div className="mt-auto pt-3 flex flex-col gap-2">
+                     <div className="flex items-center gap-2">
+                        {selectedItem.product_type === 'PHYSICAL' ? (
+                          <button 
+                            onClick={() => {
+                              onAddToCart && onAddToCart(selectedItem);
+                              toast.success(`Added "${selectedItem.name}" to bag!`);
+                              setSelectedItem(null);
+                            }}
+                            className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <ShoppingBag className="w-4 h-4" /> Add to Shopping Bag
+                          </button>
+                        ) : selectedItem.product_type === 'B2B' ? (
+                          <button 
+                            onClick={() => {
+                              setRfqItem(selectedItem);
+                              setSelectedItem(null);
+                            }}
+                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 cursor-pointer"
+                          >
+                            Request Bulk Quotation
+                          </button>
+                        ) : null}
+
+                        <button 
+                          onClick={() => {
+                            const rawNum = selectedItem.whatsapp_number || '2349064556107';
+                            const cleanNum = rawNum.replace(/\D/g, '');
+                            const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
+                            const text = encodeURIComponent(
+                              `Hello ${selectedItem.brand_name || 'Vendor'}! I saw your listing "${selectedItem.name}" (₦${Number(selectedItem.price).toLocaleString()}) on the SmartBiz Nigerian Market Square and would like to order/negotiate.`
+                            );
+                            window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
+                          }}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <MessageCircle className="w-4 h-4" /> WhatsApp Negotiate
+                        </button>
+                     </div>
+
+                     <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleShareListing(selectedItem)}
+                          className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          {hasCopiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5" />}
+                          <span>{hasCopiedLink ? 'Copied to Clipboard!' : 'Share to WhatsApp Status'}</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleOpenMerchantProfile(selectedItem);
+                            setSelectedItem(null);
+                          }}
+                          className="py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Store className="w-3.5 h-3.5" /> Seller Store
+                        </button>
+                     </div>
                   </div>
                </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── 9. Merchant Profile Drawer ── */}
+      <MerchantProfileDrawer
+        isOpen={isMerchantDrawerOpen}
+        onClose={() => setIsMerchantDrawerOpen(false)}
+        merchant={selectedMerchant}
+        onAddToCart={onAddToCart}
+        onSelectItem={(item) => {
+          setIsMerchantDrawerOpen(false);
+          setSelectedItem(item);
+        }}
+      />
+
     </div>
   );
 };

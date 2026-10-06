@@ -493,6 +493,12 @@ const PublicStorefront: React.FC = () => {
              <span className="bg-emerald-50 px-3 py-1 rounded-full text-[10px] font-black text-emerald-700 border border-emerald-150 flex items-center gap-1.5 uppercase tracking-wider">
                <Check className="w-3.5 h-3.5 text-emerald-600" /> SmartBiz Verified
              </span>
+             <Link
+               to="/dashboard/marketplace"
+               className="bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-full text-[10px] font-black text-indigo-700 border border-indigo-200 flex items-center gap-1.5 uppercase tracking-wider transition-colors"
+             >
+               <Globe className="w-3.5 h-3.5 text-indigo-600" /> Market Square Hub ➔
+             </Link>
           </div>
         </div>
       </header>

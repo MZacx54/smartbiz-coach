@@ -16,6 +16,14 @@ class MarketplaceListingSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     brand_name = serializers.ReadOnlyField(source='brand.business_name')
+    brand_slug = serializers.ReadOnlyField(source='brand.slug')
+    brand_logo = serializers.ReadOnlyField(source='brand.logo_url')
+    brand_niche = serializers.ReadOnlyField(source='brand.niche')
+    brand_address = serializers.ReadOnlyField(source='brand.address')
+    smedan_number = serializers.ReadOnlyField(source='brand.smedan_number')
+    corporate_entity_type = serializers.ReadOnlyField(source='brand.corporate_entity_type')
+    trust_badge_text = serializers.ReadOnlyField(source='brand.trust_badge_text')
+    cac_number = serializers.SerializerMethodField()
     whatsapp_number = serializers.SerializerMethodField()
     paystack_subaccount_code = serializers.SerializerMethodField()
     is_vendor_verified = serializers.SerializerMethodField()
@@ -24,6 +32,12 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = '__all__'
         read_only_fields = ['brand']
+
+    def get_cac_number(self, obj):
+        try:
+            return getattr(obj.brand, 'cac_number', '') or getattr(getattr(obj.brand.user, 'vendor_profile', None), 'cac_number', '') or ''
+        except Exception:
+            return ''
 
     def get_is_vendor_verified(self, obj):
         try:

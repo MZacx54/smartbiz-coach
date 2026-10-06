@@ -313,10 +313,17 @@ class GlobalMarketplaceListView(generics.ListAPIView):
         if category and category.strip():
             queryset = queryset.filter(category__iexact=category.strip())
             
+        # Merchant brand slug filter (view all listings from this specific MSME)
+        brand_slug = self.request.query_params.get('brand_slug')
+        if brand_slug and brand_slug.strip():
+            queryset = queryset.filter(brand__slug=brand_slug.strip())
+
         # State / Geo-Location filter (e.g. Lagos, Abuja, Onitsha, etc.)
         location = self.request.query_params.get('location')
         if location and location.strip() and location.strip() != 'ALL':
-            queryset = queryset.filter(location__icontains=location.strip())
+            from django.db.models import Q
+            loc_term = location.strip()
+            queryset = queryset.filter(Q(location__icontains=loc_term) | Q(brand__address__icontains=loc_term))
 
         # Price range filter
         min_price = self.request.query_params.get('min_price')

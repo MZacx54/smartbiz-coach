@@ -493,6 +493,14 @@ export interface UnifiedItem {
     location: string; 
     metadata: any; 
     brand_name?: string; 
+    brand_slug?: string;
+    brand_logo?: string;
+    brand_niche?: string;
+    brand_address?: string;
+    cac_number?: string;
+    smedan_number?: string;
+    corporate_entity_type?: string;
+    trust_badge_text?: string;
     whatsapp_number?: string;
     paystack_subaccount_code?: string;
     is_public: boolean; 

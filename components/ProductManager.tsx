@@ -198,6 +198,27 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     }
   };
 
+  const handleToggleShowcase = async (product: Product) => {
+    const newIsPublic = product.is_public === false;
+    const toastId = toast.loading(newIsPublic ? 'Showcasing to Nigerian Market Square...' : 'Setting to private store...');
+    try {
+      if (isTractionMode) {
+        setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_public: newIsPublic } : p));
+        toast.success(newIsPublic ? 'Live on Market Square (Traction Mode)' : 'Set to Private (Traction Mode)', { id: toastId });
+      } else {
+        await api.put(`/api/marketplace/products/${product.id}/`, {
+          ...product,
+          is_public: newIsPublic
+        });
+        setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_public: newIsPublic } : p));
+        toast.success(newIsPublic ? '🎉 Live on Central Market Square across Nigeria!' : 'Listing hidden from Market Square.', { id: toastId });
+        window.dispatchEvent(new Event('smartbiz_products_updated'));
+      }
+    } catch (err) {
+      toast.error('Failed to update Market Square status', { id: toastId });
+    }
+  };
+
   const compressBase64Url = (dataUrl: string, maxWidth = 800, quality = 0.75): Promise<string> => {
     return new Promise((resolve) => {
       if (!dataUrl || !dataUrl.startsWith('data:image')) {
@@ -1702,8 +1723,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <Globe className="w-5 h-5 text-emerald-600" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-slate-800">Storefront & Marketplace Sync</p>
-                            <p className="text-[10px] text-slate-400">List on your public store & Nigerian marketplace</p>
+                            <p className="text-xs font-bold text-slate-800">Showcase on Central Market Square (Nationwide)</p>
+                            <p className="text-[10px] text-slate-400">Display across all 36 states on the central MSME Market Square & your personal storefront</p>
                           </div>
                         </div>
                         <input 
@@ -1962,6 +1983,25 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center text-[10px] text-slate-500 font-medium">
                               <span>Stock Quantity: <strong className={`font-bold ${isLowStock && product.product_type === 'PHYSICAL' ? 'text-rose-600' : 'text-slate-800'}`}>{stock} units</strong></span>
                               <span>Value: <strong className="text-slate-800 font-bold">₦{(stock * parseFloat(product.price)).toLocaleString()}</strong></span>
+                            </div>
+
+                            {/* Market Square Showcase Strip */}
+                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-[10px]">
+                              <span className="text-slate-500 font-bold flex items-center gap-1">
+                                <Globe className="w-3 h-3 text-indigo-600" /> Market Square:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleShowcase(product)}
+                                className={`px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer text-[10px] ${
+                                  product.is_public !== false 
+                                    ? 'bg-emerald-100 text-emerald-800 font-extrabold hover:bg-emerald-200' 
+                                    : 'bg-slate-200 text-slate-600 font-bold hover:bg-slate-300'
+                                }`}
+                                title={product.is_public !== false ? "Click to set private" : "Click to showcase across Nigeria"}
+                              >
+                                {product.is_public !== false ? '🌐 Live Nationwide' : '🔒 Private Store'}
+                              </button>
                             </div>
                             
                             <div className="flex gap-2 pt-2">
