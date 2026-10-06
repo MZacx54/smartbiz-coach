@@ -94,7 +94,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       }
       
       // Only deduct credits if generation successfully completed
-      const billingResponse = await billingService.deductCredits(15, 'AI Business Plan Generator');
+      const billingResponse = await billingService.deductCredits(200, 'AI Bank & Grant Business Plan Generator');
       onUpdateCredits(billingResponse.credits);
       
       setRawPlan(result);
@@ -123,7 +123,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       return;
     }
 
-    // Business plan costs 15 credits
+    // Business plan costs 200 credits
     setDeductOnConfirm(() => async () => {
       await executeGenerate();
     });
@@ -796,7 +796,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
           
           <div className="flex items-center justify-between mt-3 text-xs">
             <span className="text-orange-600 font-semibold flex items-center gap-1">
-              <span>⚡</span> Costs 15 BizCredits
+              <span>⚡</span> Costs 200 BizCredits
             </span>
             {editablePlan && (
               <button
@@ -813,10 +813,11 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       <CreditPromptModal
         isOpen={showCreditPrompt}
         featureLabel="AI Business Plan Generator"
-        creditCost={15}
+        creditCost={200}
         currentCredits={credits}
         onConfirm={deductOnConfirm || (() => {})}
         onClose={() => setShowCreditPrompt(false)}
+        onCreditsUpdated={onUpdateCredits}
       />
     </div>
   );

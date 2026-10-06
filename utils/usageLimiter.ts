@@ -19,18 +19,18 @@ interface FeatureConfig {
 }
 
 export const FEATURE_CONFIGS: Record<FeatureKey, FeatureConfig> = {
-  brand_builder: { freeLimit: 0, creditCost: 5, label: 'AI Brand Identity Builder' },
-  content_generator: { freeLimit: 0, creditCost: 2, label: 'AI Content Studio' },
-  name_check: { freeLimit: 0, creditCost: 1, label: 'AI Name Availability Check' },
-  business_plan: { freeLimit: 0, creditCost: 15, label: 'AI Business Plan Generator' },
-  grant_search: { freeLimit: 0, creditCost: 2, label: 'AI Grant Search' },
-  debt_reminder: { freeLimit: 0, creditCost: 1, label: 'AI Debt Reminder' },
+  brand_builder: { freeLimit: 0, creditCost: 100, label: 'Full Corporate Brand Identity Kit' },
+  content_generator: { freeLimit: 0, creditCost: 15, label: 'AI Content Studio' },
+  name_check: { freeLimit: 0, creditCost: 5, label: 'AI Name Availability Check' },
+  business_plan: { freeLimit: 0, creditCost: 200, label: 'AI Bank & Grant Business Plan' },
+  grant_search: { freeLimit: 0, creditCost: 50, label: 'AI Grant Search & Eligibility Audit' },
+  debt_reminder: { freeLimit: 0, creditCost: 25, label: 'AI Debtor Gbege WhatsApp Recovery' },
   ai_chat: { freeLimit: 999999, creditCost: 0, label: 'AI Live Support Chat (Free)' },
-  sales_assistant: { freeLimit: 0, creditCost: 2, label: 'AI Sales Assistant' },
-  health_score: { freeLimit: 0, creditCost: 5, label: 'AI Business Health Score' },
-  pricing_assistant: { freeLimit: 0, creditCost: 2, label: 'AI Pricing Assistant' },
-  snap_and_list: { freeLimit: 0, creditCost: 1, label: 'AI Snap & List Scanner' },
-  logo_generation: { freeLimit: 0, creditCost: 2, label: 'AI Logo Generation' },
+  sales_assistant: { freeLimit: 0, creditCost: 10, label: 'AI Sales Assistant' },
+  health_score: { freeLimit: 0, creditCost: 20, label: 'AI Business Health Score' },
+  pricing_assistant: { freeLimit: 0, creditCost: 20, label: 'AI Pricing Assistant' },
+  snap_and_list: { freeLimit: 0, creditCost: 5, label: 'AI Snap & List Scanner' },
+  logo_generation: { freeLimit: 0, creditCost: 20, label: 'AI Logo Generation' },
 };
 
 interface UsageRecord {

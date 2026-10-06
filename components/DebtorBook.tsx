@@ -1512,11 +1512,12 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       {/* Credit Prompt Modal */}
       <CreditPromptModal
         isOpen={showCreditPrompt}
-        featureLabel="AI Debt Reminder"
-        creditCost={1}
+        featureLabel="AI Debtor Gbege WhatsApp Recovery"
+        creditCost={25}
         currentCredits={credits}
         onConfirm={deductOnConfirm || (() => {})}
         onClose={() => setShowCreditPrompt(false)}
+        onCreditsUpdated={onUpdateCredits}
       />
 
     </div>

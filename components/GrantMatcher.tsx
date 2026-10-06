@@ -471,11 +471,12 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
 
       <CreditPromptModal
         isOpen={showCreditPrompt}
-        featureLabel="AI Grant Search"
-        creditCost={2}
+        featureLabel="AI Grant Funding Search & Audit"
+        creditCost={50}
         currentCredits={credits}
         onConfirm={deductOnConfirm || (() => {})}
         onClose={() => setShowCreditPrompt(false)}
+        onCreditsUpdated={onUpdateCredits}
       />
     </div>
   );

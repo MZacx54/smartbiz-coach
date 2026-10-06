@@ -163,7 +163,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       if (!result.address && user?.location) result.address = user.location;
       
       // Only deduct credits if generation successfully completed
-      const billingResponse = await billingService.deductCredits(5, "AI Brand Identity Builder");
+      const billingResponse = await billingService.deductCredits(100, "Full Corporate Brand Identity Kit");
       onUpdateCredits(billingResponse.credits);
 
       setLocalBrandData(result);
@@ -183,7 +183,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
     if (!formData.name || !finalNiche || !formData.vibe) return;
 
-    const brandCost = 5;
+    const brandCost = 100;
     if (credits < brandCost) {
       setDeductOnConfirm(null);
       setShowCreditPrompt(true);
@@ -2522,11 +2522,12 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
       <CreditPromptModal
         isOpen={showCreditPrompt}
-        featureLabel="AI Brand Builder"
-        creditCost={5}
+        featureLabel="Full Corporate Brand Identity Kit"
+        creditCost={100}
         currentCredits={credits}
         onConfirm={deductOnConfirm || (() => {})}
         onClose={() => setShowCreditPrompt(false)}
+        onCreditsUpdated={onUpdateCredits}
       />
     </div>
   );

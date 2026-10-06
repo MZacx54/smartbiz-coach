@@ -89,6 +89,8 @@ class VerifyPaymentView(APIView):
                         credits_purchased = 400
                     elif abs(paystack_amount_naira - 7500) < 5:
                         credits_purchased = 1000
+                    elif abs(paystack_amount_naira - 15000) < 5:
+                        credits_purchased = 2500
                     # Legacy packs compatibility
                     elif abs(paystack_amount_naira - 300) < 5:
                         credits_purchased = 30

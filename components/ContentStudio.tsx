@@ -2062,10 +2062,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             <CreditPromptModal
                 isOpen={showCreditPrompt}
                 onClose={() => setShowCreditPrompt(false)}
-                creditCost={activeTab === 'Post Writer' ? 2 : activeTab === 'Blog Writer' ? 5 : activeTab === 'Partnership Pitch' ? 3 : activeTab === 'Video Script' ? 8 : 1}
-                featureLabel={activeTab}
+                creditCost={activeTab === 'Post Writer' ? 5 : activeTab === 'Blog Writer' ? 15 : activeTab === 'Partnership Pitch' ? 20 : activeTab === 'Video Script' ? 30 : 10}
+                featureLabel={`Content Studio (${activeTab})`}
                 currentCredits={credits}
                 onConfirm={deductOnConfirm || (() => {})}
+                onCreditsUpdated={onUpdateCredits}
             />
             {/* Teleprompter Camera Recorder Modal Overlay */}
             {showTeleprompter && (

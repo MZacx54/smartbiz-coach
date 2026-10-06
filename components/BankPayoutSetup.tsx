@@ -49,6 +49,13 @@ export const BankPayoutSetup: React.FC = () => {
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
   const [isVerifyingWithCredits, setIsVerifyingWithCredits] = useState(false);
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [userCredits, setUserCredits] = useState<number>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('sb_user') || '{}')?.credits || 0;
+    } catch {
+      return 0;
+    }
+  });
   const [payoutDetails, setPayoutDetails] = useState<PayoutDetails | null>(null);
 
   // Fetch payout details and bank list on mount
@@ -364,12 +371,13 @@ export const BankPayoutSetup: React.FC = () => {
         isOpen={showCreditPrompt}
         featureLabel="Official Verified Vendor Badge"
         creditCost={500}
-        currentCredits={0}
+        currentCredits={userCredits}
         onConfirm={() => {
           setShowCreditPrompt(false);
-          window.location.href = '/settings?tab=billing';
+          handleActivateVerification();
         }}
         onClose={() => setShowCreditPrompt(false)}
+        onCreditsUpdated={(newBal) => setUserCredits(newBal)}
       />
     </div>
   );

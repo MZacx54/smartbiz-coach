@@ -51,7 +51,7 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
       });
 
       // Only deduct credits if generation successfully completed
-      const billingResponse = await billingService.deductCredits(2, 'AI Pricing Assistant');
+      const billingResponse = await billingService.deductCredits(20, 'AI Pricing & Margin Optimization Assistant');
       onUpdateCredits(billingResponse.credits);
 
       setResult(data);
@@ -264,11 +264,12 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
 
       <CreditPromptModal
         isOpen={showCreditPrompt}
-        featureLabel="AI Pricing Assistant"
-        creditCost={2}
+        featureLabel="AI Pricing & Margin Assistant"
+        creditCost={20}
         currentCredits={credits}
         onConfirm={deductOnConfirm || (() => {})}
         onClose={() => setShowCreditPrompt(false)}
+        onCreditsUpdated={onUpdateCredits}
       />
     </div>
   );

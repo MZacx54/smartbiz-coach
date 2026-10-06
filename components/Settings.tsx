@@ -18,9 +18,10 @@ interface SettingsProps {
 
 const CREDIT_PACKS = [
   { credits: 40, price: 500, label: 'Micro Pack', desc: 'For quick AI tasks & emergency SMS' },
-  { credits: 150, price: 1500, label: 'Starter Pack', desc: '1 Product Boost or 30 AI generations' },
+  { credits: 150, price: 1500, label: 'Starter Pack', desc: '1 Product Boost or Brand Kit' },
   { credits: 400, price: 3500, label: 'Grower Pack', desc: '1 Grant Business Plan or 7-Day Boost', popular: true },
   { credits: 1000, price: 7500, label: 'Vendor Pro Pack', desc: 'Vendor Badge + 2 Boosts + SMS campaigns' },
+  { credits: 2500, price: 15000, label: 'Mogul Pack', desc: 'Continuous weekly boosts & nationwide spotlight' },
 ];
 
 import { BankPayoutSetup } from './BankPayoutSetup';

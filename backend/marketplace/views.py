@@ -562,7 +562,7 @@ class BoostProductView(views.APIView):
             return Response({'error': 'Product not found or you do not have permission to boost this item.'}, status=status.HTTP_404_NOT_FOUND)
 
         duration_days = int(request.data.get('duration_days') or 3)
-        credits_required = 150 if duration_days <= 3 else 300
+        credits_required = 150 if duration_days <= 3 else (300 if duration_days <= 7 else 500)
 
         if request.user.credits < credits_required:
             return Response({

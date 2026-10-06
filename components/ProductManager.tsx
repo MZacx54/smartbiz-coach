@@ -175,7 +175,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
 
   const handleBoostListing = async (durationDays: number) => {
     if (!boostingProduct) return;
-    const cost = durationDays <= 3 ? 150 : 300;
+    const cost = durationDays <= 3 ? 150 : (durationDays <= 7 ? 300 : 500);
     setCreditPromptCost(cost);
     setIsBoosting(true);
     try {
@@ -2300,6 +2300,25 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                   <span className="text-[9px] text-slate-400">Maximum Reach</span>
                 </div>
               </div>
+
+              <div 
+                onClick={() => handleBoostListing(14)}
+                className="p-4 rounded-2xl border-2 border-purple-200 hover:border-purple-500 bg-purple-50/40 hover:bg-purple-50/80 cursor-pointer transition-all flex items-center justify-between group relative overflow-hidden"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-purple-600 text-white rounded-xl">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-purple-800">14-Day Mega Spotlight</h4>
+                    <p className="text-[10px] text-slate-500">2 weeks nationwide spotlight & top carousel banner</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-purple-900 block">500 Credits</span>
+                  <span className="text-[9px] text-slate-400">Mega Impact</span>
+                </div>
+              </div>
             </div>
 
             <p className="text-[11px] text-slate-400 text-center">
@@ -2317,9 +2336,14 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         currentCredits={credits}
         onConfirm={() => {
           setShowCreditPrompt(false);
-          window.location.href = '/settings?tab=billing';
+          if (boostingProduct) {
+            handleBoostListing(creditPromptCost <= 150 ? 3 : (creditPromptCost <= 300 ? 7 : 14));
+          }
         }}
         onClose={() => setShowCreditPrompt(false)}
+        onCreditsUpdated={(newBal) => {
+          if (onUpdateCredits) onUpdateCredits(newBal);
+        }}
       />
 
       {/* Barcode & QR Code Scanner Modal */}

@@ -62,6 +62,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         };
     }, []);
 
+    useEffect(() => {
+        const handleCreditsUpdated = (e: any) => {
+            const newBal = e.detail;
+            if (typeof newBal === 'number' && onUpdateCredits) {
+                onUpdateCredits(newBal);
+            }
+        };
+        window.addEventListener('smartbiz_credits_updated', handleCreditsUpdated);
+        return () => window.removeEventListener('smartbiz_credits_updated', handleCreditsUpdated);
+    }, [onUpdateCredits]);
+
     const handleUnlockOwnerMode = (e: React.FormEvent) => {
         e.preventDefault();
         const actualPin = localStorage.getItem('sb_owner_pin') || '1234';
