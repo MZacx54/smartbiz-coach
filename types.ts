@@ -24,10 +24,20 @@ export interface BrandIdentity {
   phone?: string; // Business contact phone
   cacNumber?: string;
   tin?: string;
+  tinNumber?: string;
+  smedanNumber?: string;
+  corporateEntityType?: string;
   email?: string;
   location?: string;
+  address?: string;
   whatsapp?: string;
   paystack_subaccount_code?: string;
+  mission?: string;
+  vision?: string;
+  coreValues?: string[];
+  executiveBio?: string;
+  slaPolicy?: string;
+  ndprCompliance?: string;
   openingHours?: {
     monFri?: string;
     saturday?: string;

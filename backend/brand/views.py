@@ -16,16 +16,34 @@ class GenerateBrandView(views.APIView):
         vibe = request.data.get('vibe')
         description = request.data.get('description', '')
         tone = request.data.get('tone', 'Corporate')
+        
+        # Pull dynamic owner contact & regulatory coordinates
+        user_phone = getattr(request.user, 'phone', '') or ''
+        user_email = getattr(request.user, 'email', '') or ''
+        user_location = getattr(request.user, 'location', '') or 'Lagos, Nigeria'
+        
+        phone = request.data.get('phone') or user_phone
+        email = request.data.get('email') or user_email
+        address = request.data.get('address') or user_location
+        cac_number = request.data.get('cac_number') or request.data.get('cacNumber') or ''
+        tin_number = request.data.get('tin_number') or request.data.get('tinNumber') or ''
+        smedan_number = request.data.get('smedan_number') or request.data.get('smedanNumber') or ''
+        corporate_entity_type = request.data.get('corporate_entity_type') or request.data.get('corporateEntityType') or 'Registered Business Name (BN)'
 
         from smartbiz_backend import gemini_utils
         
         prompt = f"""
-        Generate a comprehensive brand identity for:
-        Name: {name}
-        Niche: {niche}
-        Vibe: {vibe}
+        Generate a comprehensive, premium, bank- and industry-ready corporate brand identity for:
+        Company Legal Name: {name}
+        Operating Niche/Sector: {niche}
+        Entity Type: {corporate_entity_type}
+        Brand Vibe: {vibe}
         Description: {description}
-        Tone: {tone} (This affects policies and brand voice)
+        Tone: {tone}
+        Registered Location: {address}
+        Owner Contact: {phone}
+
+        This brand identity must meet the institutional standards expected by commercial banks (for corporate account opening & credit assessment), industry procurement departments, and federal funding facilities (BOI, SMEDAN, Tony Elumelu Foundation).
 
         Return a JSON object matching this structure EXACTLY:
         {{
@@ -40,7 +58,14 @@ class GenerateBrandView(views.APIView):
             "elevatorPitch": "...",
             "brandVoice": "...",
             "targetAudience": "...",
-            "logoPrompt": "Detailed prompt for an AI icon generator based on this brand",
+            "mission": "Formal institutional mission statement outlining purpose, value creation, and quality commitment for corporate banks and grant boards.",
+            "vision": "5-year growth, market leadership and regional expansion vision statement.",
+            "coreValues": ["Integrity", "Excellence", "Customer Commitment", "Accountability"],
+            "executiveBio": "A 2-3 sentence executive profile of the principal promoter / founder highlighting domain leadership and operational discipline.",
+            "slaPolicy": "Formal Service Level Agreement stating response time (within 2 hours), delivery benchmarks (24-48 hrs), and service fulfillment standards.",
+            "ndprCompliance": "Official data privacy, confidential transaction processing, and NDPR/customer data protection commitment statement.",
+            "corporateEntityType": "{corporate_entity_type}",
+            "logoPrompt": "Detailed prompt for an AI icon generator based on this corporate brand",
             "policies": {{ "payment": "...", "delivery": "...", "refund": "..." }},
             "trustBadgeText": "...",
             "whatsappContent": {{
@@ -51,7 +76,7 @@ class GenerateBrandView(views.APIView):
             }},
             "packaging": {{ "thankYouNote": "...", "unboxingTip": "..." }}
         }}
-        Use Nigerian business context and Pidgin if tone is 'Street'. For fonts, use major Google Fonts like Inter, Playfair Display, Montserrat, etc.
+        Use professional Nigerian corporate business terminology. For fonts, use established Google Fonts like Montserrat, Outfit, Playfair Display, Inter, etc.
         """
         try:
             brand_identity = gemini_utils.generate_json_content(prompt)
@@ -59,20 +84,20 @@ class GenerateBrandView(views.APIView):
                 raise Exception(brand_identity.get("error", "AI generation returned error status"))
             
             # Merge with default fallback dictionary to ensure all keys are populated
-            brand_identity = self.ensure_complete_brand(brand_identity, name, niche, vibe, tone)
+            brand_identity = self.ensure_complete_brand(brand_identity, name, niche, vibe, tone, phone, email, address, cac_number, tin_number, smedan_number, corporate_entity_type)
             deduct_credits(request.user, 'brand_gen')
             return Response(brand_identity)
         except Exception as e:
             # Dynamic high-fidelity fallback engine
             print(f"Brand Generation fallback triggered: {e}")
-            brand_identity = self.ensure_complete_brand({}, name, niche, vibe, tone)
+            brand_identity = self.ensure_complete_brand({}, name, niche, vibe, tone, phone, email, address, cac_number, tin_number, smedan_number, corporate_entity_type)
             try:
                 deduct_credits(request.user, 'brand_gen')
             except Exception:
                 pass
             return Response(brand_identity)
 
-    def ensure_complete_brand(self, ai_data, name, niche, vibe, tone):
+    def ensure_complete_brand(self, ai_data, name, niche, vibe, tone, phone='', email='', address='', cac_number='', tin_number='', smedan_number='', corporate_entity_type='Registered Business Name (BN)'):
         if not isinstance(ai_data, dict):
             ai_data = {}
             
@@ -114,6 +139,12 @@ class GenerateBrandView(views.APIView):
             greeting = f"Welcome to {name}! How can we assist you with our {niche} products today?"
             elevator = f"At {name}, we are dedicated to providing premium quality {niche} services that meet international standards and satisfy your local needs."
             payment_policy = "Full payment is required upon placing the order. We accept transfers, cards, and secure online pay."
+
+        default_mission = f"To provide standard-defining {niche} solutions with uncompromising integrity, superior craftsmanship, and customer value across Nigerian markets."
+        default_vision = f"To be the foremost and most trusted {niche} commercial brand in West Africa, scaling sustainable SME operations and driving digital trade."
+        default_bio = f"{name} was established to bridge critical quality and reliability gaps in the {niche} sector. Directed by visionary entrepreneurship with a deep commitment to regulatory compliance and client satisfaction."
+        default_sla = "Official SLA: Inquiries acknowledged within 120 minutes. Order verification and dispatch within 24 hours. Formal dispute escalation resolved within 24 business hours."
+        default_ndpr = "NDPR Privacy Statement: Customer personal records, transaction communications, and payment confirmations are processed strictly under Nigerian Data Protection Regulation (NDPR) confidentiality standards."
 
         # Helper to get value with fallback case-insensitively
         def get_val(keys, default):
@@ -191,14 +222,28 @@ class GenerateBrandView(views.APIView):
             "colors": colors,
             "fonts": fonts_dict,
             "taglines": ai_taglines,
-            "socialBio": get_val(["socialBio", "social_bio"], f"Official page of {name}. Offering premium {niche} with a {vibe} experience. Nationwide delivery from Lagos, Nigeria. 🇳🇬"),
+            "socialBio": get_val(["socialBio", "social_bio"], f"Official page of {name}. Offering premium {niche} with a {vibe} experience. Nationwide delivery from {address}. 🇳🇬"),
             "whatsappGreeting": get_val(["whatsappGreeting", "whatsapp_greeting"], greeting),
             "elevatorPitch": get_val(["elevatorPitch", "elevator_pitch"], elevator),
             "brandVoice": get_val(["brandVoice", "brand_voice"], voice),
             "targetAudience": get_val(["targetAudience", "target_audience"], f"Smart Nigerian consumers seeking premium {niche} products with exceptional customer care."),
-            "logoPrompt": get_val(["logoPrompt", "logo_prompt"], f"A minimalist, professional logo icon for {name} ({niche}), vector style, clean shapes, branding accent"),
+            "mission": get_val(["mission"], default_mission),
+            "vision": get_val(["vision"], default_vision),
+            "coreValues": ai_data.get("coreValues") or ai_data.get("core_values") or ["Uncompromising Quality", "Institutional Integrity", "Customer Centricity", "Operational Transparency"],
+            "executiveBio": get_val(["executiveBio", "executive_bio"], default_bio),
+            "slaPolicy": get_val(["slaPolicy", "sla_policy"], default_sla),
+            "ndprCompliance": get_val(["ndprCompliance", "ndpr_compliance"], default_ndpr),
+            "corporateEntityType": corporate_entity_type or get_val(["corporateEntityType", "corporate_entity_type"], "Registered Business Name (BN)"),
+            "phone": phone or get_val(["phone"], ""),
+            "email": email or get_val(["email"], ""),
+            "address": address or get_val(["address", "location"], "Lagos, Nigeria"),
+            "location": address or get_val(["address", "location"], "Lagos, Nigeria"),
+            "cacNumber": cac_number or get_val(["cacNumber", "cac_number"], ""),
+            "tinNumber": tin_number or get_val(["tinNumber", "tin_number"], ""),
+            "smedanNumber": smedan_number or get_val(["smedanNumber", "smedan_number"], ""),
+            "logoPrompt": get_val(["logoPrompt", "logo_prompt"], f"A minimalist, professional corporate logo icon for {name} ({niche}), vector style, clean institutional badge"),
             "policies": policies,
-            "trustBadgeText": get_val(["trustBadgeText", "trust_badge_text"], "100% Verified Quality & Nationwide Delivery"),
+            "trustBadgeText": get_val(["trustBadgeText", "trust_badge_text"], "Verified MSME Credentials & Guaranteed Quality"),
             "whatsappContent": whatsapp_content,
             "packaging": packaging
         }

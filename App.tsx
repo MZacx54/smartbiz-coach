@@ -660,7 +660,7 @@ const App: React.FC = () => {
               >
                 <Routes>
                   <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
                   <Route path="content" element={<ContentStudio brand={savedBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="grants" element={<GrantMatcher businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />

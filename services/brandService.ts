@@ -29,7 +29,19 @@ export const mapDbToBrand = (dbBrand: any): BrandIdentity => {
         packaging: dbBrand.packaging || { thankYouNote: '', unboxingTip: '' },
         phone: dbBrand.phone || '',
         email: dbBrand.email || '',
-        location: dbBrand.location || '',
+        location: dbBrand.location || dbBrand.address || '',
+        address: dbBrand.address || dbBrand.location || '',
+        cacNumber: dbBrand.cacNumber || dbBrand.cac_number || '',
+        tin: dbBrand.tin || dbBrand.tin_number || dbBrand.tinNumber || '',
+        tinNumber: dbBrand.tinNumber || dbBrand.tin_number || dbBrand.tin || '',
+        smedanNumber: dbBrand.smedanNumber || dbBrand.smedan_number || '',
+        corporateEntityType: dbBrand.corporateEntityType || dbBrand.corporate_entity_type || 'Sole Proprietorship / BN',
+        mission: dbBrand.mission || '',
+        vision: dbBrand.vision || '',
+        coreValues: Array.isArray(dbBrand.coreValues) ? dbBrand.coreValues : (Array.isArray(dbBrand.core_values) ? dbBrand.core_values : ['Integrity', 'Excellence', 'Reliability', 'Agility']),
+        executiveBio: dbBrand.executiveBio || dbBrand.executive_bio || '',
+        slaPolicy: dbBrand.slaPolicy || dbBrand.sla_policy || '',
+        ndprCompliance: dbBrand.ndprCompliance || dbBrand.ndpr_compliance || '',
         whatsapp: dbBrand.whatsapp || '',
         openingHours: dbBrand.openingHours || dbBrand.opening_hours || {
             monFri: '8:00 AM - 6:00 PM',
@@ -58,6 +70,20 @@ export const mapBrandToDb = (brand: BrandIdentity): any => {
         trust_badge_text: brand.trustBadgeText,
         whatsapp_content: brand.whatsappContent,
         packaging: brand.packaging,
+        phone: brand.phone,
+        email: brand.email,
+        address: brand.address || brand.location,
+        location: brand.location || brand.address,
+        cac_number: brand.cacNumber,
+        tin_number: brand.tinNumber || brand.tin,
+        smedan_number: brand.smedanNumber,
+        corporate_entity_type: brand.corporateEntityType,
+        mission: brand.mission,
+        vision: brand.vision,
+        core_values: brand.coreValues,
+        executive_bio: brand.executiveBio,
+        sla_policy: brand.slaPolicy,
+        ndpr_compliance: brand.ndprCompliance,
         opening_hours: brand.openingHours
     };
 };
@@ -83,10 +109,8 @@ export const brandService = {
         return mapDbToBrand(response.data);
     },
 
-    generateIdentity: async (name: string, niche: string, vibe: string) => {
-        const response = await api.post('brand/generate/', { name, niche, vibe });
-        // The generator returns camelCase fields directly since the LLM prompt was structured that way,
-        // but mapDbToBrand is safe to clean up any fallback values.
+    generateIdentity: async (name: string, niche: string, vibe: string, extraData?: any) => {
+        const response = await api.post('brand/generate/', { name, niche, vibe, ...extraData });
         return mapDbToBrand(response.data);
     }
 };

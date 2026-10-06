@@ -13,9 +13,10 @@ interface BrandBuilderProps {
   onSave: (brand: BrandIdentity) => void;
   credits: number;
   onUpdateCredits: (credits: number) => void;
+  user?: any;
 }
 
-const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits, onUpdateCredits }) => {
+const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits, onUpdateCredits, user }) => {
   const [step, setStep] = useState<'INPUT' | 'LOADING' | 'RESULT'>('INPUT');
   const [formData, setFormData] = useState({ name: '', niche: '', vibe: '', description: '', tone: 'Corporate' });
   const [localBrandData, setLocalBrandData] = useState<BrandIdentity | null>(null);
@@ -26,8 +27,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
 
   // New States for upgraded features
-  const [activeTab, setActiveTab] = useState<'IDENTITY' | 'TRUST' | 'WHATSAPP' | 'PACKAGING' | 'MOCKUP'>('IDENTITY');
-  const [activeMockup, setActiveMockup] = useState<'PACKAGING' | 'RECEIPT' | 'FLYER' | 'CARD' | 'INSTAGRAM' | 'WHATSAPP' | 'FACEBOOK' | 'TWITTER' | 'LINKEDIN' | 'YOUTUBE'>('PACKAGING');
+  const [activeTab, setActiveTab] = useState<'IDENTITY' | 'BANK_SUITE' | 'TRUST' | 'WHATSAPP' | 'PACKAGING' | 'MOCKUP'>('IDENTITY');
+  const [activeMockup, setActiveMockup] = useState<'PACKAGING' | 'RECEIPT' | 'FLYER' | 'CARD' | 'LETTERHEAD' | 'PROFILE' | 'INSTAGRAM' | 'WHATSAPP' | 'FACEBOOK' | 'TWITTER' | 'LINKEDIN' | 'YOUTUBE'>('PACKAGING');
   const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [customShareText, setCustomShareText] = useState('');
@@ -37,8 +38,16 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const [waLinkPhone, setWaLinkPhone] = useState('');
   const [waLinkMessage, setWaLinkMessage] = useState('');
 
-  // Mockup Ref for Printing
+  // Printable Document Refs
   const mockupRef = useRef<HTMLDivElement>(null);
+  const letterheadRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Editable Letterhead Custom State
+  const [letterSubject, setLetterSubject] = useState('RE: EXPRESSION OF COMMERCIAL CAPABILITY & BANKING ONBOARDING');
+  const [letterRecipient, setLetterRecipient] = useState('To: The Branch Credit Committee / Tender Evaluation Board\nCommercial Operations Directorate');
+  const [letterBody, setLetterBody] = useState('');
+  const [bankSubView, setBankSubView] = useState<'LETTERHEAD' | 'PROFILE' | 'CREDENTIALS' | 'GOVERNANCE'>('LETTERHEAD');
 
   // Inline editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -93,22 +102,39 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     { id: 'Hype', label: 'The Hype', desc: 'Energetic, Bold, Street-smart', icon: '🔥' },
   ];
 
-  // Initialize with saved data if available
+  // Initialize with saved data or user defaults
   useEffect(() => {
     if (savedBrand) {
-      setLocalBrandData(savedBrand);
+      // Ensure owner's phone/email/location are seamlessly available
+      const enrichedBrand: BrandIdentity = {
+        ...savedBrand,
+        phone: savedBrand.phone || user?.phone || '',
+        email: savedBrand.email || user?.email || '',
+        location: savedBrand.location || user?.location || '',
+        address: savedBrand.address || savedBrand.location || user?.location || '',
+      };
+      setLocalBrandData(enrichedBrand);
       setStep('RESULT');
       setFormData({
-        name: savedBrand.businessName,
-        niche: savedBrand.niche,
-        vibe: savedBrand.vibe,
+        name: enrichedBrand.businessName,
+        niche: enrichedBrand.niche,
+        vibe: enrichedBrand.vibe,
         description: '',
         tone: 'Corporate' // Default fall back
       });
-      // Set default WA Message
-      setWaLinkMessage(`Hello ${savedBrand.businessName}, I would like to make an enquiry.`);
+      // Set default WA Message & Phone
+      setWaLinkMessage(`Hello ${enrichedBrand.businessName}, I would like to make an enquiry.`);
+      setWaLinkPhone(enrichedBrand.phone || user?.phone || '');
+    } else if (user) {
+      if (user.phone) setWaLinkPhone(user.phone);
+      if (user.businessName || user.business_name) {
+        setFormData(prev => ({
+          ...prev,
+          name: prev.name || user.businessName || user.business_name || ''
+        }));
+      }
     }
-  }, [savedBrand]);
+  }, [savedBrand, user]);
 
   const executeBrandGenerate = async () => {
     setStep('LOADING');
@@ -122,8 +148,19 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     }
     const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
     try {
-      const resultRaw = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone);
+      const extraPayload = {
+        phone: user?.phone || '',
+        email: user?.email || '',
+        address: user?.location || '',
+        location: user?.location || ''
+      };
+      const resultRaw = await generateBrandIdentity(formData.name, finalNiche, formData.vibe, token, formData.description, formData.tone, extraPayload);
       const result = mapDbToBrand(resultRaw);
+      
+      // Merge user phone/email if missing
+      if (!result.phone && user?.phone) result.phone = user.phone;
+      if (!result.email && user?.email) result.email = user.email;
+      if (!result.address && user?.location) result.address = user.location;
       
       // Only deduct credits if generation successfully completed
       const billingResponse = await billingService.deductCredits(5, "AI Brand Identity Builder");
@@ -134,6 +171,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       setStep('RESULT');
       setActiveTab('IDENTITY');
       setWaLinkMessage(`Hello ${result.businessName}, I would like to make an enquiry.`);
+      setWaLinkPhone(result.phone || user?.phone || '');
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to generate brand. Please try again.");
       setStep('INPUT');
@@ -503,6 +541,28 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <h1>${localBrandData.businessName}</h1>
             <h2>${localBrandData.niche}</h2>
             <p style="font-size: 20px; color: #555; font-style: italic; margin-top: 10px;">"${localBrandData.elevatorPitch}"</p>
+            <div style="font-size: 13px; color: #555; margin-top: 12px; font-family: monospace;">
+              ${[
+                localBrandData.phone || user?.phone ? `Tel: ${localBrandData.phone || user?.phone}` : '',
+                localBrandData.email || user?.email ? `Email: ${localBrandData.email || user?.email}` : '',
+                localBrandData.cacNumber ? `RC/BN: ${localBrandData.cacNumber}` : '',
+                localBrandData.tinNumber || localBrandData.tin ? `TIN: ${localBrandData.tinNumber || localBrandData.tin}` : '',
+                localBrandData.smedanNumber ? `SUIN: ${localBrandData.smedanNumber}` : ''
+              ].filter(Boolean).join(' • ')}
+            </div>
+            <p style="font-size: 12px; color: #777; margin-top: 5px;">${localBrandData.address || localBrandData.location || user?.location || 'Lagos, Nigeria'}</p>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Institutional Coordinates & Governance</div>
+            <div style="font-size: 13px; line-height: 1.8; margin-bottom: 10px;">
+              <div><strong>Corporate Entity:</strong> ${localBrandData.corporateEntityType || 'Sole Proprietorship / BN'}</div>
+              <div><strong>Registered Office:</strong> ${localBrandData.address || localBrandData.location || user?.location || 'Lagos, Nigeria'}</div>
+              ${localBrandData.mission ? `<div><strong>Mission:</strong> ${localBrandData.mission}</div>` : ''}
+              ${localBrandData.vision ? `<div><strong>Vision:</strong> ${localBrandData.vision}</div>` : ''}
+              ${localBrandData.slaPolicy ? `<div><strong>Service Level Agreement (SLA):</strong> ${localBrandData.slaPolicy}</div>` : ''}
+              ${localBrandData.ndprCompliance ? `<div><strong>Data Protection (NDPR):</strong> ${localBrandData.ndprCompliance}</div>` : ''}
+            </div>
           </div>
 
           <div class="section">
@@ -544,7 +604,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             </div>
           </div>
           
-           <div class="section">
+          <div class="section">
             <div class="section-title">Trust & Policies</div>
              <div class="policy-box"><strong>Payment:</strong> ${localBrandData.policies?.payment}</div>
              <div class="policy-box"><strong>Delivery:</strong> ${localBrandData.policies?.delivery}</div>
@@ -552,7 +612,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           </div>
 
           <div style="text-align: center; margin-top: 80px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px;">
-            Generated by SmartBiz Coach AI
+            Generated by SmartBiz Coach AI • Institutional SME Standard
           </div>
         </body>
       </html>
@@ -601,6 +661,46 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       win.print();
       // win.close(); // Optional: Close after print
     }, 1500);
+  };
+
+  const handlePrintLetterhead = () => {
+    if (!letterheadRef.current) return;
+    const win = window.open('', '', 'height=900,width=850');
+    if (!win) {
+      alert("Please allow pop-ups to print or export the letterhead.");
+      return;
+    }
+    win.document.write('<html><head><title>Corporate Letterhead - ' + (localBrandData?.businessName || 'SME') + '</title>');
+    win.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+    win.document.write('<style>@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0 !important; } @page { size: A4; margin: 10mm; } }</style>');
+    win.document.write('</head><body class="bg-white p-4 flex justify-center">');
+    win.document.write(letterheadRef.current.innerHTML);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+    }, 1200);
+  };
+
+  const handlePrintProfile = () => {
+    if (!profileRef.current) return;
+    const win = window.open('', '', 'height=900,width=850');
+    if (!win) {
+      alert("Please allow pop-ups to print or export the company profile.");
+      return;
+    }
+    win.document.write('<html><head><title>Executive Company Profile - ' + (localBrandData?.businessName || 'SME') + '</title>');
+    win.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+    win.document.write('<style>@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0 !important; } @page { size: A4; margin: 10mm; } }</style>');
+    win.document.write('</head><body class="bg-white p-4 flex justify-center">');
+    win.document.write(profileRef.current.innerHTML);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+    }, 1200);
   };
 
   const openShareMockup = () => {
@@ -681,67 +781,80 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
   // --- Mockup Components ---
 
-  const ReceiptPreview = ({ brand }: { brand: BrandIdentity }) => (
-    <div className="w-full max-w-xs mx-auto bg-white shadow-md border border-gray-200 p-4 font-mono text-sm relative">
-      {/* Torn edge effect */}
-      <div className="absolute -bottom-2 left-0 right-0 h-4 bg-transparent bg-[radial-gradient(circle,transparent_50%,#fff_50%)] bg-[length:10px_10px] rotate-180"></div>
+  const ReceiptPreview = ({ brand }: { brand: BrandIdentity }) => {
+    const contactPhone = brand?.phone || user?.phone || '0800 000 0000';
+    const regAddress = brand?.address || brand?.location || user?.location || 'Lagos, Nigeria';
+    const cacLine = brand?.cacNumber ? `RC/BN: ${brand.cacNumber}` : '';
+    const tinLine = brand?.tinNumber || brand?.tin ? `TIN: ${brand.tinNumber || brand.tin}` : '';
 
-      <div className="text-center mb-4 border-b-2 border-dashed border-gray-300 pb-4">
-        <img src={getLogoUrl(brand)} className="w-12 h-12 mx-auto mb-2 object-contain rounded-full" alt="Logo" />
-        <div className="uppercase font-bold text-lg leading-none mb-1">{brand?.businessName || ''}</div>
-        <p className="text-[10px] text-gray-500">{(brand?.elevatorPitch || '').substring(0, 50)}...</p>
-        <p className="text-[10px] text-gray-500 mt-1">Tel: +234 906 455 6107</p>
-      </div>
+    return (
+      <div className="w-full max-w-xs mx-auto bg-white shadow-md border border-gray-200 p-4 font-mono text-sm relative">
+        {/* Torn edge effect */}
+        <div className="absolute -bottom-2 left-0 right-0 h-4 bg-transparent bg-[radial-gradient(circle,transparent_50%,#fff_50%)] bg-[length:10px_10px] rotate-180"></div>
 
-      <div className="mb-4 text-xs">
-        <div className="flex justify-between mb-1">
-          <span>DATE:</span>
-          <span>{new Date().toLocaleDateString()}</span>
+        <div className="text-center mb-4 border-b-2 border-dashed border-gray-300 pb-4">
+          <img src={getLogoUrl(brand)} className="w-12 h-12 mx-auto mb-2 object-contain rounded-full" alt="Logo" />
+          <div className="uppercase font-bold text-lg leading-none mb-1">{brand?.businessName || ''}</div>
+          <p className="text-[10px] text-gray-500">{(brand?.elevatorPitch || '').substring(0, 50)}...</p>
+          <p className="text-[10px] text-gray-800 font-bold mt-1">Tel: {contactPhone}</p>
+          <p className="text-[9px] text-gray-400">{regAddress}</p>
+          {(cacLine || tinLine) && (
+            <p className="text-[9px] text-gray-500 font-mono mt-0.5">
+              {[cacLine, tinLine].filter(Boolean).join(' • ')}
+            </p>
+          )}
         </div>
-        <div className="flex justify-between mb-1">
-          <span>RECEIPT #:</span>
-          <span>001245</span>
+
+        <div className="mb-4 text-xs">
+          <div className="flex justify-between mb-1">
+            <span>DATE:</span>
+            <span>{new Date().toLocaleDateString()}</span>
+          </div>
+          <div className="flex justify-between mb-1">
+            <span>RECEIPT #:</span>
+            <span>001245</span>
+          </div>
+        </div>
+
+        <table className="w-full text-left mb-4 text-xs">
+          <thead>
+            <tr className="border-b border-black">
+              <th className="pb-1">ITEM</th>
+              <th className="text-right pb-1">QTY</th>
+              <th className="text-right pb-1">AMT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="pt-2">Premium Service</td>
+              <td className="text-right pt-2">1</td>
+              <td className="text-right pt-2">25,000</td>
+            </tr>
+            <tr>
+              <td className="pt-1">Consultation</td>
+              <td className="text-right pt-1">2</td>
+              <td className="text-right pt-1">10,000</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div className="border-t-2 border-black pt-2 mb-6">
+          <div className="flex justify-between font-bold text-lg">
+            <span>TOTAL</span>
+            <span>₦35,000</span>
+          </div>
+        </div>
+
+        <div className="text-center text-xs">
+          <p className="font-bold mb-1">THANK YOU!</p>
+          <p className="italic text-[10px] mb-2">"{brand?.taglines?.[0] || ''}"</p>
+          <div className="border border-gray-300 p-1 rounded text-[9px] text-gray-500">
+            {brand.policies?.payment || "No Refunds after payment."}
+          </div>
         </div>
       </div>
-
-      <table className="w-full text-left mb-4 text-xs">
-        <thead>
-          <tr className="border-b border-black">
-            <th className="pb-1">ITEM</th>
-            <th className="text-right pb-1">QTY</th>
-            <th className="text-right pb-1">AMT</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="pt-2">Premium Service</td>
-            <td className="text-right pt-2">1</td>
-            <td className="text-right pt-2">25,000</td>
-          </tr>
-          <tr>
-            <td className="pt-1">Consultation</td>
-            <td className="text-right pt-1">2</td>
-            <td className="text-right pt-1">10,000</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div className="border-t-2 border-black pt-2 mb-6">
-        <div className="flex justify-between font-bold text-lg">
-          <span>TOTAL</span>
-          <span>₦35,000</span>
-        </div>
-      </div>
-
-      <div className="text-center text-xs">
-        <p className="font-bold mb-1">THANK YOU!</p>
-        <p className="italic text-[10px] mb-2">"{brand?.taglines?.[0] || ''}"</p>
-        <div className="border border-gray-300 p-1 rounded text-[9px] text-gray-500">
-          {brand.policies?.payment || "No Refunds after payment."}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const PackagingPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-sm mx-auto flex items-center justify-center p-10 perspective-1000 min-h-[300px]">
@@ -779,83 +892,336 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     </div>
   );
 
-  const FlyerPreview = ({ brand }: { brand: BrandIdentity }) => (
-    <div className="w-full max-w-xs mx-auto aspect-[4/5] bg-white shadow-xl relative overflow-hidden flex flex-col border border-gray-200">
-      {/* Header Image Area */}
-      <div className="h-1/2 bg-gray-200 relative overflow-hidden">
-        <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black opacity-60"></div>
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <h2 className="text-white text-3xl font-black uppercase text-center px-4 leading-none drop-shadow-md transform -rotate-2">
-            Grand<br /><span className="text-yellow-400">Opening</span><br />Sale
-          </h2>
-        </div>
-        <div className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full overflow-hidden bg-white shadow p-0.5">
-          <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Logo" />
-        </div>
-        <div className="absolute bottom-0 left-0 w-full h-8 bg-white transform -skew-y-3 origin-bottom-left scale-110"></div>
-      </div>
+  const FlyerPreview = ({ brand }: { brand: BrandIdentity }) => {
+    const contactPhone = brand?.phone || user?.phone || '0800 123 4567';
 
-      {/* Body */}
-      <div className="flex-1 bg-white p-5 relative flex flex-col">
-        <div className="absolute -top-12 right-4 w-16 h-16 rounded-full flex items-center justify-center shadow-lg text-white font-bold text-center leading-none transform rotate-12 border-2 border-white" style={{ backgroundColor: brand?.colors?.accent || '#ccc' }}>
-          <span className="text-[10px]">UP TO<br /><span className="text-lg">50%</span><br />OFF</span>
-        </div>
-
-        <h3 className="text-xl font-bold mb-1 leading-tight" style={{ color: brand?.colors?.primary || '#333' }}>{brand?.businessName}</h3>
-        <p className="text-gray-600 text-xs mb-3 line-clamp-2">{brand?.elevatorPitch}</p>
-
-        <div className="space-y-1 mb-4 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-green-500 font-bold text-xs">✓</span>
-            <span className="text-xs font-bold text-gray-800">Quality Products</span>
+    return (
+      <div className="w-full max-w-xs mx-auto aspect-[4/5] bg-white shadow-xl relative overflow-hidden flex flex-col border border-gray-200">
+        {/* Header Image Area */}
+        <div className="h-1/2 bg-gray-200 relative overflow-hidden">
+          <img src={getNicheImage(brand?.niche)} className="absolute inset-0 w-full h-full object-cover" alt="Background" />
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black opacity-60"></div>
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <h2 className="text-white text-3xl font-black uppercase text-center px-4 leading-none drop-shadow-md transform -rotate-2">
+              Grand<br /><span className="text-yellow-400">Opening</span><br />Sale
+            </h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-green-500 font-bold text-xs">✓</span>
-            <span className="text-xs font-bold text-gray-800">Affordable Prices</span>
+          <div className="absolute top-4 left-4 z-20 w-10 h-10 rounded-full overflow-hidden bg-white shadow p-0.5">
+            <img src={getLogoUrl(brand)} className="w-full h-full object-contain rounded-full" alt="Logo" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-green-500 font-bold text-xs">✓</span>
-            <span className="text-xs font-bold text-gray-800">Nationwide Delivery</span>
+          <div className="absolute bottom-0 left-0 w-full h-8 bg-white transform -skew-y-3 origin-bottom-left scale-110"></div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 bg-white p-5 relative flex flex-col">
+          <div className="absolute -top-12 right-4 w-16 h-16 rounded-full flex items-center justify-center shadow-lg text-white font-bold text-center leading-none transform rotate-12 border-2 border-white" style={{ backgroundColor: brand?.colors?.accent || '#ccc' }}>
+            <span className="text-[10px]">UP TO<br /><span className="text-lg">50%</span><br />OFF</span>
+          </div>
+
+          <h3 className="text-xl font-bold mb-1 leading-tight" style={{ color: brand?.colors?.primary || '#333' }}>{brand?.businessName}</h3>
+          <p className="text-gray-600 text-xs mb-3 line-clamp-2">{brand?.elevatorPitch}</p>
+
+          <div className="space-y-1 mb-4 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-green-500 font-bold text-xs">✓</span>
+              <span className="text-xs font-bold text-gray-800">Quality Products</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-green-500 font-bold text-xs">✓</span>
+              <span className="text-xs font-bold text-gray-800">Affordable Prices</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-green-500 font-bold text-xs">✓</span>
+              <span className="text-xs font-bold text-gray-800">Nationwide Delivery</span>
+            </div>
+          </div>
+
+          <div className="mt-auto bg-gray-900 text-white p-2 rounded text-center">
+            <p className="font-bold text-sm">ORDER NOW</p>
+            <p className="text-[10px] text-gray-300">{contactPhone} • @{brand?.businessName ? brand.businessName.replace(/\s/g, '').toLowerCase() : 'business'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const BusinessCardPreview = ({ brand }: { brand: BrandIdentity }) => {
+    const contactPhone = brand?.phone || user?.phone || '0800 000 0000';
+    const contactEmail = brand?.email || user?.email || `${(brand?.businessName || 'info').replace(/\s+/g, '').toLowerCase()}@gmail.com`;
+    const regAddress = brand?.address || brand?.location || user?.location || 'Lagos, Nigeria';
+
+    return (
+      <div className="w-full max-w-sm mx-auto perspective-1000">
+        {/* Front */}
+        <div className="bg-white rounded-xl shadow-xl overflow-hidden mb-4 relative h-56 border border-gray-200">
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-full opacity-20" style={{ backgroundColor: brand?.colors?.secondary || '#ccc' }}></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 rounded-tr-full opacity-20" style={{ backgroundColor: brand?.colors?.accent || '#eee' }}></div>
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10">
+            <img src={getLogoUrl(brand)} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-contain bg-white p-0.5" />
+            <h3 className="font-bold text-xl text-gray-900" style={{ fontFamily: 'serif' }}>{brand?.businessName}</h3>
+            <p className="text-xs uppercase tracking-widest mt-1 text-gray-500">{brand?.niche}</p>
+            {brand?.cacNumber && (
+              <span className="mt-2 text-[10px] font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-bold">
+                RC/BN: {brand.cacNumber}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="mt-auto bg-gray-900 text-white p-2 rounded text-center">
-          <p className="font-bold text-sm">ORDER NOW</p>
-          <p className="text-[10px] text-gray-300">0800 123 4567 • @{brand?.businessName ? brand.businessName.replace(/\s/g, '').toLowerCase() : 'business'}</p>
+        {/* Back */}
+        <div className="rounded-xl shadow-xl overflow-hidden h-56 relative flex flex-col justify-center px-8" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
+          <p className="text-white/80 text-[10px] uppercase font-bold tracking-wider">Direct Line</p>
+          <p className="text-white font-bold text-base mb-2">{contactPhone}</p>
+
+          <p className="text-white/80 text-[10px] uppercase font-bold tracking-wider">Email & Coordinates</p>
+          <p className="text-white text-xs mb-1 truncate">{contactEmail}</p>
+          <p className="text-white/70 text-[11px] mb-2 truncate">{regAddress}</p>
+
+          <div className="flex justify-between items-center pt-2 border-t border-white/20">
+            <span className="text-white font-medium text-xs">@{brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}</span>
+            <span className="text-white/60 text-[9px] uppercase tracking-wider">{brand?.corporateEntityType || 'Registered SME'}</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const BusinessCardPreview = ({ brand }: { brand: BrandIdentity }) => (
-    <div className="w-full max-w-sm mx-auto perspective-1000">
-      {/* Front */}
-      <div className="bg-white rounded-xl shadow-xl overflow-hidden mb-4 relative h-56 border border-gray-200">
-        <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-full opacity-20" style={{ backgroundColor: brand?.colors?.secondary || '#ccc' }}></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-tr-full opacity-20" style={{ backgroundColor: brand?.colors?.accent || '#eee' }}></div>
+  const LetterheadPreview = ({ brand }: { brand: BrandIdentity }) => {
+    const contactPhone = brand?.phone || user?.phone || '0800 000 0000';
+    const contactEmail = brand?.email || user?.email || 'contact@business.com';
+    const regAddress = brand?.address || brand?.location || user?.location || 'Plot 12 Commercial Boulevard, Lagos, Nigeria';
+    const primaryColor = brand?.colors?.primary || '#0f766e';
+    const secondaryColor = brand?.colors?.secondary || '#047857';
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10">
-          <img src={getLogoUrl(brand)} alt="Logo" className="w-16 h-16 mb-2 rounded-full shadow-md object-contain bg-white p-0.5" />
-          <h3 className="font-bold text-xl text-gray-900" style={{ fontFamily: 'serif' }}>{brand?.businessName}</h3>
-          <p className="text-xs uppercase tracking-widest mt-1 text-gray-500">{brand?.niche}</p>
+    return (
+      <div className="w-full max-w-2xl mx-auto bg-white border border-gray-300 shadow-2xl p-6 sm:p-10 relative text-gray-800 font-sans min-h-[780px] flex flex-col justify-between">
+        {/* Subtle Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
+          <img src={getLogoUrl(brand)} alt="Watermark" className="w-96 h-96 object-contain" />
+        </div>
+
+        {/* Top Letterhead Header */}
+        <div>
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4 border-b-2" style={{ borderColor: primaryColor }}>
+            <div className="flex items-center gap-4">
+              <img src={getLogoUrl(brand)} alt="Logo" className="w-16 h-16 rounded-xl object-contain border shadow-sm bg-white p-1" />
+              <div>
+                <h1 className="text-2xl font-black tracking-tight uppercase" style={{ color: primaryColor }}>
+                  {brand?.businessName || 'Your Business Name'}
+                </h1>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{brand?.niche || 'Enterprise'}</p>
+                <div className="flex flex-wrap gap-2 text-[10px] text-gray-600 font-mono mt-1">
+                  <span>RC/BN: <strong>{brand?.cacNumber || 'CAC-Pending'}</strong></span>
+                  <span>•</span>
+                  <span>TIN: <strong>{brand?.tinNumber || brand?.tin || 'TIN-Pending'}</strong></span>
+                  {brand?.smedanNumber && (
+                    <>
+                      <span>•</span>
+                      <span>SUIN: <strong>{brand.smedanNumber}</strong></span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-left sm:text-right text-xs text-gray-600 space-y-0.5 font-medium">
+              <p className="flex sm:justify-end items-center gap-1.5">
+                <span>📞</span> {contactPhone}
+              </p>
+              <p className="flex sm:justify-end items-center gap-1.5">
+                <span>✉️</span> {contactEmail}
+              </p>
+              <p className="flex sm:justify-end items-center gap-1.5 max-w-xs text-[11px]">
+                <span>📍</span> {regAddress}
+              </p>
+            </div>
+          </div>
+          {/* Dual Color accent line */}
+          <div className="h-1 w-full flex mt-0.5 mb-6">
+            <div className="h-full w-2/3" style={{ backgroundColor: primaryColor }} />
+            <div className="h-full w-1/3" style={{ backgroundColor: secondaryColor }} />
+          </div>
+
+          {/* Letter Meta */}
+          <div className="flex justify-between items-center text-xs text-gray-500 mb-6 font-mono">
+            <div>REF: <span className="text-gray-800 font-bold">SB/CORP/{new Date().getFullYear()}/089</span></div>
+            <div>DATE: <span className="text-gray-800 font-bold">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+          </div>
+
+          {/* Recipient */}
+          <div className="mb-4 text-xs font-semibold text-gray-700 whitespace-pre-line leading-relaxed">
+            {letterRecipient}
+          </div>
+
+          {/* Subject */}
+          <div className="mb-6 pb-1 border-b border-gray-300">
+            <p className="text-sm font-black uppercase text-gray-900 tracking-wide">
+              {letterSubject}
+            </p>
+          </div>
+
+          {/* Letter Body */}
+          <div className="text-xs sm:text-sm text-gray-700 leading-relaxed space-y-4">
+            <p>
+              We write on behalf of the Executive Directorate of <strong>{brand?.businessName}</strong>, a registered commercial entity ({brand?.cacNumber ? `RC/BN: ${brand.cacNumber}` : 'CAC Certified'}), operating within the <strong>{brand?.niche}</strong> sector.
+            </p>
+            <p>
+              {letterBody || (
+                brand?.mission
+                  ? `Our commercial mandate is rooted in our mission: "${brand.mission}". Guided by our core commitment to operational excellence and customer trust, we ensure stringent Service Level Agreements (SLA), transparent financial accounting, and regulatory compliance under the Nigerian Data Protection Regulation (NDPR).`
+                  : `This official instrument confirms our institutional capability for credit assessment, corporate banking onboarding, statutory vendor pre-qualification, and institutional partnership.`
+              )}
+            </p>
+            <p>
+              For corporate verification, please contact the undersigned promoter or our compliance desk at <strong>{contactPhone}</strong> or <strong>{contactEmail}</strong>.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer / Signature */}
+        <div className="pt-8 mt-8 border-t border-gray-200">
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-xs text-gray-500 italic mb-2">Yours faithfully,</p>
+              <div className="h-10 border-b border-gray-400 w-44 mb-1 flex items-end">
+                <span className="font-serif italic text-sm text-gray-700 font-bold">Authorized Signatory</span>
+              </div>
+              <p className="text-xs font-bold text-gray-900">{user?.name || brand?.businessName + ' Promoter'}</p>
+              <p className="text-[11px] text-gray-500">Executive Director / Managing Partner</p>
+            </div>
+
+            <div className="text-center p-3 border-2 border-dashed border-gray-300 rounded-lg">
+              <span className="text-xl">🏛️</span>
+              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">Official SME Seal</p>
+              <p className="text-[8px] font-mono text-gray-400">SMEDAN • CAC • FIRS</p>
+            </div>
+          </div>
+
+          <div className="text-center text-[10px] text-gray-400 mt-6 pt-2 border-t border-gray-100 flex justify-between">
+            <span>Corporate Entity: {brand?.corporateEntityType || 'Sole Proprietorship / BN'}</span>
+            <span>Generated via SmartBiz Coach Institutional Suite</span>
+          </div>
         </div>
       </div>
+    );
+  };
 
-      {/* Back */}
-      <div className="rounded-xl shadow-xl overflow-hidden h-56 relative flex flex-col justify-center px-8" style={{ backgroundColor: brand?.colors?.primary || '#333' }}>
-        <p className="text-white/80 text-xs mb-1">Contact</p>
-        <p className="text-white font-bold text-lg mb-4">+234 906 455 6107</p>
+  const ExecutiveProfilePreview = ({ brand }: { brand: BrandIdentity }) => {
+    const contactPhone = brand?.phone || user?.phone || '0800 000 0000';
+    const contactEmail = brand?.email || user?.email || 'contact@business.com';
+    const regAddress = brand?.address || brand?.location || user?.location || 'Plot 12 Commercial Way, Lagos, Nigeria';
+    const primaryColor = brand?.colors?.primary || '#1e3a8a';
 
-        <p className="text-white/80 text-xs mb-1">Social</p>
-        <p className="text-white font-bold text-sm mb-4">@{brand?.businessName ? brand.businessName.replace(/\s+/g, '').toLowerCase() : 'business'}</p>
+    return (
+      <div className="w-full max-w-2xl mx-auto bg-white border border-gray-300 shadow-2xl p-6 sm:p-10 text-gray-800 font-sans min-h-[780px] flex flex-col justify-between">
+        <div>
+          {/* Header */}
+          <div className="flex justify-between items-center pb-4 border-b-2" style={{ borderColor: primaryColor }}>
+            <div className="flex items-center gap-3">
+              <img src={getLogoUrl(brand)} alt="Logo" className="w-14 h-14 rounded-xl object-contain border bg-white p-1" />
+              <div>
+                <h1 className="text-2xl font-black uppercase text-gray-950 tracking-tight">{brand?.businessName}</h1>
+                <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">{brand?.niche} • EXECUTIVE 1-PAGER PROFILE</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full border border-emerald-300">
+                ✓ Bank Pre-Qualified
+              </span>
+              <p className="text-[10px] text-gray-400 mt-1 font-mono">KYC Grade: Tier-1 SME</p>
+            </div>
+          </div>
 
-        <div className="absolute bottom-4 right-4">
-          <p className="text-white/40 text-[10px]">{brand?.elevatorPitch}</p>
+          {/* 1. Promoter & Overview */}
+          <div className="my-5 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-1 flex items-center gap-1.5">
+              <span>👤</span> Executive Promoter & Business Overview
+            </h3>
+            <p className="text-xs text-slate-700 leading-relaxed">
+              {brand?.executiveBio || `${brand?.businessName} is a high-growth commercial enterprise founded and managed by experienced industry promoters. The enterprise delivers competitive ${brand?.niche} solutions with disciplined operational management and robust cashflow standards.`}
+            </p>
+          </div>
+
+          {/* 2. Structured Institutional Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            {/* Box A: Regulatory Matrix */}
+            <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-3 flex items-center gap-1.5">
+                <span>🏛️</span> Regulatory Coordinates
+              </h4>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between"><span className="text-gray-500">Legal Structure:</span><strong className="text-gray-800">{brand?.corporateEntityType || 'Sole Proprietorship / BN'}</strong></div>
+                <div className="flex justify-between"><span className="text-gray-500">CAC Reg No:</span><strong className="font-mono text-gray-900">{brand?.cacNumber || 'RC-Pending'}</strong></div>
+                <div className="flex justify-between"><span className="text-gray-500">FIRS TIN:</span><strong className="font-mono text-gray-900">{brand?.tinNumber || brand?.tin || 'TIN-Pending'}</strong></div>
+                <div className="flex justify-between"><span className="text-gray-500">SMEDAN SUIN:</span><strong className="font-mono text-gray-900">{brand?.smedanNumber || 'SUIN-Pending'}</strong></div>
+                <div className="flex justify-between"><span className="text-gray-500">Official Line:</span><strong className="text-gray-900">{contactPhone}</strong></div>
+                <div className="flex justify-between"><span className="text-gray-500">Email:</span><strong className="text-gray-900 truncate max-w-[140px]">{contactEmail}</strong></div>
+              </div>
+            </div>
+
+            {/* Box B: Mission & Vision */}
+            <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-3 flex items-center gap-1.5">
+                <span>🎯</span> Strategic Mandate
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gray-500 block">Mission</span>
+                  <p className="text-gray-700 italic">"{brand?.mission || 'To deliver reliable, high-value solutions that exceed customer expectations.'}"</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gray-500 block">Vision</span>
+                  <p className="text-gray-700 italic">"{brand?.vision || 'To become the preeminent trusted market leader in Nigeria and across West Africa.'}"</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Core Values & Operational SLA */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {/* Core Values */}
+            <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-2 flex items-center gap-1.5">
+                <span>💎</span> Institutional Values
+              </h4>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(brand?.coreValues && brand.coreValues.length > 0 ? brand.coreValues : ['Integrity', 'Excellence', 'Reliability', 'Agility', 'Accountability']).map((val, idx) => (
+                  <span key={idx} className="text-[10px] font-bold bg-blue-50 text-blue-800 px-2.5 py-1 rounded-md border border-blue-200">
+                    {val}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* SLA & NDPR Compliance */}
+            <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-2 flex items-center gap-1.5">
+                <span>🛡️</span> Compliance & SLA Policy
+              </h4>
+              <p className="text-[11px] text-gray-600 line-clamp-3">
+                <strong>SLA:</strong> {brand?.slaPolicy || brand?.policies?.delivery || 'Standard turnaround within 24–48 hours with verified quality assurance.'}
+              </p>
+              <p className="text-[11px] text-emerald-700 font-medium mt-1">
+                <strong>NDPR:</strong> {brand?.ndprCompliance || 'Adheres strictly to Nigeria Data Protection Regulation (NDPR 2023) standards.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Verification Footer */}
+        <div className="pt-4 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
+          <div>
+            <p className="font-bold text-gray-800">{regAddress}</p>
+            <p className="text-[10px] text-gray-400">Verified for Commercial Banking, Bank of Industry (BOI), SMEDAN & TEF Applications</p>
+          </div>
+          <div className="text-right">
+            <span className="font-mono font-bold text-gray-900 text-sm">₦ CREDIT READY</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const InstagramPostPreview = ({ brand }: { brand: BrandIdentity }) => (
     <div className="w-full max-w-sm mx-auto bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -1104,6 +1470,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
         <div className="flex border-b border-gray-200 overflow-x-auto">
           {[
             { id: 'IDENTITY', label: '🎨 Identity' },
+            { id: 'BANK_SUITE', label: '🏛️ Bank & Corporate Suite' },
             { id: 'TRUST', label: '🛡️ Trust & Policies' },
             { id: 'WHATSAPP', label: '💬 WhatsApp Kit' },
             { id: 'PACKAGING', label: '📦 Packaging' },
@@ -1300,7 +1667,385 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           </div>
         )}
 
-        {/* TRUST TAB */}
+        {/* BANK & CORPORATE SUITE TAB */}
+        {activeTab === 'BANK_SUITE' && (
+          <div className="space-y-6 animate-in slide-in-from-right">
+            {/* Executive Badge Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-6 rounded-2xl shadow-xl border border-indigo-800">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl">🏛️</span>
+                    <h3 className="text-xl font-black tracking-tight">Institutional Bank & Funding Suite</h3>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-400/30">
+                      Tier-1 SME Verified
+                    </span>
+                  </div>
+                  <p className="text-slate-300 text-xs max-w-2xl leading-relaxed">
+                    Designed to meet statutory standards for Commercial Bank Accounts & Overdrafts, Bank of Industry (BOI), SMEDAN Grants, Tony Elumelu Foundation, Federal Tenders, CAC & FIRS compliance.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <button
+                    onClick={handlePrintLetterhead}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                  >
+                    <span>🖨️</span> Print Letterhead
+                  </button>
+                  <button
+                    onClick={handlePrintProfile}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                  >
+                    <span>📑</span> Print 1-Pager
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-navigation inside Bank Suite */}
+              <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-indigo-800/60">
+                {[
+                  { id: 'LETTERHEAD', label: '📜 Corporate Letterhead', icon: '📜' },
+                  { id: 'PROFILE', label: '📑 1-Pager Executive Profile', icon: '📑' },
+                  { id: 'CREDENTIALS', label: '🏛️ CAC, TIN & Coordinates', icon: '🏛️' },
+                  { id: 'GOVERNANCE', label: '⚖️ Governance & SLA Policy', icon: '⚖️' }
+                ].map(sub => (
+                  <button
+                    key={sub.id}
+                    onClick={() => setBankSubView(sub.id as any)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      bankSubView === sub.id
+                        ? 'bg-white text-slate-900 shadow-md scale-105'
+                        : 'bg-white/10 text-white/80 hover:bg-white/20'
+                    }`}
+                  >
+                    {sub.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* SUB-VIEW: CORPORATE LETTERHEAD */}
+            {bankSubView === 'LETTERHEAD' && (
+              <div className="space-y-6">
+                {/* Customizer controls */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span>✏️</span> Customize Letter Details
+                  </h4>
+                  <div className="grid md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <label className="block text-gray-700 font-bold mb-1">Addressed Recipient</label>
+                      <input
+                        type="text"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-400 outline-none"
+                        value={letterRecipient}
+                        onChange={(e) => setLetterRecipient(e.target.value)}
+                        placeholder="To: The Credit Committee, First Bank Nigeria"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-bold mb-1">Letter Subject Line</label>
+                      <input
+                        type="text"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-400 outline-none font-bold"
+                        value={letterSubject}
+                        onChange={(e) => setLetterSubject(e.target.value)}
+                        placeholder="RE: APPLICATION FOR COMMERCIAL WORKING CAPITAL"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-gray-700 font-bold mb-1">Custom Paragraph / Mandate Note (Optional)</label>
+                      <textarea
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-400 outline-none resize-none"
+                        value={letterBody}
+                        onChange={(e) => setLetterBody(e.target.value)}
+                        placeholder="Leave blank to use auto-generated mission, SLA, and corporate governance text..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Letterhead Preview */}
+                <div className="bg-gray-100 p-4 sm:p-8 rounded-2xl border border-gray-200 flex justify-center">
+                  <div ref={letterheadRef} className="w-full">
+                    <LetterheadPreview brand={localBrandData} />
+                  </div>
+                </div>
+
+                {/* Action Bar */}
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={handlePrintLetterhead}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 text-sm transition-transform active:scale-95"
+                  >
+                    <span>🖨️</span> Print / Save Letterhead (PDF)
+                  </button>
+                  <button
+                    onClick={() => {
+                      const text = `${localBrandData.businessName}\n${localBrandData.address || localBrandData.location}\nTel: ${localBrandData.phone || user?.phone}\n\n${letterSubject}\n\n${letterRecipient}`;
+                      navigator.clipboard.writeText(text);
+                      toast.success("Letterhead header copied to clipboard!");
+                    }}
+                    className="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 text-sm transition-transform active:scale-95"
+                  >
+                    <span>📋</span> Copy Text
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-VIEW: 1-PAGER EXECUTIVE COMPANY PROFILE */}
+            {bankSubView === 'PROFILE' && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-900 flex justify-between items-center">
+                  <div>
+                    <span className="font-bold">Institutional Standard:</span> Standard single-page profile format required for Bank Account Opening, BOI Loans, and Procurement Bids.
+                  </div>
+                  <button
+                    onClick={handlePrintProfile}
+                    className="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-1.5 rounded-lg text-xs shrink-0 ml-3"
+                  >
+                    Print Profile
+                  </button>
+                </div>
+
+                {/* Live Profile Preview */}
+                <div className="bg-gray-100 p-4 sm:p-8 rounded-2xl border border-gray-200 flex justify-center">
+                  <div ref={profileRef} className="w-full">
+                    <ExecutiveProfilePreview brand={localBrandData} />
+                  </div>
+                </div>
+
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={handlePrintProfile}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-full font-bold shadow-lg flex items-center gap-2 text-sm transition-transform active:scale-95"
+                  >
+                    <span>🖨️</span> Print / Save 1-Pager Profile (PDF)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-VIEW: CREDENTIALS & COORDINATES */}
+            {bankSubView === 'CREDENTIALS' && (
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="border-b pb-4">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span>🏛️</span> Institutional Coordinates & Statutory Identifiers
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    These credentials automatically populate your receipts, letters, company profiles, invoices, and bank documentation.
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-5 text-sm">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      Official Contact Phone <span className="text-emerald-600 font-semibold">(Dynamic Owner Line)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                      value={localBrandData.phone || user?.phone || ''}
+                      onChange={(e) => {
+                        updateField('phone', e.target.value);
+                        setWaLinkPhone(e.target.value);
+                      }}
+                      placeholder="e.g. +234 803 123 4567"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Replaces any static mock number across all preview templates.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      Official Business Email
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                      value={localBrandData.email || user?.email || ''}
+                      onChange={(e) => updateField('email', e.target.value)}
+                      placeholder="e.g. contact@business.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      Registered Operating Address
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+                      value={localBrandData.address || localBrandData.location || user?.location || ''}
+                      onChange={(e) => {
+                        updateField('address', e.target.value);
+                        updateField('location', e.target.value);
+                      }}
+                      placeholder="e.g. Suite 4B, Commercial Way, Victoria Island, Lagos"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      Corporate Legal Entity Type
+                    </label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 outline-none bg-white"
+                      value={localBrandData.corporateEntityType || 'Sole Proprietorship / BN'}
+                      onChange={(e) => updateField('corporateEntityType', e.target.value)}
+                    >
+                      <option value="Sole Proprietorship / BN">Sole Proprietorship / Business Name (BN)</option>
+                      <option value="Private Limited Company (Ltd / LLC)">Private Limited Company (Ltd / LLC)</option>
+                      <option value="Enterprise / Venture">Enterprise / Commercial Venture</option>
+                      <option value="General Partnership">General Partnership</option>
+                      <option value="Cooperative Society">Cooperative Society</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      CAC Registration Number (RC / BN)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-400 outline-none"
+                      value={localBrandData.cacNumber || ''}
+                      onChange={(e) => updateField('cacNumber', e.target.value)}
+                      placeholder="e.g. BN-3928104 or RC-1948201"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      FIRS Tax Identification Number (TIN)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-400 outline-none"
+                      value={localBrandData.tinNumber || localBrandData.tin || ''}
+                      onChange={(e) => {
+                        updateField('tinNumber', e.target.value);
+                        updateField('tin', e.target.value);
+                      }}
+                      placeholder="e.g. 24891048-0001"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      SMEDAN Unique ID (SUIN)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-blue-400 outline-none"
+                      value={localBrandData.smedanNumber || ''}
+                      onChange={(e) => updateField('smedanNumber', e.target.value)}
+                      placeholder="e.g. SUIN-2024-91823"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t flex justify-end">
+                  <button
+                    onClick={() => {
+                      onSave(localBrandData);
+                      toast.success("Institutional coordinates successfully saved!");
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-xl text-sm shadow-md transition-all active:scale-95"
+                  >
+                    💾 Save Coordinates
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-VIEW: GOVERNANCE, MISSION & SLA */}
+            {bankSubView === 'GOVERNANCE' && (
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
+                <div className="border-b pb-4">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <span>⚖️</span> Corporate Governance, Strategic Architecture & SLA
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Formal statements required for bank credit appraisal committees, BOI and international grant donors.
+                  </p>
+                </div>
+
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Corporate Mission</label>
+                    <textarea
+                      rows={2}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-400 outline-none resize-none"
+                      value={localBrandData.mission || ''}
+                      onChange={(e) => updateField('mission', e.target.value)}
+                      placeholder="Enter company mission statement..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Strategic Vision</label>
+                    <textarea
+                      rows={2}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-400 outline-none resize-none"
+                      value={localBrandData.vision || ''}
+                      onChange={(e) => updateField('vision', e.target.value)}
+                      placeholder="Enter company strategic vision..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Executive Promoter Profile / Bio</label>
+                    <textarea
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-400 outline-none resize-none"
+                      value={localBrandData.executiveBio || ''}
+                      onChange={(e) => updateField('executiveBio', e.target.value)}
+                      placeholder="Executive biography of the founders, track record, leadership qualifications..."
+                    />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Service Level Agreement (SLA)</label>
+                      <textarea
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-400 outline-none resize-none"
+                        value={localBrandData.slaPolicy || ''}
+                        onChange={(e) => updateField('slaPolicy', e.target.value)}
+                        placeholder="Service delivery standards, turnaround time guarantee..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase mb-1">NDPR / Data Privacy Clause</label>
+                      <textarea
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-400 outline-none resize-none"
+                        value={localBrandData.ndprCompliance || ''}
+                        onChange={(e) => updateField('ndprCompliance', e.target.value)}
+                        placeholder="Customer data privacy protection, NDPR compliance statement..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t flex justify-end">
+                  <button
+                    onClick={() => {
+                      onSave(localBrandData);
+                      toast.success("Corporate governance policies saved!");
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-xl text-sm shadow-md transition-all active:scale-95"
+                  >
+                    💾 Save Governance Data
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {activeTab === 'TRUST' && (
           <div className="space-y-6 animate-in slide-in-from-right">
             {isEditing && (
@@ -1544,7 +2289,9 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 { id: 'PACKAGING', label: '📦 Packaging' },
                 { id: 'RECEIPT', label: '🧾 Receipt' },
                 { id: 'FLYER', label: '📢 Flyer' },
-                { id: 'CARD', label: 'Business Card' },
+                { id: 'CARD', label: '📇 Business Card' },
+                { id: 'LETTERHEAD', label: '🏛️ Letterhead' },
+                { id: 'PROFILE', label: '📑 1-Pager Profile' },
                 { id: 'INSTAGRAM', label: 'Instagram' },
                 { id: 'WHATSAPP', label: 'WhatsApp' },
                 { id: 'FACEBOOK', label: 'Facebook' },
@@ -1568,6 +2315,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 {activeMockup === 'RECEIPT' && <ReceiptPreview brand={localBrandData} />}
                 {activeMockup === 'FLYER' && <FlyerPreview brand={localBrandData} />}
                 {activeMockup === 'CARD' && <BusinessCardPreview brand={localBrandData} />}
+                {activeMockup === 'LETTERHEAD' && <LetterheadPreview brand={localBrandData} />}
+                {activeMockup === 'PROFILE' && <ExecutiveProfilePreview brand={localBrandData} />}
                 {activeMockup === 'INSTAGRAM' && <InstagramPostPreview brand={localBrandData} />}
                 {activeMockup === 'FACEBOOK' && <FacebookCoverPreview brand={localBrandData} />}
                 {activeMockup === 'TWITTER' && <TwitterHeaderPreview brand={localBrandData} />}

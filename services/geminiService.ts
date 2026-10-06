@@ -12,8 +12,8 @@ export const generateSeasonalTips = async () => {
     return response.data;
 };
 
-export const generateBrandIdentity = async (name: string, niche: string, vibe: string, token: string, description?: string, tone?: string) => {
-    const response = await api.post('/api/brand/generate/', { name, niche, vibe, description, tone });
+export const generateBrandIdentity = async (name: string, niche: string, vibe: string, token: string, description?: string, tone?: string, extraData?: any) => {
+    const response = await api.post('/api/brand/generate/', { name, niche, vibe, description, tone, ...extraData });
     return response.data;
 };
 

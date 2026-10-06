@@ -22,6 +22,23 @@ class BrandIdentity(models.Model):
     logo_prompt = models.TextField(blank=True)
     logo_url = models.TextField(blank=True, null=True)
     
+    # Contact & Regulatory Coordinates
+    phone = models.CharField(max_length=50, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    address = models.CharField(max_length=255, blank=True, default='')
+    cac_number = models.CharField(max_length=50, blank=True, default='')
+    tin_number = models.CharField(max_length=50, blank=True, default='')
+    smedan_number = models.CharField(max_length=50, blank=True, default='')
+
+    # Corporate Governance & Bank / Funding Profile
+    mission = models.TextField(blank=True, default='')
+    vision = models.TextField(blank=True, default='')
+    core_values = models.JSONField(default=list, blank=True)
+    executive_bio = models.TextField(blank=True, default='')
+    sla_policy = models.TextField(blank=True, default='')
+    ndpr_compliance = models.TextField(blank=True, default='')
+    corporate_entity_type = models.CharField(max_length=50, blank=True, default='Registered Business Name (BN)')
+
     # Kits (JSON)
     policies = models.JSONField(default=dict)
     trust_badge_text = models.CharField(max_length=255, blank=True)
