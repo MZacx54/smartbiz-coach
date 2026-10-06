@@ -546,14 +546,20 @@ export interface DailySummary {
 export interface DailyAIInsights {
   headline: string;
   executiveSummary: string;
-  performanceGrade: 'A+' | 'A' | 'B' | 'C' | 'D';
+  performanceGrade: 'A+' | 'A' | 'B' | 'C' | 'D' | string;
   healthScore: number;
-  leakagesAndRisks: string[];
+  leakagesAndRisks?: string[];
+  costLeakages?: string[];
+  revenueBreakdownText?: string;
   tomorrowActionPlan: string[];
   recommendedFeatures: {
-    title: string;
-    description: string;
+    title?: string;
+    description?: string;
     actionRoute?: string;
+    featureName?: string;
+    whyRecommended?: string;
+    featureRoute?: string;
+    icon?: string;
   }[];
   whatsappBriefText?: string;
 }

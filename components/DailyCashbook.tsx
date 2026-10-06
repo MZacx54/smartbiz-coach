@@ -1777,8 +1777,8 @@ export const DailyCashbook: React.FC = () => {
                   </div>
 
                   <div className="space-y-2.5">
-                    {aiInsights.costLeakages && aiInsights.costLeakages.length > 0 ? (
-                      aiInsights.costLeakages.map((leak, idx) => (
+                    {((aiInsights.costLeakages || aiInsights.leakagesAndRisks || []) as string[]).length > 0 ? (
+                      ((aiInsights.costLeakages || aiInsights.leakagesAndRisks || []) as string[]).map((leak: string, idx: number) => (
                         <div key={idx} className="bg-white p-3.5 rounded-2xl border border-rose-100 flex items-start gap-2.5 text-xs text-slate-700 shadow-xs">
                           <span className="text-rose-500 font-bold shrink-0 mt-0.5">•</span>
                           <span>{leak}</span>
@@ -1804,7 +1804,7 @@ export const DailyCashbook: React.FC = () => {
 
                   <div className="space-y-2.5">
                     {aiInsights.tomorrowActionPlan && aiInsights.tomorrowActionPlan.length > 0 ? (
-                      aiInsights.tomorrowActionPlan.map((action, idx) => (
+                      aiInsights.tomorrowActionPlan.map((action: string, idx: number) => (
                         <div key={idx} className="bg-white p-3.5 rounded-2xl border border-emerald-100 flex items-start gap-2.5 text-xs text-slate-700 shadow-xs">
                           <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                             {idx + 1}
@@ -1837,36 +1837,43 @@ export const DailyCashbook: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                    {aiInsights.recommendedFeatures.map((rec, idx) => (
-                      <div 
-                        key={idx} 
-                        className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-between hover:border-purple-300 transition-all group"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{rec.icon || '⚡'}</span>
-                            <h4 className="text-xs font-black text-slate-900 group-hover:text-purple-600 transition-colors">
-                              {rec.featureName}
-                            </h4>
-                          </div>
-                          <p className="text-[11px] text-slate-600 leading-relaxed">
-                            {rec.whyRecommended}
-                          </p>
-                        </div>
+                    {aiInsights.recommendedFeatures.map((rec, idx: number) => {
+                      const featName = rec.featureName || rec.title || 'Recommended Feature';
+                      const featDesc = rec.whyRecommended || rec.description || '';
+                      const featRoute = rec.featureRoute || rec.actionRoute || '';
+                      const featIcon = rec.icon || (featRoute.includes('debtor') ? '📒' : '📦');
 
-                        <button
-                          onClick={() => {
-                            if (rec.featureRoute) {
-                              navigate(rec.featureRoute);
-                            }
-                          }}
-                          className="mt-4 w-full bg-white hover:bg-purple-600 hover:text-white text-slate-800 border border-slate-200 text-xs font-extrabold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      return (
+                        <div 
+                          key={idx} 
+                          className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 flex flex-col justify-between hover:border-purple-300 transition-all group"
                         >
-                          <span>Open Tool</span>
-                          <span>➜</span>
-                        </button>
-                      </div>
-                    ))}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{featIcon}</span>
+                              <h4 className="text-xs font-black text-slate-900 group-hover:text-purple-600 transition-colors">
+                                {featName}
+                              </h4>
+                            </div>
+                            <p className="text-[11px] text-slate-600 leading-relaxed">
+                              {featDesc}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              if (featRoute) {
+                                navigate(featRoute.startsWith('/') ? featRoute : `/dashboard/${featRoute}`);
+                              }
+                            }}
+                            className="mt-4 w-full bg-white hover:bg-purple-600 hover:text-white text-slate-800 border border-slate-200 text-xs font-extrabold py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <span>Open Tool</span>
+                            <span>➜</span>
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

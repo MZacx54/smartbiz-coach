@@ -888,8 +888,21 @@ Return ONLY valid JSON.
             "performanceGrade": grade,
             "healthScore": score,
             "leakagesAndRisks": leakages,
+            "costLeakages": leakages,
+            "revenueBreakdownText": f"Gross Sales: ₦{total_sales_revenue:,.2f} | Operating Costs: ₦{total_expenses:,.2f} | Net Cash: ₦{net_cash_in_till:,.2f}",
             "tomorrowActionPlan": actions,
-            "recommendedFeatures": recommended_features,
+            "recommendedFeatures": [
+                {
+                    "title": rec.get("title", ""),
+                    "description": rec.get("description", ""),
+                    "actionRoute": rec.get("actionRoute", ""),
+                    "featureName": rec.get("title", ""),
+                    "whyRecommended": rec.get("description", ""),
+                    "featureRoute": rec.get("actionRoute", ""),
+                    "icon": "📒" if "debtor" in rec.get("actionRoute", "") else "📦"
+                }
+                for rec in recommended_features
+            ],
             "whatsappBriefText": whatsapp_text
         })
 
