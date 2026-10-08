@@ -528,8 +528,12 @@ const BlogIndex: React.FC = () => {
                                     </button>
                                     <div className="pt-2 text-[10px] text-slate-300 space-y-1 text-center">
                                         <div>Official Partnership Hotlines: <span className="text-emerald-300 font-bold">09064556107</span></div>
-                                        <div className="text-slate-400">
-                                            Emails: <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a> · <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a> · <a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">info@smartbizcoach.com.ng</a>
+                                        <div className="text-slate-400 flex flex-wrap justify-center items-center gap-x-2 gap-y-0.5">
+                                            <span>🤝 <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a></span>
+                                            <span>•</span>
+                                            <span>🛟 <a href="mailto:support@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">support@smartbizcoach.com.ng</a></span>
+                                            <span>•</span>
+                                            <span>⚙️ <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a></span>
                                         </div>
                                     </div>
                                 </form>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import VendorVerification, MarketplaceListing, Product, Lead
+from .models import VendorVerification, MarketplaceListing, Product, Lead, DailySale, DailyExpense
 
 @admin.register(VendorVerification)
 class VendorVerificationAdmin(admin.ModelAdmin):
@@ -28,4 +28,20 @@ class LeadAdmin(admin.ModelAdmin):
     list_filter = ['lead_type', 'status', 'created_at']
     search_fields = ['customer_name', 'customer_contact', 'brand__business_name']
     list_display_links = ['id', 'customer_name']
+
+@admin.register(DailySale)
+class DailySaleAdmin(admin.ModelAdmin):
+    list_display = ['id', 'item_name', 'user', 'quantity', 'unit_price', 'total_amount', 'payment_method', 'is_debt', 'created_at']
+    list_filter = ['payment_method', 'is_debt', 'created_at']
+    search_fields = ['item_name', 'user__username', 'user__email', 'customer_name', 'customer_phone']
+    list_display_links = ['id', 'item_name']
+    date_hierarchy = 'created_at'
+
+@admin.register(DailyExpense)
+class DailyExpenseAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'user', 'category', 'amount', 'payment_method', 'created_at']
+    list_filter = ['category', 'payment_method', 'created_at']
+    search_fields = ['title', 'user__username', 'user__email', 'notes']
+    list_display_links = ['id', 'title']
+    date_hierarchy = 'created_at'
 

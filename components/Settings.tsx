@@ -134,11 +134,11 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   // Admin console states
   const [adminData, setAdminData] = useState<AdminDashboardData | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
-  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'credits' | 'payouts'>('orders');
+  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'credits' | 'partnerships' | 'cac' | 'pos' | 'payouts'>('orders');
 
   const handleExportAdminCSV = () => {
     if (!adminData) return;
-    let csv = "Category,ID,Merchant/User,Customer/Email,Amount (NGN),Details/Ref,Status,Date\n";
+    let csv = "Category,ID,Entity/User,Contact/Email,Amount (NGN),Details/Notes,Status,Date\n";
     
     (adminData.storefront_orders || []).forEach(o => {
       csv += `"Storefront Order",${o.id},"${o.business_name}","${o.customer_name} (${o.customer_contact})",${o.amount},"${o.product_name}",${o.status},"${o.created_at}"\n`;
@@ -148,15 +148,23 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
       csv += `"BizCredit AI Purchase",${t.id},"${t.business_name}","${t.email}",${t.amount},"${t.description} (Ref: ${t.reference})",${t.status},"${t.created_at}"\n`;
     });
 
+    (adminData.partnership_inquiries || []).forEach(p => {
+      csv += `"Partnership Proposal",${p.id},"${p.organization}","${p.name} (${p.email} / ${p.phone})",0,"${p.partnership_type} - ${p.cohort_size}",${p.status},"${p.created_at}"\n`;
+    });
+
+    (adminData.cac_requests || []).forEach(c => {
+      csv += `"CAC Registration",${c.id},"${c.business_name}","${c.user_name} (${c.user_email})",${c.amount},"${c.registration_type} (Ref: ${c.payment_reference})",${c.payment_status} / ${c.status},"${c.created_at}"\n`;
+    });
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `SmartBiz_Admin_Financial_Audit_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `SmartBiz_Admin_Platform_Audit_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Financial Audit CSV exported!");
+    toast.success("Executive Platform Audit CSV exported!");
   };
 
   // Sync edit form when user changes
@@ -399,8 +407,14 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     { id: 'data' as SettingsTab, label: 'Data & Backup', icon: '🗄️' },
   ];
 
-  if (user.email === 'meshachzax@gmail.com') {
-    settingsTabs.push({ id: 'admin' as SettingsTab, label: 'Admin Ledger', icon: '⚙️' });
+  const isAdminUser = Boolean(
+    (user as any)?.is_staff ||
+    (user as any)?.is_superuser ||
+    ['meshachzax@gmail.com', 'admin@smartbiz.com.ng', 'admin@smartbizcoach.com.ng', 'partners@smartbizcoach.com.ng', 'info@smartbizcoach.com.ng', 'mzacs54@gmail.com'].includes(((user?.email || '') as string).toLowerCase().trim())
+  );
+
+  if (isAdminUser) {
+    settingsTabs.push({ id: 'admin' as SettingsTab, label: 'Admin Console', icon: '⚙️' });
   }
 
   return (
@@ -1387,79 +1401,125 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
               <div>
                 <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-                  Platform Admin Control Center
+                  Executive Admin Control Center
                 </span>
-                <h3 className="text-2xl font-black mt-2 font-heading text-white">Payment Revenue & Settlement Audit</h3>
-                <p className="text-xs text-slate-400 mt-1">Ecosystem-wide financial intelligence across merchant stores and AI wallet top-ups.</p>
+                <h3 className="text-2xl font-black mt-2 font-heading text-white">Platform Governance, Revenue & Operations</h3>
+                <p className="text-xs text-slate-400 mt-1">Ecosystem-wide financial intelligence, institutional cohorts, CAC registrations, and retail day-book.</p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleExportAdminCSV}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap active:scale-95 border-0"
-              >
-                📥 Export Financial CSV
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <a
+                  href="/admin/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-2xl text-xs font-black border border-slate-700 transition-all flex items-center gap-1.5 shadow-md"
+                >
+                  🏛️ Open Django Admin
+                </a>
+                <button
+                  type="button"
+                  onClick={handleExportAdminCSV}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95 border-0"
+                >
+                  📥 Export Platform CSV
+                </button>
+              </div>
             </div>
             
             {/* Top KPI Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <p className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">👥 Total Active Users</p>
-                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.active_users_count || adminData?.total_users_count || 1} Businesses</h4>
-                <span className="text-[9px] text-slate-400">{adminData?.onboarded_users_count || 1} Onboarded Merchants</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 relative z-10">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-cyan-400 uppercase tracking-wider">👥 Active Users</p>
+                <h4 className="text-base font-black text-white mt-1 font-heading">{adminData?.active_users_count || adminData?.total_users_count || 1}</h4>
+                <span className="text-[9px] text-slate-400">{adminData?.onboarded_users_count || 1} Onboarded</span>
               </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Storefront Products GMV</p>
-                <h4 className="text-lg font-black text-white mt-1 font-heading">₦{(adminData?.storefront_gmv || 0).toLocaleString()}</h4>
-                <span className="text-[9px] text-slate-400">{adminData?.total_products_count || 0} Listed Products</span>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Storefront GMV</p>
+                <h4 className="text-base font-black text-white mt-1 font-heading">₦{(adminData?.storefront_gmv || 0).toLocaleString()}</h4>
+                <span className="text-[9px] text-slate-400">{adminData?.total_products_count || 0} Products</span>
               </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-wider">BizCredit AI Wallet Revenue</p>
-                <h4 className="text-lg font-black text-white mt-1 font-heading">₦{(adminData?.total_revenue || 0).toLocaleString()}</h4>
-                <span className="text-[9px] text-slate-400">Platform AI Credits</span>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-wider">BizCredit AI Rev</p>
+                <h4 className="text-base font-black text-white mt-1 font-heading">₦{(adminData?.total_revenue || 0).toLocaleString()}</h4>
+                <span className="text-[9px] text-slate-400">Tokens Purchased</span>
               </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <p className="text-[9px] font-black text-amber-400 uppercase tracking-wider">🏛️ CAC & Payout Desk</p>
-                <h4 className="text-lg font-black text-white mt-1 font-heading">{adminData?.total_cac_requests || 0} CAC / {adminData?.active_subaccounts_count || 0} Banks</h4>
-                <span className="text-[9px] text-slate-400">{adminData?.paid_cac_requests || 0} Paid CAC Filings</span>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-amber-400 uppercase tracking-wider">📱 POS Sales Vol</p>
+                <h4 className="text-base font-black text-white mt-1 font-heading">₦{(adminData?.pos_stats?.total_sales_volume || 0).toLocaleString()}</h4>
+                <span className="text-[9px] text-slate-400">{adminData?.pos_stats?.total_sales_count || 0} Sales Recorded</span>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-rose-400 uppercase tracking-wider">🤝 Partnerships</p>
+                <h4 className="text-base font-black text-white mt-1 font-heading">{adminData?.partnership_inquiries?.length || 0} Inquiries</h4>
+                <span className="text-[9px] text-slate-400">NGO & Institutional</span>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 backdrop-blur-sm">
+                <p className="text-[9px] font-black text-teal-400 uppercase tracking-wider">🏛️ CAC & Banks</p>
+                <h4 className="text-base font-black text-white mt-1 font-heading">{adminData?.total_cac_requests || 0} CAC</h4>
+                <span className="text-[9px] text-slate-400">{adminData?.active_subaccounts_count || 0} Bank Payouts</span>
               </div>
             </div>
           </div>
 
           {/* Ledger Sub-Tab Selector */}
-          <div className="flex border-b border-slate-200 gap-2">
+          <div className="flex border-b border-slate-200 gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1">
             <button
               onClick={() => setAdminSubTab('orders')}
-              className={`pb-3 px-4 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent ${
-                adminSubTab === 'orders' ? 'border-indigo-600 text-indigo-650' : 'border-transparent text-slate-400 hover:text-slate-600'
+              className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
+                adminSubTab === 'orders' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              🛍️ Storefront Product Orders ({adminData?.storefront_orders?.length || 0})
+              🛍️ Orders ({adminData?.storefront_orders?.length || 0})
             </button>
             <button
               onClick={() => setAdminSubTab('credits')}
-              className={`pb-3 px-4 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent ${
-                adminSubTab === 'credits' ? 'border-indigo-600 text-indigo-650' : 'border-transparent text-slate-400 hover:text-slate-600'
+              className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
+                adminSubTab === 'credits' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              ⚡ BizCredit AI Purchases ({adminData?.transactions?.length || 0})
+              ⚡ BizCredits ({adminData?.transactions?.length || 0})
+            </button>
+            <button
+              onClick={() => setAdminSubTab('partnerships')}
+              className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
+                adminSubTab === 'partnerships' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              🤝 Partnerships ({adminData?.partnership_inquiries?.length || 0})
+            </button>
+            <button
+              onClick={() => setAdminSubTab('cac')}
+              className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
+                adminSubTab === 'cac' ? 'border-amber-600 text-amber-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              🏛️ CAC Filings ({adminData?.cac_requests?.length || 0})
+            </button>
+            <button
+              onClick={() => setAdminSubTab('pos')}
+              className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
+                adminSubTab === 'pos' ? 'border-teal-600 text-teal-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              📱 POS Retail Day-Book
             </button>
             <button
               onClick={() => setAdminSubTab('payouts')}
-              className={`pb-3 px-4 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent ${
-                adminSubTab === 'payouts' ? 'border-indigo-600 text-indigo-650' : 'border-transparent text-slate-400 hover:text-slate-600'
+              className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
+                adminSubTab === 'payouts' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              🏛️ Merchant Bank Subaccounts ({adminData?.merchant_payout_directory?.length || 0})
+              🏦 Bank Accounts ({adminData?.merchant_payout_directory?.length || 0})
             </button>
           </div>
 
           {/* Ledger Content Container */}
-          <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+          <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
             
             {/* SUB-TAB 1: STOREFRONT PRODUCT ORDERS */}
             {adminSubTab === 'orders' && (
@@ -1503,7 +1563,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             )}
 
             {/* SUB-TAB 2: BIZCREDIT AI PURCHASES */}
-            {activeTab === 'admin' && adminSubTab === 'credits' && (
+            {adminSubTab === 'credits' && (
               <div>
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                   <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">BizCredit AI Wallet Purchases (Platform Revenue)</h3>
@@ -1543,8 +1603,224 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </div>
             )}
 
-            {/* SUB-TAB 3: MERCHANT BANK SUBACCOUNTS */}
-            {activeTab === 'admin' && adminSubTab === 'payouts' && (
+            {/* SUB-TAB 3: INSTITUTIONAL & NGO PARTNERSHIP PROPOSALS */}
+            {adminSubTab === 'partnerships' && (
+              <div>
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Institutional, NGO & Donor Inquiries</h3>
+                    <p className="text-[11px] text-slate-500">Proposals received via Landing Page, Blog, and Contact Desk</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-3 py-0.5 rounded-full">
+                      {adminData?.partnership_inquiries?.length || 0} Proposals Logged
+                    </span>
+                    <a
+                      href="/admin/users/partnershipinquiry/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-emerald-700 hover:underline"
+                    >
+                      Manage in Django Admin →
+                    </a>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100 overflow-y-auto max-h-[520px]">
+                  {loadingAdmin ? (
+                    <div className="p-8 text-center text-xs text-slate-400">Loading partnership inquiries...</div>
+                  ) : !adminData?.partnership_inquiries || adminData.partnership_inquiries.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 italic">No partnership proposals recorded yet.</div>
+                  ) : (
+                    adminData.partnership_inquiries.map(inq => (
+                      <div key={inq.id} className="p-5 hover:bg-slate-50 transition-colors space-y-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-black text-slate-900">{inq.organization}</span>
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                                {inq.partnership_type}
+                              </span>
+                              <span className="text-[9px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-mono">
+                                Origin: {inq.source}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 mt-1">
+                              <strong>Contact:</strong> {inq.name} · <a href={`mailto:${inq.email}`} className="text-emerald-600 hover:underline">{inq.email}</a> · <strong>Phone:</strong> {inq.phone}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-extrabold bg-slate-900 text-white px-2.5 py-1 rounded-lg">
+                              Status: {inq.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {inq.cohort_size && inq.cohort_size !== 'Not specified' && (
+                          <div className="text-[11px] font-semibold text-slate-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg inline-block">
+                            👥 Expected Cohort Scale: <strong className="text-amber-900">{inq.cohort_size}</strong>
+                          </div>
+                        )}
+
+                        <div className="bg-slate-100/70 p-3 rounded-xl text-xs text-slate-700 leading-relaxed">
+                          <p className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-1">Proposal Overview:</p>
+                          <p className="whitespace-pre-wrap">{inq.message || 'No additional note provided.'}</p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                          <span>Received: {new Date(inq.created_at).toLocaleString()}</span>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`mailto:${inq.email}?subject=Response to ${inq.organization} Partnership Inquiry&body=Dear ${inq.name},%0D%0A%0D%0AThank you for reaching out to SmartBiz Coach.`}
+                              className="px-3 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg font-bold text-[10px] transition-colors"
+                            >
+                              ✉️ Email Contact
+                            </a>
+                            {inq.phone && inq.phone !== 'N/A' && (
+                              <a
+                                href={`https://wa.me/${inq.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(inq.name)}%2C%20regarding%20your%20partnership%20proposal%20with%20SmartBiz%20Coach`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-bold text-[10px] transition-colors"
+                              >
+                                💬 WhatsApp
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 4: CAC ACCREDITED AGENT DESK */}
+            {adminSubTab === 'cac' && (
+              <div>
+                <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">CAC Accredited Agent Desk Registrations</h3>
+                    <p className="text-[11px] text-slate-500">Business Names, Ltd Companies, and NGO incorporation filings</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-3 py-0.5 rounded-full">
+                      {adminData?.paid_cac_requests || 0} Paid / {adminData?.cac_requests?.length || 0} Total
+                    </span>
+                    <a
+                      href="/admin/users/agenthirerequest/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-amber-700 hover:underline"
+                    >
+                      Assign Agent in Django Admin →
+                    </a>
+                  </div>
+                </div>
+
+                <div className="divide-y divide-slate-100 overflow-y-auto max-h-[520px]">
+                  {loadingAdmin ? (
+                    <div className="p-8 text-center text-xs text-slate-400">Loading CAC requests...</div>
+                  ) : !adminData?.cac_requests || adminData.cac_requests.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 italic">No CAC registration requests recorded.</div>
+                  ) : (
+                    adminData.cac_requests.map(req => (
+                      <div key={req.id} className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-slate-50 transition-colors gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-slate-900">{req.business_name}</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded">
+                              {req.registration_type}
+                            </span>
+                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded ${
+                              req.payment_status === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {req.payment_status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600">
+                            Applicant: <strong>{req.user_name}</strong> ({req.user_email})
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-mono">
+                            Ref: {req.payment_reference} · Date: {new Date(req.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1.5">
+                          <p className="text-sm font-black text-slate-900">₦{req.amount.toLocaleString()}</p>
+                          <span className="text-[10px] font-bold bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
+                            Desk Status: {req.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 5: POS RETAIL DAY-BOOK & OPERATING FLOW */}
+            {adminSubTab === 'pos' && (
+              <div className="p-6 space-y-6">
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-widest">MSME POS Day-Book & Open-Market Cashflow</h3>
+                    <p className="text-xs text-slate-500 mt-1">Real-time aggregate retail sales and operating expenses recorded across subscriber stores.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="/admin/marketplace/dailysale/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl"
+                    >
+                      Inspect Sales in Django Admin →
+                    </a>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+                    <p className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">Total Sales Volume</p>
+                    <h4 className="text-2xl font-black text-emerald-950 mt-1 font-heading">
+                      ₦{(adminData?.pos_stats?.total_sales_volume || 0).toLocaleString()}
+                    </h4>
+                    <p className="text-xs text-emerald-700 mt-1">{adminData?.pos_stats?.total_sales_count || 0} checkout transactions recorded</p>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200">
+                    <p className="text-[10px] font-black text-blue-800 uppercase tracking-wider">Cash in Till vs Transfer</p>
+                    <div className="mt-2 space-y-1 text-xs text-blue-900">
+                      <div>💵 <strong>Cash:</strong> ₦{(adminData?.pos_stats?.cash_sales_volume || 0).toLocaleString()}</div>
+                      <div>💳 <strong>Transfer / POS:</strong> ₦{(adminData?.pos_stats?.transfer_sales_volume || 0).toLocaleString()}</div>
+                      <div>📒 <strong>Customer Debt:</strong> ₦{(adminData?.pos_stats?.credit_sales_volume || 0).toLocaleString()}</div>
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-2xl bg-rose-50/70 border border-rose-200">
+                    <p className="text-[10px] font-black text-rose-800 uppercase tracking-wider">Operating Expenses Logged</p>
+                    <h4 className="text-2xl font-black text-rose-950 mt-1 font-heading">
+                      ₦{(adminData?.pos_stats?.total_expenses_volume || 0).toLocaleString()}
+                    </h4>
+                    <p className="text-xs text-rose-700 mt-1">{adminData?.pos_stats?.total_expenses_count || 0} expenses (Fuel/Gen, logistics, rent)</p>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-900 to-teal-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Net Merchant Operating Margin</span>
+                    <h4 className="text-xl font-black font-heading mt-0.5">
+                      ₦{((adminData?.pos_stats?.total_sales_volume || 0) - (adminData?.pos_stats?.total_expenses_volume || 0)).toLocaleString()}
+                    </h4>
+                  </div>
+                  <div className="text-xs text-slate-300 max-w-sm">
+                    Aggregated across all subscriber POS registers with anti-theft apprentice shift mode and offline sync.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 6: MERCHANT BANK SUBACCOUNTS */}
+            {adminSubTab === 'payouts' && (
               <div>
                 <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                   <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">Merchant Paystack Direct Payout Subaccount Directory</h3>

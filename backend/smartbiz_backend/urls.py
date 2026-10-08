@@ -6,6 +6,11 @@ from django.views.generic import TemplateView, RedirectView
 from django.http import JsonResponse
 from django.db import connections
 
+# Executive Admin Portal Branding
+admin.site.site_header = "SmartBiz Coach | Executive Administration Portal"
+admin.site.site_title = "SmartBiz Coach Admin"
+admin.site.index_title = "MSME Management, Transactions, Partnerships & Governance Hub"
+
 def health_check(request):
     db_conn = connections['default']
     db_ok = False

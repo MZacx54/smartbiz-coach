@@ -529,10 +529,10 @@ const BlogPost: React.FC = () => {
                                 >
                                     WhatsApp: 09064556107
                                 </a>
-                                <div className="text-[10px] text-slate-400 text-center space-y-0.5 pt-1">
-                                    <div><a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a></div>
-                                    <div><a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a></div>
-                                    <div><a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">info@smartbizcoach.com.ng</a></div>
+                                <div className="text-[10px] text-slate-400 text-center space-y-1 pt-1">
+                                    <div>🤝 <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a></div>
+                                    <div>🛟 <a href="mailto:support@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">support@smartbizcoach.com.ng</a></div>
+                                    <div>⚙️ <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a></div>
                                 </div>
                             </div>
                         </div>

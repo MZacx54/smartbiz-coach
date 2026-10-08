@@ -86,6 +86,43 @@ export interface MerchantPayoutData {
   created_at: string;
 }
 
+export interface PartnershipInquiryData {
+  id: number;
+  organization: string;
+  name: string;
+  email: string;
+  phone: string;
+  partnership_type: string;
+  cohort_size: string;
+  message: string;
+  source: string;
+  status: string;
+  created_at: string;
+}
+
+export interface CacRequestData {
+  id: number;
+  business_name: string;
+  registration_type: string;
+  user_email: string;
+  user_name: string;
+  amount: number;
+  payment_status: string;
+  payment_reference: string;
+  status: string;
+  created_at: string;
+}
+
+export interface PosDaybookStats {
+  total_sales_volume: number;
+  total_sales_count: number;
+  cash_sales_volume: number;
+  transfer_sales_volume: number;
+  credit_sales_volume: number;
+  total_expenses_volume: number;
+  total_expenses_count: number;
+}
+
 export interface AdminDashboardData {
   total_users_count?: number;
   active_users_count?: number;
@@ -114,4 +151,7 @@ export interface AdminDashboardData {
   }[];
   storefront_orders?: StorefrontOrderData[];
   merchant_payout_directory?: MerchantPayoutData[];
+  partnership_inquiries?: PartnershipInquiryData[];
+  cac_requests?: CacRequestData[];
+  pos_stats?: PosDaybookStats;
 }

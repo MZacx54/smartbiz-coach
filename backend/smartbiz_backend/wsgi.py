@@ -26,7 +26,12 @@ except Exception as e:
 try:
     from django.contrib.auth import get_user_model
     User = get_user_model()
-    admin_emails = ["meshachzax@gmail.com", "admin@smartbizcoach.com.ng"]
+    admin_emails = [
+        "meshachzax@gmail.com",
+        "admin@smartbiz.com.ng",
+        "admin@smartbizcoach.com.ng",
+        "partners@smartbizcoach.com.ng",
+    ]
     default_admin_pwd = os.environ.get('DJANGO_SUPERUSER_PASSWORD') or os.environ.get('ADMIN_DEFAULT_PASSWORD') or ('SmartBizAdmin' + str(2020 + 6) + '!')
     for email in admin_emails:
         admin_user, _ = User.objects.get_or_create(

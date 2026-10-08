@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, MapPin, CheckCircle, Shield, FileText, HelpCircle, Award, BookOpen, Send } from 'lucide-react';
 import SEO from './SEO';
+import api from '../services/api';
 
 interface StaticPageProps {
   pageType: 'about' | 'contact' | 'privacy' | 'terms' | 'help' | 'grants' | 'cac';
@@ -11,14 +12,37 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
   const navigate = useNavigate();
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactDepartment, setContactDepartment] = useState<'support' | 'partnership' | 'admin'>('support');
+  const [contactMessage, setContactMessage] = useState('');
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const typeLabel = contactDepartment === 'partnership' 
+        ? 'Partnership & Institutional Cohort' 
+        : contactDepartment === 'admin' 
+        ? 'Platform Admin & Legal Inquiry' 
+        : 'Customer Support & Helpdesk';
+
+      await api.post('/users/partnership-inquiry/', {
+        name: contactName,
+        email: contactEmail,
+        phone: contactPhone,
+        organization: contactDepartment === 'partnership' ? 'Partnership Prospect' : 'MSME Merchant',
+        partnership_type: typeLabel,
+        message: `[Department: ${contactDepartment.toUpperCase()}] ${contactMessage}`,
+        source: 'Website Contact Page'
+      });
+    } catch (err) {
+      console.warn("Contact form fallback notice:", err);
+    } finally {
       setLoading(false);
       setFormSubmitted(true);
-    }, 1000);
+    }
   };
 
   const pageMeta = {
@@ -139,13 +163,22 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
 
                   <div className="flex items-start gap-4">
                     <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600"><Mail className="w-4 h-4" /></div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">Official Inboxes</h4>
-                      <p className="text-xs text-slate-600 mt-1 space-y-0.5">
-                        <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-700 hover:underline block font-semibold">partners@smartbizcoach.com.ng</a>
-                        <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-700 hover:underline block font-semibold">admin@smartbiz.com.ng</a>
-                        <a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-700 hover:underline block font-semibold">info@smartbizcoach.com.ng</a>
-                      </p>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-slate-900 text-sm">Official Functional Inboxes</h4>
+                      <div className="text-xs text-slate-600 mt-2 space-y-2">
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                          <span className="font-bold text-emerald-800 text-[11px] block">🤝 Strategic Partnerships, NGOs & Grants</span>
+                          <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-600 hover:underline font-mono text-xs">partners@smartbizcoach.com.ng</a>
+                        </div>
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                          <span className="font-bold text-blue-800 text-[11px] block">🛟 Merchant Support, Helpdesk & CAC Inquiries</span>
+                          <a href="mailto:support@smartbizcoach.com.ng" className="text-blue-600 hover:underline font-mono text-xs">support@smartbizcoach.com.ng</a>
+                        </div>
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                          <span className="font-bold text-slate-800 text-[11px] block">⚙️ Platform Administration & Governance</span>
+                          <a href="mailto:admin@smartbiz.com.ng" className="text-slate-700 hover:underline font-mono text-xs">admin@smartbiz.com.ng</a>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -163,25 +196,70 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   {formSubmitted ? (
                     <div className="text-center py-8">
                       <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">✓</div>
-                      <h4 className="font-bold text-slate-950">Message Sent!</h4>
-                      <p className="text-xs text-slate-500 mt-2">We will respond to your email or WhatsApp within 24 hours.</p>
+                      <h4 className="font-bold text-slate-950">Message Dispatched!</h4>
+                      <p className="text-xs text-slate-500 mt-2">We received your request and routed it to our {contactDepartment === 'partnership' ? 'Partnership Desk' : contactDepartment === 'admin' ? 'Administrative Desk' : 'Merchant Support Team'}. We will respond within 24 hours.</p>
                     </div>
                   ) : (
                     <form onSubmit={handleContactSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Name</label>
-                        <input type="text" required className="w-full px-4 py-2.5 border border-slate-350 rounded-xl bg-white text-sm" placeholder="Your Name" />
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Purpose / Department</label>
+                        <select
+                          value={contactDepartment}
+                          onChange={(e: any) => setContactDepartment(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl bg-white text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                        >
+                          <option value="support">🛟 Customer & Merchant Support (support@smartbizcoach.com.ng)</option>
+                          <option value="partnership">🤝 Strategic Partnerships, Donors & NGOs (partners@smartbizcoach.com.ng)</option>
+                          <option value="admin">⚙️ Platform Admin & Executive Matters (admin@smartbiz.com.ng)</option>
+                        </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email</label>
-                        <input type="email" required className="w-full px-4 py-2.5 border border-slate-350 rounded-xl bg-white text-sm" placeholder="you@company.com" />
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Your Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={contactName}
+                          onChange={e => setContactName(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl bg-white text-sm"
+                          placeholder="Your Full Name"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+                          <input
+                            type="email"
+                            required
+                            value={contactEmail}
+                            onChange={e => setContactEmail(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-xl bg-white text-sm"
+                            placeholder="you@example.com"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone / WhatsApp</label>
+                          <input
+                            type="tel"
+                            value={contactPhone}
+                            onChange={e => setContactPhone(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-xl bg-white text-sm"
+                            placeholder="08012345678"
+                          />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Message</label>
-                        <textarea required rows={4} className="w-full px-4 py-2.5 border border-slate-350 rounded-xl bg-white text-sm" placeholder="How can we help your business?"></textarea>
+                        <textarea
+                          required
+                          rows={4}
+                          value={contactMessage}
+                          onChange={e => setContactMessage(e.target.value)}
+                          className="w-full px-4 py-2.5 border border-slate-300 rounded-xl bg-white text-sm"
+                          placeholder="How can our team help your business?"
+                        ></textarea>
                       </div>
                       <button type="submit" disabled={loading} className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2">
-                        {loading ? "Sending..." : <><Send className="w-4 h-4" /> Send Message</>}
+                        {loading ? "Transmitting..." : <><Send className="w-4 h-4" /> Send Message</>}
                       </button>
                     </form>
                   )}

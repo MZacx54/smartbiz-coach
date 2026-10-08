@@ -485,7 +485,7 @@ class AgentHireRequestView(views.APIView):
         def send_notification():
             api_key = (settings.EMAIL_HOST_PASSWORD or '').strip()
             from_email = (settings.DEFAULT_FROM_EMAIL or '').strip()
-            admin_email = 'noreply@smartbizcoach.com.ng'
+            admin_email = 'admin@smartbiz.com.ng'
 
             subject = f"{'🚨 PAID' if hire_request.payment_status == 'PAID' else 'New'} CAC Registration Request: {hire_request.business_name} (₦{hire_request.amount_paid:,.2f})"
             body = (

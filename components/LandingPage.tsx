@@ -1072,17 +1072,18 @@ const LandingPage: React.FC = () => {
                                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                                     Direct Executive Contact Lines:
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-300">
-                                    <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
-                                        <span>📩</span> partners@smartbizcoach.com.ng
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs text-slate-300">
+                                    <a href="mailto:partners@smartbizcoach.com.ng" className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 transition-colors block">
+                                        <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">🤝 Partnerships</div>
+                                        <div className="font-mono text-[11px] truncate mt-0.5">partners@smartbizcoach.com.ng</div>
                                     </a>
-                                    <span className="text-slate-600 hidden sm:inline">•</span>
-                                    <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
-                                        <span>📩</span> admin@smartbiz.com.ng
+                                    <a href="mailto:support@smartbizcoach.com.ng" className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 transition-colors block">
+                                        <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">🛟 Support & Help</div>
+                                        <div className="font-mono text-[11px] truncate mt-0.5">support@smartbizcoach.com.ng</div>
                                     </a>
-                                    <span className="text-slate-600 hidden sm:inline">•</span>
-                                    <a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
-                                        <span>📩</span> info@smartbizcoach.com.ng
+                                    <a href="mailto:admin@smartbiz.com.ng" className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 transition-colors block">
+                                        <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">⚙️ Platform Admin</div>
+                                        <div className="font-mono text-[11px] truncate mt-0.5">admin@smartbiz.com.ng</div>
                                     </a>
                                 </div>
                                 <div className="text-[11px] text-slate-400 pt-1">

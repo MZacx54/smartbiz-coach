@@ -165,7 +165,14 @@ class AdminTransactionsView(APIView):
     def get(self, request):
         # Allow staff, superusers, or designated admin emails only
         user_email = (getattr(request.user, 'email', '') or '').strip().lower()
-        trusted_admins = {'meshachzax@gmail.com', 'admin@smartbizcoach.com.ng', 'mzacs54@gmail.com'}
+        trusted_admins = {
+            'meshachzax@gmail.com',
+            'admin@smartbiz.com.ng',
+            'admin@smartbizcoach.com.ng',
+            'partners@smartbizcoach.com.ng',
+            'info@smartbizcoach.com.ng',
+            'mzacs54@gmail.com',
+        }
         is_admin_authorized = (
             request.user.is_staff or 
             request.user.is_superuser or 
@@ -175,8 +182,8 @@ class AdminTransactionsView(APIView):
             return Response({"error": "Admin access required"}, status=status.HTTP_403_FORBIDDEN)
 
         from django.db.models import Sum
-        from marketplace.models import Lead, VendorVerification, Product
-        from users.models import User, AgentHireRequest
+        from marketplace.models import Lead, VendorVerification, Product, DailySale, DailyExpense
+        from users.models import User, AgentHireRequest, PartnershipInquiry
 
         try:
             total_users_count = User.objects.count()
@@ -281,6 +288,74 @@ class AdminTransactionsView(APIView):
         except Exception as e:
             print(f"Vendor payout directory query notice: {e}")
 
+        # 4. Institutional & NGO Partnership Proposals
+        partnership_data = []
+        try:
+            inquiries = PartnershipInquiry.objects.all().order_by('-created_at')
+            for inq in inquiries[:200]:
+                partnership_data.append({
+                    'id': inq.id,
+                    'organization': inq.organization,
+                    'name': inq.name,
+                    'email': inq.email,
+                    'phone': inq.phone or 'N/A',
+                    'partnership_type': inq.partnership_type,
+                    'cohort_size': inq.cohort_size or 'Not specified',
+                    'message': inq.message,
+                    'source': inq.source,
+                    'status': inq.status,
+                    'created_at': inq.created_at.isoformat() if getattr(inq, 'created_at', None) else ''
+                })
+        except Exception as e:
+            print(f"Partnership inquiries query notice: {e}")
+
+        # 5. CAC Accredited Agent Desk Registrations
+        cac_requests_data = []
+        try:
+            cac_regs = AgentHireRequest.objects.all().order_by('-created_at')
+            for req in cac_regs[:200]:
+                user_email_cac = req.user.email if req.user else 'No Email'
+                user_name_cac = req.user.username if req.user else 'Anonymous'
+                cac_requests_data.append({
+                    'id': req.id,
+                    'business_name': req.business_name,
+                    'registration_type': req.registration_type,
+                    'user_email': user_email_cac,
+                    'user_name': user_name_cac,
+                    'amount': float(req.amount or 0),
+                    'payment_status': req.payment_status,
+                    'payment_reference': req.payment_reference or 'N/A',
+                    'status': req.status,
+                    'created_at': req.created_at.isoformat() if getattr(req, 'created_at', None) else ''
+                })
+        except Exception as e:
+            print(f"CAC requests query notice: {e}")
+
+        # 6. POS Retail Day-Book & Expense Metrics
+        pos_stats = {
+            'total_sales_volume': 0.0,
+            'total_sales_count': 0,
+            'cash_sales_volume': 0.0,
+            'transfer_sales_volume': 0.0,
+            'credit_sales_volume': 0.0,
+            'total_expenses_volume': 0.0,
+            'total_expenses_count': 0,
+        }
+        try:
+            all_sales = DailySale.objects.all()
+            all_expenses = DailyExpense.objects.all()
+
+            pos_stats['total_sales_count'] = all_sales.count()
+            pos_stats['total_sales_volume'] = float(all_sales.aggregate(t=Sum('total_amount'))['t'] or 0.0)
+            pos_stats['cash_sales_volume'] = float(all_sales.filter(payment_method='CASH').aggregate(t=Sum('total_amount'))['t'] or 0.0)
+            pos_stats['transfer_sales_volume'] = float(all_sales.filter(payment_method='TRANSFER').aggregate(t=Sum('total_amount'))['t'] or 0.0)
+            pos_stats['credit_sales_volume'] = float(all_sales.filter(payment_method='CREDIT').aggregate(t=Sum('total_amount'))['t'] or 0.0)
+
+            pos_stats['total_expenses_count'] = all_expenses.count()
+            pos_stats['total_expenses_volume'] = float(all_expenses.aggregate(t=Sum('amount'))['t'] or 0.0)
+        except Exception as e:
+            print(f"POS stats query notice: {e}")
+
         return Response({
             'total_users_count': total_users_count,
             'active_users_count': active_users_count,
@@ -299,7 +374,10 @@ class AdminTransactionsView(APIView):
             'transactions': credit_txs_data, # Backward compatibility
             'credit_transactions': credit_txs_data,
             'storefront_orders': order_txs_data,
-            'merchant_payout_directory': vendors_data
+            'merchant_payout_directory': vendors_data,
+            'partnership_inquiries': partnership_data,
+            'cac_requests': cac_requests_data,
+            'pos_stats': pos_stats,
         }, status=status.HTTP_200_OK)
 
 

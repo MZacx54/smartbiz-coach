@@ -85,11 +85,33 @@ const SEO: React.FC<SEOProps> = ({
           'addressLocality': 'Lagos',
           'addressCountry': 'NG'
         },
-        'contactPoint': {
-          '@type': 'ContactPoint',
-          'contactType': 'customer support',
-          'url': 'https://wa.me/2349064556107'
-        },
+        'contactPoint': [
+          {
+            '@type': 'ContactPoint',
+            'contactType': 'customer support',
+            'email': 'support@smartbizcoach.com.ng',
+            'telephone': '+2349064556107',
+            'url': 'https://wa.me/2349064556107',
+            'areaServed': 'NG',
+            'availableLanguage': ['English', 'Pidgin']
+          },
+          {
+            '@type': 'ContactPoint',
+            'contactType': 'partnerships',
+            'email': 'partners@smartbizcoach.com.ng',
+            'telephone': '+2349064556107',
+            'areaServed': 'NG',
+            'availableLanguage': ['English']
+          },
+          {
+            '@type': 'ContactPoint',
+            'contactType': 'administrative',
+            'email': 'admin@smartbiz.com.ng',
+            'telephone': '+2349064556107',
+            'areaServed': 'NG',
+            'availableLanguage': ['English']
+          }
+        ],
         'sameAs': [
           'https://www.facebook.com/profile.php?id=61580131486753',
           'https://www.instagram.com/smartbizcoach1/',
