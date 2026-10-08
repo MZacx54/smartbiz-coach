@@ -14,5 +14,6 @@ jobs:
       - name: Ping API & Supabase Database
         run: |
           echo "Pinging SmartBiz Coach Health Endpoint to keep Supabase DB active..."
-          curl -f -s https://api.smartbizcoach.com.ng/health/ || exit 1
+          curl -f --retry 3 --retry-delay 10 --retry-all-errors --max-time 60 https://api.smartbizcoach.com.ng/health/ || \
+          curl -f --retry 3 --retry-delay 10 --retry-all-errors --max-time 60 https://smartbiz-coach.onrender.com/health/
           echo "Database health check succeeded. Supabase activity registered successfully."

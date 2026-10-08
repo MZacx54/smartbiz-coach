@@ -1,4 +1,5 @@
 import os
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView, RedirectView
@@ -8,24 +9,24 @@ from django.db import connections
 def health_check(request):
     db_conn = connections['default']
     db_ok = False
+    db_err = None
     try:
         with db_conn.cursor() as cursor:
             cursor.execute("SELECT 1;")
             cursor.fetchone()
         db_ok = True
-    except Exception:
+    except Exception as e:
         db_ok = False
+        db_err = str(e)
         
     response_payload = {
         'status': 'ok' if db_ok else 'unhealthy',
         'service': 'SmartBiz Engine',
         'database': 'connected' if db_ok else 'disconnected'
     }
-    # Only expose detailed diagnostics in local debug mode
-    if getattr(settings, 'DEBUG', False):
-        response_payload['debug'] = {
-            'has_database_url': bool(os.environ.get('DATABASE_URL'))
-        }
+    if getattr(settings, 'DEBUG', False) and db_err:
+        response_payload['error'] = db_err
+
     return JsonResponse(response_payload, status=200 if db_ok else 503)
 
 urlpatterns = [
