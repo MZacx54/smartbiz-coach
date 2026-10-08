@@ -37,6 +37,8 @@ const PublicAuditReport = lazy(() => import("./components/PublicAuditReport"));
 const StaticPage = lazy(() => import("./components/StaticPage"));
 const MarketingAgent = lazy(() => import("./components/MarketingAgent"));
 const DailyCashbook = lazy(() => import("./components/DailyCashbook").then(m => ({ default: m.DailyCashbook })));
+const BlogIndex = lazy(() => import("./components/BlogIndex"));
+const BlogPost = lazy(() => import("./components/BlogPost"));
 
 import {
   AppView,
@@ -569,6 +571,16 @@ const App: React.FC = () => {
         <Route path="/cac-checklist" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
             <StaticPage pageType="cac" />
+          </Suspense>
+        } />
+        <Route path="/blog" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <BlogIndex />
+          </Suspense>
+        } />
+        <Route path="/blog/:slug" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <BlogPost />
           </Suspense>
         } />
 

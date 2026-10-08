@@ -303,6 +303,9 @@ const LandingPage: React.FC = () => {
                             {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
                                 <a key={href} href={href} className="text-slate-600 hover:text-green-600 font-semibold transition-colors text-sm">{label}</a>
                             ))}
+                            <button onClick={() => navigate('/blog')} className="text-slate-600 hover:text-green-600 font-semibold transition-colors text-sm flex items-center gap-1">
+                                Blog <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            </button>
                         </div>
 
                         <div className="flex items-center space-x-2 sm:space-x-3">
@@ -328,6 +331,9 @@ const LandingPage: React.FC = () => {
                             {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
                                 <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block py-2.5 px-3 text-slate-700 font-semibold hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">{label}</a>
                             ))}
+                            <button onClick={() => { setMobileMenuOpen(false); navigate('/blog'); }} className="block w-full text-left py-2.5 px-3 text-slate-700 font-semibold hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">
+                                📰 Impact & Partnership Blog
+                            </button>
                             <div className="pt-2 border-t border-slate-100 space-y-2">
                                 <div className="pb-1">
                                     <PWAInstallButton variant="banner" className="w-full justify-center" label="📲 Install SmartBiz App" />
@@ -1207,6 +1213,7 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Resources</h4>
                             <ul className="space-y-3">
+                                <li><span onClick={() => navigate('/blog')} className="text-sm text-emerald-400 font-semibold hover:underline transition-colors cursor-pointer flex items-center gap-1.5">Impact & Partnership Blog <span className="text-[10px] bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">New</span></span></li>
                                 <li><span onClick={() => navigate('/help')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Help & Guides</span></li>
                                 <li><span onClick={() => navigate('/grants-guide')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Grant Matcher Guide</span></li>
                                 <li><span onClick={() => navigate('/cac-checklist')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">CAC Compliance Guide</span></li>
