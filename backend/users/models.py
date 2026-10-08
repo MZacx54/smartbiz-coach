@@ -73,3 +73,43 @@ class AgentHireRequest(models.Model):
         return f"CAC Registration: {self.business_name} ({self.registration_type} - {self.payment_status})"
 
 
+class PartnershipInquiry(models.Model):
+    STATUS_CHOICES = [
+        ('NEW', 'New Inquiry'),
+        ('IN_REVIEW', 'In Review'),
+        ('CONTACTED', 'Contacted / Meeting Scheduled'),
+        ('PILOT_ACTIVE', 'Pilot Active'),
+        ('DECLINED', 'Declined / Closed'),
+    ]
+
+    PARTNERSHIP_TYPES = [
+        ('SME Training & NGO Cohorts', 'SME Training & NGO Cohorts'),
+        ('Bank / Microfinance Credit Scoring', 'Bank / Microfinance Credit Scoring'),
+        ('Government Agency (SMEDAN, BOI)', 'Government Agency (SMEDAN, BOI)'),
+        ('Market Association / Cooperative', 'Market Association / Cooperative'),
+        ('Equity Investment / Venture Capital', 'Equity Investment / Venture Capital'),
+        ('Other', 'Other Strategic Partnership'),
+    ]
+
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone = models.CharField(max_length=50, blank=True, default='')
+    organization = models.CharField(max_length=255)
+    partnership_type = models.CharField(max_length=100, choices=PARTNERSHIP_TYPES, default='SME Training & NGO Cohorts')
+    cohort_size = models.CharField(max_length=100, blank=True, default='')
+    message = models.TextField()
+    source = models.CharField(max_length=100, default='Landing Page')
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='NEW')
+    internal_notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Partnership & Cohort Inquiry'
+        verbose_name_plural = 'Partnership & Cohort Inquiries'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.organization} ({self.name}) - {self.partnership_type} [{self.status}]"
+
+

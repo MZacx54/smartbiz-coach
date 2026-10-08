@@ -3,6 +3,8 @@ import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import SEO from './SEO';
 import { PWAInstallButton } from './PWAInstallPrompt';
+import api from '../services/api';
+import { toast } from 'react-hot-toast';
 
 // --- Animated Counter Component ---
 const AnimatedCounter: React.FC<{ target: string; duration?: number }> = ({ target, duration = 2 }) => {
@@ -57,10 +59,40 @@ const LandingPage: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const handlePartnerSubmit = (e: React.FormEvent) => {
+    const handlePartnerSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setPartnerLoading(true);
-        setTimeout(() => { setPartnerLoading(false); setPartnerSubmitted(true); }, 1200);
+        try {
+            await api.post('/users/partnership-inquiry/', {
+                name: partnerName,
+                email: partnerEmail,
+                organization: partnerOrg,
+                partnership_type: partnerType,
+                message: partnerMessage,
+                source: 'Landing Page Institutional Desk'
+            });
+            toast.success("Partnership proposal recorded in Executive Portal!");
+        } catch (err) {
+            console.warn("Backend partnership logging note:", err);
+            // Fallback: save to localStorage so no data is ever lost
+            try {
+                const savedInquiries = JSON.parse(localStorage.getItem('sb_partner_inquiries') || '[]');
+                savedInquiries.push({
+                    name: partnerName,
+                    email: partnerEmail,
+                    organization: partnerOrg,
+                    partnership_type: partnerType,
+                    message: partnerMessage,
+                    timestamp: new Date().toISOString()
+                });
+                localStorage.setItem('sb_partner_inquiries', JSON.stringify(savedInquiries));
+            } catch (e) {
+                // ignore
+            }
+        } finally {
+            setPartnerLoading(false);
+            setPartnerSubmitted(true);
+        }
     };
 
     // ROI Calculator derived values
@@ -1036,10 +1068,26 @@ const LandingPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="pt-2">
-                                <a href="mailto:partners@smartbizcoach.com.ng" className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold text-sm">
-                                    <span>📩 Email Corporate Partnership Desk: partners@smartbizcoach.com.ng</span>
-                                </a>
+                            <div className="pt-3 space-y-2">
+                                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                    Direct Executive Contact Lines:
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-300">
+                                    <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
+                                        <span>📩</span> partners@smartbizcoach.com.ng
+                                    </a>
+                                    <span className="text-slate-600 hidden sm:inline">•</span>
+                                    <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
+                                        <span>📩</span> admin@smartbiz.com.ng
+                                    </a>
+                                    <span className="text-slate-600 hidden sm:inline">•</span>
+                                    <a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
+                                        <span>📩</span> info@smartbizcoach.com.ng
+                                    </a>
+                                </div>
+                                <div className="text-[11px] text-slate-400 pt-1">
+                                    Official WhatsApp / Hotline: <strong className="text-emerald-300">09064556107</strong>
+                                </div>
                             </div>
                         </motion.div>
 

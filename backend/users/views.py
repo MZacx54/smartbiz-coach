@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from .serializers import UserSerializer, UserComplianceSerializer, AgentHireRequestSerializer
-from .models import PasswordResetCode, UserCompliance, AgentHireRequest
+from .models import PasswordResetCode, UserCompliance, AgentHireRequest, PartnershipInquiry
 from smartbiz_backend.email_utils import send_password_reset_email, send_welcome_email
 
 
@@ -633,3 +633,109 @@ class EmailDiagnosticTestView(views.APIView):
             'brevo_verified_senders': verified_senders,
             'brevo_account_check_details': sender_info if not is_api_valid else {'active_senders_count': len(verified_senders)}
         })
+
+
+class PartnershipInquiryView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        name = request.data.get('name', '').strip()
+        email = request.data.get('email', '').strip()
+        phone = request.data.get('phone', '').strip()
+        organization = request.data.get('organization', '').strip()
+        partnership_type = request.data.get('partnership_type', 'SME Training & NGO Cohorts').strip()
+        cohort_size = request.data.get('cohort_size', '').strip()
+        message = request.data.get('message', '').strip()
+        source = request.data.get('source', 'Landing Page').strip()
+
+        if not name or not email:
+            return Response({'error': 'Name and Email are required fields.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Save permanently to Django Database (accessible immediately via /admin/ portal)
+        inquiry = PartnershipInquiry.objects.create(
+            name=name,
+            email=email,
+            phone=phone,
+            organization=organization or 'Independent / Not specified',
+            partnership_type=partnership_type,
+            cohort_size=cohort_size,
+            message=message,
+            source=source
+        )
+
+        # 2. Dispatch notification emails in a background thread to all three official admin inboxes
+        def notify_admins():
+            admin_emails = [
+                'partners@smartbizcoach.com.ng',
+                'admin@smartbiz.com.ng',
+                'info@smartbizcoach.com.ng'
+            ]
+            
+            subject = f"🔔 New Partnership Proposal: {organization or name} ({partnership_type})"
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; max-width: 600px; background-color: #ffffff;">
+                <div style="margin-bottom: 20px;">
+                    <span style="background-color: #10b981; color: white; font-weight: bold; padding: 6px 12px; border-radius: 6px; font-size: 13px;">SmartBiz Coach</span>
+                    <h2 style="color: #0f172a; margin: 12px 0 4px 0; font-size: 18px;">Institutional Partnership & Cohort Proposal</h2>
+                    <p style="color: #64748b; font-size: 13px; margin: 0;">Origin: <strong>{source}</strong></p>
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;">
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b; font-weight: bold; width: 35%;">Organization:</td>
+                        <td style="padding: 8px 0; color: #0f172a; font-weight: bold;">{organization or 'Not Specified'}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Contact Name:</td>
+                        <td style="padding: 8px 0; color: #0f172a;">{name}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Official Email:</td>
+                        <td style="padding: 8px 0; color: #0f172a;"><a href="mailto:{email}">{email}</a></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Phone / WhatsApp:</td>
+                        <td style="padding: 8px 0; color: #0f172a;">{phone or 'Not provided'}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Partnership Category:</td>
+                        <td style="padding: 8px 0; color: #059669; font-weight: bold;">{partnership_type}</td>
+                    </tr>
+                    {f'<tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Cohort Scale:</td><td style="padding: 8px 0; color: #0f172a;">{cohort_size}</td></tr>' if cohort_size else ''}
+                </table>
+
+                <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 14px; border-radius: 4px; margin: 20px 0;">
+                    <div style="font-weight: bold; font-size: 12px; color: #334155; margin-bottom: 5px; text-transform: uppercase;">Proposal Overview:</div>
+                    <div style="color: #475569; font-size: 13px; white-space: pre-wrap; line-height: 1.5;">{message or 'No additional notes provided.'}</div>
+                </div>
+
+                <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8;">
+                    Manage & review proposal in Django Admin: <strong>/admin/users/partnershipinquiry/{inquiry.id}/change/</strong>
+                </div>
+            </div>
+            """
+
+            try:
+                from smartbiz_backend.email_utils import _deliver_email, get_sender_email
+                sender_email = get_sender_email()
+                for target_email in admin_emails:
+                    _deliver_email(
+                        recipient_email=target_email,
+                        subject=subject,
+                        html_content=html_body,
+                        sender_name="SmartBiz Partnership Desk",
+                        from_email=sender_email
+                    )
+            except Exception as e:
+                print(f"Warning: Failed to dispatch partnership admin notification: {e}")
+
+        email_thread = threading.Thread(target=notify_admins)
+        email_thread.daemon = True
+        email_thread.start()
+
+        return Response({
+            'success': True,
+            'id': inquiry.id,
+            'message': 'Thank you! Your partnership proposal has been received and saved in the Executive Portal.'
+        }, status=status.HTTP_201_CREATED)
+

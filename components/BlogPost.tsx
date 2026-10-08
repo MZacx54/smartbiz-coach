@@ -525,10 +525,15 @@ const BlogPost: React.FC = () => {
                                     href="https://wa.me/2349064556107?text=Hello%20SmartBiz%20Coach%20Partnership%20Desk%2C%20we%20want%20to%20discuss%20an%20MSME%20digitization%20pilot."
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="block text-center bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
+                                    className="block text-center bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all mb-2"
                                 >
                                     WhatsApp: 09064556107
                                 </a>
+                                <div className="text-[10px] text-slate-400 text-center space-y-0.5 pt-1">
+                                    <div><a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a></div>
+                                    <div><a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a></div>
+                                    <div><a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">info@smartbizcoach.com.ng</a></div>
+                                </div>
                             </div>
                         </div>
 

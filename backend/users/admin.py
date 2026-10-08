@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, PasswordResetCode, UserCompliance, AgentHireRequest
+from .models import User, PasswordResetCode, UserCompliance, AgentHireRequest, PartnershipInquiry
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
@@ -43,4 +43,24 @@ class AgentHireRequestAdmin(admin.ModelAdmin):
     list_editable = ['payment_status', 'status']
     list_display_links = ['id', 'business_name']
     readonly_fields = ['created_at', 'payment_reference']
+
+@admin.register(PartnershipInquiry)
+class PartnershipInquiryAdmin(admin.ModelAdmin):
+    list_display = ['id', 'organization', 'name', 'email', 'phone', 'partnership_type', 'cohort_size', 'source', 'status', 'created_at']
+    list_filter = ['status', 'partnership_type', 'source', 'created_at']
+    search_fields = ['organization', 'name', 'email', 'phone', 'message', 'internal_notes']
+    list_editable = ['status']
+    list_display_links = ['id', 'organization']
+    readonly_fields = ['created_at', 'updated_at']
+    fieldsets = (
+        ('Partner Organization Details', {
+            'fields': ('organization', 'name', 'email', 'phone', 'source', 'created_at')
+        }),
+        ('Inquiry Information', {
+            'fields': ('partnership_type', 'cohort_size', 'message')
+        }),
+        ('Internal Review & Pipeline Management', {
+            'fields': ('status', 'internal_notes', 'updated_at')
+        }),
+    )
 

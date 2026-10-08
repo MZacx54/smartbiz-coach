@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import SEO from './SEO';
 import { BLOG_POSTS, BlogPost } from '../data/blogPosts';
+import api from '../services/api';
+import { toast } from 'react-hot-toast';
 
 const BlogIndex: React.FC = () => {
     const navigate = useNavigate();
@@ -45,8 +47,22 @@ const BlogIndex: React.FC = () => {
 
     const featuredPost = BLOG_POSTS[0];
 
-    const handleCohortSubmit = (e: React.FormEvent) => {
+    const handleCohortSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        try {
+            await api.post('/users/partnership-inquiry/', {
+                name: orgName,
+                email: orgEmail,
+                organization: orgName,
+                cohort_size: cohortSize,
+                partnership_type: 'SME Training & NGO Cohorts',
+                message: `Target Cohort Scale: ${cohortSize}`,
+                source: 'Blog Cohort Box'
+            });
+            toast.success("Cohort inquiry recorded in Executive Portal!");
+        } catch (err) {
+            console.warn("Backend cohort logging notice:", err);
+        }
         const whatsappMsg = `Hello SmartBiz Coach! I represent ${encodeURIComponent(orgName || 'our organization')}. We are interested in partnering to deploy a digital bookkeeping cohort of ${encodeURIComponent(cohortSize)}. Contact email: ${encodeURIComponent(orgEmail)}.`;
         window.open(`https://wa.me/2349064556107?text=${whatsappMsg}`, '_blank');
         setCohortFormSubmitted(true);
@@ -510,9 +526,12 @@ const BlogIndex: React.FC = () => {
                                     >
                                         <MessageSquare className="w-3.5 h-3.5" /> Connect on WhatsApp Partner Desk
                                     </button>
-                                    <p className="text-[10px] text-slate-400 text-center">
-                                        Or call our direct desk at <span className="text-emerald-300 font-semibold">09064556107</span>
-                                    </p>
+                                    <div className="pt-2 text-[10px] text-slate-300 space-y-1 text-center">
+                                        <div>Official Partnership Hotlines: <span className="text-emerald-300 font-bold">09064556107</span></div>
+                                        <div className="text-slate-400">
+                                            Emails: <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a> · <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a> · <a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">info@smartbizcoach.com.ng</a>
+                                        </div>
+                                    </div>
                                 </form>
                             )}
                         </div>

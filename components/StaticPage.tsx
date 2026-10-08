@@ -140,8 +140,12 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   <div className="flex items-start gap-4">
                     <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600"><Mail className="w-4 h-4" /></div>
                     <div>
-                      <h4 className="font-bold text-slate-900 text-sm">Email Address</h4>
-                      <p className="text-sm text-slate-600 mt-1">support@smartbizcoach.com.ng</p>
+                      <h4 className="font-bold text-slate-900 text-sm">Official Inboxes</h4>
+                      <p className="text-xs text-slate-600 mt-1 space-y-0.5">
+                        <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-700 hover:underline block font-semibold">partners@smartbizcoach.com.ng</a>
+                        <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-700 hover:underline block font-semibold">admin@smartbiz.com.ng</a>
+                        <a href="mailto:info@smartbizcoach.com.ng" className="text-emerald-700 hover:underline block font-semibold">info@smartbizcoach.com.ng</a>
+                      </p>
                     </div>
                   </div>
 

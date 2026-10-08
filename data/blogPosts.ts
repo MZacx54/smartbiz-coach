@@ -71,7 +71,7 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-06',
         updatedAt: '2026-10-08',
@@ -126,7 +126,7 @@ export const BLOG_POSTS: BlogPost[] = [
                     'Anti-Theft Apprentice Lock: Shop attendants can input sales throughout the day behind a 4-digit supervisor PIN, without the ability to backdate, delete transactions, or see owner profit margins.'
                 ],
                 image: {
-                    url: 'https://images.unsplash.com/photo-1556742049-0a67c5574f73?auto=format&fit=crop&w=1000&q=80',
+                    url: 'https://images.unsplash.com/photo-1589386417686-0d34b5903d23?auto=format&fit=crop&w=1000&q=80',
                     caption: 'Fast-paced retail checkout using smartphone-based digital logs.'
                 }
             },
@@ -197,12 +197,12 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-06',
         updatedAt: '2026-10-08',
         readTime: '7 min read',
-        bannerImage: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?auto=format&fit=crop&w=1200&q=80',
+        bannerImage: 'https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=1200&q=80',
         imageCaption: 'Nigerian female entrepreneur operating a modern retail craft and fashion boutique.',
         summaryTldr: [
             'Over 23 million Nigerian micro-enterprises are owned or co-managed by women and youth, yet they receive less than 7% of commercial bank SME credit due to collateral deficits.',
@@ -310,12 +310,12 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-06',
         updatedAt: '2026-10-08',
         readTime: '6 min read',
-        bannerImage: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+        bannerImage: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&w=1200&q=80',
         imageCaption: 'Real-time financial telemetry dashboard tracking enterprise performance metrics.',
         summaryTldr: [
             'Traditional MSME grant interventions experience 35% to 50% capital leakage when grant funds are diverted away from working capital inventory toward emergency consumption.',
@@ -417,12 +417,12 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-05',
         updatedAt: '2026-10-08',
         readTime: '6 min read',
-        bannerImage: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=1200&q=80',
+        bannerImage: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80',
         imageCaption: 'Nigerian statutory tax provisions protect registered micro-enterprises from double taxation.',
         summaryTldr: [
             'A widespread fear among Nigerian micro-traders is that formalizing with the Corporate Affairs Commission (CAC) automatically attracts aggressive tax audits and unpayable bills.',
@@ -543,12 +543,12 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-05',
         updatedAt: '2026-10-08',
         readTime: '7 min read',
-        bannerImage: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80',
+        bannerImage: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80',
         imageCaption: 'Commercial credit officer assessing micro-enterprise financial viability records.',
         summaryTldr: [
             'Nigerian Microfinance Banks (MFBs) face persistent Non-Performing Loan (NPL) ratios above 15% in grassroots commercial lending because informal traders operate largely in physical cash.',
@@ -651,12 +651,12 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-04',
         updatedAt: '2026-10-08',
         readTime: '6 min read',
-        bannerImage: 'https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?auto=format&fit=crop&w=1200&q=80',
+        bannerImage: 'https://images.unsplash.com/photo-1589386417686-0d34b5903d23?auto=format&fit=crop&w=1200&q=80',
         imageCaption: 'Nigerian boutique owner reviewing daily inventory and shift reconciliation records.',
         summaryTldr: [
             'Internal cash shrinkage and unauthorized price discounting drain between 12% and 25% of net margins in typical Nigerian retail shops, pharmacies, and supermarkets.',
@@ -755,12 +755,12 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-04',
         updatedAt: '2026-10-08',
         readTime: '8 min read',
-        bannerImage: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80',
+        bannerImage: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=1200&q=80',
         imageCaption: 'Nigerian business executive reviewing audited 5-year bankable business plan projections.',
         summaryTldr: [
             'The Federal Government of Nigeria, Bank of Industry (BOI), and SMEDAN have allocated tens of billions of Naira in 9% single-digit matching loans and palliative grants for productive enterprises.',
@@ -872,7 +872,7 @@ export const BLOG_POSTS: BlogPost[] = [
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+            avatar: '/author-meshach.png'
         },
         publishedAt: '2026-10-04',
         updatedAt: '2026-10-08',
