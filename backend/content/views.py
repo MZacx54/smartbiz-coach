@@ -1554,6 +1554,11 @@ class GenerateSalesScriptView(views.APIView):
         context = request.data.get('context', 'CLOSING') # CLOSING, OBJECTION, FOLLOW_UP, GREETING, PRICE_ISSUE
         customer_message = request.data.get('customer_message', '').strip()
         closing_style = request.data.get('closing_style', 'MIXED').strip().upper() # PIDGIN, CORPORATE, FOMO, SOFT_PULL, MIXED
+        customer_persona = request.data.get('customer_persona', 'HAGGLER').strip().upper() # HAGGLER, SKEPTIC, GHOSTER, B2B_CORPORATE, READY_TO_PAY
+        product_name = request.data.get('product_name', '').strip()
+        product_price = request.data.get('product_price', '').strip()
+        floor_price = request.data.get('floor_price', '').strip()
+        delivery_location = request.data.get('delivery_location', '').strip()
         mode = request.data.get('mode', 'SUGGEST').upper() # SUGGEST or ROLEPLAY_REPLY
         chat_history = request.data.get('chat_history', [])
 
@@ -1561,21 +1566,42 @@ class GenerateSalesScriptView(views.APIView):
         import random
         random_seed = random.randint(1000, 9999)
 
+        # Context details block
+        deal_info = f"""
+DEAL CONTEXT:
+- Product / Service: {product_name or 'General Catalog Item'}
+- Listed Price: {product_price or 'Standard Market Price'}
+- Minimum Floor Price / Bottom Line: {floor_price or 'Protect full margin'}
+- Delivery Destination: {delivery_location or 'Nationwide / Local'}
+- Customer Type / Persona: {customer_persona}
+"""
+
         if mode == 'ROLEPLAY_REPLY':
-            # Roleplay simulator mode: AI acts as the buyer responding to the seller's reply
             system_prompt = f"""
             {brand_context}
+            {deal_info}
             
-            You are playing the role of a realistic, sharp Nigerian customer on WhatsApp negotiating with this seller.
-            Analyze the seller's latest message and reply naturally as the buyer. 
-            Maintain a realistic, conversational tone (asking for discount, checking payment options, asking for trust proof, or agreeing to buy).
+            You are playing the role of a realistic Nigerian customer on WhatsApp negotiating with this business seller.
+            Persona: {customer_persona}
+            (HAGGLER = asks for discounts and compares with competitors;
+             SKEPTIC = worried about scams, demands pay-on-delivery or video proof;
+             GHOSTER = gives short replies, hesitant, needs an enticing reason to commit;
+             B2B_CORPORATE = asks for formal invoice, VAT/TIN receipt, corporate terms;
+             READY_TO_PAY = wants account details and delivery confirmation).
+            
+            Analyze the seller's latest response:
+            - Respond naturally as this customer.
+            - Provide a deal health / closing probability rating (0 to 100%).
+            - Give direct professional coaching feedback on what the seller did well or how to improve.
             
             Return JSON with keys:
-            - "buyer_reply": String containing the buyer's response message.
-            - "deal_closed": Boolean (true if buyer agrees to pay, false if still negotiating/hesitating).
-            - "feedback": Brief single-sentence tip on how effective the seller's reply was.
+            - "buyer_reply": String containing the customer's response.
+            - "deal_closed": Boolean (true if ready to pay / transfer, false if still negotiating).
+            - "trust_score": Integer 0 to 100 (estimated customer trust/interest level).
+            - "feedback": Constructive coaching advice for the seller.
+            - "suggested_counter": A recommended next message the seller can send back immediately.
             """
-            prompt = f"Seller's latest message: '{customer_message}'. Previous chat history: {json.dumps(chat_history[-4:] if chat_history else [])}. Seed: {random_seed}"
+            prompt = f"Seller's latest reply: '{customer_message}'. Chat history: {json.dumps(chat_history[-6:] if chat_history else [])}. Seed: {random_seed}"
             try:
                 result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
                 if isinstance(result, dict) and 'buyer_reply' in result:
@@ -1583,65 +1609,72 @@ class GenerateSalesScriptView(views.APIView):
             except Exception as e:
                 pass
 
-            # Dynamic fallback for roleplay mode
             msg_lower = customer_message.lower()
             if 'price' in msg_lower or 'discount' in msg_lower or 'how much' in msg_lower:
-                reply = "That price sounds fair, but can you throw in free delivery to my location?"
+                reply = "The price is a bit high for my budget right now. If I pay today, can you do a small discount or handle delivery?"
                 closed = False
-                feedback = "Good response! Offering clear pricing builds trust. Consider offering a small shipping incentive to close."
-            elif 'bank' in msg_lower or 'transfer' in msg_lower or 'pay' in msg_lower or 'account' in msg_lower:
-                reply = "Great! Send me your account details and bank name so I can make the transfer right now."
+                trust = 65
+                fb = "Good negotiation foundation! State the premium quality of the product first, then offer a sweetener like express dispatch rather than dropping your price too quickly."
+                counter = f"I hear you boss! To make this easy for you today, if you confirm order for {product_name or 'this item'} within the hour, I will personally cover part of the waybill to {delivery_location or 'your location'}. Can I send the account details now?"
+            elif 'account' in msg_lower or 'transfer' in msg_lower or 'pay' in msg_lower:
+                reply = "Alright, send me the official bank account name and number. Will you dispatch immediately once I send payment receipt?"
                 closed = True
-                feedback = "Excellent closing! Giving direct payment instructions converts warm leads immediately."
+                trust = 95
+                fb = "Superb closing! You gave clear payment instructions. Provide the account number and reassure them of express packaging."
+                counter = f"Thank you! Here are our official payment details: Bank: Access Bank / Zenith Bank | Account: [Account Number] | Name: [Business Name]. Once you send proof of payment here, dispatch team packages your order immediately!"
             else:
-                reply = "Thanks for the info! Do you have photos of this item or customer reviews I can see?"
+                reply = "Okay noted. Can you send pictures or video of the actual item in stock so I can be sure?"
                 closed = False
-                feedback = "Solid engagement. Providing social proof or clear options keeps the conversation moving forward."
+                trust = 60
+                fb = "Customer is seeking reassurance and risk-reversal. Provide social proof or a quick demonstration."
+                counter = f"No problem at all! I can send you a live unboxing video and verified customer receipts right now. Which delivery address should I note down for you?"
 
             return Response({
                 "buyer_reply": reply,
                 "deal_closed": closed,
-                "feedback": feedback
+                "trust_score": trust,
+                "feedback": fb,
+                "suggested_counter": counter
             })
 
-        mode_prompts = {
-            'CLOSING': "Help me close this sale right now. The customer is warm but needs a confident push.",
-            'OBJECTION': f"The customer raised an objection: '{customer_message}'. Help me resolve their hesitation and close.",
-            'FOLLOW_UP': "Generate a high-converting re-engagement message for a customer who went quiet.",
-            'GREETING': "Create a welcoming first-contact message that immediately qualifies and hooks the lead.",
-            'PRICE_ISSUE': "The customer says the price is high. Help me reframe the value and justify the price.",
-        }
-
-        style_prompts = {
-            'PIDGIN': "Use authentic Nigerian Pidgin and local warm customer rapport (e.g. 'My boss', 'I fit slice small shipping give you').",
-            'CORPORATE': "Use professional, executive B2B tone with clear value proposition and structure.",
-            'FOMO': "Use high urgency, limited stock availability, and time-sensitive discount incentive.",
-            'SOFT_PULL': "Use gentle, consultative sales closing that focuses on helping the customer make a decision.",
-            'MIXED': "Provide 3 distinct angles: 1. Direct & Professional, 2. Naija Pidgin/Friendly, 3. Urgent FOMO."
-        }
-
-        goal = mode_prompts.get(context, mode_prompts['CLOSING'])
-        style_instruction = style_prompts.get(closing_style, style_prompts['MIXED'])
+        # SUGGEST Mode: Professional Deal Closer Script Engine
+        persona_instructions = {
+            'HAGGLER': "Customer is actively trying to beat down the price. Protect seller profit margins by anchoring value, offering non-cash sweeteners (free bonus gift, faster shipping, extended warranty) instead of giving cash discounts.",
+            'SKEPTIC': "Customer has high scam anxiety or online trust trauma. Build immediate credibility, mention company registration/TIN, offer verifiable customer reviews, video proof, and clear refund/exchange guarantees.",
+            'GHOSTER': "Customer left seller on 'read' or stopped replying. Send an ultra-friendly, non-pushy check-in with a compelling curiosity hook, time-sensitive stock alert, or exclusive private deal.",
+            'B2B_CORPORATE': "Executive B2B buyer. Speak in formal corporate language, offer formal proforma invoices, company bank details, tax compliance assurance, and structured delivery schedules.",
+            'READY_TO_PAY': "Customer is warm and ready to pay. Do NOT delay or add friction. Give direct binary choices (Transfer vs Card), state account details, and ask for delivery contact immediately."
+        }.get(customer_persona, "Balance rapport, value framing, and clear closing directive.")
 
         system_prompt = f"""
         {brand_context}
+        {deal_info}
         
-        You are a Master Sales Closer and Negotiation Strategist for Nigerian MSMEs. 
-        Analyze the customer's sentiment and generate 3 tailored response options.
+        You are an elite Sales Director and Master Deal Closer for Nigerian MSMEs and modern businesses.
+        You treat sales conversations with the polish, empathy, and strategic negotiation psychology of a top professional human closer.
         
-        Closing Style Focus: {style_instruction}
-        Randomization Token: {random_seed}
+        Customer Persona Strategy: {persona_instructions}
+        Closing Tone / Style: {closing_style}
+        Randomization Seed: {random_seed}
+        
+        Generate a comprehensive, high-converting closing gameplan for this specific lead.
         
         You MUST return a JSON object with the following exact keys:
-        - "intent_analysis": A single sentence analyzing the customer's mindset (e.g. "Customer has budget hesitation and needs trust assurance").
-        - "options": An array of exactly 3 different, non-generic response messages for WhatsApp.
-        - "one_liner": A single high-impact hook line to grab attention immediately.
-        - "strategy_tip": A strategic tip explaining why these options will convert this specific lead.
-        - "do_not_say": An array of 2-3 phrases or mistakes to avoid in this exact situation.
+        - "buyer_psychology": 1-2 sentences explaining what the customer is REALLY feeling or thinking beneath their words.
+        - "tactical_gameplan": Concise bullet points on the recommended negotiation move.
+        - "options": An array of exactly 3 distinct, fully written, human-sounding WhatsApp closing messages:
+            1. "The Relationship & Value Anchor": Reassuring, friendly, and focuses on long-term satisfaction.
+            2. "The Smart Deal Maker / Counter-Offer": Offers a strategic sweetener or bundled value to protect the price.
+            3. "The Direct Closing Hook": High clarity, payment directive, bank transfer ready, time urgency.
+        - "counter_offer_proposal": A recommended compromise offer (e.g. "Keep price at ₦25k, but include free dispatch or ₦1,500 store voucher on next purchase").
+        - "deal_confidence_score": Integer 0 to 100 rating how likely this deal is to close.
+        - "one_liner": A single high-impact WhatsApp icebreaker line.
+        - "strategy_tip": Executive coaching rule of thumb for this situation.
+        - "do_not_say": An array of 2-3 mistakes, amateur lines, or aggressive phrases to strictly avoid.
         """
-        
-        prompt = f"{goal} \nCustomer Message: '{customer_message}'"
-        
+
+        prompt = f"Situation Goal: {context}. Customer's message / objection: '{customer_message or 'Customer asking for price and order details'}'. Product: {product_name or 'Our product'}, Price: {product_price or 'Listed Price'}, Floor: {floor_price or 'Margin protected'}."
+
         try:
             result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
             if isinstance(result, dict) and 'options' in result and isinstance(result['options'], list) and len(result['options']) > 0:
@@ -1650,7 +1683,7 @@ class GenerateSalesScriptView(views.APIView):
         except Exception as e:
             pass
 
-        # Dynamic fallback script generator matching customer input & context
+        # High-Fidelity Professional Fallback Engine
         biz_name = "our business"
         try:
             from brand.models import BrandIdentity
@@ -1659,33 +1692,26 @@ class GenerateSalesScriptView(views.APIView):
         except Exception:
             pass
 
-        msg_topic = customer_message if customer_message else "your order"
-        
-        if context == 'PRICE_ISSUE' or 'price' in customer_message.lower() or 'expensive' in customer_message.lower():
-            opt1 = f"Hello! We understand pricing is important. At {biz_name}, we focus on top quality that lasts, saving you money in the long run. Would you like to check our special bundle discount?"
-            opt2 = f"My boss! Quality no be cheap, but because na you, I fit slice small discount off shipping for you today so you fit get {msg_topic} without stress. How you see am?"
-            opt3 = f"Hi there! We have only 3 units of {msg_topic} remaining at our current price before supplier rate increases tomorrow. Secure yours now before stock runs out!"
-            analysis = "Customer is evaluating price vs value and needs assurance of premium quality."
-            tip = "Focus on the long-term value and durability of your offer rather than just discounting."
-        elif context == 'OBJECTION':
-            opt1 = f"Thank you for sharing your concern regarding '{msg_topic}'. Many of our satisfied customers felt the same way initially until they experienced our verified service. Can I share a quick video demo?"
-            opt2 = f"No shaking at all! At {biz_name}, we guarantee 100% satisfaction. Make I send you customer feedback from last week so you see how we deliver?"
-            opt3 = f"We take full responsibility for quality and delivery. Complete your order today and if you're not 100% satisfied, we offer instant replacement!"
-            analysis = "Customer needs risk reduction and social proof before making a decision."
-            tip = "Provide direct social proof and clear guarantees to remove buying hesitation."
-        else:
-            opt1 = f"Hello! We can get '{msg_topic}' prepared and dispatched to your location today. Should we proceed with bank transfer or online card payment?"
-            opt2 = f"Chief! Make we lock in this order for you today before today's dispatch batch leaves. Which delivery address make we ship to?"
-            opt3 = f"Fast-track alert: Orders placed in the next 2 hours get priority express dispatch! Reply YES to confirm your order right away."
-            analysis = "Customer is warm and ready for a clear closing call to action."
-            tip = "Always give a clear binary choice (e.g. transfer vs card, morning vs afternoon delivery) to make deciding effortless."
+        p_name = product_name or "this item"
+        p_price = product_price or "our listed price"
+        dest = delivery_location or "your address"
+
+        opt1 = f"Hello! Thank you for checking in with us at {biz_name}. Regarding {p_name}, we maintain strict quality standards that ensure durability and complete satisfaction. We can arrange priority packaging for you right away. Would you prefer direct bank transfer or our secure online link?"
+        opt2 = f"My boss! I completely respect your budget on {p_name}. While our margin won't let us slash the price below {p_price}, I can personally secure free safe dispatch to {dest} for you today if you lock it in with this morning's shipment batch. How does that sound?"
+        opt3 = f"Hi there! We currently have only 2 units of {p_name} left in stock before new inventory arrives at updated rates. I can reserve one under your name right now so you don't miss out. Should I send our official payment details?"
 
         fallback = {
-            "intent_analysis": analysis,
+            "buyer_psychology": f"Customer wants {p_name} but is checking whether they can get a better bargain or if they can trust the purchase.",
+            "tactical_gameplan": "Anchor the value and reliability of the business first, protect core product margin, and offer a shipping or speed perk to close today.",
             "options": [opt1, opt2, opt3],
-            "one_liner": f"Let's lock in your order with {biz_name} right away!",
-            "strategy_tip": tip,
-            "do_not_say": ["Our price is non-negotiable", "You can check elsewhere if you don't like it"]
+            "counter_offer_proposal": f"Hold price at {p_price}, offer priority same-day packaging and subsidized dispatch to {dest}.",
+            "deal_confidence_score": 82,
+            "one_liner": f"Let's get your {p_name} reserved and dispatched to {dest} today!",
+            "strategy_tip": "Never drop price without asking for an immediate commitment to buy in return.",
+            "do_not_say": [
+                "Our price is non-negotiable, take it or leave it",
+                "You can buy from other sellers if you find it cheaper"
+            ]
         }
         deduct_credits(request.user, 'sales_script')
         return Response(fallback)
