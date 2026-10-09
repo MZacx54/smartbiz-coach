@@ -405,7 +405,7 @@ SCENE_TITLES = {
     'floral_silk': 'Silk Fabric & Floral Vanity',
 }
 
-def isolate_product_foreground(img):
+def isolate_product_foreground(img, bbox_hint=None):
     """
     High-precision edge-guided product subject isolation.
     Extracts the product cleanly from bedsheet/floor/table backgrounds with feathered antialiasing.
@@ -425,6 +425,20 @@ def isolate_product_foreground(img):
     w, h = img.size
     rgb = img.convert('RGB')
     pixels = rgb.load()
+
+    # Determine core protected bounding box
+    if bbox_hint and len(bbox_hint) == 4:
+        ymin, xmin, ymax, xmax = bbox_hint
+        core_xmin = int((xmin / 1000.0) * w)
+        core_xmax = int((xmax / 1000.0) * w)
+        core_ymin = int((ymin / 1000.0) * h)
+        core_ymax = int((ymax / 1000.0) * h)
+    else:
+        # Core protection zone (center core is protected from accidental flood fill)
+        core_xmin = int(w * 0.28)
+        core_xmax = int(w * 0.72)
+        core_ymin = int(h * 0.22)
+        core_ymax = int(h * 0.82)
 
     # 1. Sample perimeter background color seeds
     seeds = []
@@ -462,12 +476,6 @@ def isolate_product_foreground(img):
         if not visited[y][w - 1]:
             visited[y][w - 1] = True
             queue.append((w - 1, y))
-
-    # Core protection zone (center core is protected from accidental flood fill)
-    core_xmin = int(w * 0.28)
-    core_xmax = int(w * 0.72)
-    core_ymin = int(h * 0.22)
-    core_ymax = int(h * 0.82)
 
     COLOR_THRESHOLD = 40.0
 
@@ -665,8 +673,8 @@ class StudioPhotoshootView(views.APIView):
     def post(self, request):
         image_base64 = request.data.get('image_base64') or request.data.get('image_base_64') or request.data.get('image')
         scene_id = request.data.get('scene_id') or 'luxury_marble'
-        mode = request.data.get('mode') or 'composite'
-        custom_prompt = request.data.get('custom_prompt') or ''
+        mode = request.data.get('mode') or 'generative'
+        user_instruction = (request.data.get('custom_prompt') or request.data.get('prompt') or '').strip()
 
         if not image_base64:
             return Response({'error': 'Missing image data'}, status=400)
@@ -675,6 +683,8 @@ class StudioPhotoshootView(views.APIView):
             import base64
             import io
             import requests
+            import json
+            import urllib.request
             from PIL import Image
 
             clean_base64 = image_base64.split(",")[1] if "," in image_base64 else image_base64
@@ -685,30 +695,83 @@ class StudioPhotoshootView(views.APIView):
 
             scene_title = SCENE_TITLES.get(scene_id, scene_id.replace('_', ' ').title())
 
-            # Mode 1: AI Generative Scene Synthesis
-            if mode == 'generative' and custom_prompt:
-                try:
-                    gen_prompt = f"Professional commercial advertising product photoshoot of a product, {custom_prompt}, studio lighting, 8k resolution, photorealistic"
-                    encoded_p = requests.utils.quote(gen_prompt)
-                    url = f"https://image.pollinations.ai/prompt/{encoded_p}?width=768&height=1280&nologo=true&model=flux"
-                    res = requests.get(url, timeout=25)
-                    if res.status_code == 200 and len(res.content) > 5000:
-                        processed_base64 = base64.b64encode(res.content).decode('utf-8')
-                        deduct_credits(request.user, 'image_edit')
-                        return Response({
-                            'success': True,
-                            'studio_image_base64': f"data:image/jpeg;base64,{processed_base64}",
-                            'image_base64': f"data:image/jpeg;base64,{processed_base64}",
-                            'scene_id': scene_id,
-                            'scene_title': scene_title,
-                            'mode': 'generative',
-                            'credits_remaining': request.user.credits
-                        })
-                except Exception as gen_err:
-                    print("Generative synthesis fallback to studio composite:", gen_err)
+            # 1. Analyze image with Gemini Vision to detect subject & build a photorealistic photoshoot prompt
+            bbox_hint = None
+            synthesized_prompt = None
 
-            # Mode 2 (Default & Primary): Studio-Grade Cutout & Photorealistic Scene Compositor
-            product_cutout = isolate_product_foreground(raw_img)
+            try:
+                # Prepare compact thumbnail for fast Gemini Vision analysis
+                thumb_img = raw_img.convert('RGB')
+                thumb_img.thumbnail((420, 420))
+                thumb_buf = io.BytesIO()
+                thumb_img.save(thumb_buf, format='JPEG', quality=80)
+                thumb_b64 = base64.b64encode(thumb_buf.getvalue()).decode('utf-8')
+
+                vision_prompt = f"""Analyze this photo for Google Gemini Photo Studio.
+User instruction: "{user_instruction or scene_title}".
+Tasks:
+1. Identify primary subject (person or product) and describe appearance.
+2. If subject is on a table, floor, or printed photo, provide normalized bounding box [ymin, xmin, ymax, xmax] (0-1000).
+3. Craft an ultra-photorealistic 8k commercial photography prompt for Flux that places this EXACT subject into a high-end studio setting.
+Return JSON with keys: subject_type, subject_box_2d, commercial_flux_prompt, detected_title."""
+
+                k = gemini_utils.get_next_gemini_api_key()
+                if k:
+                    vision_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={k}"
+                    v_payload = {
+                        'contents': [{
+                            'parts': [
+                                {'text': vision_prompt},
+                                {'inlineData': {'mimeType': 'image/jpeg', 'data': thumb_b64}}
+                            ]
+                        }],
+                        'generationConfig': {'responseMimeType': 'application/json'}
+                    }
+                    v_req = urllib.request.Request(
+                        vision_url, 
+                        data=json.dumps(v_payload).encode('utf-8'), 
+                        headers={'Content-Type': 'application/json'}
+                    )
+                    with urllib.request.urlopen(v_req, timeout=14) as v_resp:
+                        v_data = json.loads(v_resp.read().decode('utf-8'))
+                        v_text = v_data['candidates'][0]['content']['parts'][0]['text']
+                        parsed = json.loads(v_text)
+                        if parsed.get('commercial_flux_prompt'):
+                            synthesized_prompt = parsed['commercial_flux_prompt']
+                        if parsed.get('subject_box_2d') and len(parsed['subject_box_2d']) == 4:
+                            bbox_hint = parsed['subject_box_2d']
+                        if parsed.get('detected_title'):
+                            scene_title = parsed['detected_title']
+            except Exception as vision_err:
+                print("Gemini Vision photoshoot assistant fallback:", vision_err)
+
+            # 2. Mode 1: High-Fidelity Generative Studio Synthesis (Google Gemini / Flux Photo Studio)
+            effective_prompt = synthesized_prompt or (
+                f"Commercial advertising product photoshoot, {user_instruction or scene_title}, studio lighting, contact shadows, surface reflections, 8k resolution, Hasselblad medium format photography, hyperrealistic"
+            )
+
+            try:
+                encoded_p = requests.utils.quote(effective_prompt)
+                flux_url = f"https://image.pollinations.ai/prompt/{encoded_p}?width=768&height=960&nologo=true&model=flux"
+                flux_res = requests.get(flux_url, timeout=22)
+                if flux_res.status_code == 200 and len(flux_res.content) > 5000:
+                    processed_base64 = base64.b64encode(flux_res.content).decode('utf-8')
+                    deduct_credits(request.user, 'image_edit')
+                    return Response({
+                        'success': True,
+                        'studio_image_base64': f"data:image/jpeg;base64,{processed_base64}",
+                        'image_base64': f"data:image/jpeg;base64,{processed_base64}",
+                        'scene_id': scene_id,
+                        'scene_title': scene_title,
+                        'mode': 'generative',
+                        'prompt_used': effective_prompt,
+                        'credits_remaining': request.user.credits
+                    })
+            except Exception as flux_err:
+                print("Generative photoshoot fallback to precision compositor:", flux_err)
+
+            # 3. Mode 2 (Robust Fallback): Precision Cutout & Photorealistic Scene Compositor
+            product_cutout = isolate_product_foreground(raw_img, bbox_hint=bbox_hint)
             comp_img = composite_product_to_scene(product_cutout, scene_id)
 
             buffer = io.BytesIO()
