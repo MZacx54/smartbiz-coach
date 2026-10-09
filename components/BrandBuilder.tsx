@@ -48,6 +48,35 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
   const [letterRecipient, setLetterRecipient] = useState('To: The Branch Credit Committee / Tender Evaluation Board\nCommercial Operations Directorate');
   const [letterBody, setLetterBody] = useState('');
   const [bankSubView, setBankSubView] = useState<'LETTERHEAD' | 'PROFILE' | 'CREDENTIALS' | 'GOVERNANCE'>('LETTERHEAD');
+  const [govCalculatedScore, setGovCalculatedScore] = useState<number | null>(null);
+  const [isGovApproved, setIsGovApproved] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sb_gov_charter_approved') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleCalculateGovernance = () => {
+    let score = 0;
+    if (localBrandData?.cacNumber?.trim()) score += 25;
+    if (localBrandData?.tinNumber?.trim() || localBrandData?.tin?.trim()) score += 20;
+    if (localBrandData?.mission?.trim()) score += 15;
+    if (localBrandData?.vision?.trim()) score += 15;
+    if (localBrandData?.slaPolicy?.trim()) score += 15;
+    if (localBrandData?.ndprCompliance?.trim()) score += 10;
+    setGovCalculatedScore(score);
+    toast.success(`Institutional Governance Readiness calculated: ${score}%`, { icon: '📊' });
+  };
+
+  const handleApproveGovernance = () => {
+    setIsGovApproved(true);
+    localStorage.setItem('sb_gov_charter_approved', 'true');
+    if (localBrandData) {
+      onSave({ ...localBrandData, isGovernanceApproved: true });
+    }
+    toast.success("✅ Corporate Governance Charter formally approved & certified for BOI and Bank review!", { icon: '🏛️', duration: 4000 });
+  };
 
   // Inline editing state
   const [isEditing, setIsEditing] = useState(false);
@@ -496,6 +525,75 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success('Interactive HTML Brand Kit downloaded!');
+  };
+
+  const handleDownloadLogo = () => {
+    if (!localBrandData) return;
+    const businessName = (localBrandData.businessName || 'Business').replace(/\s+/g, '_');
+    const logoSrc = localBrandData.logoUrl || getLogoUrl(localBrandData);
+
+    if (logoSrc.startsWith('data:image/svg+xml')) {
+      try {
+        const base64Data = logoSrc.split(',')[1];
+        const svgText = decodeURIComponent(escape(atob(base64Data)));
+        const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${businessName}_Logo.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Vector SVG Logo downloaded successfully!');
+        return;
+      } catch (err) {
+        console.warn('SVG download notice:', err);
+      }
+    }
+
+    const a = document.createElement('a');
+    a.href = logoSrc;
+    a.download = `${businessName}_Logo.png`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success('Logo download initiated!');
+  };
+
+  const handleDownloadLetterheadHtml = () => {
+    if (!letterheadRef.current || !localBrandData) return;
+    const content = letterheadRef.current.innerHTML;
+    const businessName = (localBrandData.businessName || 'Business').replace(/\s+/g, '_');
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Corporate Letterhead - ${localBrandData.businessName}</title><script src="https://cdn.tailwindcss.com"></script><style>@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0 !important; } @page { size: A4; margin: 10mm; } }</style></head><body class="bg-slate-100 p-8 flex justify-center"><div class="w-full max-w-4xl">${content}</div></body></html>`;
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${businessName}_Corporate_Letterhead.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Corporate Letterhead offline HTML file downloaded!');
+  };
+
+  const handleDownloadProfileHtml = () => {
+    if (!profileRef.current || !localBrandData) return;
+    const content = profileRef.current.innerHTML;
+    const businessName = (localBrandData.businessName || 'Business').replace(/\s+/g, '_');
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>1-Pager Executive Profile - ${localBrandData.businessName}</title><script src="https://cdn.tailwindcss.com"></script><style>@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0 !important; } @page { size: A4; margin: 10mm; } }</style></head><body class="bg-slate-100 p-8 flex justify-center"><div class="w-full max-w-4xl">${content}</div></body></html>`;
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${businessName}_Executive_Profile.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('1-Pager Executive Profile offline HTML file downloaded!');
   };
 
   const generateWhatsAppLink = () => {
@@ -1182,13 +1280,48 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             {/* Core Values */}
             <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-2 flex items-center gap-1.5">
-                <span>💎</span> Institutional Values
-              </h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 flex items-center gap-1.5">
+                  <span>💎</span> Institutional Values
+                </h4>
+                <button
+                  onClick={() => {
+                    const currentValues = brand?.coreValues && brand.coreValues.length > 0 ? brand.coreValues : ['Integrity', 'Excellence', 'Reliability', 'Agility', 'Accountability'];
+                    const newVal = prompt("Enter new institutional core value (e.g. Innovation, Customer Centricity):");
+                    if (newVal && newVal.trim()) {
+                      const updated = [...currentValues, newVal.trim()];
+                      updateField('coreValues', updated);
+                      if (localBrandData) {
+                        onSave({ ...localBrandData, coreValues: updated });
+                      }
+                      toast.success(`Added value: ${newVal.trim()}`);
+                    }
+                  }}
+                  className="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                  title="Add Institutional Value"
+                >
+                  <span className="font-extrabold text-xs">+</span> Add Value
+                </button>
+              </div>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {(brand?.coreValues && brand.coreValues.length > 0 ? brand.coreValues : ['Integrity', 'Excellence', 'Reliability', 'Agility', 'Accountability']).map((val, idx) => (
-                  <span key={idx} className="text-[10px] font-bold bg-blue-50 text-blue-800 px-2.5 py-1 rounded-md border border-blue-200">
-                    {val}
+                  <span key={idx} className="text-[10px] font-bold bg-blue-50 text-blue-800 pl-2.5 pr-1.5 py-1 rounded-md border border-blue-200 flex items-center gap-1 group">
+                    <span>{val}</span>
+                    <button
+                      onClick={() => {
+                        const currentValues = brand?.coreValues && brand.coreValues.length > 0 ? brand.coreValues : ['Integrity', 'Excellence', 'Reliability', 'Agility', 'Accountability'];
+                        const updated = currentValues.filter((_, i) => i !== idx);
+                        updateField('coreValues', updated);
+                        if (localBrandData) {
+                          onSave({ ...localBrandData, coreValues: updated });
+                        }
+                        toast.success(`Removed value: ${val}`);
+                      }}
+                      className="text-blue-300 hover:text-red-500 font-bold ml-0.5 cursor-pointer text-[10px] px-0.5"
+                      title="Remove Value"
+                    >
+                      ✕
+                    </button>
                   </span>
                 ))}
               </div>
@@ -1501,32 +1634,50 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 <div className="flex flex-col items-center animate-in zoom-in">
                   <img src={localBrandData.logoUrl} alt="Generated Logo" className="w-32 h-32 rounded-full shadow-lg object-contain mb-4 border-4 border-white bg-white" />
                   <p className="text-green-700 font-bold text-sm bg-green-100 px-3 py-1 rounded-full">AI Logo Generated</p>
-                  <button
-                    onClick={handleGenerateLogo}
-                    disabled={isGeneratingLogo}
-                    className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline"
-                  >
-                    Regenerate
-                  </button>
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={handleDownloadLogo}
+                      className="text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-1.5 rounded-full shadow flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                      title="Download vector SVG or PNG logo file"
+                    >
+                      <span>⬇️</span> Download Logo
+                    </button>
+                    <button
+                      onClick={handleGenerateLogo}
+                      disabled={isGeneratingLogo}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline px-2 py-1"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
                   <img src={getLogoUrl(localBrandData)} alt="Dynamic Logo Placeholder" className="w-32 h-32 rounded-full shadow-lg object-contain mb-4 border-4 border-white bg-white" />
                   <p className="text-amber-700 font-bold text-xs bg-amber-50 px-3 py-1 rounded-full mb-4">Auto-Generated Vector Logo Placeholder</p>
-                  <button
-                    onClick={handleGenerateLogo}
-                    disabled={isGeneratingLogo}
-                    className="bg-black text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-gray-800 transition-all active:scale-95 flex items-center gap-2"
-                  >
-                    {isGeneratingLogo ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Designing...
-                      </>
-                    ) : (
-                      <>✨ Generate AI Logo</>
-                    )}
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      onClick={handleGenerateLogo}
+                      disabled={isGeneratingLogo}
+                      className="bg-black text-white px-5 py-2 rounded-full font-bold text-xs shadow-lg hover:bg-gray-800 transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+                    >
+                      {isGeneratingLogo ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Designing...
+                        </>
+                      ) : (
+                        <>✨ Generate AI Logo</>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleDownloadLogo}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-2 rounded-full text-xs shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      title="Download SVG vector logo"
+                    >
+                      <span>⬇️</span> Download SVG
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-500 mt-2 max-w-xs">Uses Gemini Image Model to create a unique vector icon based on your brand vibe.</p>
                 </div>
               )}
@@ -1638,28 +1789,79 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
               </div>
 
               <div className="mt-8">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Taglines</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Taglines</h3>
+                  <button
+                    onClick={() => {
+                      const updated = [...(localBrandData?.taglines || []), 'Delivering Premium Quality Every Day'];
+                      updateField('taglines', updated);
+                      setIsEditing(true);
+                      toast.success("New tagline added! You can now edit it.");
+                    }}
+                    className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                    title="Add custom tagline"
+                  >
+                    <span className="font-extrabold text-sm">+</span> Add Tagline
+                  </button>
+                </div>
                 <div className="space-y-2">
                   {(localBrandData?.taglines || []).map((tag, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
+                    <div key={i} className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 group">
                       <span className="text-green-500 font-bold">✓</span>
                       {isEditing ? (
-                        <input
-                          className="flex-1 border border-blue-300 rounded px-2 py-1 text-sm bg-blue-50 focus:outline-none"
-                          value={tag}
-                          onChange={e => {
-                            const updated = [...(localBrandData.taglines || [])];
-                            updated[i] = e.target.value;
-                            updateField('taglines', updated);
-                          }}
-                        />
+                        <div className="flex-1 flex items-center gap-2">
+                          <input
+                            className="flex-1 border border-blue-300 rounded px-2 py-1 text-sm bg-blue-50 focus:outline-none"
+                            value={tag}
+                            onChange={e => {
+                              const updated = [...(localBrandData.taglines || [])];
+                              updated[i] = e.target.value;
+                              updateField('taglines', updated);
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              const updated = (localBrandData.taglines || []).filter((_, idx) => idx !== i);
+                              updateField('taglines', updated);
+                              toast.success("Tagline deleted");
+                            }}
+                            className="text-red-500 hover:text-red-700 p-1 text-xs font-bold cursor-pointer"
+                            title="Delete Tagline"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-gray-700 italic">"{tag}"</span>
+                        <div className="flex-1 flex justify-between items-center">
+                          <span className="text-gray-700 italic">"{tag}"</span>
+                          <button
+                            onClick={() => {
+                              const updated = (localBrandData.taglines || []).filter((_, idx) => idx !== i);
+                              updateField('taglines', updated);
+                              toast.success("Tagline deleted");
+                            }}
+                            className="text-gray-300 hover:text-red-500 text-xs px-2 py-0.5 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete Tagline"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
                   {(localBrandData?.taglines || []).length === 0 && (
-                    <p className="text-gray-400 text-sm italic">No taglines generated. Try regenerating your brand kit.</p>
+                    <div className="p-4 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-center">
+                      <p className="text-gray-400 text-xs italic mb-2">No taglines in your kit yet.</p>
+                      <button
+                        onClick={() => {
+                          updateField('taglines', ['Delivering Excellence Every Day']);
+                          setIsEditing(true);
+                        }}
+                        className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold"
+                      >
+                        + Add Your First Tagline
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1687,16 +1889,24 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
                   <button
-                    onClick={handlePrintLetterhead}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                    onClick={handleDownloadLetterheadHtml}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+                    title="Download Letterhead HTML file"
                   >
-                    <span>🖨️</span> Print Letterhead
+                    <span>⬇️</span> Download Letterhead
                   </button>
                   <button
-                    onClick={handlePrintProfile}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                    onClick={handleDownloadProfileHtml}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+                    title="Download 1-Pager Profile HTML file"
                   >
-                    <span>📑</span> Print 1-Pager
+                    <span>⬇️</span> Download Profile
+                  </button>
+                  <button
+                    onClick={handlePrintLetterhead}
+                    className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>🖨️</span> Print
                   </button>
                 </div>
               </div>
@@ -2031,13 +2241,91 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                   </div>
                 </div>
 
+                {/* Institutional Governance Readiness Calculation & Approval Section */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                        Institutional Governance & Compliance Certification
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Statutory audit checklist for Bank Credit Committees, BOI Overdrafts & International Grants.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCalculateGovernance}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <span>📊</span> Calculate Score
+                      </button>
+                      {isGovApproved ? (
+                        <div className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs">
+                          <span>✅</span> Charter Approved
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleApproveGovernance}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        >
+                          <span>🏛️</span> Approve Charter
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {govCalculatedScore !== null && (
+                    <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold">
+                        <span className="text-slate-700">Governance Readiness Index:</span>
+                        <span className={govCalculatedScore >= 75 ? 'text-emerald-600 font-black' : 'text-amber-600 font-black'}>
+                          {govCalculatedScore}% / 100% {govCalculatedScore >= 75 ? '(Bank-Grade Verified)' : '(Requires Optimization)'}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${govCalculatedScore >= 75 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                          style={{ width: `${govCalculatedScore}%` }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-slate-500 pt-1">
+                        <div>CAC Status: {localBrandData?.cacNumber ? '✓ Filled (+25%)' : '✕ Missing'}</div>
+                        <div>Tax ID (TIN): {localBrandData?.tinNumber || localBrandData?.tin ? '✓ Filled (+20%)' : '✕ Missing'}</div>
+                        <div>Corporate Mission: {localBrandData?.mission ? '✓ Filled (+15%)' : '✕ Missing'}</div>
+                        <div>Strategic Vision: {localBrandData?.vision ? '✓ Filled (+15%)' : '✕ Missing'}</div>
+                        <div>SLA Policy: {localBrandData?.slaPolicy ? '✓ Filled (+15%)' : '✕ Missing'}</div>
+                        <div>NDPR Privacy: {localBrandData?.ndprCompliance ? '✓ Filled (+10%)' : '✕ Missing'}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isGovApproved && (
+                    <div className="p-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 text-white rounded-xl border border-emerald-800 flex items-center justify-between gap-3 shadow-md">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                          🏛️
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-black text-white">GOVERNANCE CHARTER OFFICIALLY CERTIFIED</h5>
+                          <p className="text-[10px] text-emerald-300">Formally approved and signed off for Commercial Bank Credit Appraisal & BOI Evaluation.</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] bg-emerald-500 text-slate-950 font-black px-2.5 py-1 rounded-lg shrink-0">
+                        SEAL ACTIVE
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="pt-4 border-t flex justify-end">
                   <button
                     onClick={() => {
                       onSave(localBrandData);
                       toast.success("Corporate governance policies saved!");
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-xl text-sm shadow-md transition-all active:scale-95"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded-xl text-sm shadow-md transition-all active:scale-95 cursor-pointer"
                   >
                     💾 Save Governance Data
                   </button>

@@ -110,6 +110,51 @@ export const DailyCashbook: React.FC = () => {
     return localStorage.getItem(`sb_actual_till_${new Date().toISOString().split('T')[0]}`) || '';
   });
 
+  // Approval state for Tab 4 / Day-Book
+  const [dayApprovalStatus, setDayApprovalStatus] = useState<{
+    approved: boolean;
+    approvedAt?: string;
+    approvedBy?: string;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem(`sb_day_approved_${selectedDate}`);
+      return saved ? JSON.parse(saved) : { approved: false };
+    } catch {
+      return { approved: false };
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`sb_day_approved_${selectedDate}`);
+      setDayApprovalStatus(saved ? JSON.parse(saved) : { approved: false });
+    } catch {
+      setDayApprovalStatus({ approved: false });
+    }
+  }, [selectedDate]);
+
+  const handleApproveDayBook = () => {
+    let businessName = 'Managing Director';
+    try {
+      const storedUser = localStorage.getItem('sb_user');
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        businessName = u.businessName || u.business_name || u.name || u.username || 'Managing Director';
+      }
+    } catch {
+      // fallback
+    }
+
+    const approvalData = {
+      approved: true,
+      approvedAt: new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date().toLocaleDateString('en-NG'),
+      approvedBy: businessName
+    };
+    localStorage.setItem(`sb_day_approved_${selectedDate}`, JSON.stringify(approvalData));
+    setDayApprovalStatus(approvalData);
+    toast.success("✅ Day-Book & Cashflow Audit approved and signed off by Owner!", { icon: '🛡️', duration: 4000 });
+  };
+
   // Payment Fraud Shield Checklist
   const [transferFraudVerified, setTransferFraudVerified] = useState(false);
 
@@ -580,8 +625,23 @@ export const DailyCashbook: React.FC = () => {
     return '₦' + Number(amt || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  // Generate WhatsApp Daily Report
-  const handleShareReportWhatsApp = () => {
+  const openWhatsAppUrl = (text: string, phone?: string) => {
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+    const targetPhone = cleanPhone.startsWith('0') && cleanPhone.length === 11 
+      ? '234' + cleanPhone.slice(1) 
+      : cleanPhone.startsWith('234') ? cleanPhone : cleanPhone;
+    
+    const waUrl = targetPhone && targetPhone.length >= 10 && targetPhone !== '2348000000000'
+      ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = waUrl;
+    }
+  };
+
+  const handleShareSummaryWhatsApp = () => {
     const dateFormatted = new Date(selectedDate).toLocaleDateString('en-NG', {
       weekday: 'long',
       year: 'numeric',
@@ -593,8 +653,14 @@ export const DailyCashbook: React.FC = () => {
       ? `\n⚠️ *Low Stock Alert (${summary.low_stock_products.length} items):*\n` + summary.low_stock_products.map(p => `• ${p.name} (Only ${p.stock_count} left)`).join('\n')
       : '';
 
+    const approvalStatusText = dayApprovalStatus.approved 
+      ? `\n✅ *Sign-Off Status:* APPROVED BY OWNER (${dayApprovalStatus.approvedAt})\n`
+      : `\n📝 *Ledger Status:* Open Till Operations\n`;
+
     const text = `📊 *SmartBiz Coach • End-of-Day Report*\n` +
-      `📅 *Date:* ${dateFormatted}\n\n` +
+      `📅 *Date:* ${dateFormatted}` +
+      approvalStatusText +
+      `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
       `💰 *Total Sales Revenue:* ${formatNgn(totalRevenue)} (${sales.length} transactions)\n` +
       `  • 💵 Cash in Till: ${formatNgn(cashSales)}\n` +
       `  • 🏦 Bank Transfers / POS: ${formatNgn(transferSales)}\n` +
@@ -602,13 +668,15 @@ export const DailyCashbook: React.FC = () => {
       `💸 *Total Petty Cash / Expenses:* ${formatNgn(totalExpenses)} (${expenses.length} logs)\n` +
       `  • Paid from Cash: ${formatNgn(cashExpenses)}\n` +
       `  • Paid via Transfer: ${formatNgn(transferExpenses)}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
       `📦 *Estimated Gross Margin:* ${formatNgn(grossProfit)}\n` +
       `📈 *Net Cashflow (Cash in Till):* ${formatNgn(netCashInTill)}\n` +
       `🎯 *Net Estimated Profit:* ${formatNgn(netProfit)}\n` +
       lowStockText +
-      `\n\n_Generated securely via SmartBiz Coach OS 🚀_`;
+      `\n\n━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_Generated securely via SmartBiz Coach OS 🚀_`;
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    openWhatsAppUrl(text);
   };
 
   // Generate WhatsApp Receipt for a single sale
@@ -623,12 +691,7 @@ export const DailyCashbook: React.FC = () => {
       `Date: ${new Date(sale.created_at || Date.now()).toLocaleDateString()}\n\n` +
       `_Thank you for your patronage! 🙏_`;
 
-    const phoneClean = sale.customer_phone ? sale.customer_phone.replace(/\D/g, '') : '';
-    const url = phoneClean 
-      ? `https://wa.me/${phoneClean.startsWith('0') ? '234' + phoneClean.slice(1) : phoneClean}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-
-    window.open(url, '_blank');
+    openWhatsAppUrl(text, sale.customer_phone);
   };
 
   // --- AI Operations Intelligence Handler ---
@@ -649,8 +712,19 @@ export const DailyCashbook: React.FC = () => {
 
   const handleShareAIBriefWhatsApp = () => {
     if (!aiInsights) return;
-    const text = aiInsights.whatsappBriefText || `🤖 *AI Operations Brief*\n${aiInsights.headline}\n\n${aiInsights.executiveSummary}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    const approvalLine = dayApprovalStatus.approved 
+      ? `\n✅ *Status:* APPROVED & SIGNED OFF BY OWNER\n` 
+      : '';
+    const text = aiInsights.whatsappBriefText || 
+      `🤖 *SmartBiz Coach • AI Operations Brief*\n` +
+      `*${aiInsights.headline}*` +
+      approvalLine +
+      `\n\n${aiInsights.executiveSummary}\n\n` +
+      `🏆 *Daily Performance Grade:* ${aiInsights.performanceGrade || 'A'}\n` +
+      `💯 *Financial Health Score:* ${aiInsights.healthScore}/100\n\n` +
+      `_Generated via SmartBiz Coach OS • smartbizcoach.com.ng_`;
+
+    openWhatsAppUrl(text);
   };
 
   // --- Physical Till Handlers ---
@@ -1177,7 +1251,7 @@ export const DailyCashbook: React.FC = () => {
         {activeTab === 'REPORT' && (
           <div className="flex items-center gap-2">
             <button
-              onClick={handleShareReportWhatsApp}
+              onClick={handleShareSummaryWhatsApp}
               className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <span>📲</span> Send to WhatsApp
@@ -1679,16 +1753,31 @@ export const DailyCashbook: React.FC = () => {
                 <button
                   onClick={fetchAIInsights}
                   disabled={isLoadingAI}
-                  className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isLoadingAI ? 'animate-spin' : ''}`} />
-                  {isLoadingAI ? 'Analyzing Day...' : aiInsights ? 'Refresh Brief' : 'Generate Brief'}
+                  {isLoadingAI ? 'Calculating & Auditing...' : aiInsights ? 'Recalculate Brief' : 'Calculate & Audit Day'}
                 </button>
+
+                {dayApprovalStatus.approved ? (
+                  <div className="bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-extrabold text-xs px-4 py-3 rounded-2xl flex items-center gap-2 shadow-sm">
+                    <span>✅</span>
+                    <span>Approved & Signed Off ({dayApprovalStatus.approvedAt})</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleApproveDayBook}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                    title="Sign off and formally approve today's transactions and till reconciliation"
+                  >
+                    <span>🛡️</span> Approve & Sign-Off Book
+                  </button>
+                )}
 
                 {aiInsights && (
                   <button
                     onClick={handleShareAIBriefWhatsApp}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                    className="bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
                   >
                     <span>📲</span> WhatsApp Share
                   </button>

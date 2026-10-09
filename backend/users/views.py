@@ -27,8 +27,19 @@ class RegisterView(generics.CreateAPIView):
         if serializer.is_valid():
             user = serializer.save()
             user.set_password(serializer.validated_data['password'])
-            user.credits = 200
+            user.credits = 50
             user.save()
+
+            # Record initial 50 credits in CreditLedger
+            try:
+                from billing.models import CreditLedger
+                CreditLedger.objects.create(
+                    user=user,
+                    amount=50,
+                    activity="Welcome Bonus (50 Free BizCredits)"
+                )
+            except Exception as e:
+                print(f"Notice: Welcome CreditLedger creation notice: {e}")
 
             # Auto-initialize baseline BrandIdentity & Vendor profile
             try:

@@ -38,6 +38,8 @@ export interface BrandIdentity {
   executiveBio?: string;
   slaPolicy?: string;
   ndprCompliance?: string;
+  isGovernanceApproved?: boolean;
+  governanceReadinessScore?: number;
   openingHours?: {
     monFri?: string;
     saturday?: string;

@@ -205,6 +205,48 @@ const LearningHub: React.FC<LearningHubProps> = ({ onNavigate }) => {
       ]
     },
     {
+      id: 'bizcredits_rewards',
+      title: 'SmartBiz Credits, Free Welcome Bonus & Share Rewards',
+      category: 'BRANDING',
+      description: 'Understand how BizCredits work, earn 50 welcome credits upon sign-up, and earn +5 credits each time you share product links.',
+      duration: '4 mins read',
+      icon: '⚡',
+      color: 'from-amber-600 to-indigo-800',
+      targetView: AppView.SETTINGS,
+      actionText: 'Check Credit Wallet',
+      takeaways: [
+        'Every newly registered merchant automatically receives 50 Free Welcome BizCredits.',
+        'Earn +5 SmartBiz Credits every time you share a product link to WhatsApp Status or social platforms.',
+        'Core daily operating tools (POS scanner, Day-Book, Gbege Book) remain 100% free forever; BizCredits are only used for heavy generative compute.'
+      ],
+      content: [
+        'SmartBiz Coach operates on a fair-use hybrid model. All core operational retail tools — such as the 5-Second POS Cashbook, barcode scanner, apprentice shift lock, petty cash logger, debtor book, and Section 23 tax exemption memo — are completely free with zero credits required.',
+        'When you register an account, your wallet is automatically credited with 50 Free Welcome BizCredits. These can be used immediately for generating AI Logos, BOI Business Plans, and tailored marketing copy.',
+        'You can also earn +5 BizCredits whenever you share a product link from your Storefront or the Market Square to WhatsApp, Facebook, Twitter, or LinkedIn. Additional packs can be topped up via Paystack starting at just ₦500.'
+      ]
+    },
+    {
+      id: 'daybook_till_audit',
+      title: '5-Second Day-Book, Petty Cash & Till Reconciliation',
+      category: 'STOREFRONT',
+      description: 'Track daily cash till vs bank transfers, log generator fuel expenses, reconcile till variances, and formally approve daily books.',
+      duration: '6 mins read',
+      icon: '📊',
+      color: 'from-emerald-700 to-teal-900',
+      targetView: AppView.DAILY_CASHBOOK,
+      actionText: 'Open Daily Cashbook',
+      takeaways: [
+        '5-Second quick sale logging with cash, bank transfer, and credit customer records.',
+        'Automated physical till audit: Morning Float + Cash Sales - Petty Cash = Expected Till Tonight.',
+        'Formally calculate operations audit scores and sign off today\'s day-book with an owner approval seal.'
+      ],
+      content: [
+        'End-of-day cash discrepancy is the #1 silent killer of Nigerian small retail stores. When shop attendants or apprentices give incorrect change or take petty cash without logging it, profits vanish.',
+        'With the Daily Cashbook (/dashboard/cashbook), enter your morning opening float. Every transaction is logged with its payment method (Cash in Till vs Transfer vs Debt).',
+        'At closing time, physically count your paper naira notes. The system instantly highlights any overage or shortage. Navigate to the 4th view (AI Operations Brief) to calculate today\'s audit score and click "Approve & Sign-Off Book" to formally stamp today\'s records.'
+      ]
+    },
+    {
       id: 'admin_traction',
       title: 'Platform Navigation, Traction & Admin Oversight',
       category: 'STOREFRONT',
@@ -222,7 +264,7 @@ const LearningHub: React.FC<LearningHubProps> = ({ onNavigate }) => {
       content: [
         'SmartBiz Coach is designed for daily operational efficiency. Toggle Traction Mode on top of your header to focus on critical daily tasks.',
         'Manage your AI BizCredits wallet under Settings -> Credit Wallet to top up credits for high-value AI generation tools.',
-        'Platform admins (meshachzax@gmail.com) can access the Admin Ledger under Settings to inspect storefront GMV, verified transactions, and export CSV audit logs.'
+        'Platform admins (admin@smartbiz.com.ng, meshachzax@gmail.com) can access the Admin Ledger under Settings to inspect storefront GMV, verified transactions, and export CSV audit logs.'
       ]
     }
   ];

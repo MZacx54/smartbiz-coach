@@ -277,12 +277,12 @@ def send_welcome_email(user):
               Hello <strong>{name}</strong>,
             </p>
             <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-              Congratulations on taking the bold step to digitize, formalize, and scale your business! We have credited your wallet with <strong>⚡ 200 Free BizCredits</strong> to get you started immediately.
+              Congratulations on taking the bold step to digitize, formalize, and scale your business! We have credited your wallet with <strong>⚡ 50 Free BizCredits</strong> to get you started immediately.
             </p>
 
-            <!-- 200 Credits Box -->
+            <!-- 50 Credits Box -->
             <div style="background-color: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 14px; padding: 18px 20px; margin: 25px 0; text-align: center;">
-              <span style="font-size: 24px; font-weight: 800; color: #3730A3;">⚡ 200 BizCredits Active</span>
+              <span style="font-size: 24px; font-weight: 800; color: #3730A3;">⚡ 50 BizCredits Active</span>
               <p style="color: #4F46E5; font-size: 12px; margin: 5px 0 0 0; font-weight: 600;">Use for AI Brand Generation, BOI Business Plans & WhatsApp Debt Reminders</p>
             </div>
 

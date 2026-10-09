@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { UnifiedItem, User } from '../types';
 import api from '../services/api';
+import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 import { MerchantProfileDrawer } from './MerchantProfileDrawer';
 
@@ -221,13 +222,24 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
     }
   };
 
-  const handleShareListing = (item: UnifiedItem) => {
+  const handleShareListing = async (item: UnifiedItem) => {
     const rawNum = item.whatsapp_number || '2349064556107';
     const cleanNum = rawNum.replace(/\D/g, '');
     const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum;
 
     const shareText = `🔥 *CHECK THIS OUT ON SMARTBIZ MARKET SQUARE!*\n\n📦 *${item.name}*\n💰 *Price:* ₦${Number(item.price).toLocaleString()}\n🏪 *Vendor:* ${item.brand_name || 'Verified Merchant'}\n📍 *Location:* ${item.location || 'Nigeria'}\n\nChat with the vendor directly on WhatsApp: https://wa.me/${waNum}`;
     
+    // Reward +5 SmartBiz Credits for sharing
+    try {
+      const rewardRes = await billingService.rewardShare(item.id, item.name);
+      if (rewardRes.earned > 0) {
+        toast.success(`🎉 +${rewardRes.earned} SmartBiz Credits earned for sharing! (Balance: ${rewardRes.credits})`, { icon: '⚡' });
+        window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: rewardRes.credits }));
+      }
+    } catch (e) {
+      console.warn("Share reward notice:", e);
+    }
+
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);
       setHasCopiedLink(true);

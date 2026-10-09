@@ -340,21 +340,18 @@ const PublicStorefront: React.FC = () => {
     setIsPlacingOrder(true);
     const cartTotal = getCartTotal();
 
-    // 1. Log order leads in backend
-    try {
-      for (const item of cart) {
-        await api.post('/api/marketplace/leads/', {
-          product: item.product.id,
-          customer_name: checkoutForm.name,
-          customer_contact: checkoutForm.phone,
-          message: `Direct Checkout Order:\nQty: ${item.quantity}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`,
-          lead_type: 'ORDER',
-          quoted_price: (parseFloat(item.product.price) * item.quantity).toFixed(2)
-        });
-      }
-    } catch (err) {
-      console.error('Failed to save order leads', err);
-    }
+    // 1. Log order leads in backend non-blockingly
+    const leadPromises = cart.map(item =>
+      api.post('/api/marketplace/leads/', {
+        product: item.product.id,
+        customer_name: checkoutForm.name,
+        customer_contact: checkoutForm.phone,
+        message: `Direct Checkout Order:\nQty: ${item.quantity}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`,
+        lead_type: 'ORDER',
+        quoted_price: (parseFloat(item.product.price) * item.quantity).toFixed(2)
+      }).catch(err => console.warn('Order lead notice:', err))
+    );
+    Promise.allSettled(leadPromises);
 
     // 2. Open WhatsApp prefilled message
     let orderText = `Hi ${brand.businessName}, I would like to place an order:\n\n`;
@@ -364,11 +361,29 @@ const PublicStorefront: React.FC = () => {
     orderText += `\n💵 *Total:* ₦${cartTotal.toLocaleString()}\n`;
     orderText += `\n👤 *Customer Details:*\nName: ${checkoutForm.name}\nPhone: ${checkoutForm.phone}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`;
 
+    const rawWa = brand.whatsapp || brand.phone || '';
+    let cleanWa = rawWa.replace(/\D/g, '');
+    if (cleanWa.startsWith('0') && cleanWa.length === 11) {
+      cleanWa = '234' + cleanWa.slice(1);
+    } else if (cleanWa.length === 10) {
+      cleanWa = '234' + cleanWa;
+    }
+    if (cleanWa === '2348000000000' || cleanWa.length < 10) {
+      cleanWa = '';
+    }
+    const waUrl = cleanWa
+      ? `https://wa.me/${cleanWa}?text=${encodeURIComponent(orderText)}`
+      : `https://wa.me/?text=${encodeURIComponent(orderText)}`;
+
     setIsPlacingOrder(false);
     setShowCartModal(false);
     setCart([]);
-    toast.success('Order placed! Redirecting to WhatsApp...');
-    window.open(`https://wa.me/${brand.whatsapp || brand.phone || ''}?text=${encodeURIComponent(orderText)}`, '_blank');
+    toast.success('Order recorded! Redirecting to WhatsApp...', { icon: '💬' });
+
+    const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = waUrl;
+    }
   };
 
   const handlePaystackOnlineCheckout = async () => {

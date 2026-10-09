@@ -7,7 +7,8 @@ from .views import (
     CreditLedgerListView, 
     PaystackConfigView, 
     AdminTransactionsView,
-    PaystackWebhookView
+    PaystackWebhookView,
+    RewardShareView
 )
 
 urlpatterns = [
@@ -17,6 +18,7 @@ urlpatterns = [
     path('verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
     path('webhook/paystack/', PaystackWebhookView.as_view(), name='paystack-webhook'),
     path('deduct-credits/', DeductCreditsView.as_view(), name='deduct-credits'),
+    path('reward-share/', RewardShareView.as_view(), name='reward-share'),
     path('config/', PaystackConfigView.as_view(), name='billing-config'),
     path('admin/transactions/', AdminTransactionsView.as_view(), name='admin-transactions'),
 ]

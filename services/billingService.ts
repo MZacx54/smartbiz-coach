@@ -50,6 +50,14 @@ export const billingService = {
     return response.data;
   },
 
+  rewardShare: async (productId?: string | number, productTitle?: string): Promise<{ message: string; credits: number; earned: number }> => {
+    const response = await api.post("billing/reward-share/", {
+      product_id: productId,
+      product_title: productTitle
+    });
+    return response.data;
+  },
+
   getPaystackConfig: async (): Promise<{ publicKey: string }> => {
     const response = await api.get("billing/config/");
     return response.data;

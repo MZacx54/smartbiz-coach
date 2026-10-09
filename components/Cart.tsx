@@ -28,8 +28,25 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
   // Determine Primary Vendor details from the first cart item
   const primaryItem = items[0];
   const vendorSubaccount = primaryItem?.paystack_subaccount_code || '';
-  const vendorWhatsApp = primaryItem?.whatsapp || '2348000000000';
   const vendorName = primaryItem?.vendorName || 'Verified Merchant';
+
+  const formatWhatsAppNumber = (phone?: string) => {
+    if (!phone) return '';
+    let clean = phone.replace(/\D/g, '');
+    if (clean.startsWith('0') && clean.length === 11) {
+      clean = '234' + clean.slice(1);
+    } else if (clean.length === 10) {
+      clean = '234' + clean;
+    }
+    // Reject dummy numbers
+    if (clean === '2348000000000' || clean.length < 10) {
+      return '';
+    }
+    return clean;
+  };
+
+  const rawVendorPhone = primaryItem?.whatsapp || (primaryItem as any)?.phone || '';
+  const cleanVendorWhatsApp = formatWhatsAppNumber(rawVendorPhone);
 
   const handlePaystackCheckout = async () => {
     if (!checkoutForm.name.trim() || !checkoutForm.phone.trim() || !checkoutForm.address.trim()) {
@@ -94,29 +111,10 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
     }
   };
 
-  const handleWhatsAppOrder = async () => {
+  const handleWhatsAppOrder = () => {
     if (!checkoutForm.name.trim() || !checkoutForm.phone.trim() || !checkoutForm.address.trim()) {
       toast.error('Please fill in your Delivery Details before ordering via WhatsApp.');
       return;
-    }
-
-    try {
-      // Create lead in background
-      await api.post('/api/marketplace/orders/create/', {
-        items: items.map(item => ({
-          productId: item.productId || item.id,
-          price: item.price,
-          quantity: item.quantity
-        })),
-        reference: `WA-ORDER-${Date.now()}`,
-        total_amount: total,
-        customer_name: checkoutForm.name,
-        customer_phone: checkoutForm.phone,
-        customer_address: checkoutForm.address,
-        notes: `WhatsApp Order Inquiry: ${checkoutForm.notes}`
-      });
-    } catch (err) {
-      console.warn('Could not log WhatsApp lead:', err);
     }
 
     let orderText = `*New Market Square Order (SmartBiz Coach)*\n\n`;
@@ -134,10 +132,33 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
     }
     orderText += `\n\nPlease confirm availability and dispatch waybill terms. Thank you!`;
 
+    const waUrl = cleanVendorWhatsApp
+      ? `https://wa.me/${cleanVendorWhatsApp}?text=${encodeURIComponent(orderText)}`
+      : `https://wa.me/?text=${encodeURIComponent(orderText)}`;
+
+    // Fire background lead creation non-blockingly so window.open is not intercepted by popup blocker
+    api.post('/api/marketplace/orders/create/', {
+      items: items.map(item => ({
+        productId: item.productId || item.id,
+        price: item.price,
+        quantity: item.quantity
+      })),
+      reference: `WA-ORDER-${Date.now()}`,
+      total_amount: total,
+      customer_name: checkoutForm.name,
+      customer_phone: checkoutForm.phone,
+      customer_address: checkoutForm.address,
+      notes: `WhatsApp Order Inquiry: ${checkoutForm.notes}`
+    }).catch(err => console.warn('Could not log WhatsApp lead:', err));
+
     setShowCheckoutModal(false);
     onClear();
-    toast.success('Order recorded! Redirecting to vendor WhatsApp...');
-    window.open(`https://wa.me/${vendorWhatsApp}?text=${encodeURIComponent(orderText)}`, '_blank');
+    toast.success('Order recorded! Redirecting to vendor WhatsApp...', { icon: '💬' });
+
+    const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = waUrl;
+    }
   };
 
   if (items.length === 0) {
@@ -223,12 +244,20 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
            <span className="font-extrabold text-2xl text-slate-900">₦{total.toLocaleString()}</span>
         </div>
 
-        <button 
-          onClick={() => setShowCheckoutModal(true)}
-          className="w-full bg-slate-900 hover:bg-indigo-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-slate-900/10 transition-all hover:scale-[1.01] active:scale-[0.99] flex justify-center items-center gap-2"
-        >
-          <span>💳</span> Proceed to Checkout (Paystack / WhatsApp)
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button 
+            onClick={() => setShowCheckoutModal(true)}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-xl font-bold shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] flex justify-center items-center gap-2 cursor-pointer"
+          >
+            <span>💳</span> Pay Online (Paystack)
+          </button>
+          <button 
+            onClick={() => setShowCheckoutModal(true)}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.01] active:scale-[0.99] flex justify-center items-center gap-2 cursor-pointer"
+          >
+            <span>💬</span> Pay with WhatsApp
+          </button>
+        </div>
       </div>
 
       {/* Nigerian Delivery & Checkout Modal */}

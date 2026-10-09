@@ -151,6 +151,47 @@ class DeductCreditsView(APIView):
             "credits": user.credits
         }, status=status.HTTP_200_OK)
 
+class RewardShareView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        product_title = request.data.get('product_title') or request.data.get('title') or 'Marketplace Product'
+        product_id = request.data.get('product_id') or request.data.get('id')
+
+        # Prevent runaway abuse: allow up to 10 share rewards per 24 hours
+        from django.utils import timezone
+        import datetime
+        since_time = timezone.now() - datetime.timedelta(hours=24)
+        recent_share_count = CreditLedger.objects.filter(
+            user=user,
+            activity__startswith="Product Link Share Bonus",
+            created_at__gte=since_time
+        ).count()
+
+        if recent_share_count >= 10:
+            return Response({
+                "message": "Daily product share reward limit reached (10 shares / 50 credits daily). Keep sharing to boost your store reach!",
+                "credits": user.credits,
+                "earned": 0
+            }, status=status.HTTP_200_OK)
+
+        reward_amount = 5
+        user.credits += reward_amount
+        user.save(update_fields=['credits'])
+
+        CreditLedger.objects.create(
+            user=user,
+            amount=reward_amount,
+            activity=f"Product Link Share Bonus: {str(product_title)[:120]}"
+        )
+
+        return Response({
+            "message": f"🎉 +{reward_amount} SmartBiz Credits earned for sharing!",
+            "credits": user.credits,
+            "earned": reward_amount
+        }, status=status.HTTP_200_OK)
+
 class PaystackConfigView(APIView):
     permission_classes = [permissions.AllowAny]
 
