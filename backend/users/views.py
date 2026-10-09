@@ -145,37 +145,64 @@ class UserStatsView(views.APIView):
 
     def get(self, request):
         user = request.user
-        # Calculate stats based on real data
-        # Check brand
-        has_brand = False
-        try:
-            has_brand = hasattr(user, 'brand_identity')
-        except:
-            pass
-        
-        # Check content
-        # We need to import GeneratedContent or query relation
-        # user.generated_content is the related name
+        has_brand = hasattr(user, 'brand_identity')
         content_count = user.generated_content.count() if hasattr(user, 'generated_content') else 0
 
+        # Check compliance
+        has_cac = False
+        try:
+            from users.models import UserCompliance
+            comp = UserCompliance.objects.filter(user=user).first()
+            if comp and comp.business_reg_completed:
+                has_cac = True
+        except Exception:
+            pass
+
+        # Check products
+        has_products = False
+        try:
+            from marketplace.models import Product
+            has_products = Product.objects.filter(brand__user=user).exists()
+        except Exception:
+            pass
+
+        # Check daily sales / till
+        has_sales = False
+        try:
+            from marketplace.models import DailySale
+            has_sales = DailySale.objects.filter(brand__user=user).exists()
+        except Exception:
+            pass
+
         completed = 0
+        if has_cac: completed += 1
         if has_brand: completed += 1
+        if has_products: completed += 1
         if content_count > 0: completed += 1
-        if user.business_name: completed += 1 # Assumption for registration/onboarding logic
+        if has_sales: completed += 1
+        if user.business_name: completed += 1
 
         total_tasks = 6
         
-        # Simple score logic
-        score = 25
-        if has_brand: score += 25
-        if content_count > 5: score += 10
-        if user.plan == 'Pro': score += 40
+        # Readiness score
+        score = 20
+        if has_cac: score += 25
+        if has_brand: score += 20
+        if has_products: score += 15
+        if has_sales: score += 10
+        if content_count > 0: score += 10
+        if user.plan == 'Pro': score += 20
 
         return Response({
             "grantReadinessScore": min(score, 100),
             "bizCredits": user.credits,
             "completedTasks": completed,
-            "totalTasks": total_tasks
+            "totalTasks": total_tasks,
+            "hasCac": has_cac,
+            "hasBrand": has_brand,
+            "hasProducts": has_products,
+            "hasSales": has_sales,
+            "hasContent": content_count > 0
         })
 
 class UserActionsView(views.APIView):
@@ -184,66 +211,88 @@ class UserActionsView(views.APIView):
     def get(self, request):
         user = request.user
         has_brand = hasattr(user, 'brand_identity')
-        has_content = user.generated_content.exists() if hasattr(user, 'generated_content') else False
+        content_count = user.generated_content.count() if hasattr(user, 'generated_content') else 0
         
+        has_cac = False
+        try:
+            from users.models import UserCompliance
+            comp = UserCompliance.objects.filter(user=user).first()
+            if comp and comp.business_reg_completed:
+                has_cac = True
+        except Exception:
+            pass
+
+        has_products = False
+        try:
+            from marketplace.models import Product
+            has_products = Product.objects.filter(brand__user=user).exists()
+        except Exception:
+            pass
+
+        has_sales = False
+        try:
+            from marketplace.models import DailySale
+            has_sales = DailySale.objects.filter(brand__user=user).exists()
+        except Exception:
+            pass
+
         actions = [
             {
-                "id": '1',
-                "title": 'Register CAC Business Name',
-                "description": 'Official registration unlocks corporate bank accounts.',
-                "type": 'URGENT',
-                "isCompleted": False, # Future: check business.registration model
-                "points": 50,
-                "actionLink": 'COMPLIANCE' # Enums match Frontend AppView strings roughly
+                'id': '1',
+                'title': 'Register CAC Business Name',
+                'description': 'Official registration unlocks corporate bank accounts and government grant eligibility.',
+                'type': 'URGENT',
+                'isCompleted': has_cac,
+                'points': 50,
+                'actionLink': 'COMPLIANCE'
             },
             {
-                "id": '2',
-                "title": 'Create Brand Identity',
-                "description": 'Generate professional logos and colors for your business.',
-                "type": 'GROWTH',
-                "isCompleted": has_brand,
-                "points": 20,
-                "actionLink": 'BRAND_BUILDER'
+                'id': '2',
+                'title': 'Create Brand Identity & Logo',
+                'description': 'Generate professional logo and colors auto-synced across invoices and storefront.',
+                'type': 'GROWTH',
+                'isCompleted': has_brand,
+                'points': 20,
+                'actionLink': 'BRAND_BUILDER'
             },
             {
-                "id": '3',
-                "title": 'Post on Instagram',
-                "description": 'Keep your audience engaged with a new post.',
-                "type": 'GROWTH',
-                "isCompleted": has_content,
-                "points": 10,
-                "actionLink": 'CONTENT_GENERATOR'
+                'id': '3',
+                'title': 'Upload Product Catalog',
+                'description': 'Add your items to your 24/7 web storefront with verified Paystack checkout.',
+                'type': 'GROWTH',
+                'isCompleted': has_products,
+                'points': 25,
+                'actionLink': 'PRODUCT_MANAGER'
             },
             {
-                "id": '4',
-                "title": 'Create Business Plan',
-                "description": 'Draft a strategy to secure grants and loans.',
-                "type": 'GROWTH',
-                "isCompleted": False,
-                "points": 100,
-                "actionLink": 'BUSINESS_PLAN'
+                'id': '4',
+                'title': 'Generate Marketing Reel & Copy',
+                'description': 'Draft high-converting WhatsApp Status and TikTok campaign copy.',
+                'type': 'GROWTH',
+                'isCompleted': content_count > 0,
+                'points': 15,
+                'actionLink': 'CONTENT_GENERATOR'
             },
             {
-                "id": '5',
-                "title": 'Find Funding',
-                "description": 'Match with grants from TEF, BoI, and LSETF.',
-                "type": 'INFO',
-                "isCompleted": False,
-                "points": 50,
-                "actionLink": 'GRANT_MATCHER'
+                'id': '5',
+                'title': 'Log Daily Till & Sales in Day-Book',
+                'description': 'Keep clean cash vs transfer records and prevent staff discrepancies.',
+                'type': 'GROWTH',
+                'isCompleted': has_sales,
+                'points': 20,
+                'actionLink': 'DAILY_CASHBOOK'
             },
             {
-                "id": '6',
-                "title": 'Digital Marketing Setup',
-                "description": 'Complete the roadmap for Facebook & WhatsApp.',
-                "type": 'GROWTH',
-                "isCompleted": False, 
-                "points": 30,
-                "actionLink": 'DIGITAL_ROADMAP'
+                'id': '6',
+                'title': 'Draft BOI & TEF Bankable Business Plan',
+                'description': 'Structure 3-year financials and executive strategy for grants and low-interest loans.',
+                'type': 'INFO',
+                'isCompleted': False,
+                'points': 50,
+                'actionLink': 'BUSINESS_PLAN'
             }
         ]
         return Response(actions)
-
 
 class ForgotPasswordView(views.APIView):
     permission_classes = [permissions.AllowAny]
