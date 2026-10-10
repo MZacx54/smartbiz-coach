@@ -39,6 +39,7 @@ const MarketingAgent = lazy(() => import("./components/MarketingAgent"));
 const DailyCashbook = lazy(() => import("./components/DailyCashbook").then(m => ({ default: m.DailyCashbook })));
 const BlogIndex = lazy(() => import("./components/BlogIndex"));
 const BlogPost = lazy(() => import("./components/BlogPost"));
+const DataScienceHub = lazy(() => import("./components/DataScienceHub"));
 
 import {
   AppView,
@@ -146,6 +147,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else if (path.includes('/dashboard/marketing')) setCurrentView(AppView.MARKETING_AGENT);
+    else if (path.includes('/dashboard/analytics')) setCurrentView(AppView.DATA_SCIENCE_HUB);
     else setCurrentView(AppView.DASHBOARD);
   }, [location]);
 
@@ -330,6 +332,7 @@ const App: React.FC = () => {
       case AppView.PRICING_ASSISTANT: navigate(`/dashboard/pricing-assistant${query}`); break;
       case AppView.MARKETING_AGENT: navigate(`/dashboard/marketing${query}`); break;
       case AppView.LEAD_MANAGER: navigate(`/dashboard/leads${query}`); break;
+      case AppView.DATA_SCIENCE_HUB: navigate(`/dashboard/analytics${query}`); break;
       default: navigate(`/dashboard${query}`);
     }
   };
@@ -694,6 +697,7 @@ const App: React.FC = () => {
                   <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="marketing" element={<MarketingAgent user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="analytics" element={<DataScienceHub onNavigate={handleNavigate} />} />
                   <Route path="audit" element={<PublicAuditReport />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>

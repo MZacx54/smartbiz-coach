@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'business',
     'marketplace',
     'marketing',
+    'analytics_ml',
 ]
 
 MIDDLEWARE = [
