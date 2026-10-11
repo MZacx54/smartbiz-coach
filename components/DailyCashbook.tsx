@@ -4,7 +4,8 @@ import {
   ArrowUpRight, ArrowDownRight, Clock, AlertTriangle, 
   Send, Share2, Download, Printer, RefreshCw, ShoppingCart, 
   FileText, ShieldCheck, Sparkles, Filter, X, Lock, Unlock, Key,
-  Wifi, WifiOff, Cloud, Edit2, Bot, Zap, TrendingUp, Check, Camera
+  Wifi, WifiOff, Cloud, Edit2, Bot, Zap, TrendingUp, Check, Camera,
+  Mic, Receipt
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DailySale, DailyExpense, DailySummary, DailyAIInsights, Product } from '../types';
@@ -47,6 +48,20 @@ export const DailyCashbook: React.FC = () => {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [recentSaleReceipt, setRecentSaleReceipt] = useState<DailySale | null>(null);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+
+  // Cutting-Edge AI: Voice Note POS & Receipt OCR Modals
+  const [showVoicePOSModal, setShowVoicePOSModal] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceTranscriptInput, setVoiceTranscriptInput] = useState('');
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+
+  const [showReceiptOCRModal, setShowReceiptOCRModal] = useState(false);
+  const [receiptImageFile, setReceiptImageFile] = useState<File | null>(null);
+  const [receiptImagePreview, setReceiptImagePreview] = useState<string | null>(null);
+  const [isScanningReceipt, setIsScanningReceipt] = useState(false);
+  const [scannedReceiptResult, setScannedReceiptResult] = useState<any | null>(null);
 
   // Edit Sale modal state
   const [editingSale, setEditingSale] = useState<DailySale | null>(null);
@@ -1003,7 +1018,27 @@ export const DailyCashbook: React.FC = () => {
               title="Point camera at product barcode to record sale instantly"
             >
               <Camera className="w-4 h-4 text-emerald-400" />
-              <span>📷 Scan Sale</span>
+              <span>📷 Barcode</span>
+            </button>
+
+            {/* Cutting-Edge AI Feature 1: Voice Note POS Ingestion */}
+            <button
+              onClick={() => setShowVoicePOSModal(true)}
+              className="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-rose-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Speak your sale or expense via microphone to auto-log without typing"
+            >
+              <Mic className="w-4 h-4 text-rose-200" />
+              <span>🎙️ Voice POS</span>
+            </button>
+
+            {/* Cutting-Edge AI Feature 2: Paper Receipt & Waybill OCR */}
+            <button
+              onClick={() => setShowReceiptOCRModal(true)}
+              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-cyan-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Snap a photo of handwritten shop ledger notes or supplier paper receipts"
+            >
+              <Receipt className="w-4 h-4 text-cyan-200" />
+              <span>🧾 Scan Receipt</span>
             </button>
 
             <button
@@ -2856,6 +2891,293 @@ export const DailyCashbook: React.FC = () => {
         title="Scan Item Barcode for Sale"
         description="Point camera at product barcode or packaging to record purchase in 1 second"
       />
+
+      {/* Cutting-Edge AI Feature 1: Voice Note POS Ingestion Modal */}
+      {showVoicePOSModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <Mic className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-lg">AI Voice Note POS</h3>
+                  <p className="text-xs text-slate-500">Speak your market sales or expenses naturally</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowVoicePOSModal(false);
+                  setIsRecordingVoice(false);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 text-xs text-slate-600 space-y-1">
+              <span className="font-bold text-slate-800 block">💡 Example Spoken Phrasing:</span>
+              <p className="italic text-slate-500">
+                &ldquo;I sold 3 bags of rice for 180,000 cash, and gave brother Emeka 2,000 for dispatch.&rdquo;
+              </p>
+            </div>
+
+            {/* Mic Record Button */}
+            <div className="text-center py-4 space-y-3">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (isRecordingVoice) {
+                    // Stop recording
+                    if (mediaRecorder) {
+                      mediaRecorder.stop();
+                    }
+                    setIsRecordingVoice(false);
+                  } else {
+                    // Start recording
+                    try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                      const recorder = new MediaRecorder(stream);
+                      const chunks: Blob[] = [];
+                      recorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) chunks.push(e.data);
+                      };
+                      recorder.onstop = async () => {
+                        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+                        setIsProcessingVoice(true);
+                        const toastId = toast.loading('Multimodal AI parsing audio transactions...');
+                        try {
+                          const formData = new FormData();
+                          formData.append('audio', audioBlob);
+                          const res = await api.post('/api/marketplace/voice-pos-ingest/', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                          });
+                          toast.success(res.data.summary || 'Voice transactions logged to Day-Book! 🚀', { id: toastId });
+                          fetchDailyData();
+                          setShowVoicePOSModal(false);
+                        } catch (err: any) {
+                          toast.error(err.response?.data?.error || 'Failed to process voice note.', { id: toastId });
+                        } finally {
+                          setIsProcessingVoice(false);
+                        }
+                      };
+                      recorder.start();
+                      setMediaRecorder(recorder);
+                      setIsRecordingVoice(true);
+                      toast.success('Microphone listening... Speak clearly!');
+                    } catch (err) {
+                      toast.error('Microphone access denied. You can type the text below instead.');
+                    }
+                  }
+                }}
+                disabled={isProcessingVoice}
+                className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center text-white shadow-xl transition-all cursor-pointer ${
+                  isRecordingVoice 
+                    ? 'bg-rose-600 animate-ping ring-4 ring-rose-300' 
+                    : 'bg-rose-500 hover:bg-rose-600 hover:scale-105'
+                }`}
+              >
+                <Mic className="w-8 h-8" />
+              </button>
+              <p className="text-xs font-bold text-slate-600">
+                {isRecordingVoice ? 'Recording... Tap to Finish & Ingest' : 'Tap Microphone to Speak'}
+              </p>
+            </div>
+
+            {/* Or Manual Typed Voice Note */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <label className="text-xs font-bold text-slate-700 block">Or Type Market Voice Note:</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  placeholder="e.g. Sold 2 wigs for 85,000 via transfer"
+                  value={voiceTranscriptInput}
+                  onChange={(e) => setVoiceTranscriptInput(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+                <button
+                  type="button"
+                  disabled={!voiceTranscriptInput.trim() || isProcessingVoice}
+                  onClick={async () => {
+                    setIsProcessingVoice(true);
+                    const toastId = toast.loading('AI parsing transactions...');
+                    try {
+                      const res = await api.post('/api/marketplace/voice-pos-ingest/', {
+                        text_transcript: voiceTranscriptInput
+                      });
+                      toast.success(res.data.summary || 'Transactions logged to Day-Book! ✓', { id: toastId });
+                      setVoiceTranscriptInput('');
+                      fetchDailyData();
+                      setShowVoicePOSModal(false);
+                    } catch (err: any) {
+                      toast.error(err.response?.data?.error || 'Failed to parse text transactions.', { id: toastId });
+                    } finally {
+                      setIsProcessingVoice(false);
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  Parse
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cutting-Edge AI Feature 2: Paper Receipt & Waybill OCR Modal */}
+      {showReceiptOCRModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-lg">AI Paper Receipt & Waybill OCR</h3>
+                  <p className="text-xs text-slate-500">Scan paper invoices, waybills, or notebook sales</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowReceiptOCRModal(false);
+                  setReceiptImageFile(null);
+                  setReceiptImagePreview(null);
+                  setScannedReceiptResult(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Image Upload Area */}
+            {!receiptImagePreview ? (
+              <label className="border-2 border-dashed border-slate-200 hover:border-cyan-400 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer bg-slate-50/50 hover:bg-cyan-50/20 transition-all">
+                <div className="w-12 h-12 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center">
+                  <Camera className="w-6 h-6" />
+                </div>
+                <div className="text-center">
+                  <span className="font-bold text-xs text-slate-800 block">Snap or Upload Receipt Photo</span>
+                  <span className="text-[11px] text-slate-400">Supports paper receipts, printed waybills, handwritten ledgers</span>
+                </div>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment"
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setReceiptImageFile(file);
+                      setReceiptImagePreview(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+              </label>
+            ) : (
+              <div className="space-y-4">
+                <div className="relative rounded-2xl overflow-hidden border border-slate-200 max-h-56">
+                  <img src={receiptImagePreview} alt="Receipt preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => {
+                      setReceiptImageFile(null);
+                      setReceiptImagePreview(null);
+                      setScannedReceiptResult(null);
+                    }}
+                    className="absolute top-2 right-2 bg-slate-900/70 text-white p-1.5 rounded-full hover:bg-slate-900 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {!scannedReceiptResult && (
+                  <button
+                    type="button"
+                    disabled={isScanningReceipt}
+                    onClick={async () => {
+                      if (!receiptImageFile) return;
+                      setIsScanningReceipt(true);
+                      const toastId = toast.loading('Gemini Vision OCR analyzing document...');
+                      try {
+                        const formData = new FormData();
+                        formData.append('receipt_image', receiptImageFile);
+                        const res = await api.post('/api/marketplace/receipt-ocr/', formData, {
+                          headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+                        setScannedReceiptResult(res.data);
+                        toast.success('Document scanned successfully! ✓', { id: toastId });
+                      } catch (err: any) {
+                        toast.error(err.response?.data?.error || 'Failed to scan receipt image.', { id: toastId });
+                      } finally {
+                        setIsScanningReceipt(false);
+                      }
+                    }}
+                    className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{isScanningReceipt ? 'Extracting Line Items...' : 'Analyze Receipt with Gemini Vision'}</span>
+                  </button>
+                )}
+
+                {/* Scanned Result Preview */}
+                {scannedReceiptResult && (
+                  <div className="p-4 rounded-2xl bg-cyan-50/50 border border-cyan-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                      <span>{scannedReceiptResult.supplier_or_store || 'Supplier Receipt'}</span>
+                      <span className="font-mono text-cyan-800 font-black">
+                        ₦{(scannedReceiptResult.total_receipt_amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {(scannedReceiptResult.line_items || []).map((item: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-xs py-1 px-2.5 bg-white rounded-lg border border-slate-100">
+                          <span className="font-medium text-slate-800 truncate max-w-[160px]">
+                            {item.quantity}x {item.item_name}
+                          </span>
+                          <span className="font-mono font-bold text-slate-900">
+                            ₦{Number(item.total_line_amount || (item.quantity * item.unit_cost)).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        // Persist items as an expense or wholesale stock
+                        const toastId = toast.loading('Recording supplier receipt in cashbook...');
+                        try {
+                          await api.post('/api/marketplace/daily-expenses/', {
+                            title: `Waybill / Restock: ${scannedReceiptResult.supplier_or_store || 'Supplier'}`,
+                            category: 'PACKAGING',
+                            amount: scannedReceiptResult.total_receipt_amount,
+                            payment_method: 'TRANSFER',
+                            notes: `Auto-scanned via Paper Receipt OCR: ${(scannedReceiptResult.line_items || []).map((l: any) => l.item_name).join(', ')}`,
+                            date: selectedDate
+                          });
+                          toast.success('Receipt logged to cashbook expenses! ✓', { id: toastId });
+                          fetchDailyData();
+                          setShowReceiptOCRModal(false);
+                        } catch (err) {
+                          toast.error('Failed to log scanned receipt.', { id: toastId });
+                        }
+                      }}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                    >
+                      ✓ Log to Cashbook Expenses
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -3,6 +3,7 @@ from .views import (
     CreditScoreAnalyticsView,
     DemandForecastAnalyticsView,
     TillAnomalyAnalyticsView,
+    CustomerSegmentationAnalyticsView,
     ComprehensiveMLOverviewView,
     UnderwritingReportDataView
 )
@@ -12,5 +13,6 @@ urlpatterns = [
     path('credit-score/', CreditScoreAnalyticsView.as_view(), name='ml_credit_score'),
     path('demand-forecast/', DemandForecastAnalyticsView.as_view(), name='ml_demand_forecast'),
     path('till-anomalies/', TillAnomalyAnalyticsView.as_view(), name='ml_till_anomalies'),
+    path('customer-segments/', CustomerSegmentationAnalyticsView.as_view(), name='ml_customer_segments'),
     path('underwriting-dossier/', UnderwritingReportDataView.as_view(), name='ml_underwriting_dossier'),
 ]

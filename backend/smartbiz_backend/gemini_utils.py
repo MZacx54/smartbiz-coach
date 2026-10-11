@@ -577,9 +577,10 @@ def clean_json_response(text):
     cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
     return cleaned.strip()
 
-def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, mime_type=None):
+def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, audio_base64=None, mime_type=None):
     """
     Generates JSON content using Google Gemini.
+    Supports optional image or audio base64 for multimodal vision and audio tasks.
     """
     # Build contents parts
     parts = []
@@ -592,6 +593,17 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None,
             "inline_data": {
                 "mime_type": mime_type or "image/jpeg",
                 "data": clean_b64
+            }
+        })
+    if audio_base64:
+        clean_audio = audio_base64
+        if ";base64," in clean_audio:
+            clean_audio = clean_audio.split(";base64,")[1]
+        clean_audio = "".join(clean_audio.split())
+        parts.append({
+            "inline_data": {
+                "mime_type": mime_type or "audio/webm",
+                "data": clean_audio
             }
         })
     parts.append({"text": prompt})

@@ -21,7 +21,9 @@ from .views import (
     DailyExpenseListCreateView,
     DailyExpenseDetailView,
     DailySummaryView,
-    DailyAIInsightsView
+    DailyAIInsightsView,
+    VoicePOSIngestView,
+    PaperReceiptOCRView
 )
 
 from .payout_views import (
@@ -58,4 +60,6 @@ urlpatterns = [
     path('daily-expenses/<int:pk>/', DailyExpenseDetailView.as_view(), name='daily_expense_detail'),
     path('daily-summary/', DailySummaryView.as_view(), name='daily_summary'),
     path('daily-ai-insights/', DailyAIInsightsView.as_view(), name='daily_ai_insights'),
+    path('voice-pos-ingest/', VoicePOSIngestView.as_view(), name='voice_pos_ingest'),
+    path('receipt-ocr/', PaperReceiptOCRView.as_view(), name='receipt_ocr'),
 ]

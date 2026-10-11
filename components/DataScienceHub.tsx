@@ -95,12 +95,35 @@ export interface UnderwritingDossierData {
   verifier_statement: string;
 }
 
+export interface CustomerCohort {
+  name: string;
+  phone: string;
+  total_spend: number;
+  order_count: number;
+  last_purchase_date: string;
+}
+
+export interface CustomerSegmentItem {
+  segment: string;
+  count: number;
+  color: string;
+  description: string;
+  recommended_action: string;
+  customers: CustomerCohort[];
+}
+
+export interface CustomerSegmentsPayload {
+  has_sufficient_data: boolean;
+  total_customers: number;
+  segments: CustomerSegmentItem[];
+}
+
 interface DataScienceHubProps {
   onNavigate?: (view: any) => void;
 }
 
 const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'CREDIT' | 'DEMAND' | 'ANOMALY'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'CREDIT' | 'DEMAND' | 'ANOMALY' | 'RFM_SEGMENTS'>('OVERVIEW');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -108,6 +131,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
   const [creditData, setCreditData] = useState<CreditScoreData | null>(null);
   const [forecasts, setForecasts] = useState<DemandForecastItem[]>([]);
   const [anomalies, setAnomalies] = useState<TillAnomalyData | null>(null);
+  const [segmentsData, setSegmentsData] = useState<CustomerSegmentsPayload | null>(null);
 
   const fetchMLData = async () => {
     try {
@@ -116,6 +140,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
         setCreditData(res.data.credit);
         setForecasts(res.data.forecasts || []);
         setAnomalies(res.data.anomalies);
+        if (res.data.segments) {
+          setSegmentsData(res.data.segments);
+        }
       }
     } catch (err: any) {
       console.warn('ML data fetch warning:', err);
@@ -448,6 +475,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           { id: 'CREDIT', label: 'Credit Risk & FICO (300-850)', icon: '🏛️' },
           { id: 'DEMAND', label: 'Predictive Demand & Stockout', icon: '📈' },
           { id: 'ANOMALY', label: 'Till Integrity & Fraud Scanner', icon: '🛡️' },
+          { id: 'RFM_SEGMENTS', label: 'Customer RFM Segmentation', icon: '🎯' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -860,6 +888,92 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                   ))}
                 </div>
               )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* TAB 5: CUSTOMER RFM SEGMENTATION */}
+        {activeTab === 'RFM_SEGMENTS' && (
+          <motion.div
+            key="rfm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-6"
+          >
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎯</span>
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight font-heading">
+                      Algorithmic Customer RFM Segmentation
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Clusters your buyers by Recency, Frequency, and Monetary spend to drive targeted WhatsApp retention campaigns.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-slate-400 block uppercase">Analyzed Base</span>
+                  <span className="text-xl font-mono font-black text-indigo-600">
+                    {segmentsData?.total_customers || 0} Customers
+                  </span>
+                </div>
+              </div>
+
+              {/* Segments Grid */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {(segmentsData?.segments || []).map((seg, idx) => {
+                  const borderClass = 
+                    seg.color === 'emerald' ? 'border-emerald-200 bg-emerald-50/30' :
+                    seg.color === 'amber' ? 'border-amber-200 bg-amber-50/30' :
+                    seg.color === 'blue' ? 'border-blue-200 bg-blue-50/30' :
+                    'border-purple-200 bg-purple-50/30';
+
+                  const badgeClass = 
+                    seg.color === 'emerald' ? 'bg-emerald-100 text-emerald-800' :
+                    seg.color === 'amber' ? 'bg-amber-100 text-amber-800' :
+                    seg.color === 'blue' ? 'bg-blue-100 text-blue-800' :
+                    'bg-purple-100 text-purple-800';
+
+                  return (
+                    <div key={idx} className={`p-6 rounded-2xl border ${borderClass} flex flex-col justify-between space-y-4`}>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-black text-slate-900 text-sm tracking-tight">{seg.segment}</h4>
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${badgeClass}`}>
+                            {seg.count} {seg.count === 1 ? 'Customer' : 'Customers'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed mb-3">
+                          {seg.description}
+                        </p>
+                        <div className="bg-white/80 p-3 rounded-xl border border-slate-200/60 text-xs">
+                          <span className="font-bold text-slate-700 block mb-0.5">💡 Retention Strategy:</span>
+                          <span className="text-slate-600">{seg.recommended_action}</span>
+                        </div>
+                      </div>
+
+                      {/* Top Members */}
+                      {seg.customers && seg.customers.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-slate-200/50">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sample Cohort:</span>
+                          {seg.customers.slice(0, 3).map((cust, cIdx) => (
+                            <div key={cIdx} className="flex items-center justify-between text-xs py-1 px-2 bg-white rounded-lg border border-slate-100">
+                              <span className="font-bold text-slate-800 truncate max-w-[140px]">{cust.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 font-mono text-[10px]">{cust.order_count} orders</span>
+                                <span className="font-black font-mono text-slate-900">₦{Math.round(cust.total_spend).toLocaleString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
         )}

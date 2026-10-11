@@ -236,3 +236,35 @@ export const removeBackgroundAi = async (imageBase64: string, mimeType: string =
     return response.data;
 };
 
+export const ingestVoicePOS = async (audioBlob?: Blob, textTranscript?: string) => {
+    if (audioBlob) {
+        const formData = new FormData();
+        formData.append('audio', audioBlob);
+        const response = await api.post('/api/marketplace/voice-pos-ingest/', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    }
+    const response = await api.post('/api/marketplace/voice-pos-ingest/', {
+        text_transcript: textTranscript || ''
+    });
+    return response.data;
+};
+
+export const scanPaperReceipt = async (imageFile?: File, imageBase64?: string, mimeType: string = 'image/jpeg') => {
+    if (imageFile) {
+        const formData = new FormData();
+        formData.append('receipt_image', imageFile);
+        const response = await api.post('/api/marketplace/receipt-ocr/', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    }
+    const response = await api.post('/api/marketplace/receipt-ocr/', {
+        image_base64: imageBase64,
+        mimeType
+    });
+    return response.data;
+};
+
+

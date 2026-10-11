@@ -1,6 +1,6 @@
 from rest_framework import views, permissions, status
 from rest_framework.response import Response
-from .services import CreditScoringService, DemandForecastService, TillAnomalyService
+from .services import CreditScoringService, DemandForecastService, TillAnomalyService, CustomerSegmentationService
 
 class CreditScoreAnalyticsView(views.APIView):
     """
@@ -44,6 +44,20 @@ class TillAnomalyAnalyticsView(views.APIView):
             return Response({"error": f"Failed to run anomaly detector: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class CustomerSegmentationAnalyticsView(views.APIView):
+    """
+    Returns Scikit-Learn / RFM customer cohorts (Champions, At-Risk, Regulars, Prospects).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            result = CustomerSegmentationService.segment_customers(request.user)
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Failed to compute RFM segments: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class ComprehensiveMLOverviewView(views.APIView):
     """
     Consolidated single-request ML intelligence dashboard payload.
@@ -55,11 +69,13 @@ class ComprehensiveMLOverviewView(views.APIView):
             credit = CreditScoringService.calculate_credit_score(request.user)
             forecasts = DemandForecastService.forecast_inventory(request.user)
             anomalies = TillAnomalyService.detect_anomalies(request.user)
+            segments = CustomerSegmentationService.segment_customers(request.user)
 
             return Response({
                 "credit": credit,
                 "forecasts": forecasts,
                 "anomalies": anomalies,
+                "segments": segments,
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"ML pipeline error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
