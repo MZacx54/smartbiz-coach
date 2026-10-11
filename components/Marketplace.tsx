@@ -6,7 +6,7 @@ import {
   ShieldCheck, Zap, Home, Briefcase, Globe, X, Megaphone, 
   ChevronRight, Phone, MessageCircle, Sparkles, CheckCircle2,
   Building, Truck, Users, Package, Award, ArrowUpDown, Store,
-  Share2, Copy, ExternalLink, HelpCircle, Check
+  Share2, Copy, ExternalLink, HelpCircle, Check, Camera
 } from 'lucide-react';
 import { UnifiedItem, User } from '../types';
 import api from '../services/api';
@@ -112,6 +112,13 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
   // Copy listing link state
   const [hasCopiedLink, setHasCopiedLink] = useState(false);
+
+  // Cutting-Edge AI Feature: Visual Search by Photo Modal state
+  const [showVisualSearchModal, setShowVisualSearchModal] = useState(false);
+  const [visualSearchFile, setVisualSearchFile] = useState<File | null>(null);
+  const [visualSearchPreview, setVisualSearchPreview] = useState<string | null>(null);
+  const [isVisualSearching, setIsVisualSearching] = useState(false);
+  const [visualSearchResults, setVisualSearchResults] = useState<any | null>(null);
 
   const fetchItems = async (forceRefresh = false) => {
     const bucket = PRICE_BUCKETS.find(b => b.id === selectedPriceBucket);
@@ -306,6 +313,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
               className="bg-emerald-600 hover:bg-emerald-500 text-white px-7 py-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-600/30 active:scale-95 cursor-pointer"
             >
               Search Hub
+            </button>
+            <button 
+              type="button"
+              onClick={() => setShowVisualSearchModal(true)}
+              className="bg-white/15 hover:bg-white/25 border border-white/20 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all flex items-center gap-2 cursor-pointer"
+              title="Upload or snap a photo of any item to find exact matching products"
+            >
+              <Camera className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Visual Search</span>
             </button>
           </form>
 
@@ -1076,6 +1092,144 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           setSelectedItem(item);
         }}
       />
+
+      {/* ── 10. Cutting-Edge AI Feature: Visual Search by Photo Modal ── */}
+      {showVisualSearchModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-lg">AI Visual Product Search</h3>
+                  <p className="text-xs text-slate-500">Find matching marketplace goods by photo</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowVisualSearchModal(false);
+                  setVisualSearchFile(null);
+                  setVisualSearchPreview(null);
+                  setVisualSearchResults(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Upload Area */}
+            {!visualSearchPreview ? (
+              <label className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer bg-slate-50/50 hover:bg-indigo-50/20 transition-all">
+                <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <Camera className="w-6 h-6" />
+                </div>
+                <div className="text-center">
+                  <span className="font-bold text-xs text-slate-800 block">Upload Product Snapshot or Screenshot</span>
+                  <span className="text-[11px] text-slate-400">Snap a photo of shoes, lace fabric, or electronics to match in seconds</span>
+                </div>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment"
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setVisualSearchFile(file);
+                      setVisualSearchPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+              </label>
+            ) : (
+              <div className="space-y-4">
+                <div className="relative rounded-2xl overflow-hidden border border-slate-200 max-h-56">
+                  <img src={visualSearchPreview} alt="Search target preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => {
+                      setVisualSearchFile(null);
+                      setVisualSearchPreview(null);
+                      setVisualSearchResults(null);
+                    }}
+                    className="absolute top-2 right-2 bg-slate-900/70 text-white p-1.5 rounded-full hover:bg-slate-900 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {!visualSearchResults && (
+                  <button
+                    type="button"
+                    disabled={isVisualSearching}
+                    onClick={async () => {
+                      if (!visualSearchFile) return;
+                      setIsVisualSearching(true);
+                      const toastId = toast.loading('Visual AI analyzing features & matching catalog...');
+                      try {
+                        const formData = new FormData();
+                        formData.append('image', visualSearchFile);
+                        const res = await api.post('/api/marketplace/visual-search/', formData, {
+                          headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+                        setVisualSearchResults(res.data);
+                        toast.success(`Found ${res.data.matches_count || 0} matching items! ✓`, { id: toastId });
+                      } catch (err: any) {
+                        toast.error(err.response?.data?.error || 'Failed to match image.', { id: toastId });
+                      } finally {
+                        setIsVisualSearching(false);
+                      }
+                    }}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{isVisualSearching ? 'Matching Visual Embeddings...' : 'Match Catalog Items via AI'}</span>
+                  </button>
+                )}
+
+                {/* Match Results */}
+                {visualSearchResults && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                      <span>Detected: <strong>{visualSearchResults.detected_item}</strong></span>
+                      <span className="text-indigo-600 font-mono">{visualSearchResults.matches_count} matches</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
+                      {(visualSearchResults.products || []).map((prod: any) => (
+                        <div 
+                          key={prod.id}
+                          onClick={() => {
+                            setShowVisualSearchModal(false);
+                            setSelectedItem(prod);
+                          }}
+                          className="p-2 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:shadow-sm cursor-pointer transition-all space-y-1"
+                        >
+                          <div className="w-full h-20 bg-slate-100 rounded-lg overflow-hidden">
+                            {prod.image_url ? (
+                              <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                <Package className="w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+                          <h5 className="font-bold text-slate-800 text-xs truncate">{prod.name}</h5>
+                          <span className="font-black font-mono text-emerald-600 text-xs block">
+                            ₦{Number(prod.price).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

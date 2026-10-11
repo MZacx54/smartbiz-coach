@@ -118,12 +118,33 @@ export interface CustomerSegmentsPayload {
   segments: CustomerSegmentItem[];
 }
 
+export interface PriceElasticityItem {
+  product_id: number;
+  name: string;
+  current_price: number;
+  cost_price: number;
+  margin_pct: number;
+  elasticity_score: number;
+  elasticity_type: string;
+  badge_color: string;
+  suggested_price: number;
+  suggested_adjustment_pct: number;
+  projected_gain: string;
+  recommendation: string;
+}
+
+export interface PriceElasticityPayload {
+  has_sufficient_data: boolean;
+  total_evaluated_products: number;
+  pricing_recommendations: PriceElasticityItem[];
+}
+
 interface DataScienceHubProps {
   onNavigate?: (view: any) => void;
 }
 
 const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'CREDIT' | 'DEMAND' | 'ANOMALY' | 'RFM_SEGMENTS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'CREDIT' | 'DEMAND' | 'ANOMALY' | 'RFM_SEGMENTS' | 'ELASTICITY'>('OVERVIEW');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -132,6 +153,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
   const [forecasts, setForecasts] = useState<DemandForecastItem[]>([]);
   const [anomalies, setAnomalies] = useState<TillAnomalyData | null>(null);
   const [segmentsData, setSegmentsData] = useState<CustomerSegmentsPayload | null>(null);
+  const [elasticityData, setElasticityData] = useState<PriceElasticityPayload | null>(null);
 
   const fetchMLData = async () => {
     try {
@@ -142,6 +164,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
         setAnomalies(res.data.anomalies);
         if (res.data.segments) {
           setSegmentsData(res.data.segments);
+        }
+        if (res.data.elasticity) {
+          setElasticityData(res.data.elasticity);
         }
       }
     } catch (err: any) {
@@ -476,6 +501,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           { id: 'DEMAND', label: 'Predictive Demand & Stockout', icon: '📈' },
           { id: 'ANOMALY', label: 'Till Integrity & Fraud Scanner', icon: '🛡️' },
           { id: 'RFM_SEGMENTS', label: 'Customer RFM Segmentation', icon: '🎯' },
+          { id: 'ELASTICITY', label: 'Price Elasticity & Margins', icon: '🏷️' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -973,6 +999,86 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* TAB 6: PRICE ELASTICITY & MARGIN BOOSTER */}
+        {activeTab === 'ELASTICITY' && (
+          <motion.div
+            key="elasticity"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="space-y-6"
+          >
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🏷️</span>
+                    <h3 className="text-lg font-black text-slate-900 tracking-tight font-heading">
+                      OLS Price Elasticity of Demand & Margin Booster
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Calculates how volume responds to price changes. Spot inelastic products where markup can safely increase.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-slate-400 block uppercase">Catalog Scanned</span>
+                  <span className="text-xl font-mono font-black text-teal-600">
+                    {elasticityData?.total_evaluated_products || 0} Products
+                  </span>
+                </div>
+              </div>
+
+              {/* Elasticity Items Table / Cards */}
+              <div className="space-y-4">
+                {(elasticityData?.pricing_recommendations || []).map((item, idx) => (
+                  <div key={idx} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white transition-all space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-slate-900 text-sm">{item.name}</span>
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                            item.badge_color === 'emerald' ? 'bg-emerald-100 text-emerald-800' :
+                            item.badge_color === 'amber' ? 'bg-amber-100 text-amber-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {item.elasticity_type} (e = {item.elasticity_score})
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 font-medium mt-1">{item.recommendation}</p>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-right">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Current Price</span>
+                          <span className="font-mono font-bold text-slate-600 text-xs line-through">
+                            ₦{item.current_price.toLocaleString()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-emerald-600 block font-bold uppercase">Suggested Target</span>
+                          <span className="font-mono font-black text-slate-900 text-base">
+                            ₦{item.suggested_price.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
+                      <span className="text-slate-500 font-medium">
+                        Current Gross Margin: <strong className="text-slate-800">{item.margin_pct}%</strong>
+                      </span>
+                      <span className="font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                        {item.projected_gain}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </motion.div>

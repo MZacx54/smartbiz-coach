@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, Mail, Clock, CheckCircle2, AlertCircle, MessageCircle, MoreVertical, Filter, Search, Trash2 } from 'lucide-react';
+import { User, Phone, Mail, Clock, CheckCircle2, AlertCircle, MessageCircle, MoreVertical, Filter, Search, Trash2, Sparkles, Gift } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -168,6 +168,30 @@ const LeadManager: React.FC = () => {
                                     <a href={`https://wa.me/${lead.customer_contact}`} target="_blank" className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-xl text-xs font-bold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all">
                                         <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                                     </a>
+                                    {/* Cutting-Edge AI Feature: Smart WhatsApp Cart Recovery Copilot */}
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const toastId = toast.loading('Calculating optimal delivery recovery offer...');
+                                            try {
+                                                const res = await api.post('/api/marketplace/whatsapp-cart-recovery/', {
+                                                    lead_id: lead.id,
+                                                    customer_name: lead.customer_name,
+                                                    customer_phone: lead.customer_contact,
+                                                    product_name: lead.product_name,
+                                                    order_amount: 25000
+                                                });
+                                                toast.success('Generated AI Recovery Link! Opening WhatsApp... 🚀', { id: toastId });
+                                                window.open(res.data.whatsapp_link, '_blank');
+                                            } catch (e) {
+                                                toast.error('Failed to generate recovery link', { id: toastId });
+                                            }
+                                        }}
+                                        className="flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold shadow-sm hover:from-purple-600 hover:to-indigo-700 transition-all cursor-pointer"
+                                        title="AI predicts optimal delivery discount to recover abandoned customer"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" /> AI Cart Recover
+                                    </button>
                                 </div>
 
                                  <div className="mt-auto flex justify-between items-center pt-6 border-t border-slate-50">

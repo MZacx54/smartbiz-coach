@@ -4,6 +4,7 @@ from .views import (
     DemandForecastAnalyticsView,
     TillAnomalyAnalyticsView,
     CustomerSegmentationAnalyticsView,
+    PriceElasticityAnalyticsView,
     ComprehensiveMLOverviewView,
     UnderwritingReportDataView
 )
@@ -14,5 +15,6 @@ urlpatterns = [
     path('demand-forecast/', DemandForecastAnalyticsView.as_view(), name='ml_demand_forecast'),
     path('till-anomalies/', TillAnomalyAnalyticsView.as_view(), name='ml_till_anomalies'),
     path('customer-segments/', CustomerSegmentationAnalyticsView.as_view(), name='ml_customer_segments'),
+    path('price-elasticity/', PriceElasticityAnalyticsView.as_view(), name='ml_price_elasticity'),
     path('underwriting-dossier/', UnderwritingReportDataView.as_view(), name='ml_underwriting_dossier'),
 ]

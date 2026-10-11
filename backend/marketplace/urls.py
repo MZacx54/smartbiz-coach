@@ -23,7 +23,9 @@ from .views import (
     DailySummaryView,
     DailyAIInsightsView,
     VoicePOSIngestView,
-    PaperReceiptOCRView
+    PaperReceiptOCRView,
+    VisualSearchProductView,
+    WhatsAppCartRecoveryView
 )
 
 from .payout_views import (
@@ -62,4 +64,6 @@ urlpatterns = [
     path('daily-ai-insights/', DailyAIInsightsView.as_view(), name='daily_ai_insights'),
     path('voice-pos-ingest/', VoicePOSIngestView.as_view(), name='voice_pos_ingest'),
     path('receipt-ocr/', PaperReceiptOCRView.as_view(), name='receipt_ocr'),
+    path('visual-search/', VisualSearchProductView.as_view(), name='visual_search'),
+    path('whatsapp-cart-recovery/', WhatsAppCartRecoveryView.as_view(), name='whatsapp_cart_recovery'),
 ]

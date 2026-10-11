@@ -267,4 +267,28 @@ export const scanPaperReceipt = async (imageFile?: File, imageBase64?: string, m
     return response.data;
 };
 
+export const visualSearchByPhoto = async (imageFile?: File, imageBase64?: string, mimeType: string = 'image/jpeg') => {
+    if (imageFile) {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        const response = await api.post('/api/marketplace/visual-search/', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    }
+    const response = await api.post('/api/marketplace/visual-search/', {
+        image_base64: imageBase64,
+        mimeType
+    });
+    return response.data;
+};
 
+export const recoverAbandonedCart = async (orderAmount: number, customerName?: string, customerPhone?: string, productName?: string) => {
+    const response = await api.post('/api/marketplace/whatsapp-cart-recovery/', {
+        order_amount: orderAmount,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        product_name: productName
+    });
+    return response.data;
+};

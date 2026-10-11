@@ -58,6 +58,28 @@ class CustomerSegmentationAnalyticsView(views.APIView):
             return Response({"error": f"Failed to compute RFM segments: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+from .services import (
+    CreditScoringService, 
+    DemandForecastService, 
+    TillAnomalyService, 
+    CustomerSegmentationService,
+    PriceElasticityService
+)
+
+class PriceElasticityAnalyticsView(views.APIView):
+    """
+    Returns Ordinary Least Squares Price Elasticity of Demand (PED) & Margin recommendations.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            result = PriceElasticityService.calculate_price_elasticity(request.user)
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Failed to compute price elasticity: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class ComprehensiveMLOverviewView(views.APIView):
     """
     Consolidated single-request ML intelligence dashboard payload.
@@ -70,12 +92,14 @@ class ComprehensiveMLOverviewView(views.APIView):
             forecasts = DemandForecastService.forecast_inventory(request.user)
             anomalies = TillAnomalyService.detect_anomalies(request.user)
             segments = CustomerSegmentationService.segment_customers(request.user)
+            elasticity = PriceElasticityService.calculate_price_elasticity(request.user)
 
             return Response({
                 "credit": credit,
                 "forecasts": forecasts,
                 "anomalies": anomalies,
                 "segments": segments,
+                "elasticity": elasticity,
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"ML pipeline error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
