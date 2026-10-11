@@ -127,6 +127,16 @@ const LandingPage: React.FC = () => {
         { icon: '🏛️', title: 'Accredited CAC Filing Desk', desc: 'Fast-track Done-For-You CAC registration: Business Name (₦27,500), Ltd Co (₦68,000), NGO/Trustee, and SCUML in 3-7 days.', color: 'from-emerald-600 to-teal-700', tag: 'Accredited', pillar: 'Capital & Law' },
         { icon: '💰', title: 'Grant & Funding Matcher', desc: 'Automatically scan and match your business with available grants, BOI loans, and international donor programs worth ₦Billions.', color: 'from-emerald-500 to-teal-600', tag: '₦Billions', pillar: 'Capital & Law' },
         { icon: '📄', title: 'BOI 5-Year Business Plans', desc: 'Generate bank-grade, investor-ready business plans with 5-year cashflow projections, break-even analysis, and official PDF export.', color: 'from-blue-500 to-indigo-600', pillar: 'Capital & Law' },
+
+        // Pillar 5: Machine Learning & Institutional Data Science
+        { icon: '🧠', title: '300-850 MSME Credit Underwriting', desc: 'Scikit-Learn algorithmic credit risk scorer evaluating real ledger volume, debt recovery speed, and compliance for BOI & bank loans.', color: 'from-indigo-600 to-purple-700', tag: 'Bankable ML', pillar: 'Data Science' },
+        { icon: '📈', title: 'Stockout Demand Forecaster', desc: 'Ridge regression time-series model predicting exact stockout dates and reorder quantities before weekend sales rushes.', color: 'from-blue-600 to-cyan-600', tag: 'Predictive', pillar: 'Data Science' },
+        { icon: '🛡️', title: 'Till Fraud Isolation Forest', desc: 'Unsupervised ML anomaly detection scanner detecting petty cash leaks, float manipulation, and cashier till irregularities.', color: 'from-rose-600 to-pink-700', tag: 'Anti-Theft AI', pillar: 'Data Science' },
+        { icon: '🎙️', title: 'Voice Note POS Auto-Ingestion', desc: 'Speak for 5 seconds on WhatsApp or mic: Multimodal AI transcribes Pidgin/English and logs sales & petty cash without typing.', color: 'from-pink-600 to-rose-600', tag: 'Multimodal AI', pillar: 'Data Science' },
+        { icon: '🧾', title: 'Paper Receipt & Waybill OCR', desc: 'Snap photo of handwritten market receipts or wholesaler waybills; Vision AI extracts line items and logs restock expenses in 1 tap.', color: 'from-teal-600 to-emerald-700', tag: 'Vision AI', pillar: 'Data Science' },
+        { icon: '🎯', title: 'K-Means Customer Segmentation', desc: 'Algorithmic Recency, Frequency, and Monetary (RFM) clustering to target VIPs, at-risk buyers, and regulars on WhatsApp.', color: 'from-purple-600 to-indigo-700', tag: 'RFM Clusters', pillar: 'Data Science' },
+        { icon: '🏷️', title: 'OLS Price Elasticity Optimizer', desc: 'Econometric demand elasticity model identifying inelastic goods where you can safely increase markup without losing volume.', color: 'from-amber-600 to-orange-600', tag: 'Margin Booster', pillar: 'Data Science' },
+        { icon: '📷', title: 'Visual Photo Search & Cart Copilot', desc: 'Search marketplace inventory by uploading photos, and recover 25%+ of abandoned buyers via AI WhatsApp discount sweeteners.', color: 'from-cyan-600 to-blue-700', tag: 'Commerce AI', pillar: 'Data Science' },
     ];
 
     // ── THE 6 MASTER FEATURE TABS ──
@@ -225,9 +235,25 @@ const LandingPage: React.FC = () => {
             color: 'from-amber-600 to-yellow-700',
             mockup: 'grants',
         },
+        {
+            label: '🧠 ML Data Science & Credit Underwriting',
+            headline: 'FICO 300-850 Credit Risk Engine, Stockout Forecasting & Till Audit AI',
+            subheadline: 'Zero-Cost Scikit-Learn Machine Learning • Certified Bankable Dossier PDF',
+            body: 'Transform informal paper trade into institutional banking power. Our in-house machine learning engine trains on your live transaction velocity to compute your 300–850 Credit Health Score, predict exact stockout dates with Ridge time-series regression, detect cashier till theft with Isolation Forests, and export certified multi-page Underwriting Dossiers with tamper-evident SHA-256 digital verification hashes.',
+            bullets: [
+                '🏛️ FICO-style 300–850 Credit Risk Score accepted for BOI, SMEDAN & commercial bank loans',
+                '📈 Ridge Regression Time-Series Demand Forecasting with exact stockout runway dates',
+                '🛡️ Isolation Forest Unsupervised Till Anomaly Detection to catch apprentice cash theft',
+                '🎯 K-Means Customer RFM Segmentation to trigger targeted WhatsApp re-engagement',
+                '🏷️ OLS Price Elasticity of Demand analyzer to identify products where markups can safely rise',
+                '📄 1-Click Certified Institutional Underwriting Dossier (PDF) with SHA-256 cryptographic verification',
+            ],
+            color: 'from-indigo-700 to-purple-800',
+            mockup: 'datascience',
+        },
     ];
 
-    // ── 6-STEP DAILY OPERATING TIMELINE ──
+    // ── 7-STEP DAILY OPERATING TIMELINE ──
     const ecosystemSteps = [
         { icon: '📱', label: 'Morning POS & Scan', desc: 'Phone camera barcode scan & PIN lock', color: 'bg-emerald-100 border-emerald-300 text-emerald-700' },
         { icon: '📸', label: 'Snap-to-Studio 2.0', desc: 'Raw bedsheet to 4K luxury scenes', color: 'bg-violet-100 border-violet-300 text-violet-700' },
@@ -235,6 +261,7 @@ const LandingPage: React.FC = () => {
         { icon: '📒', label: 'Recover Bad Debt', desc: 'Gbege Book WhatsApp auto-nudges', color: 'bg-red-100 border-red-300 text-red-700' },
         { icon: '⛽', label: 'Fuel & Expenses', desc: 'Log generator fuel & petty cash', color: 'bg-amber-100 border-amber-300 text-amber-700' },
         { icon: '📊', label: 'Evening Close', desc: '1-click WhatsApp daily profit memo', color: 'bg-teal-100 border-teal-300 text-teal-700' },
+        { icon: '🧠', label: 'ML Underwrite & Audit', desc: 'FICO 300–850 score & till theft defense', color: 'bg-indigo-100 border-indigo-300 text-indigo-700' },
     ];
 
     const testimonials = [
@@ -266,13 +293,18 @@ const LandingPage: React.FC = () => {
         { feature: '1-Tap WhatsApp Invoicing & Receipts (PDF)', cost: '100% FREE FOREVER (0 Credits)', type: 'Instant Billing', icon: '🧾' },
         { feature: 'Central MSME Market Square (36 States Trade Hub)', cost: '100% FREE FOREVER (0 Credits)', type: 'Nationwide Trade', icon: '🏪' },
         { feature: 'Section 23 CITA 0% Tax Exemption Memo', cost: '100% FREE FOREVER (0 Credits)', type: 'Legal Shield', icon: '⚖️' },
+        { feature: 'FICO 300-850 Credit Risk & Bankable PDF Dossier', cost: '100% FREE FOREVER (0 Credits)', type: 'Data Science & Credit', icon: '🧠' },
+        { feature: 'Ridge Regression Stockout Velocity & Days Left', cost: '100% FREE FOREVER (0 Credits)', type: 'Predictive Inventory', icon: '📈' },
+        { feature: 'Till Fraud Isolation Forest (Cashier Anomaly Audit)', cost: '100% FREE FOREVER (0 Credits)', type: 'Anti-Theft AI', icon: '🛡️' },
+        { feature: 'Voice Note POS Ingestion & Paper Receipt OCR', cost: '2 BizCredits per audio/photo', type: 'Multimodal AI', icon: '🎙️' },
         { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits', type: 'Merchant Growth', icon: '🚀' },
         { feature: 'Snap-to-Studio 2.0 (4K Commercial Photos)', cost: '5 BizCredits per set', type: 'Advanced AI Compute', icon: '📸' },
         { feature: 'BOI-Compliant 5-Year Business Plan (PDF)', cost: '200 BizCredits', type: 'Financial Engine', icon: '📄' },
     ];
 
     const faqs = [
-        { q: 'Are the Daily POS, Phone Barcode Scanner, and Day-Book really 100% free forever?', a: 'YES. We believe no Nigerian entrepreneur should ever be locked out of their daily sales records or bookkeeping. The Daily 5-Second POS, Phone Camera Barcode/QR Scanner (zero hardware needed), Apprentice Shift Lock, Petty Cash & Fuel Tracker, Gbege Debt Book, Central Market Square basic listings, 1-Tap WhatsApp Invoicing, and Section 23 CITA Tax Exemption Memo require 0 credits and are 100% free for life.' },
+        { q: 'Are the Daily POS, Phone Barcode Scanner, and Day-Book really 100% free forever?', a: 'YES. We believe no Nigerian entrepreneur should ever be locked out of their daily sales records or bookkeeping. The Daily 5-Second POS, Phone Camera Barcode/QR Scanner (zero hardware needed), Apprentice Shift Lock, Petty Cash & Fuel Tracker, Gbege Debt Book, Central Market Square basic listings, 1-Tap WhatsApp Invoicing, Section 23 CITA Tax Exemption Memo, and Machine Learning Credit Scoring require 0 credits and are 100% free for life.' },
+        { q: 'How does the FICO 300–850 Credit Risk Engine and Machine Learning Hub work without extra fees?', a: 'Traditional commercial banks demand landed property C-of-O or heavy collateral that 95% of small business owners do not possess. SmartBiz Coach includes an in-house Scikit-Learn data science engine running locally on your transactional records. It computes your 300–850 Credit Score based on live turnover consistency, customer debt recovery velocity, and inventory turnover. It also uses Ridge regression to predict stockout dates and Isolation Forest to audit tills for theft. Because this runs on serverless mathematical algorithms rather than expensive third-party APIs, it is completely free for business owners to generate institutional, bankable PDF Underwriting Dossiers with SHA-256 verification.' },
         { q: 'How does the Phone Camera Barcode & QR Scanner work?', a: 'You do not need to buy an expensive Bluetooth or USB barcode reader. Simply open POS checkout on your smartphone, tap "Scan Barcode", point your camera at any item barcode or QR code. The scanner reads it instantly with audio beep feedback, adjusts inventory, and adds the item to the active bill in milliseconds.' },
         { q: 'What is the Central MSME Market Square and how do I sell nationwide?', a: 'Central Market Square is our national trade directory connecting small business owners across all 36 Nigerian states and Abuja. You can showcase physical goods, professional services, commercial real estate, or wholesale offers with verified CAC and SMEDAN badges. Buyers connect directly with you on WhatsApp with zero middlemen taking cuts. You can also feature your listings with high-visibility credit boosts.' },
         { q: 'How does the Anti-Theft Apprentice Shift Mode protect my shop?', a: 'When you activate Apprentice Mode, the cashier/attendant screen is locked behind a 4-digit supervisor PIN. Attendants can rapidly record sales, but they CANNOT edit prices, delete previous sales, backdate transactions, or see your total profit margins. At the end of the shift, the system generates a reconciliation report comparing physical cash to recorded sales.' },
@@ -280,7 +312,7 @@ const LandingPage: React.FC = () => {
         { q: 'How does Snap-to-Studio 2.0 work on photos taken on a bedsheet?', a: 'You do not need an expensive camera or backdrop. Simply snap your product on your bedspread, shop counter, or tile floor. Our vision AI removes the background, generates realistic ambient contact shadows and reflections, and composites the item into 16 photorealistic commercial studio environments like Luxury Marble, Sunlight & Shadows, African Raffia, or Warm Oak Cafe Tables.' },
         { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigerian Companies Income Tax Act (CITA) Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦25,000,000 are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
         { q: 'How do customers pay me through Gbege Book debt reminders and WhatsApp invoices?', a: 'When you send an automated polite WhatsApp reminder or 1-tap invoice, it automatically includes an encrypted Paystack payment link. Your customer can tap the link and pay instantly using their debit card, bank transfer, or USSD. Once paid, the debt or invoice is automatically marked as settled in your ledger with real-time webhook confirmation.' },
-        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new Nigerian entrepreneur receives 50 Free Welcome Credits upon creating an account. You can use them immediately to experience Snap-to-Studio 4K photo shoots, debt recovery escalations, or marketplace boosts. When you need more compute, credit packs start at just ₦500 via Paystack. Credits never expire and there are zero recurring monthly subscription traps.' },
+        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new Nigerian entrepreneur receives 50 Free Welcome Credits upon creating an account. You can use them immediately to experience Snap-to-Studio 4K photo shoots, debt recovery escalations, voice note POS transcription, or marketplace boosts. When you need more compute, credit packs start at just ₦500 via Paystack. Credits never expire and there are zero recurring monthly subscription traps.' },
     ];
 
     const stats = [
@@ -780,6 +812,53 @@ const LandingPage: React.FC = () => {
                                             </div>
                                         </div>
                                     )}
+
+                                    {tab.mockup === 'datascience' && (
+                                        <div className="relative z-10 space-y-2.5">
+                                            <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between items-center">
+                                                <span>🧠 Scikit-Learn Underwriting Hub</span>
+                                                <span className="bg-emerald-400 text-emerald-950 font-black px-2 py-0.5 rounded-full text-[9px]">FICO 742 / 850 • Prime A+</span>
+                                            </div>
+                                            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 space-y-2">
+                                                <div className="flex justify-between items-center text-xs">
+                                                    <span className="font-bold">Algorithmic Credit Grade: 87.3% Bankable</span>
+                                                    <span className="text-emerald-300 font-black text-[10px]">BOI & TEF Certified ✓</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 text-[9px] text-white/90">
+                                                    <div className="bg-black/20 p-2 rounded-lg">
+                                                        <span className="text-white/60 block">Cashflow Consistency</span>
+                                                        <strong className="text-emerald-300 text-[10px]">94% (Stable Daily)</strong>
+                                                    </div>
+                                                    <div className="bg-black/20 p-2 rounded-lg">
+                                                        <span className="text-white/60 block">Debt Recovery Velocity</span>
+                                                        <strong className="text-amber-300 text-[10px]">4.2 Days Avg</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 space-y-1 text-[9px]">
+                                                <div className="flex justify-between items-center font-bold">
+                                                    <span className="text-amber-300">📈 Stockout Forecast: Indomie Cartons</span>
+                                                    <span className="text-rose-300 font-mono">Runway: 4.8 Days</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-white/80">
+                                                    <span>🛡️ Till Audit (Isolation Forest):</span>
+                                                    <span className="text-emerald-300 font-bold">0 Anomalies • Clean Till ✓</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-white/80">
+                                                    <span>🏷️ OLS Price Elasticity:</span>
+                                                    <span className="text-purple-200 font-bold">+4.5% Safe Margin Window</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 pt-0.5">
+                                                <div className="flex-1 bg-white text-indigo-950 rounded-xl py-2 text-[10px] font-black text-center shadow">
+                                                    📄 Export Dossier PDF (SHA-256)
+                                                </div>
+                                                <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">
+                                                    Audit Cash Register
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         ))}
@@ -787,13 +866,13 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ ALL 16 PLATFORM FEATURES GRID ═══════════ */}
+            {/* ═══════════ ALL 26 PLATFORM FEATURES GRID ═══════════ */}
             <section className="py-24 bg-white border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                         <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Full Architectural Suite</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">16 Powerful Modules. Zero Missing Pieces.</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From daily cashbook POS and apprentice anti-theft protection to commercial photo studio and BOI business plans — everything an MSME needs to thrive.</p>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">26 Powerful Modules. Zero Missing Pieces.</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From daily cashbook POS and apprentice anti-theft protection to 4K commercial photo studio, FICO credit underwriting, and BOI business plans — everything an MSME needs to thrive.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -31,7 +31,7 @@ const BlogIndex: React.FC = () => {
     const [orgEmail, setOrgEmail] = useState<string>('');
     const [cohortSize, setCohortSize] = useState<string>('500 - 2,000 MSMEs');
 
-    const categories = ['All', 'Partnerships & NGOs', 'Tax & Compliance', 'Growth & Grants', 'Retail Operations'];
+    const categories = ['All', 'Data Science & AI', 'Partnerships & NGOs', 'Tax & Compliance', 'Growth & Grants', 'Retail Operations'];
 
     const filteredPosts = useMemo(() => {
         return BLOG_POSTS.filter((post) => {
