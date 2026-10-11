@@ -859,9 +859,11 @@ class TranscribeAudioView(views.APIView):
             return Response({'error': 'No audio data provided'}, status=400)
             
         try:
-            # Use Gemini to transcribe the audio natively
+            # Use Gemini to transcribe the audio natively with strong multilingual Nigerian language support
             text = gemini_utils.generate_text_content(
-                "Transcribe this audio file accurately. Return ONLY the transcribed text, nothing else.",
+                "Transcribe this audio recording accurately. The speaker may be speaking Nigerian English, Nigerian Pidgin, Hausa, Yoruba, or Igbo (or mixing them). "
+                "Accurately capture all product names, service names, quantities, currency values (Naira, kobo), and customer notes. "
+                "Return ONLY the exact transcribed text, nothing else.",
                 audio_base64=audio_base64,
                 mime_type=mime_type
             )

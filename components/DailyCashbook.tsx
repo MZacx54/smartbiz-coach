@@ -2917,11 +2917,24 @@ export const DailyCashbook: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/60 text-xs text-slate-600 space-y-1">
-              <span className="font-bold text-slate-800 block">💡 Example Spoken Phrasing:</span>
-              <p className="italic text-slate-500">
-                &ldquo;I sold 3 bags of rice for 180,000 cash, and gave brother Emeka 2,000 for dispatch.&rdquo;
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50/80 to-amber-50/60 border border-rose-200/60 text-xs text-slate-700 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-rose-500" />
+                  Multilingual AI Day-Book (English, Pidgin, Hausa, Yoruba, Igbo)
+                </span>
+                <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">Auto-adds new items</span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Speak or type anything you sold or any service provided. If it's not yet in your inventory, AI will automatically add it to your catalog!
               </p>
+              <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100 space-y-1 font-mono text-[11px] text-slate-600">
+                <p>• <span className="font-semibold text-rose-700">Services:</span> &ldquo;I make photocopies black and white for 200 Naira.&rdquo;</p>
+                <p>• <span className="font-semibold text-rose-700">Pidgin:</span> &ldquo;I sell 2 bags of pure water 600 cash, and buy fuel 2,500.&rdquo;</p>
+                <p>• <span className="font-semibold text-rose-700">Hausa:</span> &ldquo;Mun sayar da buhun shinkafa 2 na 180,000.&rdquo;</p>
+                <p>• <span className="font-semibold text-rose-700">Yoruba:</span> &ldquo;Mo se photocopy fun 200 naira, mo de ta aso 15,000.&rdquo;</p>
+                <p>• <span className="font-semibold text-rose-700">Igbo:</span> &ldquo;M mere photocopy na 200 naira, m rere akwa 25,000.&rdquo;</p>
+              </div>
             </div>
 
             {/* Mic Record Button */}
@@ -2947,7 +2960,7 @@ export const DailyCashbook: React.FC = () => {
                       recorder.onstop = async () => {
                         const audioBlob = new Blob(chunks, { type: 'audio/webm' });
                         setIsProcessingVoice(true);
-                        const toastId = toast.loading('Multimodal AI parsing audio transactions...');
+                        const toastId = toast.loading('Multimodal AI parsing spoken transactions...');
                         try {
                           const formData = new FormData();
                           formData.append('audio', audioBlob);
@@ -2955,6 +2968,9 @@ export const DailyCashbook: React.FC = () => {
                             headers: { 'Content-Type': 'multipart/form-data' }
                           });
                           toast.success(res.data.summary || 'Voice transactions logged to Day-Book! 🚀', { id: toastId });
+                          if (res.data.new_products_created && res.data.new_products_created.length > 0) {
+                            toast.success(`✨ Added to catalog: ${res.data.new_products_created.join(', ')}`, { duration: 5000, icon: '📦' });
+                          }
                           fetchDailyData();
                           setShowVoicePOSModal(false);
                         } catch (err: any) {
@@ -2966,7 +2982,7 @@ export const DailyCashbook: React.FC = () => {
                       recorder.start();
                       setMediaRecorder(recorder);
                       setIsRecordingVoice(true);
-                      toast.success('Microphone listening... Speak clearly!');
+                      toast.success('Microphone listening... Speak in English, Pidgin, Hausa, Yoruba, or Igbo!');
                     } catch (err) {
                       toast.error('Microphone access denied. You can type the text below instead.');
                     }
@@ -2982,17 +2998,17 @@ export const DailyCashbook: React.FC = () => {
                 <Mic className="w-8 h-8" />
               </button>
               <p className="text-xs font-bold text-slate-600">
-                {isRecordingVoice ? 'Recording... Tap to Finish & Ingest' : 'Tap Microphone to Speak'}
+                {isRecordingVoice ? 'Listening... Tap to Ingest' : 'Tap Microphone to Speak'}
               </p>
             </div>
 
             {/* Or Manual Typed Voice Note */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
-              <label className="text-xs font-bold text-slate-700 block">Or Type Market Voice Note:</label>
+              <label className="text-xs font-bold text-slate-700 block">Or Type Market Voice Note / Text:</label>
               <div className="flex gap-2">
                 <input 
                   type="text"
-                  placeholder="e.g. Sold 2 wigs for 85,000 via transfer"
+                  placeholder="e.g. I make photocopies black and white for 200 Naira"
                   value={voiceTranscriptInput}
                   onChange={(e) => setVoiceTranscriptInput(e.target.value)}
                   className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
@@ -3008,6 +3024,9 @@ export const DailyCashbook: React.FC = () => {
                         text_transcript: voiceTranscriptInput
                       });
                       toast.success(res.data.summary || 'Transactions logged to Day-Book! ✓', { id: toastId });
+                      if (res.data.new_products_created && res.data.new_products_created.length > 0) {
+                        toast.success(`✨ Added to catalog: ${res.data.new_products_created.join(', ')}`, { duration: 5000, icon: '📦' });
+                      }
                       setVoiceTranscriptInput('');
                       fetchDailyData();
                       setShowVoicePOSModal(false);

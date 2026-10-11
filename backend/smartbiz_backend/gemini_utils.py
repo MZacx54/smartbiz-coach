@@ -75,7 +75,7 @@ def get_next_gemini_api_key(attempt_offset=0):
     index = (KEY_INDEX + attempt_offset) % len(keys)
     return keys[index]
 
-def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None):
+def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7):
     keys = get_gemini_api_keys()
     if not keys:
         raise Exception("Configuration Error: GEMINI_API_KEY not found in environment.")
@@ -157,7 +157,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
 
     # Set up generation config (JSON mode, temperature, etc.)
     gen_config = {
-        "temperature": 0.7
+        "temperature": temperature
     }
     
     # If JSON response requested
