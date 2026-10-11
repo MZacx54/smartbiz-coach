@@ -59,6 +59,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'smartbiz_backend.middleware.ExceptionLoggingMiddleware',
+    'smartbiz_backend.middleware.SecurityHeadersMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -333,8 +334,14 @@ REST_FRAMEWORK = {
         'business_plan': '30/minute',
         'video_gen': '20/minute',
         'image_edit': '30/minute',
+        'analytics_ml': '60/minute',
+        'visual_search': '30/minute',
+        'cart_recovery': '30/minute',
     }
 }
+
+# Static file caching header (1 year for hashed production bundles)
+WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 
 # ─── Sentry Error Tracking ────────────────────────────────────────────────────
 SENTRY_DSN = os.getenv('SENTRY_DSN', '')  # Set SENTRY_DSN in Railway env vars

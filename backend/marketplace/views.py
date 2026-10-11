@@ -1218,6 +1218,7 @@ class VisualSearchProductView(views.APIView):
     against the merchant's catalog or global marketplace to return top matching items.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_scope = 'visual_search'
 
     def post(self, request):
         import base64
@@ -1300,6 +1301,7 @@ class WhatsAppCartRecoveryView(views.APIView):
     and generates an instant personalized WhatsApp 1-tap conversion link.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'cart_recovery'
 
     def post(self, request):
         lead_id = request.data.get('lead_id')

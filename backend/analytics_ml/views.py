@@ -7,6 +7,7 @@ class CreditScoreAnalyticsView(views.APIView):
     Returns algorithmic credit score (300-850), risk tier, breakdown, and loan eligibility.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'analytics_ml'
 
     def get(self, request):
         try:
@@ -21,6 +22,7 @@ class DemandForecastAnalyticsView(views.APIView):
     Returns time-series inventory velocity, days of stock remaining, and reorder projections.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'analytics_ml'
 
     def get(self, request):
         try:
@@ -35,6 +37,7 @@ class TillAnomalyAnalyticsView(views.APIView):
     Returns unsupervised Isolation Forest outlier analysis for petty cash and till variances.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'analytics_ml'
 
     def get(self, request):
         try:
@@ -49,6 +52,7 @@ class CustomerSegmentationAnalyticsView(views.APIView):
     Returns Scikit-Learn / RFM customer cohorts (Champions, At-Risk, Regulars, Prospects).
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'analytics_ml'
 
     def get(self, request):
         try:
@@ -71,6 +75,7 @@ class PriceElasticityAnalyticsView(views.APIView):
     Returns Ordinary Least Squares Price Elasticity of Demand (PED) & Margin recommendations.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'analytics_ml'
 
     def get(self, request):
         try:

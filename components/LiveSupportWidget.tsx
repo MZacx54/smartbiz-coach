@@ -19,10 +19,22 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 1, text: "Hi there! 👋 I am the SmartBiz AI Assistant. Ask me anything about your business or our platform!", sender: 'bot' }
+    { 
+      id: 1, 
+      text: "Hello! 👋 I am your **SmartBiz AI Coach & Operations Strategist**.\n\nAsk me anything about scaling your business, your **FICO 300–850 Credit Health Score**, **Apprentice Till Theft audits**, **Snap-to-Studio 4K photography**, or **Section 23 CITA 0% tax shield**!", 
+      sender: 'bot' 
+    }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const quickPrompts = [
+    { label: "📊 FICO Credit Score", prompt: "How is my FICO 300–850 credit risk score calculated and how do I get a bankable PDF dossier for BOI?" },
+    { label: "🛡️ Till Theft Audit", prompt: "How does the Isolation Forest till fraud detector catch cashier theft and cash leaks?" },
+    { label: "🎙️ Voice Note POS", prompt: "How do I record counter sales and petrol expenses using the 5-second Voice Note POS?" },
+    { label: "⚖️ 0% Tax Exemption", prompt: "How do I get my Section 23 CITA official 0% tax exemption memo for small businesses?" },
+    { label: "📸 4K Studio Photos", prompt: "How does Snap-to-Studio 2.0 transform raw bedsheet photos into 4K luxury scenes?" },
+  ];
 
   // Scroll to bottom on new message or typing state change
   useEffect(() => {
@@ -143,6 +155,25 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
                 )}
               </div>
             ))}
+
+            {/* Quick Starter Suggestions */}
+            {messages.length === 1 && !isTyping && (
+              <div className="pt-2 pb-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">⚡ Quick Questions:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {quickPrompts.map((qp, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => executeSendMessage(qp.prompt)}
+                      className="text-[10px] font-semibold bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 hover:text-emerald-800 border border-slate-200 px-2.5 py-1.5 rounded-xl shadow-xs transition-all text-left"
+                    >
+                      {qp.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isTyping && (
               <div className="flex justify-start">
                 <div className="bg-white border border-slate-200/80 p-3 rounded-2xl rounded-tl-xs shadow-sm flex items-center gap-1.5">

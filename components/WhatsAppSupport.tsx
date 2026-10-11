@@ -18,10 +18,22 @@ interface WhatsAppSupportProps {
 const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 1, text: "Welcome to SmartBiz Growth Lab! 🚀 I am your SmartBiz AI Coach, your digital marketing strategist and business growth advisor. Ask me how to optimize your brand, create converting content, recover debts, or find grants to scale your business!", sender: 'bot' }
+    { 
+      id: 1, 
+      text: "Welcome to SmartBiz AI Operations & Growth Hub! 🚀 I am your **SmartBiz AI Coach & Data Science Strategist**.\n\nAsk me anything about your **FICO 300–850 Credit Risk Score**, **Bankable PDF Underwriting Dossiers for BOI/Banks**, **Till Fraud & Cash Theft audits**, **5-Second POS & Barcode Scanner**, **Snap-to-Studio 4K luxury photography**, or **Section 23 CITA 0% tax exemptions**!", 
+      sender: 'bot' 
+    }
   ]);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const quickPrompts = [
+    { label: "📊 FICO Credit Score & BOI Loans", prompt: "How is my FICO 300–850 credit risk score calculated and how do I get a bankable PDF dossier for BOI?" },
+    { label: "🛡️ Cashier Till Theft Audit", prompt: "How does the Isolation Forest till fraud detector catch cashier theft and cash leaks?" },
+    { label: "🎙️ Voice Note POS", prompt: "How do I record counter sales and petrol expenses using the 5-second Voice Note POS?" },
+    { label: "⚖️ 0% Tax Exemption Memo", prompt: "How do I get my Section 23 CITA official 0% tax exemption memo for small businesses?" },
+    { label: "📈 Stockout Forecaster", prompt: "How does Ridge regression predict my exact stockout date and re-order timing?" },
+  ];
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -117,6 +129,25 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
             )}
           </div>
         ))}
+
+        {/* Quick Starter Suggestions */}
+        {messages.length === 1 && !isTyping && (
+          <div className="pt-2 pb-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">⚡ Suggested Inquiries:</p>
+            <div className="flex flex-wrap gap-2">
+              {quickPrompts.map((qp, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => executeSendMessage(qp.prompt)}
+                  className="text-xs font-semibold bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-800 border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs transition-all text-left"
+                >
+                  {qp.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {isTyping && (
           <div className="flex justify-start">
             <div className="bg-white border border-gray-200 p-3 rounded-2xl rounded-bl-none shadow-sm flex items-center gap-1">
@@ -138,7 +169,7 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
           <input
             type="text"
             className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-            placeholder="Ask about business, grants, or marketing..."
+            placeholder="Ask about FICO credit scores, till audits, grants, or marketing..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />

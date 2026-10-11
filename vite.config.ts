@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     target: 'es2020',
+    cssCodeSplit: true,
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
@@ -14,6 +15,7 @@ export default defineConfig({
           'vendor-motion': ['framer-motion'],
           'vendor-pdf': ['jspdf', 'html-to-image'],
           'vendor-icons': ['lucide-react'],
+          'vendor-utils': ['axios', 'dompurify'],
         }
       }
     }
