@@ -1,13 +1,31 @@
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+
+# Graceful optional imports for machine learning libraries
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+
+try:
+    from sklearn.linear_model import Ridge
+    from sklearn.ensemble import IsolationForest
+except ImportError:
+    Ridge = None
+    IsolationForest = None
+
 
 class CreditScoringService:
     """
     Institutional Alternative Credit Scoring Engine (300 - 850 Scale)
     Evaluates informal MSMEs using real operating data from DailySale, Debtor,
     Till Audit integrity, and CAC compliance records.
+    Works robustly with or without optional scientific libraries.
     """
 
     @staticmethod
@@ -73,7 +91,10 @@ class CreditScoringService:
 
         # Compute raw aggregate score
         raw_score = base_score + compliance_points + cashflow_points + debt_points + inventory_points
-        final_score = int(np.clip(raw_score, 300, 850))
+        if np is not None:
+            final_score = int(np.clip(raw_score, 300, 850))
+        else:
+            final_score = int(max(300, min(850, raw_score)))
 
         # Risk Classification Tier
         if final_score >= 750:
@@ -124,7 +145,6 @@ class DemandForecastService:
     @staticmethod
     def forecast_inventory(user) -> List[Dict[str, Any]]:
         from marketplace.models import Product, DailySale
-        from sklearn.linear_model import Ridge
 
         products = Product.objects.filter(brand__user=user)
         results = []
@@ -145,18 +165,20 @@ class DemandForecastService:
             # Calculate daily velocity
             sales_count = sales.count()
             if sales_count >= 3:
-                # Group sales by day
                 daily_counts = {}
                 for s in sales:
                     day_key = s.created_at.strftime('%Y-%m-%d')
                     daily_counts[day_key] = daily_counts.get(day_key, 0) + (s.quantity or 1)
 
                 values = list(daily_counts.values())
-                avg_daily_velocity = float(np.mean(values))
+                if np is not None:
+                    avg_daily_velocity = float(np.mean(values))
+                else:
+                    avg_daily_velocity = float(sum(values)) / max(1, len(values))
             elif sales_count > 0:
                 avg_daily_velocity = max(0.5, float(sales_count) / 14.0)
             else:
-                avg_daily_velocity = 0.2  # baseline baseline velocity
+                avg_daily_velocity = 0.2  # baseline velocity
 
             # Days of Inventory Remaining (DIR)
             if avg_daily_velocity > 0:
@@ -210,14 +232,13 @@ class DemandForecastService:
 class TillAnomalyService:
     """
     Till Discrepancy & Internal Fraud Anomaly Detector
-    Utilizes Isolation Forests and Z-score deviation over daily closing balances
+    Utilizes Isolation Forests or statistical Z-score deviation over daily closing balances
     to highlight abnormal petty cash and cash shortages before approval.
     """
 
     @staticmethod
     def detect_anomalies(user) -> Dict[str, Any]:
         from marketplace.models import DailySale, DailyExpense
-        from sklearn.ensemble import IsolationForest
 
         sales = DailySale.objects.filter(brand__user=user).order_by('-created_at')[:60]
         expenses = DailyExpense.objects.filter(brand__user=user).order_by('-created_at')[:60]
@@ -257,20 +278,40 @@ class TillAnomalyService:
                 "date": e.created_at.strftime('%b %d, %Y')
             })
 
-        X = np.array(feature_rows)
-
-        # Isolation Forest Unsupervised Outlier Classifier
-        clf = IsolationForest(contamination=0.08, random_state=42)
-        preds = clf.fit_predict(X)
-
         flagged = []
-        for i, pred in enumerate(preds):
-            if pred == -1:  # Anomaly identified
-                item = labels[i]
-                flagged.append({
-                    **item,
-                    "anomaly_reason": "Statistical outlier: transaction amount exceeds 3-sigma shift baseline."
-                })
+
+        # If IsolationForest is available, use unsupervised tree ensemble
+        if IsolationForest is not None and np is not None:
+            try:
+                X = np.array(feature_rows)
+                clf = IsolationForest(contamination=0.08, random_state=42)
+                preds = clf.fit_predict(X)
+                for i, pred in enumerate(preds):
+                    if pred == -1:
+                        item = labels[i]
+                        flagged.append({
+                            **item,
+                            "anomaly_reason": "Isolation Forest outlier: transaction vector exceeds shift baseline."
+                        })
+            except Exception:
+                pass
+
+        # Fallback to statistical 3-sigma Z-score if IsolationForest is unavailable or raised
+        if not flagged and len(feature_rows) > 0:
+            amounts = [row[0] for row in feature_rows]
+            mean_val = sum(amounts) / max(1, len(amounts))
+            variance = sum((x - mean_val) ** 2 for x in amounts) / max(1, len(amounts))
+            std_dev = variance ** 0.5
+
+            if std_dev > 0:
+                for i, row in enumerate(feature_rows):
+                    z_score = abs(row[0] - mean_val) / std_dev
+                    if z_score > 2.5:  # 2.5 sigma outlier
+                        item = labels[i]
+                        flagged.append({
+                            **item,
+                            "anomaly_reason": f"Statistical outlier: amount deviates {round(z_score, 1)}x from baseline."
+                        })
 
         integrity_score = max(60, int(100 - (len(flagged) * 8)))
 
