@@ -6,6 +6,7 @@ import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 import CreditPromptModal from './CreditPromptModal';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import ShelfScannerModal from './ShelfScannerModal';
 
 interface Product {
   id: number;
@@ -523,8 +524,9 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     low_stock_threshold: 5
   });
 
-  // Recommendation 5: Barcode & QR Code Scanner State
+  // Recommendation 5: Barcode & Shelf Scanner States
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showShelfScanner, setShowShelfScanner] = useState(false);
   const [scannerContext, setScannerContext] = useState<'LOOKUP' | 'SKU_FIELD'>('LOOKUP');
 
   const fetchProducts = async () => {
@@ -553,14 +555,14 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     }
   };
 
-  const handleBarcodeScanned = (scannedCode: string) => {
+  const handleBarcodeScanned = async (scannedCode: string) => {
     if (scannerContext === 'SKU_FIELD' && isEditing) {
       setCurrentProduct(prev => ({ ...prev, sku: scannedCode }));
       toast.success(`SKU set: ${scannedCode}`, { icon: '🏷️' });
       return;
     }
 
-    // Lookup mode: find product by SKU or name or ID
+    // Lookup mode: first check local state
     const match = products.find(p => 
       (p.sku && p.sku.toLowerCase() === scannedCode.toLowerCase()) ||
       p.name.toLowerCase().includes(scannedCode.toLowerCase()) ||
@@ -568,11 +570,50 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     );
 
     if (match) {
-      toast.success(`Found: ${match.name} (Stock: ${match.stock_count})`, { icon: '📦', duration: 4500 });
+      toast.success(`Found in Catalog: ${match.name} (Stock: ${match.stock_count})`, { icon: '📦', duration: 4000 });
       setCurrentProduct(match);
       setIsEditing(true);
-    } else {
-      toast(`No existing item with barcode "${scannedCode}". Creating new listing...`, { icon: '➕' });
+      return;
+    }
+
+    // Not in local state: Query Smart Barcode Intelligence (Open Food Facts + AI)
+    const toastId = toast.loading(`Resolving barcode ${scannedCode}...`);
+    try {
+      const res = await api.post('/api/marketplace/barcode-lookup/', { barcode: scannedCode });
+      const data = res.data;
+
+      if (data && data.found && data.name) {
+        toast.success(`✨ Identified: ${data.name}!`, { id: toastId, icon: '🏷️', duration: 4500 });
+        setCurrentProduct({
+          name: data.name,
+          description: data.description || `Scanned via Barcode (${data.source || 'Smart Catalog'})`,
+          price: data.suggested_retail_price ? String(data.suggested_retail_price) : '',
+          price_max: '',
+          image_url: data.image_url || '',
+          category: data.category || 'General Merchandise',
+          product_type: 'PHYSICAL',
+          location: '',
+          metadata: { brand: data.brand || '', barcode_source: data.source || 'Barcode Auto-Fill' },
+          is_public: true,
+          is_promoted: false,
+          stock_count: 1,
+          cost_price: data.suggested_cost_price ? String(data.suggested_cost_price) : '',
+          sku: scannedCode,
+          low_stock_threshold: 5
+        });
+        setIsEditing(true);
+      } else {
+        toast(`New Barcode "${scannedCode}". Enter your selling price to finish listing.`, { id: toastId, icon: '➕' });
+        setCurrentProduct({
+          name: '', description: '', price: '', price_max: '', image_url: '', category: 'General Merchandise',
+          product_type: 'PHYSICAL', location: '', metadata: {},
+          is_public: true, is_promoted: false, stock_count: 1,
+          cost_price: '', sku: scannedCode, low_stock_threshold: 5
+        });
+        setIsEditing(true);
+      }
+    } catch (err) {
+      toast(`Barcode "${scannedCode}" captured. Creating new listing...`, { id: toastId, icon: '➕' });
       setCurrentProduct({
         name: '', description: '', price: '', price_max: '', image_url: '', category: '',
         product_type: 'PHYSICAL', location: '', metadata: {},
@@ -865,6 +906,16 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                 onChange={handleBulkSelect} 
               />
             </label>
+
+            <button 
+              type="button"
+              onClick={() => setShowShelfScanner(true)}
+              className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-5 py-4 rounded-3xl font-bold transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer text-xs"
+              title="Snap a photo of your shop shelf or display carton to count & list items in bulk"
+            >
+              <Camera className="w-4 h-4 text-purple-200" />
+              <span>📸 Snap Shelf (Bulk)</span>
+            </button>
 
             <button 
               type="button"
@@ -2353,6 +2404,13 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         onScan={handleBarcodeScanned}
         title={scannerContext === 'SKU_FIELD' ? "Scan Barcode for Product SKU" : "Scan Product Barcode / SKU"}
         description={scannerContext === 'SKU_FIELD' ? "Scan item packaging to set SKU code automatically" : "Point camera at item barcode to lookup or create product"}
+      />
+
+      {/* AI Snap-a-Shelf Bulk Stocktaking Modal */}
+      <ShelfScannerModal
+        isOpen={showShelfScanner}
+        onClose={() => setShowShelfScanner(false)}
+        onProductsImported={fetchProducts}
       />
     </div>
   );

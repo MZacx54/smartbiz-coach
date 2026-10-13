@@ -448,7 +448,7 @@ export const DailyCashbook: React.FC = () => {
   };
 
   // Recommendation 5: Handle Barcode Scan to auto-fill sale item
-  const handleBarcodeScanned = (scannedCode: string) => {
+  const handleBarcodeScanned = async (scannedCode: string) => {
     const match = inventoryProducts.find(p =>
       (p.sku && p.sku.toLowerCase() === scannedCode.toLowerCase()) ||
       p.name.toLowerCase().includes(scannedCode.toLowerCase()) ||
@@ -459,10 +459,29 @@ export const DailyCashbook: React.FC = () => {
       handleProductSelect(String(match.id));
       setShowSaleModal(true);
       toast.success(`Scanned: ${match.name} (₦${Number(match.price).toLocaleString()})`, { icon: '🏷️' });
-    } else {
+      return;
+    }
+
+    // Unlisted barcode: Look up product title & suggested retail price automatically
+    const toastId = toast.loading(`Identifying barcode ${scannedCode}...`);
+    try {
+      const res = await api.post('/api/marketplace/barcode-lookup/', { barcode: scannedCode });
+      const data = res.data;
+      if (data && data.found && data.name) {
+        setSaleItemName(data.name);
+        setSaleUnitPrice(data.suggested_retail_price ? String(data.suggested_retail_price) : '');
+        setSaleCostPrice(data.suggested_cost_price ? String(data.suggested_cost_price) : '');
+        setShowSaleModal(true);
+        toast.success(`✨ Identified: ${data.name}! Verify price & save.`, { id: toastId, icon: '🏷️', duration: 4500 });
+      } else {
+        setSaleItemName(scannedCode);
+        setShowSaleModal(true);
+        toast(`Scanned code: "${scannedCode}". Enter selling price to record.`, { id: toastId, icon: '🏷️' });
+      }
+    } catch {
       setSaleItemName(scannedCode);
       setShowSaleModal(true);
-      toast(`Scanned code: "${scannedCode}". Enter selling price to record.`, { icon: '🏷️' });
+      toast(`Scanned code: "${scannedCode}". Enter selling price to record.`, { id: toastId, icon: '🏷️' });
     }
   };
 
@@ -3152,31 +3171,64 @@ export const DailyCashbook: React.FC = () => {
                       ))}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        // Persist items as an expense or wholesale stock
-                        const toastId = toast.loading('Recording supplier receipt in cashbook...');
-                        try {
-                          await api.post('/api/marketplace/daily-expenses/', {
-                            title: `Waybill / Restock: ${scannedReceiptResult.supplier_or_store || 'Supplier'}`,
-                            category: 'PACKAGING',
-                            amount: scannedReceiptResult.total_receipt_amount,
-                            payment_method: 'TRANSFER',
-                            notes: `Auto-scanned via Paper Receipt OCR: ${(scannedReceiptResult.line_items || []).map((l: any) => l.item_name).join(', ')}`,
-                            date: selectedDate
-                          });
-                          toast.success('Receipt logged to cashbook expenses! ✓', { id: toastId });
-                          fetchDailyData();
-                          setShowReceiptOCRModal(false);
-                        } catch (err) {
-                          toast.error('Failed to log scanned receipt.', { id: toastId });
-                        }
-                      }}
-                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
-                    >
-                      ✓ Log to Cashbook Expenses
-                    </button>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const toastId = toast.loading('Logging expense...');
+                          try {
+                            await api.post('/api/marketplace/daily-expenses/', {
+                              title: `Waybill / Restock: ${scannedReceiptResult.supplier_or_store || 'Supplier'}`,
+                              category: 'PACKAGING',
+                              amount: scannedReceiptResult.total_receipt_amount,
+                              payment_method: 'TRANSFER',
+                              notes: `Auto-scanned via Paper Receipt OCR: ${(scannedReceiptResult.line_items || []).map((l: any) => l.item_name).join(', ')}`,
+                              date: selectedDate
+                            });
+                            toast.success('Logged to cashbook expenses! ✓', { id: toastId });
+                            fetchDailyData();
+                            setShowReceiptOCRModal(false);
+                          } catch (err) {
+                            toast.error('Failed to log expense.', { id: toastId });
+                          }
+                        }}
+                        className="py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                      >
+                        ✓ Log Expense Only
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const toastId = toast.loading('Restocking inventory & logging expense...');
+                          try {
+                            // 1. Restock catalog items and update COGS
+                            const restockRes = await api.post('/api/marketplace/restock-from-receipt/', {
+                              line_items: scannedReceiptResult.line_items || []
+                            });
+
+                            // 2. Also record in Cashbook as petty cash / restocking expense
+                            await api.post('/api/marketplace/daily-expenses/', {
+                              title: `Waybill / Restock: ${scannedReceiptResult.supplier_or_store || 'Supplier'}`,
+                              category: 'PACKAGING',
+                              amount: scannedReceiptResult.total_receipt_amount,
+                              payment_method: 'TRANSFER',
+                              notes: `Restocked ${restockRes.data.restocked_count} items & created ${restockRes.data.created_count} items via Receipt OCR`,
+                              date: selectedDate
+                            });
+
+                            toast.success(`🎉 ${restockRes.data.message}`, { id: toastId, duration: 5000 });
+                            fetchDailyData();
+                            setShowReceiptOCRModal(false);
+                          } catch (err: any) {
+                            toast.error(err.response?.data?.error || 'Failed to restock inventory from receipt.', { id: toastId });
+                          }
+                        }}
+                        className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md cursor-pointer"
+                      >
+                        📦 Restock Inventory & Log
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

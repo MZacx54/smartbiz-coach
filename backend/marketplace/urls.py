@@ -29,6 +29,11 @@ from .views import (
     VisualSearchProductView,
     WhatsAppCartRecoveryView
 )
+from .smart_catalog import (
+    BarcodeLookupAutoFillView,
+    VisualShelfScannerView,
+    BulkApplyReceiptToStockView
+)
 
 from .payout_views import (
     ListBanksView,
@@ -70,4 +75,7 @@ urlpatterns = [
     path('receipt-ocr/', PaperReceiptOCRView.as_view(), name='receipt_ocr'),
     path('visual-search/', VisualSearchProductView.as_view(), name='visual_search'),
     path('whatsapp-cart-recovery/', WhatsAppCartRecoveryView.as_view(), name='whatsapp_cart_recovery'),
+    path('barcode-lookup/', BarcodeLookupAutoFillView.as_view(), name='barcode_lookup'),
+    path('shelf-scan/', VisualShelfScannerView.as_view(), name='shelf_scan'),
+    path('restock-from-receipt/', BulkApplyReceiptToStockView.as_view(), name='restock_from_receipt'),
 ]
