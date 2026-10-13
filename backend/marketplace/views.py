@@ -648,6 +648,27 @@ class VerifyVendorWithCreditsView(views.APIView):
         }, status=status.HTTP_200_OK)
 
 
+def _apply_entry_date(obj, date_str):
+    """
+    Honour the book date picked by the merchant. Records are normally stamped 'now';
+    when the merchant is filling in a PAST day, move the record into that day (never the future).
+    """
+    if not date_str:
+        return
+    import datetime
+    from django.utils import timezone
+    try:
+        target = datetime.date.fromisoformat(str(date_str)[:10])
+    except ValueError:
+        return
+    today = timezone.localdate()
+    if target >= today:
+        return
+    stamp = timezone.make_aware(datetime.datetime.combine(target, datetime.time(12, 0)))
+    type(obj).objects.filter(pk=obj.pk).update(created_at=stamp)
+    obj.created_at = stamp
+
+
 class DailySaleListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -670,8 +691,9 @@ class DailySaleListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         sale = serializer.save(user=self.request.user)
-        # If linked to a product in inventory, auto-decrement stock
-        if sale.product and sale.quantity > 0:
+        _apply_entry_date(sale, self.request.data.get('date'))
+        # If linked to a physical product that is stock-tracked, auto-decrement stock
+        if sale.product and sale.quantity > 0 and sale.product.product_type == 'PHYSICAL' and sale.product.stock_count > 0:
             product = sale.product
             product.stock_count = max(0, product.stock_count - sale.quantity)
             product.save(update_fields=['stock_count'])
@@ -698,7 +720,8 @@ class DailyExpenseListCreateView(generics.ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        expense = serializer.save(user=self.request.user)
+        _apply_entry_date(expense, self.request.data.get('date'))
 
 
 class DailySummaryView(views.APIView):
@@ -744,6 +767,8 @@ class DailySummaryView(views.APIView):
         # Low stock alert items
         low_stock_products = list(Product.objects.filter(
             brand__user=request.user,
+            product_type='PHYSICAL',
+            low_stock_threshold__gt=0,
             stock_count__lte=F('low_stock_threshold')
         ).values('id', 'name', 'stock_count', 'low_stock_threshold')[:10])
 
@@ -763,6 +788,78 @@ class DailySummaryView(views.APIView):
             'net_cash_in_till': round(net_cash_in_till, 2),
             'net_profit': round(gross_profit - total_expenses, 2),
             'low_stock_products': low_stock_products,
+        })
+
+
+class DailyTrendsView(views.APIView):
+    """7 / 30 day trend for the cashbook: per-day totals, top sellers, outstanding credit, best day."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        import datetime
+        from collections import defaultdict
+        from django.db.models import Sum, Count
+        from django.utils import timezone
+        from .models import DailySale, DailyExpense
+
+        try:
+            days = max(2, min(90, int(request.query_params.get('days', 7))))
+        except ValueError:
+            days = 7
+        today = timezone.localdate()
+        start = today - datetime.timedelta(days=days - 1)
+
+        sales = list(DailySale.objects.filter(user=request.user, created_at__date__gte=start))
+        expenses = list(DailyExpense.objects.filter(user=request.user, created_at__date__gte=start))
+
+        per_day = {(start + datetime.timedelta(days=i)).isoformat(): {'revenue': 0.0, 'expenses': 0.0, 'cogs': 0.0}
+                   for i in range(days)}
+        items = defaultdict(lambda: {'count': 0, 'revenue': 0.0, 'unit_price': 0.0, 'product_type': 'PHYSICAL', 'product_id': None})
+
+        for s in sales:
+            key = timezone.localtime(s.created_at).date().isoformat()
+            if key in per_day:
+                per_day[key]['revenue'] += float(s.total_amount)
+                per_day[key]['cogs'] += float(s.cost_price or 0) * s.quantity
+            it = items[s.item_name.strip().title()]
+            it['count'] += s.quantity
+            it['revenue'] += float(s.total_amount)
+            it['unit_price'] = float(s.unit_price)
+            it['product_id'] = s.product_id
+            it['product_type'] = s.product.product_type if s.product_id and s.product else it['product_type']
+        for e in expenses:
+            key = timezone.localtime(e.created_at).date().isoformat()
+            if key in per_day:
+                per_day[key]['expenses'] += float(e.amount)
+
+        series = []
+        for day, v in per_day.items():
+            profit = max(0.0, v['revenue'] - v['cogs']) - v['expenses']
+            series.append({'date': day, 'revenue': round(v['revenue'], 2), 'expenses': round(v['expenses'], 2),
+                           'profit': round(profit, 2)})
+
+        top_items = sorted(
+            ({'name': k, **v, 'revenue': round(v['revenue'], 2)} for k, v in items.items()),
+            key=lambda x: (-x['count'], -x['revenue']))[:8]
+
+        total_rev = sum(d['revenue'] for d in series)
+        total_exp = sum(d['expenses'] for d in series)
+        active = [d for d in series if d['revenue'] > 0]
+        best = max(active, key=lambda d: d['revenue']) if active else None
+        outstanding = DailySale.objects.filter(user=request.user, is_debt=True, payment_method='CREDIT') \
+            .aggregate(total=Sum('total_amount'), n=Count('id'))
+
+        return Response({
+            'days': days,
+            'series': series,
+            'total_revenue': round(total_rev, 2),
+            'total_expenses': round(total_exp, 2),
+            'total_profit': round(sum(d['profit'] for d in series), 2),
+            'avg_daily_revenue': round(total_rev / max(1, len(active)), 2),
+            'best_day': best,
+            'top_items': top_items,
+            'credit_outstanding': float(outstanding['total'] or 0),
+            'credit_entries': outstanding['n'] or 0,
         })
 
 
@@ -995,226 +1092,7 @@ Return ONLY valid JSON.
         })
 
 
-class VoicePOSIngestView(views.APIView):
-    """
-    Cutting-Edge AI Feature: Multilingual Voice Note Transcription & Auto-POS Ledger Ingestion.
-    Supports Nigerian English, Nigerian Pidgin, Hausa, Yoruba, and Igbo.
-    Automatically captures ANY product, physical item, or professional service mentioned
-    (e.g., 'I Make photocopies black and white for 200 Naira', 'Na photocopy black and white 200 naira',
-    'Mun yi photocopy fari da baki naira 200', 'Mo se photocopy dudu ati funfun fun igba naira',
-    'M mere photocopy oji na ocha na nari naira abuo').
-    If the item is not already in the merchant's catalog, it automatically creates a new
-    Product/Service in the catalog with the extracted details so it's ready for future sales/inventory!
-    """
-    permission_classes = [permissions.IsAuthenticated]
-    from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-
-    def post(self, request):
-        import base64
-        from smartbiz_backend import gemini_utils
-        from brand.models import BrandIdentity
-
-        audio_file = request.FILES.get('audio')
-        audio_b64 = request.data.get('audio_base64') or request.data.get('audio')
-        mime_type = request.data.get('mimeType') or 'audio/webm'
-        voice_text_transcript = request.data.get('text_transcript', '')
-
-        if audio_file:
-            audio_bytes = audio_file.read()
-            audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
-            raw_mime = audio_file.content_type or 'audio/webm'
-            mime_type = 'audio/webm' if 'webm' in raw_mime else 'audio/wav' if 'wav' in raw_mime else 'audio/mp3' if 'mp3' in raw_mime or 'mpeg' in raw_mime else 'audio/webm'
-
-        prompt = """
-        You are an intelligent Nigerian POS & Cashbook Ledger AI for diverse open-market merchants, retailers, and service providers.
-        You understand Nigerian English, Nigerian Pidgin, Hausa, Yoruba, and Igbo fluently.
-
-        Analyze the audio voice note or transcript text. Identify EVERY commercial transaction mentioned:
-        1. Sales / Services Rendered:
-           - What item or service was sold/rendered (e.g. "Photocopy (Black & White)", "2 Ankara Fabrics", "Phone Charging", "Hair Braiding", "Indomie Super Pack")
-           - Type: 'SERVICE' (for labor/copying/charging/repairs/consulting) or 'PHYSICAL' (for physical inventory/goods)
-           - Quantity: number of units/sessions/copies (default: 1)
-           - Total amount: in Naira (NGN) as a clean number (e.g. 200, 15000, 35000)
-           - Unit price: total amount divided by quantity (or stated unit price)
-           - Payment method: 'CASH', 'TRANSFER', or 'CREDIT'
-           - Customer name: if mentioned (or empty string)
-           - Is credit/debt: true if customer has not paid or took on credit ("owe", "gbese", "bashi", "ji ugwo"), false otherwise.
-        2. Business Expenses / Outflows:
-           - Title / Description: (e.g. "Generator Fuel", "Dispatch Waybill", "A4 Printing Paper Ream")
-           - Category: 'FUEL_GEN', 'LOGISTICS', 'RENT_BILLS', 'PACKAGING', 'PERSONAL', 'STAFF', or 'OTHER'
-           - Amount: in Naira (NGN)
-           - Payment method: 'CASH' or 'TRANSFER'
-
-        Multilingual context rules:
-        - Hausa: "sayar" (sold), "kudi" (money/price), "man fetur" (petrol), "bashi" (debt/credit), "an biya" (paid), "naira", "sau daya/biyu" (1x/2x).
-        - Yoruba: "ta" (sold), "owo" (money/naira), "epo" (fuel), "gbese" (debt/owe), "sanwo" (paid), "mo se" (I did/made).
-        - Igbo: "ree" (sold), "ego" (money/price), "mmanu" (fuel), "ji ugwo" (owing/debt), "m mere" (I did/made).
-        - Pidgin: "I sell", "I make", "wey owe me", "dem transfer", "cash", "buy fuel".
-
-        Respond STRICTLY with a valid JSON object matching this schema:
-        {
-            "transcript": "Exact or translated English summary of what was spoken",
-            "detected_language": "English | Pidgin | Hausa | Yoruba | Igbo | Mixed",
-            "sales": [
-                {
-                    "item_name": "Clear, Professional Item or Service Name",
-                    "product_type": "PHYSICAL or SERVICE",
-                    "quantity": 1,
-                    "unit_price": 200,
-                    "total_amount": 200,
-                    "payment_method": "CASH",
-                    "customer_name": "",
-                    "is_debt": false
-                }
-            ],
-            "expenses": [
-                {
-                    "title": "Clear Expense Title",
-                    "category": "OTHER",
-                    "amount": 2000,
-                    "payment_method": "CASH"
-                }
-            ]
-        }
-        """
-
-        try:
-            if audio_b64:
-                parsed = gemini_utils.generate_json_content(
-                    prompt,
-                    audio_base64=audio_b64,
-                    mime_type=mime_type
-                )
-            else:
-                user_msg = f"{prompt}\n\nTranscript text: \"{voice_text_transcript}\""
-                parsed = gemini_utils.generate_json_content(user_msg)
-
-            sales_data = parsed.get("sales", []) if isinstance(parsed, dict) else []
-            expenses_data = parsed.get("expenses", []) if isinstance(parsed, dict) else []
-            transcript = parsed.get("transcript", voice_text_transcript) if isinstance(parsed, dict) else voice_text_transcript
-            detected_lang = parsed.get("detected_language", "Mixed") if isinstance(parsed, dict) else "Mixed"
-
-            # Ensure user has a BrandIdentity to associate created products
-            user_brand = BrandIdentity.objects.filter(user=request.user).first()
-            if not user_brand:
-                user_brand = BrandIdentity.objects.create(
-                    user=request.user,
-                    business_name=getattr(request.user, 'business_name', '') or getattr(request.user, 'username', '') or "My Business"
-                )
-
-            # Persist transactions & auto-create/link catalog products
-            created_sales = []
-            new_products_created = []
-
-            for s in sales_data:
-                item_title = (s.get("item_name") or "General Item").strip()
-                tot = float(s.get("total_amount") or 0.0)
-                qty = max(1, int(s.get("quantity") or 1))
-                u_price = float(s.get("unit_price") or (tot / qty if qty > 0 else tot))
-                pm = s.get("payment_method", "CASH").upper()
-                if pm not in ["CASH", "TRANSFER", "CREDIT"]:
-                    pm = "CASH"
-                p_type = s.get("product_type", "PHYSICAL").upper()
-                if p_type not in ["PHYSICAL", "SERVICE"]:
-                    p_type = "PHYSICAL"
-
-                # Check if product already exists in merchant's catalog; if not, CREATE IT ON THE FLY!
-                matched_product = Product.objects.filter(
-                    brand=user_brand,
-                    name__iexact=item_title
-                ).first()
-
-                if not matched_product:
-                    # Dynamically create the new item or service in the catalog
-                    matched_product = Product.objects.create(
-                        brand=user_brand,
-                        name=item_title,
-                        description=f"Auto-created from Voice Note POS ({p_type.capitalize()})",
-                        price=u_price,
-                        product_type=p_type,
-                        stock_count=999 if p_type == 'SERVICE' else max(10, qty), # Services don't run out; goods given initial buffer
-                        category='Services' if p_type == 'SERVICE' else 'General Merchandise',
-                        is_public=True
-                    )
-                    new_products_created.append({
-                        "id": matched_product.id,
-                        "name": matched_product.name,
-                        "price": float(matched_product.price),
-                        "product_type": matched_product.product_type
-                    })
-                else:
-                    # If it's a physical product, adjust stock
-                    if matched_product.product_type == 'PHYSICAL' and matched_product.stock_count > 0:
-                        matched_product.stock_count = max(0, matched_product.stock_count - qty)
-                        matched_product.save(update_fields=['stock_count'])
-
-                sale_obj = DailySale.objects.create(
-                    user=request.user,
-                    product=matched_product,
-                    item_name=item_title,
-                    quantity=qty,
-                    unit_price=u_price,
-                    cost_price=float(matched_product.cost_price or 0.0),
-                    total_amount=tot,
-                    payment_method=pm,
-                    customer_name=s.get("customer_name") or "",
-                    is_debt=(pm == "CREDIT" or bool(s.get("is_debt", False))),
-                    notes=f"Auto-logged via Voice Note POS ({detected_lang}): {transcript[:80]}"
-                )
-                created_sales.append({
-                    "id": sale_obj.id,
-                    "item_name": sale_obj.item_name,
-                    "total_amount": float(sale_obj.total_amount),
-                    "payment_method": sale_obj.payment_method,
-                    "product_id": matched_product.id
-                })
-
-            created_expenses = []
-            for e in expenses_data:
-                amt = float(e.get("amount") or 0.0)
-                pm = e.get("payment_method", "CASH").upper()
-                cat = e.get("category", "OTHER").upper()
-                valid_cats = ['FUEL_GEN', 'LOGISTICS', 'RENT_BILLS', 'PACKAGING', 'PERSONAL', 'STAFF', 'OTHER']
-                if cat not in valid_cats:
-                    cat = "OTHER"
-
-                exp_obj = DailyExpense.objects.create(
-                    user=request.user,
-                    title=e.get("title") or "Voice logged expense",
-                    category=cat,
-                    amount=amt,
-                    payment_method="CASH" if pm == "CASH" else "TRANSFER",
-                    notes=f"Auto-logged via Voice Note POS ({detected_lang}): {transcript[:80]}"
-                )
-                created_expenses.append({
-                    "id": exp_obj.id,
-                    "title": exp_obj.title,
-                    "amount": float(exp_obj.amount)
-                })
-
-            summary_parts = []
-            if created_sales:
-                summary_parts.append(f"Recorded {len(created_sales)} sale(s)")
-            if created_expenses:
-                summary_parts.append(f"Logged {len(created_expenses)} expense(s)")
-            if new_products_created:
-                summary_parts.append(f"Created {len(new_products_created)} new item(s) in catalog")
-
-            summary_msg = " • ".join(summary_parts) if summary_parts else "No transactions detected."
-
-            return Response({
-                "success": True,
-                "transcript": transcript,
-                "detected_language": detected_lang,
-                "sales_logged": created_sales,
-                "expenses_logged": created_expenses,
-                "new_products_created": new_products_created,
-                "summary": summary_msg
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as err:
-            return Response({"error": f"Voice POS processing failed: {str(err)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+from .voice_pos import VoicePOSIngestView, VoicePOSConfirmView  # noqa: E402,F401
 
 
 class PaperReceiptOCRView(views.APIView):

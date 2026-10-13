@@ -75,7 +75,11 @@ def get_next_gemini_api_key(attempt_offset=0):
     index = (KEY_INDEX + attempt_offset) % len(keys)
     return keys[index]
 
-def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7):
+class GeminiUnavailableError(Exception):
+    """Raised in strict mode when Gemini could not produce a real answer (never a canned fallback)."""
+
+
+def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7, strict=False, model_cascade=None, timeout=25):
     keys = get_gemini_api_keys()
     if not keys:
         raise Exception("Configuration Error: GEMINI_API_KEY not found in environment.")
@@ -175,10 +179,13 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
 
     # Target model cascade: try active high-throughput models and avoid dead models
     dead_models = {"gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"}
-    preferred_models = [model, DEFAULT_TEXT_MODEL, DEFAULT_FALLBACK_MODEL, "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
-    model_cascade = [m for m in dict.fromkeys(preferred_models) if m and m not in dead_models]
-    if not model_cascade:
-        model_cascade = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
+    if model_cascade:
+        model_cascade = [m for m in dict.fromkeys(model_cascade) if m and m not in dead_models] or ["gemini-flash-lite-latest"]
+    elif not model_cascade:
+        preferred_models = [model, DEFAULT_TEXT_MODEL, DEFAULT_FALLBACK_MODEL, "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
+        model_cascade = [m for m in dict.fromkeys(preferred_models) if m and m not in dead_models]
+        if not model_cascade:
+            model_cascade = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
 
     for attempt in range(max_retries):
         current_key = get_next_gemini_api_key(attempt_offset=attempt)
@@ -193,7 +200,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=25) as response:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
                 result = json.loads(response.read().decode())
                 try:
                     candidate = result['candidates'][0]
@@ -242,19 +249,28 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
             
             # If all retries exhausted, return graceful fallback
             if attempt >= max_retries - 1:
+                if strict:
+                    raise GeminiUnavailableError(f"Gemini HTTP {e.code}: {error_msg[:200]}")
                 print("All Gemini retries exhausted. Executing fallback engine.")
                 if response_format and response_format.get("type") == "json_object":
                     return get_dynamic_json_fallback(messages)
                 return get_dynamic_string_fallback(messages)
+        except GeminiUnavailableError:
+            raise
         except Exception as exc:
             if attempt < max_retries - 1:
                 print(f"Gemini request exception: {exc}. Retrying with next model/key... (Attempt {attempt+1}/{max_retries})")
                 time.sleep(0.3)
                 continue
             
+            if strict:
+                raise GeminiUnavailableError(f"Gemini request failed: {exc}")
             if response_format and response_format.get("type") == "json_object":
                 return get_dynamic_json_fallback(messages)
             return get_dynamic_string_fallback(messages)
+
+    if strict:
+        raise GeminiUnavailableError("Gemini did not return a response.")
 
 def get_dynamic_string_fallback(messages):
     """
@@ -671,3 +687,41 @@ def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_typ
 # Placeholder proxy to prevent import errors
 def get_model(model_name=None):
     return None
+
+
+# ---------------------------------------------------------------------------
+# Voice-grade helpers (Flash tier, strict: never return canned/fake data)
+# ---------------------------------------------------------------------------
+# Full Flash model first (much better at Hausa/Yoruba/Igbo than Flash-Lite); lite only as last resort.
+VOICE_MODEL = os.getenv("GEMINI_VOICE_MODEL", "gemini-flash-latest")
+VOICE_MODEL_CASCADE = [VOICE_MODEL, "gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"]
+
+
+def _inline_audio_part(audio_base64, mime_type):
+    clean_audio = audio_base64
+    if ";base64," in clean_audio:
+        clean_audio = clean_audio.split(";base64,")[1]
+    return {"inline_data": {"mime_type": mime_type or "audio/webm", "data": "".join(clean_audio.split())}}
+
+
+def transcribe_audio_strict(audio_base64, mime_type, prompt):
+    """Speech -> text on a Flash model, temperature 0. Raises GeminiUnavailableError on failure."""
+    contents = [{"role": "user", "parts": [_inline_audio_part(audio_base64, mime_type), {"text": prompt}]}]
+    text = make_gemini_request(
+        contents, model=VOICE_MODEL, temperature=0.0,
+        strict=True, model_cascade=VOICE_MODEL_CASCADE, timeout=45,
+    )
+    return (text or "").strip()
+
+
+def extract_json_strict(prompt, model_cascade=None):
+    """Text -> validated JSON dict at temperature 0. Raises GeminiUnavailableError / ValueError."""
+    contents = [{"role": "user", "parts": [{"text": prompt}]}]
+    raw = make_gemini_request(
+        contents, model=VOICE_MODEL, response_format={"type": "json_object"}, temperature=0.0,
+        strict=True, model_cascade=model_cascade or VOICE_MODEL_CASCADE, timeout=40,
+    )
+    parsed = json.loads(clean_json_response(raw))
+    if not isinstance(parsed, dict):
+        raise ValueError("AI returned an unexpected format.")
+    return parsed

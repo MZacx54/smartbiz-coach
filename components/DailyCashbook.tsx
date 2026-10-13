@@ -13,6 +13,16 @@ import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import VoiceNoteModal from './VoiceNoteModal';
+
+// Local (device) calendar date as YYYY-MM-DD. toISOString() is UTC and shows the wrong day
+// for Nigerian merchants between 00:00 and 01:00 WAT.
+const localDateStr = (d: Date = new Date()): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
 const EXPENSE_CATEGORY_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   FUEL_GEN: { label: 'Fuel & Generator', icon: '⛽', color: 'bg-amber-100 text-amber-800' },
@@ -27,7 +37,7 @@ const EXPENSE_CATEGORY_LABELS: Record<string, { label: string; icon: string; col
 export const DailyCashbook: React.FC = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return localDateStr();
   });
 
   const [activeTab, setActiveTab] = useState<'SALES' | 'EXPENSES' | 'REPORT' | 'AI_INSIGHTS'>('SALES');
@@ -39,6 +49,9 @@ export const DailyCashbook: React.FC = () => {
   // AI Daily Intelligence
   const [aiInsights, setAiInsights] = useState<DailyAIInsights | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+
+  // 7-day trends & quick-sell shortcuts
+  const [trends, setTrends] = useState<any | null>(null);
 
   // Products from inventory for quick selection
   const [inventoryProducts, setInventoryProducts] = useState<Product[]>([]);
@@ -119,10 +132,10 @@ export const DailyCashbook: React.FC = () => {
 
   // Physical Cash Till Reconciliation
   const [openingCashInTill, setOpeningCashInTill] = useState<string>(() => {
-    return localStorage.getItem(`sb_opening_till_${new Date().toISOString().split('T')[0]}`) || '0';
+    return localStorage.getItem(`sb_opening_till_${localDateStr()}`) || '0';
   });
   const [actualCountedCash, setActualCountedCash] = useState<string>(() => {
-    return localStorage.getItem(`sb_actual_till_${new Date().toISOString().split('T')[0]}`) || '';
+    return localStorage.getItem(`sb_actual_till_${localDateStr()}`) || '';
   });
 
   // Approval state for Tab 4 / Day-Book
@@ -302,9 +315,19 @@ export const DailyCashbook: React.FC = () => {
     fetchInventory();
   }, []);
 
+  const fetchTrends = async () => {
+    try {
+      const res = await api.get('/api/marketplace/daily-trends/?days=7');
+      if (res.data) setTrends(res.data);
+    } catch {
+      /* trends are optional / need network */
+    }
+  };
+
   // Fetch Daily Records (with offline-first merge)
   const fetchDailyData = async () => {
     setIsLoading(true);
+    fetchTrends();
     try {
       const [salesRes, expensesRes, summaryRes] = await Promise.allSettled([
         api.get(`/api/marketplace/daily-sales/?date=${selectedDate}`),
@@ -355,6 +378,56 @@ export const DailyCashbook: React.FC = () => {
   useEffect(() => {
     fetchDailyData();
   }, [selectedDate]);
+
+  // One-tap repeat sale for fast movers (cash, qty 1) with Undo
+  const quickSell = async (name: string, price: number, productId?: number | null) => {
+    const linked = productId ? inventoryProducts.find(p => p.id === productId) : undefined;
+    const payload = {
+      product: productId || null,
+      item_name: name,
+      quantity: 1,
+      unit_price: price.toFixed(2),
+      cost_price: String(((linked as any)?.cost_price ?? 0)),
+      total_amount: price.toFixed(2),
+      payment_method: 'CASH',
+      customer_name: '',
+      is_debt: false,
+      notes: 'Quick sale',
+      date: selectedDate
+    };
+    try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('OFFLINE_MODE');
+      const res = await api.post('/api/marketplace/daily-sales/', payload);
+      const saved: DailySale = res.data;
+      setSales(prev => [saved, ...prev]);
+      toast((t) => (
+        <span className="flex items-center gap-3 text-sm">
+          <span>✅ {name} · ₦{price.toLocaleString()}</span>
+          <button
+            className="font-bold text-rose-600 underline cursor-pointer"
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await api.delete(`/api/marketplace/daily-sales/${saved.id}/`);
+                fetchDailyData();
+              } catch {
+                toast.error('Could not undo. Delete it from the list.');
+              }
+            }}
+          >
+            Undo
+          </button>
+        </span>
+      ), { duration: 5000 });
+      fetchDailyData();
+    } catch {
+      const offlineSale: DailySale = { ...(payload as any), id: `offline-${Date.now()}` as any, created_at: new Date().toISOString() };
+      localStorage.setItem('sb_offline_sales', JSON.stringify([offlineSale, ...getOfflineSales()]));
+      updatePendingCount();
+      setSales(prev => [offlineSale, ...prev]);
+      toast.success(`📶 ${name} saved offline. Will sync when network returns.`);
+    }
+  };
 
   // Handle Product Selection in Sale Modal
   const handleProductSelect = (productId: string) => {
@@ -450,7 +523,7 @@ export const DailyCashbook: React.FC = () => {
             amount: totalAmount,
             paidAmount: 0,
             itemsBought: `${saleItemName} (Qty: ${qtyNum})`,
-            dueDate: saleDueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+            dueDate: saleDueDate || localDateStr(new Date(Date.now() + 7 * 86400000)),
             status: 'UNPAID',
             date: selectedDate,
             createdAt: new Date().toISOString()
@@ -515,7 +588,7 @@ export const DailyCashbook: React.FC = () => {
             amount: totalAmount,
             paidAmount: 0,
             itemsBought: `${saleItemName} (Qty: ${qtyNum})`,
-            dueDate: saleDueDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+            dueDate: saleDueDate || localDateStr(new Date(Date.now() + 7 * 86400000)),
             status: 'UNPAID',
             date: selectedDate,
             createdAt: new Date().toISOString()
@@ -1230,6 +1303,42 @@ export const DailyCashbook: React.FC = () => {
         </div>
       </div>
 
+      {/* 7-Day Trend & Quick Stats */}
+      {trends && trends.series && trends.series.length > 0 && (() => {
+        const maxRev = Math.max(1, ...trends.series.map((d: any) => d.revenue));
+        const dayLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('en-NG', { weekday: 'short' }).slice(0, 2);
+        return (
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-800 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-emerald-600" /> Last 7 Days</h3>
+              <span className="text-[11px] font-bold text-slate-500">Total sales {formatNgn(trends.total_revenue)}</span>
+            </div>
+            <div className="flex items-end gap-2 h-24">
+              {trends.series.map((d: any) => (
+                <button
+                  key={d.date}
+                  onClick={() => setSelectedDate(d.date)}
+                  className="flex-1 flex flex-col items-center justify-end gap-1 h-full cursor-pointer group"
+                  title={`${d.date}: ${formatNgn(d.revenue)}`}
+                >
+                  <div
+                    className={`w-full rounded-t-lg transition-all ${d.date === selectedDate ? 'bg-emerald-600' : 'bg-emerald-200 group-hover:bg-emerald-400'}`}
+                    style={{ height: `${Math.max(4, (d.revenue / maxRev) * 100)}%` }}
+                  />
+                  <span className={`text-[10px] font-bold ${d.date === selectedDate ? 'text-emerald-700' : 'text-slate-400'}`}>{dayLabel(d.date)}</span>
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="p-2.5 rounded-2xl bg-slate-50"><p className="text-[10px] text-slate-500 font-bold">Avg / selling day</p><p className="font-black text-slate-800">{formatNgn(trends.avg_daily_revenue)}</p></div>
+              <div className="p-2.5 rounded-2xl bg-slate-50"><p className="text-[10px] text-slate-500 font-bold">Best day</p><p className="font-black text-slate-800">{trends.best_day ? `${dayLabel(trends.best_day.date)} · ${formatNgn(trends.best_day.revenue)}` : '—'}</p></div>
+              <div className="p-2.5 rounded-2xl bg-rose-50"><p className="text-[10px] text-rose-600 font-bold">Owed to you</p><p className="font-black text-rose-700">{formatNgn(trends.credit_outstanding)}</p></div>
+              <div className="p-2.5 rounded-2xl bg-purple-50"><p className="text-[10px] text-purple-600 font-bold">7-day profit</p>{isShiftMode ? <p className="font-black text-amber-700">🔒</p> : <p className="font-black text-purple-700">{formatNgn(trends.total_profit)}</p>}</div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Tabs Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -1309,6 +1418,30 @@ export const DailyCashbook: React.FC = () => {
       {/* TAB 1: SALES LIST */}
       {activeTab === 'SALES' && (
         <div className="space-y-4">
+          {(() => {
+            const chips: { name: string; price: number; id: number | null }[] = (trends?.top_items || [])
+              .filter((i: any) => i.unit_price > 0)
+              .slice(0, 6)
+              .map((i: any) => ({ name: i.name, price: i.unit_price, id: i.product_id || null }));
+            const list = chips.length > 0 ? chips : inventoryProducts.filter(p => Number(p.price) > 0).slice(0, 6).map(p => ({ name: p.name, price: Number(p.price), id: p.id as number }));
+            if (list.length === 0) return null;
+            return (
+              <div className="bg-white p-3 sm:p-4 rounded-3xl border border-slate-100 shadow-sm">
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wide mb-2">⚡ Tap to sell (cash, qty 1)</p>
+                <div className="flex flex-wrap gap-2">
+                  {list.map(c => (
+                    <button
+                      key={c.name}
+                      onClick={() => quickSell(c.name, c.price, c.id)}
+                      className="px-3 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 cursor-pointer transition-all active:scale-95"
+                    >
+                      {c.name} <span className="text-emerald-600">₦{Number(c.price).toLocaleString()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           {sales.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
               <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto text-2xl mb-4">
@@ -2892,159 +3025,13 @@ export const DailyCashbook: React.FC = () => {
         description="Point camera at product barcode or packaging to record purchase in 1 second"
       />
 
-      {/* Cutting-Edge AI Feature 1: Voice Note POS Ingestion Modal */}
-      {showVoicePOSModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                  <Mic className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-900 text-lg">AI Voice Note POS</h3>
-                  <p className="text-xs text-slate-500">Speak your market sales or expenses naturally</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  setShowVoicePOSModal(false);
-                  setIsRecordingVoice(false);
-                }}
-                className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50/80 to-amber-50/60 border border-rose-200/60 text-xs text-slate-700 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-rose-500" />
-                  Multilingual AI Day-Book (English, Pidgin, Hausa, Yoruba, Igbo)
-                </span>
-                <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full">Auto-adds new items</span>
-              </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
-                Speak or type anything you sold or any service provided. If it's not yet in your inventory, AI will automatically add it to your catalog!
-              </p>
-              <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100 space-y-1 font-mono text-[11px] text-slate-600">
-                <p>• <span className="font-semibold text-rose-700">Services:</span> &ldquo;I make photocopies black and white for 200 Naira.&rdquo;</p>
-                <p>• <span className="font-semibold text-rose-700">Pidgin:</span> &ldquo;I sell 2 bags of pure water 600 cash, and buy fuel 2,500.&rdquo;</p>
-                <p>• <span className="font-semibold text-rose-700">Hausa:</span> &ldquo;Mun sayar da buhun shinkafa 2 na 180,000.&rdquo;</p>
-                <p>• <span className="font-semibold text-rose-700">Yoruba:</span> &ldquo;Mo se photocopy fun 200 naira, mo de ta aso 15,000.&rdquo;</p>
-                <p>• <span className="font-semibold text-rose-700">Igbo:</span> &ldquo;M mere photocopy na 200 naira, m rere akwa 25,000.&rdquo;</p>
-              </div>
-            </div>
-
-            {/* Mic Record Button */}
-            <div className="text-center py-4 space-y-3">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (isRecordingVoice) {
-                    // Stop recording
-                    if (mediaRecorder) {
-                      mediaRecorder.stop();
-                    }
-                    setIsRecordingVoice(false);
-                  } else {
-                    // Start recording
-                    try {
-                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                      const recorder = new MediaRecorder(stream);
-                      const chunks: Blob[] = [];
-                      recorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) chunks.push(e.data);
-                      };
-                      recorder.onstop = async () => {
-                        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-                        setIsProcessingVoice(true);
-                        const toastId = toast.loading('Multimodal AI parsing spoken transactions...');
-                        try {
-                          const formData = new FormData();
-                          formData.append('audio', audioBlob);
-                          const res = await api.post('/api/marketplace/voice-pos-ingest/', formData, {
-                            headers: { 'Content-Type': 'multipart/form-data' }
-                          });
-                          toast.success(res.data.summary || 'Voice transactions logged to Day-Book! 🚀', { id: toastId });
-                          if (res.data.new_products_created && res.data.new_products_created.length > 0) {
-                            toast.success(`✨ Added to catalog: ${res.data.new_products_created.join(', ')}`, { duration: 5000, icon: '📦' });
-                          }
-                          fetchDailyData();
-                          setShowVoicePOSModal(false);
-                        } catch (err: any) {
-                          toast.error(err.response?.data?.error || 'Failed to process voice note.', { id: toastId });
-                        } finally {
-                          setIsProcessingVoice(false);
-                        }
-                      };
-                      recorder.start();
-                      setMediaRecorder(recorder);
-                      setIsRecordingVoice(true);
-                      toast.success('Microphone listening... Speak in English, Pidgin, Hausa, Yoruba, or Igbo!');
-                    } catch (err) {
-                      toast.error('Microphone access denied. You can type the text below instead.');
-                    }
-                  }
-                }}
-                disabled={isProcessingVoice}
-                className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center text-white shadow-xl transition-all cursor-pointer ${
-                  isRecordingVoice 
-                    ? 'bg-rose-600 animate-ping ring-4 ring-rose-300' 
-                    : 'bg-rose-500 hover:bg-rose-600 hover:scale-105'
-                }`}
-              >
-                <Mic className="w-8 h-8" />
-              </button>
-              <p className="text-xs font-bold text-slate-600">
-                {isRecordingVoice ? 'Listening... Tap to Ingest' : 'Tap Microphone to Speak'}
-              </p>
-            </div>
-
-            {/* Or Manual Typed Voice Note */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <label className="text-xs font-bold text-slate-700 block">Or Type Market Voice Note / Text:</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text"
-                  placeholder="e.g. I make photocopies black and white for 200 Naira"
-                  value={voiceTranscriptInput}
-                  onChange={(e) => setVoiceTranscriptInput(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                />
-                <button
-                  type="button"
-                  disabled={!voiceTranscriptInput.trim() || isProcessingVoice}
-                  onClick={async () => {
-                    setIsProcessingVoice(true);
-                    const toastId = toast.loading('AI parsing transactions...');
-                    try {
-                      const res = await api.post('/api/marketplace/voice-pos-ingest/', {
-                        text_transcript: voiceTranscriptInput
-                      });
-                      toast.success(res.data.summary || 'Transactions logged to Day-Book! ✓', { id: toastId });
-                      if (res.data.new_products_created && res.data.new_products_created.length > 0) {
-                        toast.success(`✨ Added to catalog: ${res.data.new_products_created.join(', ')}`, { duration: 5000, icon: '📦' });
-                      }
-                      setVoiceTranscriptInput('');
-                      fetchDailyData();
-                      setShowVoicePOSModal(false);
-                    } catch (err: any) {
-                      toast.error(err.response?.data?.error || 'Failed to parse text transactions.', { id: toastId });
-                    } finally {
-                      setIsProcessingVoice(false);
-                    }
-                  }}
-                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-50"
-                >
-                  Parse
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Voice Note POS: speak -> review -> confirm */}
+      <VoiceNoteModal
+        open={showVoicePOSModal}
+        onClose={() => setShowVoicePOSModal(false)}
+        onSaved={fetchDailyData}
+        selectedDate={selectedDate}
+      />
 
       {/* Cutting-Edge AI Feature 2: Paper Receipt & Waybill OCR Modal */}
       {showReceiptOCRModal && (
