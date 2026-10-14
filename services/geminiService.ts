@@ -171,8 +171,20 @@ export const generateStudioPhotoshoot = async (
     const response = await api.post('/api/content/studio-photoshoot/', {
         image_base64: imageBase64,
         scene_id: sceneId,
+        theme: sceneId,
         mode,
         custom_prompt: customPrompt
+    });
+    return response.data;
+};
+
+export const runPrecisionStudio = async (
+    imageBase64: string,
+    theme: 'pure_white' | 'warm_wood' | 'studio_grey' | 'transparent' = 'pure_white'
+) => {
+    const response = await api.post('/api/content/precision-photoshoot/', {
+        image_base64: imageBase64,
+        theme: theme
     });
     return response.data;
 };

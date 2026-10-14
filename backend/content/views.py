@@ -671,127 +671,9 @@ class StudioPhotoshootView(views.APIView):
     throttle_classes = [ImageEditThrottle]
 
     def post(self, request):
-        image_base64 = request.data.get('image_base64') or request.data.get('image_base_64') or request.data.get('image')
-        scene_id = request.data.get('scene_id') or 'luxury_marble'
-        mode = request.data.get('mode') or 'generative'
-        user_instruction = (request.data.get('custom_prompt') or request.data.get('prompt') or '').strip()
+        from .precision_studio import PrecisionPhotoStudioView
+        return PrecisionPhotoStudioView().post(request)
 
-        if not image_base64:
-            return Response({'error': 'Missing image data'}, status=400)
-
-        try:
-            import base64
-            import io
-            import requests
-            import json
-            import urllib.request
-            from PIL import Image
-
-            clean_base64 = image_base64.split(",")[1] if "," in image_base64 else image_base64
-            img_bytes = base64.b64decode(clean_base64)
-            raw_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-            # Downscale high-resolution mobile camera uploads to 1280x1280 max for speed and memory safety
-            raw_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
-
-            scene_title = SCENE_TITLES.get(scene_id, scene_id.replace('_', ' ').title())
-
-            # 1. Analyze image with Gemini Vision to detect subject & build a photorealistic photoshoot prompt
-            bbox_hint = None
-            synthesized_prompt = None
-
-            try:
-                # Prepare compact thumbnail for fast Gemini Vision analysis
-                thumb_img = raw_img.convert('RGB')
-                thumb_img.thumbnail((420, 420))
-                thumb_buf = io.BytesIO()
-                thumb_img.save(thumb_buf, format='JPEG', quality=80)
-                thumb_b64 = base64.b64encode(thumb_buf.getvalue()).decode('utf-8')
-
-                vision_prompt = f"""Analyze this photo for Google Gemini Photo Studio.
-User instruction: "{user_instruction or scene_title}".
-Tasks:
-1. Identify primary subject (person or product) and describe appearance.
-2. If subject is on a table, floor, or printed photo, provide normalized bounding box [ymin, xmin, ymax, xmax] (0-1000).
-3. Craft an ultra-photorealistic 8k commercial photography prompt for Flux that places this EXACT subject into a high-end studio setting.
-Return JSON with keys: subject_type, subject_box_2d, commercial_flux_prompt, detected_title."""
-
-                k = gemini_utils.get_next_gemini_api_key()
-                if k:
-                    vision_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={k}"
-                    v_payload = {
-                        'contents': [{
-                            'parts': [
-                                {'text': vision_prompt},
-                                {'inlineData': {'mimeType': 'image/jpeg', 'data': thumb_b64}}
-                            ]
-                        }],
-                        'generationConfig': {'responseMimeType': 'application/json'}
-                    }
-                    v_req = urllib.request.Request(
-                        vision_url, 
-                        data=json.dumps(v_payload).encode('utf-8'), 
-                        headers={'Content-Type': 'application/json'}
-                    )
-                    with urllib.request.urlopen(v_req, timeout=14) as v_resp:
-                        v_data = json.loads(v_resp.read().decode('utf-8'))
-                        v_text = v_data['candidates'][0]['content']['parts'][0]['text']
-                        parsed = json.loads(v_text)
-                        if parsed.get('commercial_flux_prompt'):
-                            synthesized_prompt = parsed['commercial_flux_prompt']
-                        if parsed.get('subject_box_2d') and len(parsed['subject_box_2d']) == 4:
-                            bbox_hint = parsed['subject_box_2d']
-                        if parsed.get('detected_title'):
-                            scene_title = parsed['detected_title']
-            except Exception as vision_err:
-                print("Gemini Vision photoshoot assistant fallback:", vision_err)
-
-            # 2. Mode 1: High-Fidelity Generative Studio Synthesis (Google Gemini / Flux Photo Studio)
-            effective_prompt = synthesized_prompt or (
-                f"Commercial advertising product photoshoot, {user_instruction or scene_title}, studio lighting, contact shadows, surface reflections, 8k resolution, Hasselblad medium format photography, hyperrealistic"
-            )
-
-            try:
-                encoded_p = requests.utils.quote(effective_prompt)
-                flux_url = f"https://image.pollinations.ai/prompt/{encoded_p}?width=768&height=960&nologo=true&model=flux"
-                flux_res = requests.get(flux_url, timeout=22)
-                if flux_res.status_code == 200 and len(flux_res.content) > 5000:
-                    processed_base64 = base64.b64encode(flux_res.content).decode('utf-8')
-                    deduct_credits(request.user, 'image_edit')
-                    return Response({
-                        'success': True,
-                        'studio_image_base64': f"data:image/jpeg;base64,{processed_base64}",
-                        'image_base64': f"data:image/jpeg;base64,{processed_base64}",
-                        'scene_id': scene_id,
-                        'scene_title': scene_title,
-                        'mode': 'generative',
-                        'prompt_used': effective_prompt,
-                        'credits_remaining': request.user.credits
-                    })
-            except Exception as flux_err:
-                print("Generative photoshoot fallback to precision compositor:", flux_err)
-
-            # 3. Mode 2 (Robust Fallback): Precision Cutout & Photorealistic Scene Compositor
-            product_cutout = isolate_product_foreground(raw_img, bbox_hint=bbox_hint)
-            comp_img = composite_product_to_scene(product_cutout, scene_id)
-
-            buffer = io.BytesIO()
-            comp_img.convert('RGB').save(buffer, format="JPEG", quality=94)
-            processed_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-
-            deduct_credits(request.user, 'image_edit')
-            return Response({
-                'success': True,
-                'studio_image_base64': f"data:image/jpeg;base64,{processed_base64}",
-                'image_base64': f"data:image/jpeg;base64,{processed_base64}",
-                'scene_id': scene_id,
-                'scene_title': scene_title,
-                'mode': 'composite',
-                'credits_remaining': request.user.credits
-            })
-
-        except Exception as e:
-            print("StudioPhotoshootView error:", e)
-            return Response({'error': str(e)}, status=500)
 
 
 class EditImageView(views.APIView):
@@ -2008,95 +1890,16 @@ class RemoveBackgroundView(views.APIView):
     throttle_classes = [ImageEditThrottle]
 
     def post(self, request):
-        image_base64 = request.data.get('image_base64') or request.data.get('image')
-        mime_type = request.data.get('mime_type', 'image/jpeg')
-
-        if not image_base64:
-            return Response({'error': 'No image provided'}, status=400)
-
-        try:
-            import base64
-            import io
-            from PIL import Image, ImageFilter
-
-            clean_base64 = image_base64.split(',')[1] if ',' in image_base64 else image_base64
-            img_bytes = base64.b64decode(clean_base64)
-            raw_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-            # Downscale high-resolution mobile camera uploads to 1280x1280 max for speed and memory safety
-            raw_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
-            w, h = raw_img.size
-
-            # 1. Ask Gemini Vision AI to detect the exact normalized bounding box around the primary person or product
-            bbox_prompt = """
-            Analyze this photo. Detect the primary human person or main product subject in the center of the image.
-            Return a JSON object with key "subject_bbox": [ymin, xmin, ymax, xmax] as normalized integers from 0 to 1000 representing the exact bounding box enclosing the primary subject.
-            """
-            
-            ymin, xmin, ymax, xmax = 100, 100, 900, 900  # Default safe bounding box
-            
+        from .precision_studio import PrecisionPhotoStudioView
+        # Ensure theme is transparent
+        if hasattr(request.data, '_mutable') and not request.data._mutable:
+            request.data._mutable = True
+            request.data['theme'] = 'transparent'
+            request.data._mutable = False
+        else:
             try:
-                ai_res = gemini_utils.generate_json_content(
-                    bbox_prompt,
-                    image_base64=clean_base64,
-                    mime_type=mime_type
-                )
-                if ai_res and 'subject_bbox' in ai_res and len(ai_res['subject_bbox']) == 4:
-                    ymin, xmin, ymax, xmax = ai_res['subject_bbox']
-            except Exception as bbox_err:
-                print("Gemini Vision bbox detection fallback:", bbox_err)
+                request.data['theme'] = 'transparent'
+            except Exception:
+                pass
+        return PrecisionPhotoStudioView().post(request)
 
-            # Convert normalized 0-1000 coords to actual pixel bounds
-            sub_ymin = int((ymin / 1000.0) * h)
-            sub_xmin = int((xmin / 1000.0) * w)
-            sub_ymax = int((ymax / 1000.0) * h)
-            sub_xmax = int((xmax / 1000.0) * w)
-
-            # 2. Sample outer corner background pixels ONLY outside the subject bounding box
-            corner_coords = [
-                (5, 5), (w - 5, 5), (5, h - 5), (w - 5, h - 5),
-                (w // 2, 5), (5, h // 2), (w - 5, h // 2)
-            ]
-            valid_corners = [c for c in corner_coords if not (sub_xmin <= c[0] <= sub_xmax and sub_ymin <= c[1] <= sub_ymax)]
-            if not valid_corners:
-                valid_corners = corner_coords
-
-            corner_pixels = [raw_img.getpixel(c) for c in valid_corners]
-            avg_r = sum(c[0] for c in corner_pixels) // len(corner_pixels)
-            avg_g = sum(c[1] for c in corner_pixels) // len(corner_pixels)
-            avg_b = sum(c[2] for c in corner_pixels) // len(corner_pixels)
-
-            datas = raw_img.getdata()
-            new_data = []
-
-            for idx, item in enumerate(datas):
-                x = idx % w
-                y = idx // w
-                r, g, b, a = item
-
-                # 🛡️ 100% FOREGROUND PROTECTION GUARANTEE:
-                # Inside subject bounding box: Keep 100% original pixel details (Alpha = 255)!
-                if sub_xmin <= x <= sub_xmax and sub_ymin <= y <= sub_ymax:
-                    new_data.append((r, g, b, 255))
-                else:
-                    # Outside subject bounding box: Replace room/floor background with Pure Studio White (255, 255, 255, 255)
-                    dist = ((r - avg_r)**2 + (g - avg_g)**2 + (b - avg_b)**2) ** 0.5
-                    if dist < 75:
-                        new_data.append((255, 255, 255, 255))  # Pure Studio White
-                    else:
-                        new_data.append((r, g, b, 255))
-
-            raw_img.putdata(new_data)
-            
-            buffered = io.BytesIO()
-            raw_img.save(buffered, format="PNG")
-            img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
-            
-            deduct_credits(request.user, 'image_edit')
-            return Response({
-                'transparent_image_base64': f"data:image/png;base64,{img_str}",
-                'studio_image_base64': f"data:image/png;base64,{img_str}"
-            })
-
-        except Exception as e:
-            print("Remove background error:", e)
-            return Response({'error': str(e)}, status=500)

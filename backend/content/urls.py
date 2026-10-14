@@ -8,15 +8,17 @@ from .views import (
     GenerateBlogPostView, GeneratePartnershipPitchView, RemoveBackgroundView,
     StudioPhotoshootView
 )
+from .precision_studio import PrecisionPhotoStudioView
 
 urlpatterns = [
+    path('precision-photoshoot/', PrecisionPhotoStudioView.as_view(), name='precision-photoshoot'),
     path('generate-social-content/', GenerateSocialContentView.as_view(), name='generate-social-content'),
     path('generate-social/', GenerateSocialContentView.as_view(), name='generate-social'),  # Alias
     path('generate-video-script/', GenerateVideoScriptView.as_view(), name='generate-video-script'),
     path('generate-script/', GenerateVideoScriptView.as_view(), name='generate-script'),  # Alias
     path('generate-trend-ideas/', GenerateTrendIdeasView.as_view(), name='generate-trend-ideas'),
     path('generate-trends/', GenerateTrendIdeasView.as_view(), name='generate-trends'),  # Alias
-    path('studio-photoshoot/', StudioPhotoshootView.as_view(), name='studio-photoshoot'),
+    path('studio-photoshoot/', PrecisionPhotoStudioView.as_view(), name='studio-photoshoot'),
     path('edit-image/', EditImageView.as_view(), name='edit-image'),
     path('remove-bg/', RemoveBackgroundView.as_view(), name='remove-bg'),
     path('transcribe/', TranscribeAudioView.as_view(), name='transcribe'),
