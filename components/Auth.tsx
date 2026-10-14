@@ -177,14 +177,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {authMode === 'register' && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Full Name</label>
                     <input
                       type="text"
                       required
+                      autoComplete="name"
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
-                      placeholder="John Doe"
+                      placeholder="e.g. Chinedu Obi"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
@@ -194,21 +195,24 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <input
                       type="text"
                       required
+                      autoComplete="organization"
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
-                      placeholder="Lagos Ventures"
+                      placeholder="e.g. Lagos Ventures"
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Phone</label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Phone Number</label>
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
-                      placeholder="080..."
+                      placeholder="080... or +234..."
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                     />
