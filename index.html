@@ -51,6 +51,8 @@
   <meta property="twitter:image" content="https://www.smartbizcoach.com.ng/logo-horizontal.png" />
 
   <link rel="canonical" href="https://www.smartbizcoach.com.ng" />
+  <link rel="dns-prefetch" href="https://api.smartbizcoach.com.ng" />
+  <link rel="preconnect" href="https://api.smartbizcoach.com.ng" crossorigin />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="dns-prefetch" href="https://js.paystack.co" />
@@ -86,7 +88,9 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-          .then((reg) => console.log('SmartBiz ServiceWorker active', reg.scope))
+          .then((reg) => {
+            reg.update().catch(() => {});
+          })
           .catch((err) => console.log('ServiceWorker registration error:', err));
       });
     }
