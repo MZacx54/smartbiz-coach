@@ -190,6 +190,7 @@ export const DailyCashbook: React.FC = () => {
   const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [isSyncingQueue, setIsSyncingQueue] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const syncingRef = useRef(false);
 
   const getOfflineSales = (): any[] => {
     try {
@@ -207,93 +208,191 @@ export const DailyCashbook: React.FC = () => {
     }
   };
 
+  const getCachedSalesForDate = (dateStr: string): DailySale[] => {
+    try {
+      return JSON.parse(localStorage.getItem(`sb_cached_sales_${dateStr}`) || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const setCachedSalesForDate = (dateStr: string, list: DailySale[]) => {
+    try {
+      localStorage.setItem(`sb_cached_sales_${dateStr}`, JSON.stringify(list));
+    } catch {
+      /* ignore quota */
+    }
+  };
+
+  const getCachedExpensesForDate = (dateStr: string): DailyExpense[] => {
+    try {
+      return JSON.parse(localStorage.getItem(`sb_cached_expenses_${dateStr}`) || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const setCachedExpensesForDate = (dateStr: string, list: DailyExpense[]) => {
+    try {
+      localStorage.setItem(`sb_cached_expenses_${dateStr}`, JSON.stringify(list));
+    } catch {
+      /* ignore quota */
+    }
+  };
+
   const updatePendingCount = () => {
     const s = getOfflineSales().length;
     const e = getOfflineExpenses().length;
     setPendingSyncCount(s + e);
   };
 
-  const syncOfflineQueue = async () => {
+  // Non-blocking, atomic background sync that never overwrites concurrent local entries
+  const syncOfflineQueue = async (silent = false) => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-    if (isSyncingQueue) return;
+    if (syncingRef.current) return;
 
-    const offlineSales = getOfflineSales();
-    const offlineExpenses = getOfflineExpenses();
+    const snapshotSales = getOfflineSales();
+    const snapshotExpenses = getOfflineExpenses();
 
-    if (offlineSales.length === 0 && offlineExpenses.length === 0) {
+    if (snapshotSales.length === 0 && snapshotExpenses.length === 0) {
       updatePendingCount();
       return;
     }
 
+    syncingRef.current = true;
     setIsSyncingQueue(true);
-    let syncedSales = 0;
-    let syncedExpenses = 0;
 
-    const remainingSales: any[] = [];
-    for (const s of offlineSales) {
-      try {
-        const { id, ...payload } = s;
-        await api.post('/api/marketplace/daily-sales/', payload);
-        syncedSales++;
-      } catch (err) {
-        remainingSales.push(s);
+    const syncedSaleIds = new Set<string>();
+    const syncedSaleMap = new Map<string, DailySale>();
+    const syncedExpenseIds = new Set<string>();
+    const syncedExpenseMap = new Map<string, DailyExpense>();
+
+    try {
+      // Sync sales in parallel with a fast 7s timeout per item
+      if (snapshotSales.length > 0) {
+        await Promise.allSettled(
+          snapshotSales.map(async (s) => {
+            const tempId = String(s.id);
+            const { id, ...payload } = s;
+            const res = await api.post('/api/marketplace/daily-sales/', payload, { timeout: 7000 });
+            syncedSaleIds.add(tempId);
+            if (res?.data) {
+              syncedSaleMap.set(tempId, res.data);
+            }
+          })
+        );
+
+        if (syncedSaleIds.size > 0) {
+          // Re-read current localStorage queue so we NEVER overwrite new sales added while sync was in-flight!
+          const latestQueue = getOfflineSales().filter((s) => !syncedSaleIds.has(String(s.id)));
+          localStorage.setItem('sb_offline_sales', JSON.stringify(latestQueue));
+
+          // Seamlessly swap temporary offline IDs with real server IDs in React state and date cache
+          setSales((prev) => {
+            const updated = prev.map((item) => {
+              const replacement = syncedSaleMap.get(String(item.id));
+              return replacement ? replacement : item;
+            });
+            const cloudOnly = updated.filter((x) => !String(x.id).startsWith('offline-'));
+            setCachedSalesForDate(selectedDate, cloudOnly);
+            return updated;
+          });
+        }
       }
-    }
-    localStorage.setItem('sb_offline_sales', JSON.stringify(remainingSales));
 
-    const remainingExpenses: any[] = [];
-    for (const e of offlineExpenses) {
-      try {
-        const { id, ...payload } = e;
-        await api.post('/api/marketplace/daily-expenses/', payload);
-        syncedExpenses++;
-      } catch (err) {
-        remainingExpenses.push(e);
+      // Sync expenses in parallel with a fast 7s timeout per item
+      if (snapshotExpenses.length > 0) {
+        await Promise.allSettled(
+          snapshotExpenses.map(async (e) => {
+            const tempId = String(e.id);
+            const { id, ...payload } = e;
+            const res = await api.post('/api/marketplace/daily-expenses/', payload, { timeout: 7000 });
+            syncedExpenseIds.add(tempId);
+            if (res?.data) {
+              syncedExpenseMap.set(tempId, res.data);
+            }
+          })
+        );
+
+        if (syncedExpenseIds.size > 0) {
+          const latestQueue = getOfflineExpenses().filter((e) => !syncedExpenseIds.has(String(e.id)));
+          localStorage.setItem('sb_offline_expenses', JSON.stringify(latestQueue));
+
+          setExpenses((prev) => {
+            const updated = prev.map((item) => {
+              const replacement = syncedExpenseMap.get(String(item.id));
+              return replacement ? replacement : item;
+            });
+            const cloudOnly = updated.filter((x) => !String(x.id).startsWith('offline-'));
+            setCachedExpensesForDate(selectedDate, cloudOnly);
+            return updated;
+          });
+        }
       }
-    }
-    localStorage.setItem('sb_offline_expenses', JSON.stringify(remainingExpenses));
 
-    const totalSynced = syncedSales + syncedExpenses;
-    updatePendingCount();
-    setIsSyncingQueue(false);
-
-    if (totalSynced > 0) {
-      toast.success(`Cloud Sync: ${totalSynced} offline record${totalSynced === 1 ? '' : 's'} synced to database! ☁️`, {
-        duration: 4000
-      });
-      fetchDailyData();
+      const totalSynced = syncedSaleIds.size + syncedExpenseIds.size;
+      if (totalSynced > 0 && !silent) {
+        toast.success(`Cloud Sync: ${totalSynced} record${totalSynced === 1 ? '' : 's'} synced to cloud! ☁️`, {
+          duration: 3000
+        });
+      }
+      if (totalSynced > 0) {
+        fetchTrends();
+      }
+    } finally {
+      syncingRef.current = false;
+      setIsSyncingQueue(false);
+      updatePendingCount();
     }
   };
 
-  // Network listener & auto-sync
+  // Network listener & periodic auto-sync
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
       toast.success('Internet restored! Syncing offline records...', { icon: '📶' });
-      syncOfflineQueue();
+      syncOfflineQueue(false);
     };
 
     const handleOffline = () => {
       setIsOnline(false);
-      toast('Network disconnected. Sales will save locally and auto-sync when online.', { icon: '📴' });
+      toast('Offline mode active. All records save instantly on your device.', { icon: '📴' });
     };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     updatePendingCount();
-    syncOfflineQueue();
+    syncOfflineQueue(true);
+
+    const interval = window.setInterval(() => {
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        syncOfflineQueue(true);
+      }
+    }, 15000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.clearInterval(interval);
     };
-  }, []);
+  }, [selectedDate]);
 
   const reportRef = useRef<HTMLDivElement>(null);
 
-  // Fetch Inventory Products for autocomplete (with offline cache support)
+  // Fetch Inventory Products for autocomplete (instant cache-first hydration + background refresh)
   useEffect(() => {
+    const cached = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('sb_cached_products') || '[]');
+      } catch {
+        return [];
+      }
+    })();
+    if (cached.length > 0) {
+      setInventoryProducts(cached);
+    }
+
     const fetchInventory = async () => {
       try {
         const res = await api.get('/api/marketplace/products/');
@@ -304,12 +403,8 @@ export const DailyCashbook: React.FC = () => {
             localStorage.setItem('sb_cached_products', JSON.stringify(list));
           }
         }
-      } catch (err) {
-        console.warn('Network issue fetching inventory. Reading cached products:', err);
-        const cached = JSON.parse(localStorage.getItem('sb_cached_products') || '[]');
-        if (cached.length > 0) {
-          setInventoryProducts(cached);
-        }
+      } catch {
+        // Already hydrated from sb_cached_products
       }
     };
     fetchInventory();
@@ -317,58 +412,114 @@ export const DailyCashbook: React.FC = () => {
 
   const fetchTrends = async () => {
     try {
-      const res = await api.get('/api/marketplace/daily-trends/?days=7');
-      if (res.data) setTrends(res.data);
+      const cachedTrends = localStorage.getItem('sb_cached_trends');
+      if (cachedTrends && !trends) {
+        setTrends(JSON.parse(cachedTrends));
+      }
     } catch {
-      /* trends are optional / need network */
+      /* ignore */
+    }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    try {
+      const res = await api.get('/api/marketplace/daily-trends/?days=7');
+      if (res.data) {
+        setTrends(res.data);
+        localStorage.setItem('sb_cached_trends', JSON.stringify(res.data));
+      }
+    } catch {
+      /* trends are optional / served from cache */
     }
   };
 
-  // Fetch Daily Records (with offline-first merge)
-  const fetchDailyData = async () => {
-    setIsLoading(true);
+  // Merge helper: combines unsynced offline items for a date with cloud/cached items
+  const buildMergedRecordsForDate = (
+    dateStr: string,
+    cloudSales: DailySale[],
+    cloudExpenses: DailyExpense[]
+  ) => {
+    const offlineSalesForDate = getOfflineSales().filter((s: any) => !s.date || s.date === dateStr);
+    const offlineExpensesForDate = getOfflineExpenses().filter((e: any) => !e.date || e.date === dateStr);
+
+    const cloudSaleIds = new Set(cloudSales.map((s) => String(s.id)));
+    const unSyncedSales = offlineSalesForDate.filter((s) => !cloudSaleIds.has(String(s.id)));
+
+    const cloudExpIds = new Set(cloudExpenses.map((e) => String(e.id)));
+    const unSyncedExpenses = offlineExpensesForDate.filter((e) => !cloudExpIds.has(String(e.id)));
+
+    return {
+      mergedSales: [...unSyncedSales, ...cloudSales],
+      mergedExpenses: [...unSyncedExpenses, ...cloudExpenses],
+    };
+  };
+
+  // Fetch Daily Records (Instant 0ms Local Hydration + Non-Blocking Background Revalidation)
+  const fetchDailyData = async (silent = false) => {
+    const cachedSales = getCachedSalesForDate(selectedDate);
+    const cachedExpenses = getCachedExpensesForDate(selectedDate);
+
+    // 1. Hydrate UI immediately in 0ms from local storage (offline queue + cached cloud records)
+    const initialMerge = buildMergedRecordsForDate(selectedDate, cachedSales, cachedExpenses);
+    setSales(initialMerge.mergedSales);
+    setExpenses(initialMerge.mergedExpenses);
+    updatePendingCount();
+
+    try {
+      const cachedSummary = localStorage.getItem(`sb_cached_summary_${selectedDate}`);
+      if (cachedSummary) setSummary(JSON.parse(cachedSummary));
+    } catch {
+      /* ignore */
+    }
+
     fetchTrends();
+
+    // If device is offline, skip network waiting completely!
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setIsLoading(false);
+      return;
+    }
+
+    if (!silent && initialMerge.mergedSales.length === 0 && initialMerge.mergedExpenses.length === 0) {
+      setIsLoading(true);
+    }
+
     try {
       const [salesRes, expensesRes, summaryRes] = await Promise.allSettled([
-        api.get(`/api/marketplace/daily-sales/?date=${selectedDate}`),
-        api.get(`/api/marketplace/daily-expenses/?date=${selectedDate}`),
-        api.get(`/api/marketplace/daily-summary/?date=${selectedDate}`)
+        api.get(`/api/marketplace/daily-sales/?date=${selectedDate}`, { timeout: 8000 }),
+        api.get(`/api/marketplace/daily-expenses/?date=${selectedDate}`, { timeout: 8000 }),
+        api.get(`/api/marketplace/daily-summary/?date=${selectedDate}`, { timeout: 8000 })
       ]);
 
-      let loadedSales: DailySale[] = [];
-      let loadedExpenses: DailyExpense[] = [];
+      // IMPORTANT: If a network call rejected (e.g. weak network / offline), fall back to cachedSales
+      // instead of an empty array so previously synced records NEVER disappear!
+      let loadedSales: DailySale[] = cachedSales;
+      let loadedExpenses: DailyExpense[] = cachedExpenses;
 
       if (salesRes.status === 'fulfilled' && salesRes.value.data) {
         const list = Array.isArray(salesRes.value.data) ? salesRes.value.data : (salesRes.value.data.results || []);
         loadedSales = list;
+        setCachedSalesForDate(selectedDate, list);
       }
 
       if (expensesRes.status === 'fulfilled' && expensesRes.value.data) {
         const list = Array.isArray(expensesRes.value.data) ? expensesRes.value.data : (expensesRes.value.data.results || []);
         loadedExpenses = list;
+        setCachedExpensesForDate(selectedDate, list);
       }
 
       if (summaryRes.status === 'fulfilled' && summaryRes.value.data) {
         setSummary(summaryRes.value.data);
+        try {
+          localStorage.setItem(`sb_cached_summary_${selectedDate}`, JSON.stringify(summaryRes.value.data));
+        } catch {
+          /* ignore */
+        }
       }
 
-      // Merge cloud records with pending offline records for the selected date
-      const offlineSalesForDate = getOfflineSales().filter((s: any) => !s.date || s.date === selectedDate);
-      const offlineExpensesForDate = getOfflineExpenses().filter((e: any) => !e.date || e.date === selectedDate);
-
-      const cloudSaleIds = new Set(loadedSales.map(s => String(s.id)));
-      const unSyncedSales = offlineSalesForDate.filter(s => !cloudSaleIds.has(String(s.id)));
-      setSales([...unSyncedSales, ...loadedSales]);
-
-      const cloudExpIds = new Set(loadedExpenses.map(e => String(e.id)));
-      const unSyncedExpenses = offlineExpensesForDate.filter(e => !cloudExpIds.has(String(e.id)));
-      setExpenses([...unSyncedExpenses, ...loadedExpenses]);
+      const finalMerge = buildMergedRecordsForDate(selectedDate, loadedSales, loadedExpenses);
+      setSales(finalMerge.mergedSales);
+      setExpenses(finalMerge.mergedExpenses);
     } catch (err) {
-      console.warn('Network issue loading daily cashbook. Loading cached offline records:', err);
-      const offlineSalesForDate = getOfflineSales().filter((s: any) => !s.date || s.date === selectedDate);
-      const offlineExpensesForDate = getOfflineExpenses().filter((e: any) => !e.date || e.date === selectedDate);
-      setSales(offlineSalesForDate);
-      setExpenses(offlineExpensesForDate);
+      console.warn('Network issue loading daily cashbook. Keeping local records:', err);
     } finally {
       setIsLoading(false);
       updatePendingCount();
@@ -379,9 +530,10 @@ export const DailyCashbook: React.FC = () => {
     fetchDailyData();
   }, [selectedDate]);
 
-  // One-tap repeat sale for fast movers (cash, qty 1) with Undo
+  // One-tap repeat sale for fast movers (cash, qty 1) — Instant 0ms Save-First + Undo
   const quickSell = async (name: string, price: number, productId?: number | null) => {
     const linked = productId ? inventoryProducts.find(p => p.id === productId) : undefined;
+    const tempId = `offline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const payload = {
       product: productId || null,
       item_name: name,
@@ -389,44 +541,57 @@ export const DailyCashbook: React.FC = () => {
       unit_price: price.toFixed(2),
       cost_price: String(((linked as any)?.cost_price ?? 0)),
       total_amount: price.toFixed(2),
-      payment_method: 'CASH',
+      payment_method: 'CASH' as const,
       customer_name: '',
       is_debt: false,
       notes: 'Quick sale',
       date: selectedDate
     };
-    try {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) throw new Error('OFFLINE_MODE');
-      const res = await api.post('/api/marketplace/daily-sales/', payload);
-      const saved: DailySale = res.data;
-      setSales(prev => [saved, ...prev]);
-      toast((t) => (
-        <span className="flex items-center gap-3 text-sm">
-          <span>✅ {name} · ₦{price.toLocaleString()}</span>
-          <button
-            className="font-bold text-rose-600 underline cursor-pointer"
-            onClick={async () => {
-              toast.dismiss(t.id);
+
+    // 1. Save locally FIRST in 0ms so it is 100% guaranteed never to be lost
+    const optimisticSale: DailySale = {
+      ...(payload as any),
+      id: tempId as any,
+      created_at: new Date().toISOString()
+    };
+    localStorage.setItem('sb_offline_sales', JSON.stringify([optimisticSale, ...getOfflineSales()]));
+    updatePendingCount();
+    setSales(prev => [optimisticSale, ...prev]);
+
+    toast((t) => (
+      <span className="flex items-center gap-3 text-sm">
+        <span>✅ {name} · ₦{price.toLocaleString()}</span>
+        <button
+          className="font-bold text-rose-600 underline cursor-pointer"
+          onClick={async () => {
+            toast.dismiss(t.id);
+            // Remove from local queue & state immediately
+            const remaining = getOfflineSales().filter(s => String(s.id) !== tempId);
+            localStorage.setItem('sb_offline_sales', JSON.stringify(remaining));
+            updatePendingCount();
+            let currentIdToDelete: any = tempId;
+            setSales(prev => {
+              const found = prev.find(s => String(s.id) === tempId || (s.item_name === name && s.created_at === optimisticSale.created_at));
+              if (found) currentIdToDelete = found.id;
+              return prev.filter(s => s.id !== currentIdToDelete && String(s.id) !== tempId);
+            });
+            if (!String(currentIdToDelete).startsWith('offline-')) {
               try {
-                await api.delete(`/api/marketplace/daily-sales/${saved.id}/`);
-                fetchDailyData();
+                await api.delete(`/api/marketplace/daily-sales/${currentIdToDelete}/`);
               } catch {
-                toast.error('Could not undo. Delete it from the list.');
+                /* ignore if offline */
               }
-            }}
-          >
-            Undo
-          </button>
-        </span>
-      ), { duration: 5000 });
-      fetchDailyData();
-    } catch {
-      const offlineSale: DailySale = { ...(payload as any), id: `offline-${Date.now()}` as any, created_at: new Date().toISOString() };
-      localStorage.setItem('sb_offline_sales', JSON.stringify([offlineSale, ...getOfflineSales()]));
-      updatePendingCount();
-      setSales(prev => [offlineSale, ...prev]);
-      toast.success(`📶 ${name} saved offline. Will sync when network returns.`);
-    }
+            }
+            toast.success('Sale undone.');
+          }}
+        >
+          Undo
+        </button>
+      </span>
+    ), { duration: 5000 });
+
+    // 2. Sync in background without blocking UI
+    syncOfflineQueue(true);
   };
 
   // Handle Product Selection in Sale Modal
@@ -462,10 +627,17 @@ export const DailyCashbook: React.FC = () => {
       return;
     }
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSaleItemName(scannedCode);
+      setShowSaleModal(true);
+      toast(`Scanned code: "${scannedCode}". Enter selling price to record.`, { icon: '🏷️' });
+      return;
+    }
+
     // Unlisted barcode: Look up product title & suggested retail price automatically
     const toastId = toast.loading(`Identifying barcode ${scannedCode}...`);
     try {
-      const res = await api.post('/api/marketplace/barcode-lookup/', { barcode: scannedCode });
+      const res = await api.post('/api/marketplace/barcode-lookup/', { barcode: scannedCode }, { timeout: 6000 });
       const data = res.data;
       if (data && data.found && data.name) {
         setSaleItemName(data.name);
@@ -485,7 +657,7 @@ export const DailyCashbook: React.FC = () => {
     }
   };
 
-  // Submit Sale
+  // Submit Sale — Instant 0ms Local Persistence + Non-Blocking Cloud Sync
   const handleSaveSale = async (e: React.FormEvent) => {
     e.preventDefault();
     const unitPriceNum = parseFloat(saleUnitPrice) || 0;
@@ -504,6 +676,7 @@ export const DailyCashbook: React.FC = () => {
       return;
     }
 
+    const tempId = `offline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const payload = {
       product: selectedProduct ? selectedProduct.id : null,
       item_name: saleItemName,
@@ -520,134 +693,85 @@ export const DailyCashbook: React.FC = () => {
       date: selectedDate
     };
 
-    const toastId = toast.loading('Recording sale...');
-    try {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        throw new Error('OFFLINE_MODE');
+    // 1. Persist immediately to localStorage queue & React state (0ms latency, zero data loss)
+    const optimisticSale: DailySale = {
+      ...payload,
+      id: tempId as any,
+      created_at: new Date().toISOString()
+    };
+
+    const existingQueue = getOfflineSales();
+    localStorage.setItem('sb_offline_sales', JSON.stringify([optimisticSale, ...existingQueue]));
+    updatePendingCount();
+    setSales(prev => [optimisticSale, ...prev]);
+
+    // 2. If Credit, auto-sync to Gbege Book (DebtorBook in localStorage) immediately
+    if (salePaymentMethod === 'CREDIT') {
+      try {
+        const existingDebtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
+        const newDebtor = {
+          id: `deb-${Date.now()}`,
+          name: saleCustomerName || 'Walk-in Customer',
+          phone: saleCustomerPhone || '',
+          amount: totalAmount,
+          paidAmount: 0,
+          itemsBought: `${saleItemName} (Qty: ${qtyNum})`,
+          dueDate: saleDueDate || localDateStr(new Date(Date.now() + 7 * 86400000)),
+          status: 'UNPAID',
+          date: selectedDate,
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem('sb_debtors', JSON.stringify([newDebtor, ...existingDebtors]));
+        window.dispatchEvent(new Event('smartbiz_debtors_updated'));
+      } catch (storageErr) {
+        console.error('Failed to sync to Gbege Book:', storageErr);
       }
+    }
 
-      const res = await api.post('/api/marketplace/daily-sales/', payload);
-      const savedSale: DailySale = res.data || { ...payload, id: Date.now() };
-
-      setSales(prev => [savedSale, ...prev]);
-
-      // If Credit, auto-sync to Gbege Book (DebtorBook in localStorage)
-      if (salePaymentMethod === 'CREDIT') {
-        try {
-          const existingDebtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
-          const newDebtor = {
-            id: `deb-${Date.now()}`,
-            name: saleCustomerName || 'Walk-in Customer',
-            phone: saleCustomerPhone || '',
-            amount: totalAmount,
-            paidAmount: 0,
-            itemsBought: `${saleItemName} (Qty: ${qtyNum})`,
-            dueDate: saleDueDate || localDateStr(new Date(Date.now() + 7 * 86400000)),
-            status: 'UNPAID',
-            date: selectedDate,
-            createdAt: new Date().toISOString()
-          };
-          localStorage.setItem('sb_debtors', JSON.stringify([newDebtor, ...existingDebtors]));
-          window.dispatchEvent(new Event('smartbiz_debtors_updated'));
-          toast.success('Debt also synced to your Gbege Book! 📒');
-        } catch (storageErr) {
-          console.error('Failed to sync to Gbege Book:', storageErr);
-        }
-      }
-
-      // Decrement local inventory state if product linked
-      if (selectedProduct) {
-        setInventoryProducts(prev => prev.map(p => {
+    // 3. Decrement local inventory state & cache if product linked
+    if (selectedProduct) {
+      setInventoryProducts(prev => {
+        const updated = prev.map(p => {
           if (p.id === selectedProduct.id) {
             return { ...p, stock_count: Math.max(0, (p.stock_count || 0) - qtyNum) };
           }
           return p;
-        }));
-      }
-
-      toast.success('Sale recorded successfully!', { id: toastId });
-      setRecentSaleReceipt(savedSale);
-      setShowSaleModal(false);
-
-      // Reset form
-      setSelectedProduct(null);
-      setSaleItemName('');
-      setSaleUnitPrice('');
-      setSaleCostPrice('');
-      setSaleQuantity(1);
-      setSalePaymentMethod('CASH');
-      setSaleCustomerName('');
-      setSaleCustomerPhone('');
-      setSaleDueDate('');
-      setSaleNotes('');
-      setTransferFraudVerified(false);
-
-      fetchDailyData();
-    } catch (err: any) {
-      console.warn('Network issue saving sale. Saving to local offline queue:', err);
-      // Offline fallback: save locally to offline queue!
-      const offlineSale: DailySale = {
-        ...payload,
-        id: `offline-${Date.now()}` as any,
-        created_at: new Date().toISOString()
-      };
-      const existingQueue = getOfflineSales();
-      localStorage.setItem('sb_offline_sales', JSON.stringify([offlineSale, ...existingQueue]));
-      updatePendingCount();
-
-      setSales(prev => [offlineSale, ...prev]);
-
-      if (salePaymentMethod === 'CREDIT') {
+        });
         try {
-          const existingDebtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
-          const newDebtor = {
-            id: `deb-${Date.now()}`,
-            name: saleCustomerName || 'Walk-in Customer',
-            phone: saleCustomerPhone || '',
-            amount: totalAmount,
-            paidAmount: 0,
-            itemsBought: `${saleItemName} (Qty: ${qtyNum})`,
-            dueDate: saleDueDate || localDateStr(new Date(Date.now() + 7 * 86400000)),
-            status: 'UNPAID',
-            date: selectedDate,
-            createdAt: new Date().toISOString()
-          };
-          localStorage.setItem('sb_debtors', JSON.stringify([newDebtor, ...existingDebtors]));
-          window.dispatchEvent(new Event('smartbiz_debtors_updated'));
-        } catch (storageErr) {
-          console.error('Failed to sync to Gbege Book:', storageErr);
+          localStorage.setItem('sb_cached_products', JSON.stringify(updated));
+        } catch {
+          /* ignore */
         }
-      }
+        return updated;
+      });
+    }
 
-      if (selectedProduct) {
-        setInventoryProducts(prev => prev.map(p => {
-          if (p.id === selectedProduct.id) {
-            return { ...p, stock_count: Math.max(0, (p.stock_count || 0) - qtyNum) };
-          }
-          return p;
-        }));
-      }
+    // 4. Close modal & reset form immediately without waiting for slow network
+    setRecentSaleReceipt(optimisticSale);
+    setShowSaleModal(false);
 
-      toast.success('📶 Saved offline! Will sync automatically when network returns.', { id: toastId, duration: 4500 });
-      setRecentSaleReceipt(offlineSale);
-      setShowSaleModal(false);
+    setSelectedProduct(null);
+    setSaleItemName('');
+    setSaleUnitPrice('');
+    setSaleCostPrice('');
+    setSaleQuantity(1);
+    setSalePaymentMethod('CASH');
+    setSaleCustomerName('');
+    setSaleCustomerPhone('');
+    setSaleDueDate('');
+    setSaleNotes('');
+    setTransferFraudVerified(false);
 
-      // Reset form
-      setSelectedProduct(null);
-      setSaleItemName('');
-      setSaleUnitPrice('');
-      setSaleCostPrice('');
-      setSaleQuantity(1);
-      setSalePaymentMethod('CASH');
-      setSaleCustomerName('');
-      setSaleCustomerPhone('');
-      setSaleDueDate('');
-      setSaleNotes('');
-      setTransferFraudVerified(false);
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.success('📶 Sale saved offline! Will auto-sync when internet returns.', { duration: 3500 });
+    } else {
+      toast.success('✅ Sale recorded!', { duration: 2500 });
+      // Trigger non-blocking background sync
+      syncOfflineQueue(true);
     }
   };
 
-  // Submit Expense
+  // Submit Expense — Instant 0ms Local Persistence + Non-Blocking Cloud Sync
   const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseFloat(expenseAmount) || 0;
@@ -656,6 +780,7 @@ export const DailyCashbook: React.FC = () => {
       return;
     }
 
+    const tempId = `offline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const payload = {
       title: expenseTitle,
       category: expenseCategory,
@@ -665,48 +790,29 @@ export const DailyCashbook: React.FC = () => {
       date: selectedDate
     };
 
-    const toastId = toast.loading('Logging petty cash expense...');
-    try {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        throw new Error('OFFLINE_MODE');
-      }
+    const optimisticExpense: DailyExpense = {
+      ...payload,
+      id: tempId as any,
+      created_at: new Date().toISOString()
+    };
 
-      const res = await api.post('/api/marketplace/daily-expenses/', payload);
-      const savedExpense: DailyExpense = res.data || { ...payload, id: Date.now() };
+    const existingQueue = getOfflineExpenses();
+    localStorage.setItem('sb_offline_expenses', JSON.stringify([optimisticExpense, ...existingQueue]));
+    updatePendingCount();
+    setExpenses(prev => [optimisticExpense, ...prev]);
 
-      setExpenses(prev => [savedExpense, ...prev]);
-      toast.success('Petty cash expense recorded!', { id: toastId });
-      setShowExpenseModal(false);
+    setShowExpenseModal(false);
+    setExpenseTitle('');
+    setExpenseAmount('');
+    setExpenseCategory('FUEL_GEN');
+    setExpensePaymentMethod('CASH');
+    setExpenseNotes('');
 
-      // Reset form
-      setExpenseTitle('');
-      setExpenseAmount('');
-      setExpenseCategory('FUEL_GEN');
-      setExpensePaymentMethod('CASH');
-      setExpenseNotes('');
-
-      fetchDailyData();
-    } catch (err: any) {
-      console.warn('Network issue saving expense. Saving to local offline queue:', err);
-      const offlineExpense: DailyExpense = {
-        ...payload,
-        id: `offline-${Date.now()}` as any,
-        created_at: new Date().toISOString()
-      };
-      const existingQueue = getOfflineExpenses();
-      localStorage.setItem('sb_offline_expenses', JSON.stringify([offlineExpense, ...existingQueue]));
-      updatePendingCount();
-
-      setExpenses(prev => [offlineExpense, ...prev]);
-      toast.success('📶 Petty cash saved offline! Will sync to cloud when network returns.', { id: toastId, duration: 4000 });
-      setShowExpenseModal(false);
-
-      // Reset form
-      setExpenseTitle('');
-      setExpenseAmount('');
-      setExpenseCategory('FUEL_GEN');
-      setExpensePaymentMethod('CASH');
-      setExpenseNotes('');
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.success('📶 Petty cash saved offline! Will auto-sync when internet returns.', { duration: 3500 });
+    } else {
+      toast.success('✅ Petty cash expense recorded!', { duration: 2500 });
+      syncOfflineQueue(true);
     }
   };
 
@@ -806,7 +912,7 @@ export const DailyCashbook: React.FC = () => {
     setIsLoadingAI(true);
     const toastId = toast.loading('🤖 Generating AI daily operations brief...');
     try {
-      const res = await api.post('marketplace/daily-ai-insights/', { date: selectedDate });
+      const res = await api.post('marketplace/daily-ai-insights/', { date: selectedDate }, { timeout: 45000 });
       setAiInsights(res.data);
       toast.success('AI Daily Intelligence generated! 🚀', { id: toastId });
     } catch (err: any) {
@@ -904,44 +1010,63 @@ export const DailyCashbook: React.FC = () => {
       is_edited: true
     };
 
-    const toastId = toast.loading('Updating sale record...');
+    // Optimistically update UI & cache immediately
+    const targetId = editingSale.id;
+    setSales(prev => {
+      const next = prev.map(s => s.id === targetId ? { ...s, ...payload } : s);
+      setCachedSalesForDate(selectedDate, next.filter(x => !String(x.id).startsWith('offline-')));
+      return next;
+    });
+    setShowEditSaleModal(false);
+    setEditingSale(null);
+
+    if (String(targetId).startsWith('offline-')) {
+      const offlineSales = getOfflineSales().map(s => s.id === targetId ? { ...s, ...payload } : s);
+      localStorage.setItem('sb_offline_sales', JSON.stringify(offlineSales));
+      toast.success('Sale record updated! ✓');
+      syncOfflineQueue(true);
+      return;
+    }
+
     try {
-      if (String(editingSale.id).startsWith('offline-')) {
-        const offlineSales = getOfflineSales().map(s => s.id === editingSale.id ? { ...s, ...payload } : s);
-        localStorage.setItem('sb_offline_sales', JSON.stringify(offlineSales));
-        setSales(prev => prev.map(s => s.id === editingSale.id ? { ...s, ...payload } : s));
-      } else {
-        const res = await api.patch(`marketplace/daily-sales/${editingSale.id}/`, payload);
-        const updated = res.data;
-        setSales(prev => prev.map(s => s.id === editingSale.id ? updated : s));
+      const res = await api.patch(`marketplace/daily-sales/${targetId}/`, payload, { timeout: 7000 });
+      if (res?.data) {
+        setSales(prev => {
+          const next = prev.map(s => s.id === targetId ? res.data : s);
+          setCachedSalesForDate(selectedDate, next.filter(x => !String(x.id).startsWith('offline-')));
+          return next;
+        });
       }
-      toast.success('Sale record updated successfully! ✓', { id: toastId });
-      setShowEditSaleModal(false);
-      setEditingSale(null);
-      fetchDailyData();
-    } catch (err: any) {
-      console.error('Failed to update sale:', err);
-      toast.error(err.response?.data?.error || 'Failed to update sale record.', { id: toastId });
+      toast.success('Sale record updated! ✓');
+    } catch {
+      toast.success('Updated locally! ✓');
     }
   };
 
   const handleDeleteSale = async (sale: DailySale) => {
     if (!window.confirm(`Are you sure you want to delete "${sale.item_name}"?`)) return;
-    const toastId = toast.loading('Deleting sale...');
-    try {
-      if (String(sale.id).startsWith('offline-')) {
-        const offlineSales = getOfflineSales().filter(s => s.id !== sale.id);
-        localStorage.setItem('sb_offline_sales', JSON.stringify(offlineSales));
-      } else {
-        await api.delete(`marketplace/daily-sales/${sale.id}/`);
+    const targetId = sale.id;
+
+    // Optimistically remove immediately
+    const offlineSales = getOfflineSales().filter(s => String(s.id) !== String(targetId));
+    localStorage.setItem('sb_offline_sales', JSON.stringify(offlineSales));
+    updatePendingCount();
+
+    setSales(prev => {
+      const next = prev.filter(s => s.id !== targetId);
+      setCachedSalesForDate(selectedDate, next.filter(x => !String(x.id).startsWith('offline-')));
+      return next;
+    });
+    setShowEditSaleModal(false);
+    setEditingSale(null);
+    toast.success('Sale deleted.');
+
+    if (!String(targetId).startsWith('offline-')) {
+      try {
+        await api.delete(`marketplace/daily-sales/${targetId}/`, { timeout: 7000 });
+      } catch {
+        /* already removed from local cache */
       }
-      setSales(prev => prev.filter(s => s.id !== sale.id));
-      toast.success('Sale deleted.', { id: toastId });
-      setShowEditSaleModal(false);
-      setEditingSale(null);
-      fetchDailyData();
-    } catch (err) {
-      toast.error('Failed to delete sale.', { id: toastId });
     }
   };
 
@@ -986,44 +1111,61 @@ export const DailyCashbook: React.FC = () => {
       is_edited: true
     };
 
-    const toastId = toast.loading('Updating expense record...');
+    const targetId = editingExpense.id;
+    setExpenses(prev => {
+      const next = prev.map(exp => exp.id === targetId ? { ...exp, ...payload } : exp);
+      setCachedExpensesForDate(selectedDate, next.filter(x => !String(x.id).startsWith('offline-')));
+      return next;
+    });
+    setShowEditExpenseModal(false);
+    setEditingExpense(null);
+
+    if (String(targetId).startsWith('offline-')) {
+      const offlineExpenses = getOfflineExpenses().map(exp => exp.id === targetId ? { ...exp, ...payload } : exp);
+      localStorage.setItem('sb_offline_expenses', JSON.stringify(offlineExpenses));
+      toast.success('Expense record updated! ✓');
+      syncOfflineQueue(true);
+      return;
+    }
+
     try {
-      if (String(editingExpense.id).startsWith('offline-')) {
-        const offlineExpenses = getOfflineExpenses().map(e => e.id === editingExpense.id ? { ...e, ...payload } : e);
-        localStorage.setItem('sb_offline_expenses', JSON.stringify(offlineExpenses));
-        setExpenses(prev => prev.map(e => e.id === editingExpense.id ? { ...e, ...payload } : e));
-      } else {
-        const res = await api.patch(`marketplace/daily-expenses/${editingExpense.id}/`, payload);
-        const updated = res.data;
-        setExpenses(prev => prev.map(e => e.id === editingExpense.id ? updated : e));
+      const res = await api.patch(`marketplace/daily-expenses/${targetId}/`, payload, { timeout: 7000 });
+      if (res?.data) {
+        setExpenses(prev => {
+          const next = prev.map(exp => exp.id === targetId ? res.data : exp);
+          setCachedExpensesForDate(selectedDate, next.filter(x => !String(x.id).startsWith('offline-')));
+          return next;
+        });
       }
-      toast.success('Expense record updated successfully! ✓', { id: toastId });
-      setShowEditExpenseModal(false);
-      setEditingExpense(null);
-      fetchDailyData();
-    } catch (err: any) {
-      console.error('Failed to update expense:', err);
-      toast.error(err.response?.data?.error || 'Failed to update expense record.', { id: toastId });
+      toast.success('Expense record updated! ✓');
+    } catch {
+      toast.success('Updated locally! ✓');
     }
   };
 
   const handleDeleteExpense = async (expense: DailyExpense) => {
     if (!window.confirm(`Are you sure you want to delete "${expense.title}"?`)) return;
-    const toastId = toast.loading('Deleting expense...');
-    try {
-      if (String(expense.id).startsWith('offline-')) {
-        const offlineExpenses = getOfflineExpenses().filter(e => e.id !== expense.id);
-        localStorage.setItem('sb_offline_expenses', JSON.stringify(offlineExpenses));
-      } else {
-        await api.delete(`marketplace/daily-expenses/${expense.id}/`);
+    const targetId = expense.id;
+
+    const offlineExpenses = getOfflineExpenses().filter(e => String(e.id) !== String(targetId));
+    localStorage.setItem('sb_offline_expenses', JSON.stringify(offlineExpenses));
+    updatePendingCount();
+
+    setExpenses(prev => {
+      const next = prev.filter(e => e.id !== targetId);
+      setCachedExpensesForDate(selectedDate, next.filter(x => !String(x.id).startsWith('offline-')));
+      return next;
+    });
+    setShowEditExpenseModal(false);
+    setEditingExpense(null);
+    toast.success('Expense deleted.');
+
+    if (!String(targetId).startsWith('offline-')) {
+      try {
+        await api.delete(`marketplace/daily-expenses/${targetId}/`, { timeout: 7000 });
+      } catch {
+        /* already removed from local cache */
       }
-      setExpenses(prev => prev.filter(e => e.id !== expense.id));
-      toast.success('Expense deleted.', { id: toastId });
-      setShowEditExpenseModal(false);
-      setEditingExpense(null);
-      fetchDailyData();
-    } catch (err) {
-      toast.error('Failed to delete expense.', { id: toastId });
     }
   };
 
@@ -1060,7 +1202,7 @@ export const DailyCashbook: React.FC = () => {
 
             {/* Offline Sync Status Pill */}
             <button
-              onClick={syncOfflineQueue}
+              onClick={() => syncOfflineQueue(false)}
               disabled={isSyncingQueue || (!isOnline && pendingSyncCount === 0)}
               title={!isOnline ? "Network is offline. Entries saved locally on device." : pendingSyncCount > 0 ? "Click to sync offline records to cloud" : "All records synced to cloud"}
               className={`flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-bold transition-all border ${
@@ -1179,7 +1321,7 @@ export const DailyCashbook: React.FC = () => {
           </div>
           {isOnline && pendingSyncCount > 0 && (
             <button
-              onClick={syncOfflineQueue}
+              onClick={() => syncOfflineQueue(false)}
               disabled={isSyncingQueue}
               className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0 cursor-pointer self-start sm:self-auto"
             >

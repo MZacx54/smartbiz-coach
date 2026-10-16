@@ -25,34 +25,43 @@ logger = logging.getLogger(__name__)
 
 def extract_product_polygon_and_meta(image_base64: str, mime_type: str = "image/jpeg"):
     """
-    Extracts a high-density polygon tracing ONLY the commercial product foreground,
+    Extracts high-density polygon(s) tracing ONLY the commercial product foreground,
+    including interior holes/cutout regions where background shows through,
     along with product name, suggested price, and category.
     """
     prompt = """
     You are an expert computer vision segmentation AI for retail product photography.
-    Look at this product photo. Identify the primary commercial product/item foreground (ignore any bedsheet, floor tiles, tablecloth, room clutter, or hands holding the item).
+    Look at this product photo. Identify the primary commercial product/item foreground.
+    Strictly ignore and EXCLUDE any background: bedsheets, floor tiles, wooden tables, carpets, wall clutter, shadows on surfaces, and human hands/fingers holding the item.
 
     Tasks:
-    1. "product_title": Clean, professional product title (e.g., "Airtel 4G Pocket WiFi", "Ankara 6-Yard Fabric", "Nike Air Force 1")
+    1. "product_title": Clean, professional product title (e.g., "Airtel 4G Pocket WiFi", "Ankara Fabric 6 Yards", "Nike Air Max 90")
     2. "suggested_price": Integer selling price in Nigerian Naira (NGN)
-    3. "category": Primary product category
-    4. "polygon": Provide 35 to 55 tightly-spaced perimeter vertices [y, x] normalized between 0 and 1000 in clockwise order that tightly hugs ONLY the physical product's outer border.
-       CRITICAL: Cut tightly along the product's outer plastic/fabric/leather boundary. DO NOT include any of the background cloth, pattern, or table!
+    3. "category": Primary retail product category
+    4. "polygons": Array of polygons. Usually 1 polygon, but if the product has multiple detached parts (e.g. pair of shoes, bottle + lid, accessories), provide 1 polygon per part.
+       Each polygon must have 50 to 80 tightly-spaced perimeter vertices [y, x] normalized between 0 and 1000 in clockwise order hugging tightly along the outer boundary.
+       CRITICAL: Cut tightly along the product's outer edge. It is better to cut 2-3 pixels inside the product than to leave any sliver of bedsheet, fabric, or table!
+    5. "holes": Array of interior hole/cutout polygons [y, x] where the background is visible through the product (e.g., mug handles, shoe loops, gaps between legs, handbag straps). If none, return [].
 
     Respond STRICTLY with valid JSON:
     {
       "product_title": "Product Name",
       "suggested_price": 15000,
       "category": "Electronics",
-      "polygon": [
-        [300, 250], [300, 750], [920, 750], [920, 250]
-      ]
+      "polygons": [
+        [[300, 250], [300, 750], [920, 750], [920, 250]]
+      ],
+      "holes": []
     }
     """
     try:
         data = gemini_utils.generate_json_content(prompt, image_base64=image_base64, mime_type=mime_type)
-        if isinstance(data, dict) and data.get("polygon") and len(data["polygon"]) >= 6:
-            return data
+        if isinstance(data, dict):
+            # Normalize single "polygon" vs multiple "polygons"
+            if not data.get("polygons") and data.get("polygon"):
+                data["polygons"] = [data["polygon"]]
+            if data.get("polygons") and len(data["polygons"]) > 0:
+                return data
     except Exception as e:
         logger.warning(f"Polygon segmentation attempt 1 failed: {e}")
 
@@ -61,7 +70,8 @@ def extract_product_polygon_and_meta(image_base64: str, mime_type: str = "image/
         "product_title": "Commercial Product",
         "suggested_price": 5000,
         "category": "General Merchandise",
-        "polygon": [[180, 180], [180, 820], [820, 820], [820, 180]]
+        "polygons": [[[160, 160], [160, 840], [840, 840], [840, 160]]],
+        "holes": []
     }
 
 
@@ -76,37 +86,32 @@ def render_studio_composite(cutout_img: Image.Image, mask: Image.Image, theme: s
     if theme == "transparent":
         studio = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
     elif theme == "warm_wood":
-        # Warm oak boutique wood tone
-        studio = Image.new("RGBA", (out_w, out_h), (245, 238, 228, 255))
+        # Warm oak boutique wood tone with gentle lighting
+        studio = Image.new("RGBA", (out_w, out_h), (248, 242, 234, 255))
         w_draw = ImageDraw.Draw(studio)
         for y in range(out_h):
             factor = y / out_h
-            r = int(245 - (factor * 35))
-            g = int(235 - (factor * 45))
-            b = int(220 - (factor * 50))
+            r = int(248 - (factor * 26))
+            g = int(240 - (factor * 36))
+            b = int(230 - (factor * 42))
             w_draw.line([(0, y), (out_w, y)], fill=(r, g, b, 255))
     elif theme == "studio_grey":
         # Ultra-minimalist luxury grey
-        studio = Image.new("RGBA", (out_w, out_h), (238, 240, 243, 255))
+        studio = Image.new("RGBA", (out_w, out_h), (242, 244, 247, 255))
         g_draw = ImageDraw.Draw(studio)
         for y in range(out_h // 2, out_h):
             factor = (y - (out_h // 2)) / (out_h // 2)
             alpha = int(25 * factor)
-            g_draw.line([(0, y), (out_w, y)], fill=(190, 195, 205, alpha))
+            g_draw.line([(0, y), (out_w, y)], fill=(195, 200, 210, alpha))
     else:
-        # Default: Pure Studio White (Jumia / Amazon / Konga standard)
-        studio = Image.new("RGBA", (out_w, out_h), (252, 252, 254, 255))
-        g_draw = ImageDraw.Draw(studio)
-        for y in range(out_h // 2, out_h):
-            factor = (y - (out_h // 2)) / (out_h // 2)
-            alpha = int(20 * factor)
-            g_draw.line([(0, y), (out_w, y)], fill=(210, 215, 225, alpha))
+        # Default: 100% Pure Studio White (Jumia / Amazon / Konga standard)
+        studio = Image.new("RGBA", (out_w, out_h), (255, 255, 255, 255))
 
     # 2. Crop cutout to bounding box of mask content
     bbox = mask.getbbox()
     if bbox:
         cropped = cutout_img.crop(bbox)
-        target_dim = int(out_w * 0.72)
+        target_dim = int(out_w * 0.74)
         cropped.thumbnail((target_dim, target_dim), Image.Resampling.LANCZOS)
         pw, ph = cropped.size
 
@@ -168,22 +173,34 @@ class PrecisionPhotoStudioView(views.APIView):
 
             # 1. AI Polygon Segmentation & Metadata Extraction
             meta = extract_product_polygon_and_meta(clean_b64, mime_type="image/jpeg")
-            poly_points = meta.get("polygon", [])
+            polygons = meta.get("polygons") or ([meta["polygon"]] if meta.get("polygon") else [])
+            holes = meta.get("holes") or meta.get("negative_polygons") or []
 
-            # Convert normalized coords [y, x] to pixel points (x, y)
-            pixel_poly = [(int((pt[1] / 1000.0) * w), int((pt[0] / 1000.0) * h)) for pt in poly_points]
+            # 2. Render smooth antialiased alpha mask with hole subtraction
+            raw_mask = Image.new("L", (w, h), 0)
+            draw = ImageDraw.Draw(raw_mask)
 
-            # 2. Render smooth antialiased alpha mask
-            mask = Image.new("L", (w, h), 0)
-            draw = ImageDraw.Draw(mask)
-            draw.polygon(pixel_poly, fill=255)
-            mask = mask.filter(ImageFilter.GaussianBlur(radius=1.8))
+            # Draw outer product polygons
+            for poly in polygons:
+                if len(poly) >= 3:
+                    pixel_poly = [(int((pt[1] / 1000.0) * w), int((pt[0] / 1000.0) * h)) for pt in poly]
+                    draw.polygon(pixel_poly, fill=255)
+
+            # Cut out interior holes (where background shows through)
+            for hole in holes:
+                if len(hole) >= 3:
+                    pixel_hole = [(int((pt[1] / 1000.0) * w), int((pt[0] / 1000.0) * h)) for pt in hole]
+                    draw.polygon(pixel_hole, fill=0)
+
+            # Apply subtle inward morphological erosion to strip any 1-2px bedsheet/table fringe
+            eroded_mask = raw_mask.filter(ImageFilter.MinFilter(3))
+            smooth_mask = eroded_mask.filter(ImageFilter.GaussianBlur(radius=1.2))
 
             cutout = orig_img.copy()
-            cutout.putalpha(mask)
+            cutout.putalpha(smooth_mask)
 
             # 3. Generate Studio Output
-            studio_img = render_studio_composite(cutout, mask, theme=theme)
+            studio_img = render_studio_composite(cutout, smooth_mask, theme=theme)
 
             # Export studio image to JPEG (or PNG if transparent)
             studio_buf = io.BytesIO()

@@ -117,7 +117,14 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      const saved = localStorage.getItem("sb_transactions");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Navigation State -> Converted to Sync with React Router
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -205,49 +212,57 @@ const App: React.FC = () => {
     }
   };
 
-  // Backend Data Fetching
+  // Backend Data Fetching (Parallel Non-Blocking Revalidation + Core Chunk Pre-warming)
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
       const token = localStorage.getItem("sb_auth_token");
       if (token) {
-        try {
-          const profile = await authService.getProfile();
+        // Pre-warm critical operational chunks in the background so Day-Book & POS open in 0ms
+        setTimeout(() => {
+          import("./components/DailyCashbook").catch(() => {});
+          import("./components/Dashboard").catch(() => {});
+          import("./components/DebtorBook").catch(() => {});
+          import("./components/ProductManager").catch(() => {});
+        }, 300);
+
+        const [profileRes, brand, txs, stats, userActions] = await Promise.allSettled([
+          authService.getProfile(),
+          brandService.getBrand(),
+          billingService.getTransactions(),
+          authService.getStats(),
+          authService.getActions(),
+        ]);
+
+        if (profileRes.status === "fulfilled" && profileRes.value) {
+          const profile = profileRes.value;
           setUser(normalizeUser(profile));
-          if (profile && typeof profile.credits === 'number') {
+          if (typeof profile.credits === 'number') {
             setUserStats((prev) => ({ ...prev, bizCredits: profile.credits }));
           }
-
-          const [brand, txs, stats, userActions] = await Promise.allSettled([
-            brandService.getBrand(),
-            billingService.getTransactions(),
-            authService.getStats(),
-            authService.getActions(),
-          ]);
-
-          if (brand.status === "fulfilled" && brand.value)
-            setSavedBrand(brand.value);
-          if (txs.status === "fulfilled") {
-            const mappedTxs: Transaction[] = txs.value.map((t: any) => ({
-              id: String(t.id),
-              date: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-              amount: parseFloat(t.amount) || 0,
-              description: t.description || '',
-              status: t.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
-              provider: t.provider || 'PAYSTACK',
-              type: t.type || 'PURCHASE'
-            }));
-            setTransactions(mappedTxs);
-          }
-          if (stats.status === "fulfilled") setUserStats(stats.value);
-          if (userActions.status === "fulfilled") setActions(userActions.value);
-        } catch (error: any) {
-          console.error("Session check failed:", error);
-          const status = error?.response?.status;
-          // Only log out if it is an explicit auth token failure (401/403)
+        } else if (profileRes.status === "rejected") {
+          const status = (profileRes.reason as any)?.response?.status;
           if (status === 401 || status === 403) {
             handleLogout();
+            return;
           }
         }
+
+        if (brand.status === "fulfilled" && brand.value)
+          setSavedBrand(brand.value);
+        if (txs.status === "fulfilled" && Array.isArray(txs.value)) {
+          const mappedTxs: Transaction[] = txs.value.map((t: any) => ({
+            id: String(t.id),
+            date: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
+            amount: parseFloat(t.amount) || 0,
+            description: t.description || '',
+            status: t.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
+            provider: t.provider || 'PAYSTACK',
+            type: t.type || 'PURCHASE'
+          }));
+          setTransactions(mappedTxs);
+        }
+        if (stats.status === "fulfilled" && stats.value) setUserStats(stats.value);
+        if (userActions.status === "fulfilled" && userActions.value) setActions(userActions.value);
       } else {
         setUser(null);
       }
@@ -255,14 +270,33 @@ const App: React.FC = () => {
     checkAuthAndFetchData();
   }, []);
 
-  const [userStats, setUserStats] = useState<UserStats>({
-    grantReadinessScore: 0,
-    bizCredits: 0,
-    completedTasks: 0,
-    totalTasks: 6,
+  const [userStats, setUserStats] = useState<UserStats>(() => {
+    try {
+      const saved = localStorage.getItem("sb_user_stats");
+      return saved ? JSON.parse(saved) : {
+        grantReadinessScore: 0,
+        bizCredits: 0,
+        completedTasks: 0,
+        totalTasks: 6,
+      };
+    } catch {
+      return {
+        grantReadinessScore: 0,
+        bizCredits: 0,
+        completedTasks: 0,
+        totalTasks: 6,
+      };
+    }
   });
 
-  const [actions, setActions] = useState<ActionCard[]>([]);
+  const [actions, setActions] = useState<ActionCard[]>(() => {
+    try {
+      const saved = localStorage.getItem("sb_user_actions");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // --- Effects for Persistence ---
 
@@ -273,6 +307,22 @@ const App: React.FC = () => {
       localStorage.removeItem("sb_user");
     }
   }, [user]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sb_user_stats", JSON.stringify(userStats));
+    } catch {
+      /* ignore */
+    }
+  }, [userStats]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sb_user_actions", JSON.stringify(actions));
+    } catch {
+      /* ignore */
+    }
+  }, [actions]);
 
   useEffect(() => {
     if (savedBrand) {
@@ -374,7 +424,17 @@ const App: React.FC = () => {
     setContentHistory([]);
     setCartItems([]);
     setTransactions([]);
-    localStorage.clear();
+    const sessionKeys = [
+      'sb_auth_token',
+      'sb_user',
+      'sb_brand',
+      'sb_content_history',
+      'sb_cart',
+      'sb_transactions',
+      'sb_user_stats',
+      'sb_user_actions'
+    ];
+    sessionKeys.forEach((k) => localStorage.removeItem(k));
     navigate('/');
   };
 
@@ -682,6 +742,7 @@ const App: React.FC = () => {
                   <Route path="learning" element={<LearningHub onNavigate={handleNavigate} />} />
                   <Route path="inventory" element={<ProductManager credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="debtor" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="debtors" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
                   <Route path="cashbook" element={<DailyCashbook />} />
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" />} />

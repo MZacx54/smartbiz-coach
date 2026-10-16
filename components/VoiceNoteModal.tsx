@@ -248,7 +248,7 @@ export const VoiceNoteModal: React.FC<Props> = ({ open, onClose, onSaved, select
     try {
       const res = await api.post('/api/marketplace/voice-pos-confirm/', {
         sales, expenses, transcript, detected_language: detectedLang, date: selectedDate,
-      });
+      }, { timeout: 10000 });
       toast.success(res.data.summary || 'Saved to your book!', { icon: '✅', duration: 4000 });
       if (res.data.new_products_created?.length) {
         toast(`New in your catalog: ${res.data.new_products_created.join(', ')}`, { icon: '📦', duration: 5000 });
@@ -257,6 +257,58 @@ export const VoiceNoteModal: React.FC<Props> = ({ open, onClose, onSaved, select
       onSaved();
       onClose();
     } catch (err: any) {
+      // If network dropped or timed out during save, persist to local offline queue so nothing is lost!
+      if (!err.response) {
+        try {
+          if (sales.length > 0) {
+            const existingSales = JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
+            const offlineSales = sales.map((s, idx) => ({
+              id: `offline-${Date.now()}-v${idx}`,
+              product: s.matched_product_id || null,
+              item_name: s.item_name,
+              quantity: s.quantity || 1,
+              unit_price: Number(s.unit_price || 0).toFixed(2),
+              cost_price: '0.00',
+              total_amount: Number(s.total_amount || 0).toFixed(2),
+              payment_method: s.payment_method,
+              customer_name: s.customer_name || '',
+              is_debt: s.payment_method === 'CREDIT',
+              notes: 'Voice POS (Offline)',
+              date: selectedDate,
+              created_at: new Date().toISOString(),
+            }));
+            localStorage.setItem('sb_offline_sales', JSON.stringify([...offlineSales, ...existingSales]));
+          }
+          if (expenses.length > 0) {
+            const existingExpenses = JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]');
+            const offlineExpenses = expenses.map((e, idx) => ({
+              id: `offline-${Date.now()}-ve${idx}`,
+              title: e.title,
+              category: e.category || 'OTHER',
+              amount: Number(e.amount || 0).toFixed(2),
+              payment_method: e.payment_method || 'CASH',
+              notes: 'Voice POS (Offline)',
+              date: selectedDate,
+              created_at: new Date().toISOString(),
+            }));
+            localStorage.setItem('sb_offline_expenses', JSON.stringify([...offlineExpenses, ...existingExpenses]));
+          }
+          const creditDebts = sales
+            .filter(s => s.payment_method === 'CREDIT')
+            .map(s => ({
+              name: s.customer_name || 'Walk-in Customer',
+              amount: Number(s.total_amount || 0),
+              itemsBought: `${s.item_name} (Qty: ${s.quantity || 1})`,
+            }));
+          syncDebts(creditDebts);
+          toast.success('📶 Network slow — saved to your offline book! Will auto-sync when online.', { duration: 4000 });
+          onSaved();
+          onClose();
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
       toast.error(err.response?.data?.error || 'Could not save. Please check the entries and try again.');
       setPhase('review');
     }

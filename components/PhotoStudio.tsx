@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { runPrecisionStudio, generateStudioPhotoshoot } from '../services/geminiService';
@@ -26,7 +26,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     {
         id: 'pure_white',
         name: 'Pure Studio White',
-        subtitle: 'Jumia, Konga & Amazon E-Commerce standard',
+        subtitle: '100% clean cyclorama (Jumia, Konga & Amazon standard)',
         icon: '⚪',
         badge: 'Top Seller',
         previewBg: 'bg-white text-slate-800 border-slate-300'
@@ -34,7 +34,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     {
         id: 'warm_wood',
         name: 'Warm Oak Counter',
-        subtitle: 'Natural boutique table with soft daylight',
+        subtitle: 'Natural boutique wooden table with soft daylight',
         icon: '🪵',
         badge: 'Artisanal & Cozy',
         previewBg: 'bg-amber-100 text-amber-900 border-amber-300'
@@ -42,7 +42,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     {
         id: 'studio_grey',
         name: 'Minimal Studio Grey',
-        subtitle: 'Clean luxury slate with soft gradient fill',
+        subtitle: 'Modern boutique slate grey with soft gradient fill',
         icon: '🏢',
         badge: 'Modern Luxury',
         previewBg: 'bg-slate-200 text-slate-800 border-slate-400'
@@ -50,7 +50,7 @@ const THEME_OPTIONS: ThemeOption[] = [
     {
         id: 'transparent',
         name: 'Transparent PNG Cutout',
-        subtitle: 'Zero background for flyers, posters & stickers',
+        subtitle: 'Zero background for flyers, posters, stickers & Canva',
         icon: '🏁',
         badge: 'Graphic Ready',
         previewBg: 'bg-[radial-gradient(#94a3b8_1px,transparent_1px)] [background-size:8px_8px] bg-slate-900 text-white border-slate-700'
@@ -82,18 +82,37 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
     // 4. Comparison View Mode & Split Slider
     const [viewMode, setViewMode] = useState<'SLIDER' | 'SIDE_BY_SIDE'>('SLIDER');
     const [sliderPos, setSliderPos] = useState<number>(50);
-    const isDraggingRef = useRef<boolean>(false);
+    const isDraggingSliderRef = useRef<boolean>(false);
     const compareContainerRef = useRef<HTMLDivElement>(null);
 
-    // 5. Smart Price & Name Tag Badge
+    // 5. Freely Adjustable Price & Name Tag Badge
     const [showBadge, setShowBadge] = useState<boolean>(true);
     const [badgeTitle, setBadgeTitle] = useState<string>('');
     const [badgePrice, setBadgePrice] = useState<string>('');
     const [badgePromo, setBadgePromo] = useState<string>('VERIFIED QUALITY');
-    const [badgeTheme, setBadgeTheme] = useState<'emerald' | 'gold' | 'ruby' | 'dark'>('emerald');
-    const [badgePosition, setBadgePosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('bottom-right');
+    const [badgeTheme, setBadgeTheme] = useState<'emerald' | 'gold' | 'ruby' | 'dark' | 'white'>('emerald');
+    const [badgeStyle, setBadgeStyle] = useState<'card' | 'pill' | 'ribbon' | 'minimal'>('card');
+    const [badgeCoords, setBadgeCoords] = useState<{ x: number; y: number }>({ x: 74, y: 80 }); // Percentage (0 - 100)
+    const [badgeScale, setBadgeScale] = useState<number>(100); // 75% to 130%
+    const isDraggingBadgeRef = useRef<boolean>(false);
 
-    // 6. Save to Catalog Modal
+    // 6. Interactive Touch-Up / Eraser Brush
+    const [isTouchUpActive, setIsTouchUpActive] = useState<boolean>(false);
+    const [brushSize, setBrushSize] = useState<number>(22);
+    const touchUpCanvasRef = useRef<HTMLCanvasElement>(null);
+    const isBrushingRef = useRef<boolean>(false);
+    const [initialCutoutBackup, setInitialCutoutBackup] = useState<string | null>(null);
+
+    // 7. Social Promo Flyer Options (WhatsApp Status / Instagram Story)
+    const [isPromoFlyerMode, setIsPromoFlyerMode] = useState<boolean>(false);
+    const [flyerBannerText, setFlyerBannerText] = useState<string>('🔥 LIMITED STOCK - PAY ON DELIVERY AVAILABLE');
+    const [merchantPhone, setMerchantPhone] = useState<string>('');
+    const [enableWatermark, setEnableWatermark] = useState<boolean>(true);
+
+    // 8. One-Tap Relighting / Exposure
+    const [relightLevel, setRelightLevel] = useState<'normal' | 'bright' | 'vibrant'>('normal');
+
+    // 9. Save to Catalog Modal
     const [showInventoryModal, setShowInventoryModal] = useState<boolean>(false);
     const [productCategory, setProductCategory] = useState<string>('General Merchandise');
     const [isSavingToCatalog, setIsSavingToCatalog] = useState<boolean>(false);
@@ -221,12 +240,12 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
         }
 
         setIsGenerating(true);
-        setGenerationStep('Gemini Vision tracing exact product contour...');
+        setGenerationStep('Gemini Vision tracing product boundary & multi-part holes...');
 
         try {
             setTimeout(() => {
                 if (isGenerating) {
-                    setGenerationStep('Clearing bedsheet/floor clutter & feathers edges...');
+                    setGenerationStep('Clearing bedsheet/floor clutter & de-fringing edges...');
                 }
             }, 1500);
 
@@ -244,6 +263,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                 
                 setStudioResult(studioImg);
                 setTransparentCutout(cutoutImg || null);
+                setInitialCutoutBackup(cutoutImg || null);
 
                 const title = response.product_title || 'Commercial Product';
                 const price = response.suggested_price ? Number(response.suggested_price).toLocaleString() : '5,000';
@@ -287,7 +307,123 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
         setSliderPos(newPos);
     };
 
-    // Bake image with optional price/name badge and download
+    // Price Badge Dragging
+    const handleBadgeDragMove = (clientX: number, clientY: number) => {
+        if (!compareContainerRef.current || !isDraggingBadgeRef.current) return;
+        const rect = compareContainerRef.current.getBoundingClientRect();
+        const xPct = Math.min(90, Math.max(10, ((clientX - rect.left) / rect.width) * 100));
+        const yPct = Math.min(90, Math.max(10, ((clientY - rect.top) / rect.height) * 100));
+        setBadgeCoords({ x: Math.round(xPct), y: Math.round(yPct) });
+    };
+
+    // Preset positions for 1-tap placement
+    const setPresetPosition = (preset: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'center-bottom' | 'center-top') => {
+        switch (preset) {
+            case 'top-right': setBadgeCoords({ x: 74, y: 16 }); break;
+            case 'top-left': setBadgeCoords({ x: 26, y: 16 }); break;
+            case 'bottom-right': setBadgeCoords({ x: 74, y: 82 }); break;
+            case 'bottom-left': setBadgeCoords({ x: 26, y: 82 }); break;
+            case 'center-bottom': setBadgeCoords({ x: 50, y: 84 }); break;
+            case 'center-top': setBadgeCoords({ x: 50, y: 15 }); break;
+        }
+    };
+
+    // Initialize Touch-Up Canvas when activated
+    useEffect(() => {
+        if (isTouchUpActive && touchUpCanvasRef.current && (transparentCutout || studioResult)) {
+            const canvas = touchUpCanvasRef.current;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                canvas.width = img.naturalWidth || 800;
+                canvas.height = img.naturalHeight || 800;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = transparentCutout || studioResult!;
+        }
+    }, [isTouchUpActive, transparentCutout, studioResult]);
+
+    // Touch-Up Brush Drawing Handler
+    const handleTouchUpBrush = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+        if (!isBrushingRef.current || !touchUpCanvasRef.current) return;
+        const canvas = touchUpCanvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(x, y, brushSize * scaleX, 0, Math.PI * 2);
+        ctx.fill();
+    };
+
+    // Apply Touch-Up Edits
+    const handleApplyTouchUp = () => {
+        if (!touchUpCanvasRef.current) return;
+        const canvas = touchUpCanvasRef.current;
+        const updatedCutout = canvas.toDataURL('image/png');
+        setTransparentCutout(updatedCutout);
+
+        // Also composite onto current selected theme if not transparent
+        if (selectedTheme !== 'transparent') {
+            const compCanvas = document.createElement('canvas');
+            compCanvas.width = canvas.width;
+            compCanvas.height = canvas.height;
+            const cCtx = compCanvas.getContext('2d');
+            if (cCtx) {
+                // Background
+                if (selectedTheme === 'warm_wood') {
+                    cCtx.fillStyle = '#f8f2ea';
+                    cCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+                } else if (selectedTheme === 'studio_grey') {
+                    cCtx.fillStyle = '#f2f4f7';
+                    cCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+                } else {
+                    cCtx.fillStyle = '#ffffff';
+                    cCtx.fillRect(0, 0, compCanvas.width, compCanvas.height);
+                }
+
+                // Soft shadow
+                cCtx.fillStyle = 'rgba(15, 20, 30, 0.12)';
+                cCtx.beginPath();
+                cCtx.ellipse(compCanvas.width / 2, compCanvas.height * 0.86, compCanvas.width * 0.32, 28, 0, 0, Math.PI * 2);
+                cCtx.filter = 'blur(14px)';
+                cCtx.fill();
+                cCtx.filter = 'none';
+
+                cCtx.drawImage(canvas, 0, 0);
+                setStudioResult(compCanvas.toDataURL('image/jpeg', 0.95));
+            }
+        } else {
+            setStudioResult(updatedCutout);
+        }
+
+        setIsTouchUpActive(false);
+        toast.success('Touch-up applied! Stray background erased cleanly.');
+    };
+
+    // Reset Touch-Up to original AI generation
+    const handleResetTouchUp = () => {
+        if (initialCutoutBackup) {
+            setTransparentCutout(initialCutoutBackup);
+            handleGenerateShoot();
+            toast.success('Reset to initial AI result.');
+        }
+    };
+
+    // Bake image with price tag / promo flyer and download
     const handleDownload = (format: 'studio' | 'transparent' = 'studio') => {
         const targetImage = format === 'transparent' ? transparentCutout : studioResult;
         if (!targetImage) {
@@ -295,8 +431,8 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
             return;
         }
 
-        // If downloading transparent cutout or badge is off, direct download
-        if (format === 'transparent' || !showBadge) {
+        // Direct download for transparent cutout or when badge and flyer are both off
+        if (format === 'transparent' || (!showBadge && !isPromoFlyerMode)) {
             const link = document.createElement('a');
             link.href = targetImage;
             link.download = `smartbiz_${format === 'transparent' ? 'cutout' : 'studio'}_${Date.now()}.${format === 'transparent' ? 'png' : 'jpg'}`;
@@ -307,100 +443,147 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
             return;
         }
 
-        // Render high-res canvas with the floating price/title badge
+        // Render high-res canvas with the custom placed badge / promo flyer
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth || 1080;
-            canvas.height = img.naturalHeight || 1080;
+            const cw = img.naturalWidth || 1080;
+            const ch = img.naturalHeight || 1080;
+            canvas.width = cw;
+            canvas.height = ch;
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
 
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            // Compute badge coordinates
-            const padX = canvas.width * 0.05;
-            const padY = canvas.height * 0.05;
-            const badgeW = Math.min(canvas.width * 0.42, 360);
-            const badgeH = 110;
-
-            let bx = padX;
-            let by = canvas.height - padY - badgeH;
-
-            if (badgePosition === 'top-right') {
-                bx = canvas.width - padX - badgeW;
-                by = padY;
-            } else if (badgePosition === 'top-left') {
-                bx = padX;
-                by = padY;
-            } else if (badgePosition === 'bottom-left') {
-                bx = padX;
-                by = canvas.height - padY - badgeH;
-            } else if (badgePosition === 'bottom-right') {
-                bx = canvas.width - padX - badgeW;
-                by = canvas.height - padY - badgeH;
+            // Apply Relighting / Exposure Filter
+            if (relightLevel === 'bright') {
+                ctx.filter = 'brightness(1.08) contrast(1.04)';
+            } else if (relightLevel === 'vibrant') {
+                ctx.filter = 'saturate(1.15) contrast(1.06)';
             }
 
-            const colors = {
-                emerald: { bg: '#064e3b', border: '#10b981', text: '#ffffff', pillBg: '#059669', pillText: '#a7f3d0' },
-                gold: { bg: '#451a03', border: '#f59e0b', text: '#ffffff', pillBg: '#d97706', pillText: '#fef3c7' },
-                ruby: { bg: '#881337', border: '#f43f5e', text: '#ffffff', pillBg: '#e11d48', pillText: '#ffe4e6' },
-                dark: { bg: '#0f172a', border: '#38bdf8', text: '#ffffff', pillBg: '#1e293b', pillText: '#bae6fd' }
-            }[badgeTheme];
+            ctx.drawImage(img, 0, 0, cw, ch);
+            ctx.filter = 'none';
 
-            // Drop shadow for badge
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-            ctx.shadowBlur = 18;
-            ctx.shadowOffsetY = 6;
+            // Social Promo Flyer Mode Header Banner
+            if (isPromoFlyerMode) {
+                // Top Banner
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, cw, ch * 0.08);
 
-            // Background card
-            ctx.fillStyle = colors.bg;
-            ctx.beginPath();
-            ctx.roundRect(bx, by, badgeW, badgeH, [18]);
-            ctx.fill();
+                ctx.fillStyle = '#f59e0b';
+                ctx.font = `900 ${Math.round(cw * 0.024)}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText(flyerBannerText.toUpperCase(), cw / 2, ch * 0.05);
 
-            // Card stroke
-            ctx.shadowColor = 'transparent';
-            ctx.lineWidth = 2.5;
-            ctx.strokeStyle = colors.border;
-            ctx.stroke();
+                // Bottom Call-To-Action Strip
+                ctx.fillStyle = '#064e3b';
+                ctx.fillRect(0, ch * 0.93, cw, ch * 0.07);
 
-            // Mini promo pill
-            const promoText = (badgePromo || 'AUTHENTIC').toUpperCase();
-            ctx.fillStyle = colors.pillBg;
-            ctx.beginPath();
-            ctx.roundRect(bx + 14, by + 12, 140, 24, [12]);
-            ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${Math.round(cw * 0.022)}px sans-serif`;
+                const contactStr = merchantPhone ? `📞 ORDER ON WHATSAPP: ${merchantPhone} • ${businessName.toUpperCase()}` : `🏪 ORDER DIRECTLY ON WHATSAPP: ${businessName.toUpperCase()}`;
+                ctx.fillText(contactStr, cw / 2, ch * 0.972);
+            }
 
-            ctx.fillStyle = colors.pillText;
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(promoText.slice(0, 18), bx + 84, by + 28);
+            // Watermark (if enabled)
+            if (enableWatermark) {
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+                ctx.font = `bold ${Math.round(cw * 0.016)}px sans-serif`;
+                ctx.textAlign = 'left';
+                ctx.fillText(`VERIFIED SELLER • ${businessName.toUpperCase()}`, cw * 0.04, ch * 0.975);
+            }
 
-            // Product Title
-            const displayTitle = (badgeTitle || detectedTitle || 'Commercial Product').slice(0, 24);
-            ctx.fillStyle = colors.text;
-            ctx.font = 'bold 16px sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText(displayTitle, bx + 16, by + 60);
+            // Floating Adjustable Price Tag Badge
+            if (showBadge) {
+                const scaleFactor = (badgeScale / 100);
+                const badgeW = Math.min(cw * 0.38, 380) * scaleFactor;
+                const badgeH = 110 * scaleFactor;
 
-            // Price
-            const displayPrice = badgePrice || detectedPrice || '5,000';
-            const priceText = displayPrice.startsWith('₦') ? displayPrice : `₦${displayPrice}`;
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '900 24px monospace';
-            ctx.textAlign = 'left';
-            ctx.fillText(priceText, bx + 16, by + 94);
+                // Relative coordinates based on user dragging
+                const bx = Math.max(20, Math.min(cw - badgeW - 20, (badgeCoords.x / 100) * cw - (badgeW / 2)));
+                const by = Math.max(20, Math.min(ch - badgeH - 20, (badgeCoords.y / 100) * ch - (badgeH / 2)));
+
+                const colors = {
+                    emerald: { bg: '#064e3b', border: '#10b981', text: '#ffffff', pillBg: '#059669', pillText: '#a7f3d0' },
+                    gold: { bg: '#451a03', border: '#f59e0b', text: '#ffffff', pillBg: '#d97706', pillText: '#fef3c7' },
+                    ruby: { bg: '#881337', border: '#f43f5e', text: '#ffffff', pillBg: '#e11d48', pillText: '#ffe4e6' },
+                    dark: { bg: '#0f172a', border: '#38bdf8', text: '#ffffff', pillBg: '#1e293b', pillText: '#bae6fd' },
+                    white: { bg: '#ffffff', border: '#0f172a', text: '#0f172a', pillBg: '#0f172a', pillText: '#ffffff' }
+                }[badgeTheme];
+
+                // Drop shadow
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.32)';
+                ctx.shadowBlur = 18 * scaleFactor;
+                ctx.shadowOffsetY = 6 * scaleFactor;
+
+                if (badgeStyle === 'pill') {
+                    // Minimalist Rounded Pill Style
+                    ctx.fillStyle = colors.bg;
+                    ctx.beginPath();
+                    ctx.roundRect(bx, by + 20 * scaleFactor, badgeW, 64 * scaleFactor, [32 * scaleFactor]);
+                    ctx.fill();
+
+                    ctx.shadowColor = 'transparent';
+                    ctx.lineWidth = 2.5 * scaleFactor;
+                    ctx.strokeStyle = colors.border;
+                    ctx.stroke();
+
+                    const displayPrice = badgePrice || detectedPrice || '5,000';
+                    const priceText = displayPrice.startsWith('₦') ? displayPrice : `₦${displayPrice}`;
+                    ctx.fillStyle = colors.text;
+                    ctx.font = `900 ${Math.round(26 * scaleFactor)}px monospace`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(priceText, bx + (badgeW / 2), by + (60 * scaleFactor));
+                } else {
+                    // Standard Card / Ribbon Style
+                    ctx.fillStyle = colors.bg;
+                    ctx.beginPath();
+                    ctx.roundRect(bx, by, badgeW, badgeH, [18 * scaleFactor]);
+                    ctx.fill();
+
+                    ctx.shadowColor = 'transparent';
+                    ctx.lineWidth = 2.5 * scaleFactor;
+                    ctx.strokeStyle = colors.border;
+                    ctx.stroke();
+
+                    // Promo Pill
+                    const promoText = (badgePromo || 'AUTHENTIC').toUpperCase();
+                    ctx.fillStyle = colors.pillBg;
+                    ctx.beginPath();
+                    ctx.roundRect(bx + 14 * scaleFactor, by + 12 * scaleFactor, 140 * scaleFactor, 24 * scaleFactor, [12 * scaleFactor]);
+                    ctx.fill();
+
+                    ctx.fillStyle = colors.pillText;
+                    ctx.font = `bold ${Math.round(11 * scaleFactor)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(promoText.slice(0, 18), bx + 84 * scaleFactor, by + 28 * scaleFactor);
+
+                    // Product Title
+                    const displayTitle = (badgeTitle || detectedTitle || 'Commercial Product').slice(0, 24);
+                    ctx.fillStyle = colors.text;
+                    ctx.font = `bold ${Math.round(16 * scaleFactor)}px sans-serif`;
+                    ctx.textAlign = 'left';
+                    ctx.fillText(displayTitle, bx + 16 * scaleFactor, by + 62 * scaleFactor);
+
+                    // Price
+                    const displayPrice = badgePrice || detectedPrice || '5,000';
+                    const priceText = displayPrice.startsWith('₦') ? displayPrice : `₦${displayPrice}`;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `900 ${Math.round(25 * scaleFactor)}px monospace`;
+                    ctx.textAlign = 'left';
+                    ctx.fillText(priceText, bx + 16 * scaleFactor, by + 96 * scaleFactor);
+                }
+            }
 
             const downloadUrl = canvas.toDataURL('image/jpeg', 0.95);
             const link = document.createElement('a');
             link.href = downloadUrl;
-            link.download = `smartbiz_studio_showcase_${Date.now()}.jpg`;
+            link.download = `smartbiz_studio_${Date.now()}.jpg`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            toast.success('Downloaded Studio Photo with Price Tag!');
+            toast.success('Downloaded HD Studio Showcase with Custom Badge!');
         };
         img.src = targetImage;
     };
@@ -421,7 +604,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
             `https://wa.me/?text=${encodeURIComponent(`Hello ${businessName}! I am interested in buying "${itemTitle}" (${formattedPrice}) seen on your status.`)}`;
 
         navigator.clipboard.writeText(pitch);
-        toast.success('Sales pitch copied! Download your image and share directly to WhatsApp Status 🚀', { duration: 5000 });
+        toast.success('Sales pitch copied! Image downloading for WhatsApp Status 🚀', { duration: 5000 });
         handleDownload('studio');
     };
 
@@ -493,7 +676,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                 </h2>
                 
                 <p className="text-slate-400 text-xs sm:text-sm max-w-xl mx-auto mt-2 leading-relaxed">
-                    Snap items on your bedsheet, table, or shop floor. AI cleanly removes background clutter, preserves your product&apos;s real labels and logos, adds grounded contact shadows, and generates an e-commerce price tag.
+                    Snap on your bedsheet, counter or floor. AI cuts out the background cleanly, preserves every brand logo & detail, adds realistic contact shadows, and lets you drag and position an e-commerce price tag anywhere.
                 </p>
 
                 <div className="mt-4 inline-flex items-center gap-3 bg-slate-950/80 px-4 py-1.5 rounded-full border border-slate-800 text-xs font-bold text-slate-300">
@@ -601,6 +784,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                                     setRawImage(null);
                                     setStudioResult(null);
                                     setTransparentCutout(null);
+                                    setIsTouchUpActive(false);
                                 }}
                                 className="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-950/30 px-3 py-1.5 rounded-xl border border-rose-900/40"
                             >
@@ -691,6 +875,17 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                         <div className="flex items-center gap-2 flex-wrap">
                             <button
                                 type="button"
+                                onClick={() => setIsTouchUpActive(!isTouchUpActive)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                                    isTouchUpActive
+                                        ? 'bg-amber-500 text-slate-950 border-amber-400'
+                                        : 'bg-slate-950 text-slate-300 border-slate-700 hover:text-white'
+                                }`}
+                            >
+                                🧹 {isTouchUpActive ? 'Exit Touch-Up' : 'Touch-Up Eraser'}
+                            </button>
+                            <button
+                                type="button"
                                 onClick={() => setViewMode(viewMode === 'SLIDER' ? 'SIDE_BY_SIDE' : 'SLIDER')}
                                 className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-950 border border-slate-700 text-slate-300 hover:text-white"
                             >
@@ -710,21 +905,99 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                         </div>
                     </div>
 
-                    {/* Image Viewer */}
+                    {/* Touch-Up Brush Toolbar (When Active) */}
+                    {isTouchUpActive && (
+                        <div className="bg-amber-950/30 border border-amber-500/40 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-bold text-amber-300">
+                                    🧹 Eraser Brush: Drag over any stray background patch to wipe it out cleanly
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[11px] text-slate-400">Size:</span>
+                                    <input
+                                        type="range"
+                                        min="8"
+                                        max="50"
+                                        value={brushSize}
+                                        onChange={(e) => setBrushSize(Number(e.target.value))}
+                                        className="w-24 accent-amber-500"
+                                    />
+                                    <span className="text-[11px] text-amber-300 font-mono">{brushSize}px</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleResetTouchUp}
+                                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                                >
+                                    Reset
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleApplyTouchUp}
+                                    className="px-4 py-1.5 rounded-xl text-xs font-black bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-md"
+                                >
+                                    ✓ Save Clean-Up
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Image Viewer with Drag-and-Drop Price Tag */}
                     <div className="flex flex-col items-center">
-                        {viewMode === 'SLIDER' ? (
+                        {isTouchUpActive ? (
+                            <div className="relative max-w-lg aspect-square w-full rounded-3xl overflow-hidden border-2 border-amber-500/60 shadow-2xl bg-black cursor-crosshair">
+                                <canvas
+                                    ref={touchUpCanvasRef}
+                                    onMouseDown={() => { isBrushingRef.current = true; }}
+                                    onMouseUp={() => { isBrushingRef.current = false; }}
+                                    onMouseLeave={() => { isBrushingRef.current = false; }}
+                                    onMouseMove={handleTouchUpBrush}
+                                    onTouchStart={() => { isBrushingRef.current = true; }}
+                                    onTouchEnd={() => { isBrushingRef.current = false; }}
+                                    onTouchMove={handleTouchUpBrush}
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                        ) : viewMode === 'SLIDER' ? (
                             <div
                                 ref={compareContainerRef}
                                 onMouseMove={(e) => {
-                                    if (isDraggingRef.current) handleSliderMove(e.clientX);
+                                    if (isDraggingBadgeRef.current) {
+                                        handleBadgeDragMove(e.clientX, e.clientY);
+                                    } else if (isDraggingSliderRef.current) {
+                                        handleSliderMove(e.clientX);
+                                    }
                                 }}
-                                onMouseDown={() => { isDraggingRef.current = true; }}
-                                onMouseUp={() => { isDraggingRef.current = false; }}
-                                onMouseLeave={() => { isDraggingRef.current = false; }}
+                                onMouseDown={(e) => {
+                                    // If not clicking on the badge, treat as slider drag
+                                    if (!isDraggingBadgeRef.current) {
+                                        isDraggingSliderRef.current = true;
+                                    }
+                                }}
+                                onMouseUp={() => {
+                                    isDraggingBadgeRef.current = false;
+                                    isDraggingSliderRef.current = false;
+                                }}
+                                onMouseLeave={() => {
+                                    isDraggingBadgeRef.current = false;
+                                    isDraggingSliderRef.current = false;
+                                }}
                                 onTouchMove={(e) => {
-                                    if (e.touches.length > 0) handleSliderMove(e.touches[0].clientX);
+                                    if (e.touches.length > 0) {
+                                        if (isDraggingBadgeRef.current) {
+                                            handleBadgeDragMove(e.touches[0].clientX, e.touches[0].clientY);
+                                        } else if (isDraggingSliderRef.current) {
+                                            handleSliderMove(e.touches[0].clientX);
+                                        }
+                                    }
                                 }}
-                                className="w-full max-w-lg aspect-square rounded-3xl overflow-hidden relative select-none border-2 border-slate-700 bg-black shadow-2xl cursor-ew-resize"
+                                onTouchEnd={() => {
+                                    isDraggingBadgeRef.current = false;
+                                    isDraggingSliderRef.current = false;
+                                }}
+                                className="w-full max-w-lg aspect-square rounded-3xl overflow-hidden relative select-none border-2 border-slate-700 bg-black shadow-2xl"
                             >
                                 {/* Studio Result (After) */}
                                 <img
@@ -733,36 +1006,44 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                                     className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                                 />
 
-                                {/* Floating Live Price Tag Badge */}
+                                {/* Floating Live Price Tag Badge - Freely Draggable */}
                                 {showBadge && (
                                     <div
-                                        className={`absolute z-20 pointer-events-none p-3 rounded-2xl shadow-2xl border backdrop-blur-md transition-all ${
-                                            badgePosition === 'top-right'
-                                                ? 'top-4 right-4'
-                                                : badgePosition === 'top-left'
-                                                ? 'top-4 left-4'
-                                                : badgePosition === 'bottom-left'
-                                                ? 'bottom-4 left-4'
-                                                : 'bottom-4 right-4'
-                                        } ${
+                                        onMouseDown={(e) => {
+                                            e.stopPropagation();
+                                            isDraggingBadgeRef.current = true;
+                                        }}
+                                        onTouchStart={(e) => {
+                                            e.stopPropagation();
+                                            isDraggingBadgeRef.current = true;
+                                        }}
+                                        style={{
+                                            left: `${badgeCoords.x}%`,
+                                            top: `${badgeCoords.y}%`,
+                                            transform: `translate(-50%, -50%) scale(${badgeScale / 100})`
+                                        }}
+                                        className={`absolute z-30 p-3 rounded-2xl shadow-2xl border backdrop-blur-md cursor-grab active:cursor-grabbing select-none transition-shadow hover:ring-2 hover:ring-white/40 ${
                                             badgeTheme === 'emerald'
-                                                ? 'bg-emerald-950/90 border-emerald-500 text-white'
+                                                ? 'bg-emerald-950/95 border-emerald-500 text-white'
                                                 : badgeTheme === 'gold'
-                                                ? 'bg-amber-950/90 border-amber-500 text-white'
+                                                ? 'bg-amber-950/95 border-amber-500 text-white'
                                                 : badgeTheme === 'ruby'
-                                                ? 'bg-rose-950/90 border-rose-500 text-white'
-                                                : 'bg-slate-950/90 border-sky-500 text-white'
+                                                ? 'bg-rose-950/95 border-rose-500 text-white'
+                                                : badgeTheme === 'white'
+                                                ? 'bg-white border-slate-800 text-slate-900'
+                                                : 'bg-slate-950/95 border-sky-500 text-white'
                                         }`}
                                     >
-                                        <div className="flex items-center gap-1.5 mb-1">
+                                        <div className="flex items-center justify-between gap-2 mb-1">
                                             <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/10 uppercase tracking-wider">
                                                 {badgePromo || 'VERIFIED'}
                                             </span>
+                                            <span className="text-[10px] text-white/50 font-mono">⇄ Drag</span>
                                         </div>
-                                        <p className="text-xs font-bold text-slate-100 max-w-[150px] truncate">
+                                        <p className="text-xs font-bold truncate max-w-[150px]">
                                             {badgeTitle || detectedTitle}
                                         </p>
-                                        <p className="text-base font-black font-mono tracking-tight text-white mt-0.5">
+                                        <p className="text-base font-black font-mono tracking-tight mt-0.5">
                                             {(badgePrice || detectedPrice).startsWith('₦') ? (badgePrice || detectedPrice) : `₦${badgePrice || detectedPrice}`}
                                         </p>
                                     </div>
@@ -819,13 +1100,116 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                         )}
                     </div>
 
-                    {/* Price Tag Badge Customizer */}
+                    {/* Adjustable Price Tag Customizer */}
                     {showBadge && (
-                        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
-                            <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                                Customize Showcase Price Tag
-                            </span>
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>🎯</span>
+                                    <span>Adjustable Price Tag & Badges</span>
+                                </span>
+                                <span className="text-[11px] text-emerald-400 font-mono">
+                                    X: {badgeCoords.x}% | Y: {badgeCoords.y}% (Or drag directly on photo)
+                                </span>
+                            </div>
+
+                            {/* Position Presets & Fine-Tuning Sliders */}
+                            <div>
+                                <span className="text-[11px] font-bold text-slate-400 block mb-2">1-Click Positions:</span>
+                                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPresetPosition('top-left')}
+                                        className="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                                    >
+                                        Top Left
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPresetPosition('center-top')}
+                                        className="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                                    >
+                                        Top Center
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPresetPosition('top-right')}
+                                        className="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                                    >
+                                        Top Right
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPresetPosition('bottom-left')}
+                                        className="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                                    >
+                                        Bottom Left
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPresetPosition('center-bottom')}
+                                        className="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                                    >
+                                        Bottom Center
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPresetPosition('bottom-right')}
+                                        className="py-1.5 px-2 rounded-xl text-[11px] font-bold bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                                    >
+                                        Bottom Right
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Fine tuning sliders */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                                        <span>Horizontal (X):</span>
+                                        <span className="font-mono text-emerald-400">{badgeCoords.x}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="90"
+                                        value={badgeCoords.x}
+                                        onChange={(e) => setBadgeCoords({ ...badgeCoords, x: Number(e.target.value) })}
+                                        className="w-full accent-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                                        <span>Vertical (Y):</span>
+                                        <span className="font-mono text-emerald-400">{badgeCoords.y}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="10"
+                                        max="90"
+                                        value={badgeCoords.y}
+                                        onChange={(e) => setBadgeCoords({ ...badgeCoords, y: Number(e.target.value) })}
+                                        className="w-full accent-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                                        <span>Badge Scale:</span>
+                                        <span className="font-mono text-emerald-400">{badgeScale}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="75"
+                                        max="130"
+                                        value={badgeScale}
+                                        onChange={(e) => setBadgeScale(Number(e.target.value))}
+                                        className="w-full accent-emerald-500"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Text and Theme inputs */}
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1">
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-400 block mb-1">Product Title</label>
                                     <input
@@ -857,7 +1241,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Badge Color</label>
+                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Color Theme</label>
                                     <select
                                         value={badgeTheme}
                                         onChange={(e) => setBadgeTheme(e.target.value as any)}
@@ -867,11 +1251,56 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                                         <option value="gold">🏆 Luxury Gold</option>
                                         <option value="ruby">🔴 Crimson Sale</option>
                                         <option value="dark">🖤 Obsidian Dark</option>
+                                        <option value="white">⚪ Clean White</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
                     )}
+
+                    {/* Social Media Promo Flyer Mode (Optional Expansion) */}
+                    <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                                <span>📱</span>
+                                <span>WhatsApp Status & Instagram Promo Flyer Mode</span>
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setIsPromoFlyerMode(!isPromoFlyerMode)}
+                                className={`px-3 py-1 rounded-xl text-xs font-bold border transition-all ${
+                                    isPromoFlyerMode ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-slate-400 border-slate-700'
+                                }`}
+                            >
+                                {isPromoFlyerMode ? 'Flyer Mode: ON' : 'Flyer Mode: OFF'}
+                            </button>
+                        </div>
+
+                        {isPromoFlyerMode && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">Header Announcement</label>
+                                    <input
+                                        type="text"
+                                        value={flyerBannerText}
+                                        onChange={(e) => setFlyerBannerText(e.target.value)}
+                                        placeholder="e.g. 🔥 FLASH SALE - PAY ON DELIVERY AVAILABLE"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 block mb-1">WhatsApp Phone Number</label>
+                                    <input
+                                        type="text"
+                                        value={merchantPhone}
+                                        onChange={(e) => setMerchantPhone(e.target.value)}
+                                        placeholder="08012345678"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Direct High-Impact Actions */}
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 pt-2">
