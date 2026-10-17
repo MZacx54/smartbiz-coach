@@ -14,13 +14,112 @@ import json
 import base64
 import logging
 from decimal import Decimal
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageEnhance, ImageOps
 from rest_framework import views, permissions, status
 from rest_framework.response import Response
 
 from smartbiz_backend import gemini_utils
 
 logger = logging.getLogger(__name__)
+
+
+def apply_studio_relighting(img: Image.Image, relight_mode: str = "auto") -> Image.Image:
+    """
+    Enhances dim market-stall or indoor phone photos with studio-grade relighting,
+    color vibrancy, and crispness while preserving natural product colors.
+    """
+    rgb = img.convert("RGB")
+    if relight_mode == "none":
+        return img
+
+    # Measure mean luminance to detect dim indoor / evening photos
+    grayscale = rgb.convert("L")
+    hist = grayscale.histogram()
+    total_pixels = sum(hist) or 1
+    avg_lum = sum(i * hist[i] for i in range(256)) / total_pixels
+
+    brightness_factor = 1.0
+    contrast_factor = 1.04
+    color_factor = 1.06
+    sharpness_factor = 1.15
+
+    if relight_mode == "bright" or (relight_mode == "auto" and avg_lum < 115):
+        # Boost dim shop photos naturally
+        boost = min(1.28, max(1.08, 132.0 / max(avg_lum, 65.0)))
+        brightness_factor = boost if relight_mode == "auto" else 1.20
+        contrast_factor = 1.08
+        color_factor = 1.10
+        sharpness_factor = 1.22
+    elif relight_mode == "warm_daylight":
+        brightness_factor = 1.12
+        contrast_factor = 1.06
+        color_factor = 1.14
+        sharpness_factor = 1.18
+    elif relight_mode == "vibrant":
+        brightness_factor = 1.06
+        contrast_factor = 1.12
+        color_factor = 1.24
+        sharpness_factor = 1.30
+
+    if brightness_factor != 1.0:
+        rgb = ImageEnhance.Brightness(rgb).enhance(brightness_factor)
+    if contrast_factor != 1.0:
+        rgb = ImageEnhance.Contrast(rgb).enhance(contrast_factor)
+    if color_factor != 1.0:
+        rgb = ImageEnhance.Color(rgb).enhance(color_factor)
+    if sharpness_factor != 1.0:
+        rgb = ImageEnhance.Sharpness(rgb).enhance(sharpness_factor)
+
+    if img.mode == "RGBA":
+        r, g, b = rgb.split()
+        a = img.split()[3]
+        return Image.merge("RGBA", (r, g, b, a))
+    return rgb.convert("RGBA")
+
+
+def refine_mask_against_background(orig_img: Image.Image, raw_mask: Image.Image) -> Image.Image:
+    """
+    Eliminates residual background pockets along the product perimeter by comparing
+    border-zone pixels against the sampled outer background color distribution.
+    """
+    w, h = orig_img.size
+    # Erode 1-2px border first
+    eroded = raw_mask.filter(ImageFilter.MinFilter(3))
+    # Inner core that is guaranteed 100% protected (10px inside polygon)
+    inner_core = eroded.filter(ImageFilter.MinFilter(9))
+
+    # Sample background color from outer corners/edges where raw_mask == 0
+    rgb_img = orig_img.convert("RGB")
+    sample_pts = [
+        (5, 5), (w - 6, 5), (5, h - 6), (w - 6, h - 6),
+        (w // 2, 5), (w // 2, h - 6), (5, h // 2), (w - 6, h // 2)
+    ]
+    bg_samples = []
+    for sx, sy in sample_pts:
+        if 0 <= sx < w and 0 <= sy < h and raw_mask.getpixel((sx, sy)) == 0:
+            bg_samples.append(rgb_img.getpixel((sx, sy)))
+
+    if bg_samples:
+        avg_r = sum(p[0] for p in bg_samples) // len(bg_samples)
+        avg_g = sum(p[1] for p in bg_samples) // len(bg_samples)
+        avg_b = sum(p[2] for p in bg_samples) // len(bg_samples)
+
+        img_bytes = rgb_img.tobytes()
+        eroded_bytes = bytearray(eroded.tobytes())
+        core_bytes = inner_core.tobytes()
+
+        for idx in range(len(eroded_bytes)):
+            # Only inspect the perimeter band (eroded > 0 but core == 0)
+            if eroded_bytes[idx] > 0 and core_bytes[idx] == 0:
+                p_idx = idx * 3
+                r, g, b = img_bytes[p_idx], img_bytes[p_idx + 1], img_bytes[p_idx + 2]
+                dist_sq = (r - avg_r) ** 2 + (g - avg_g) ** 2 + (b - avg_b) ** 2
+                if dist_sq < 1100:  # Very close to background color
+                    eroded_bytes[idx] = 0
+
+        eroded = Image.frombytes("L", (w, h), bytes(eroded_bytes))
+
+    return eroded.filter(ImageFilter.GaussianBlur(radius=1.2))
 
 
 def extract_product_polygon_and_meta(image_base64: str, mime_type: str = "image/jpeg"):
@@ -141,8 +240,9 @@ class PrecisionPhotoStudioView(views.APIView):
     """
     Clean, professional Photo Studio pipeline:
     1. Extracts true product contour (cuts out bedsheets, floor tiles, clutter).
-    2. Builds clean studio composites: Pure White, Warm Wood, Studio Grey, or Transparent PNG.
-    3. Returns detected title & suggested price for instant price tag badges.
+    2. Applies Studio Relighting for dim indoor/market-stall photos.
+    3. Builds clean studio composites: Pure White, Warm Wood, Studio Grey, or Transparent PNG.
+    4. Returns detected title & suggested price for instant price tag badges.
     """
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ImageEditThrottle]
@@ -150,6 +250,7 @@ class PrecisionPhotoStudioView(views.APIView):
     def post(self, request):
         image_base64 = request.data.get('image_base64') or request.data.get('image') or request.data.get('image_base_64')
         theme = request.data.get('theme') or request.data.get('scene_id') or 'pure_white'
+        relight_mode = request.data.get('relight_mode', 'auto')
 
         # Map legacy scene_ids to new studio themes if needed
         if theme in ['luxury_marble', 'pure_white', 'white']:
@@ -176,7 +277,7 @@ class PrecisionPhotoStudioView(views.APIView):
             polygons = meta.get("polygons") or ([meta["polygon"]] if meta.get("polygon") else [])
             holes = meta.get("holes") or meta.get("negative_polygons") or []
 
-            # 2. Render smooth antialiased alpha mask with hole subtraction
+            # 2. Render smooth antialiased alpha mask with hole subtraction & edge de-bleed
             raw_mask = Image.new("L", (w, h), 0)
             draw = ImageDraw.Draw(raw_mask)
 
@@ -192,14 +293,14 @@ class PrecisionPhotoStudioView(views.APIView):
                     pixel_hole = [(int((pt[1] / 1000.0) * w), int((pt[0] / 1000.0) * h)) for pt in hole]
                     draw.polygon(pixel_hole, fill=0)
 
-            # Apply subtle inward morphological erosion to strip any 1-2px bedsheet/table fringe
-            eroded_mask = raw_mask.filter(ImageFilter.MinFilter(3))
-            smooth_mask = eroded_mask.filter(ImageFilter.GaussianBlur(radius=1.2))
+            smooth_mask = refine_mask_against_background(orig_img, raw_mask)
 
-            cutout = orig_img.copy()
+            # 3. Apply Studio Relighting for dim indoor/market photos
+            relit_img = apply_studio_relighting(orig_img, relight_mode=relight_mode)
+            cutout = relit_img.copy()
             cutout.putalpha(smooth_mask)
 
-            # 3. Generate Studio Output
+            # 4. Generate Studio Output
             studio_img = render_studio_composite(cutout, smooth_mask, theme=theme)
 
             # Export studio image to JPEG (or PNG if transparent)
@@ -226,6 +327,7 @@ class PrecisionPhotoStudioView(views.APIView):
                 "suggested_price": meta.get("suggested_price", 5000),
                 "category": meta.get("category", "General Merchandise"),
                 "theme": theme,
+                "relight_mode": relight_mode,
                 "studio_image_base64": f"data:{mime_out};base64,{studio_b64}",
                 "image_base64": f"data:{mime_out};base64,{studio_b64}",
                 "transparent_cutout_base64": f"data:image/png;base64,{cutout_b64}",
@@ -236,3 +338,4 @@ class PrecisionPhotoStudioView(views.APIView):
         except Exception as e:
             logger.error(f"PrecisionPhotoStudioView failed: {e}")
             return Response({"error": f"Failed to process studio image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

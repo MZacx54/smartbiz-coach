@@ -180,11 +180,13 @@ export const generateStudioPhotoshoot = async (
 
 export const runPrecisionStudio = async (
     imageBase64: string,
-    theme: 'pure_white' | 'warm_wood' | 'studio_grey' | 'transparent' = 'pure_white'
+    theme: 'pure_white' | 'warm_wood' | 'studio_grey' | 'transparent' = 'pure_white',
+    relightMode: 'auto' | 'bright' | 'warm_daylight' | 'vibrant' | 'none' = 'auto'
 ) => {
     const response = await api.post('/api/content/precision-photoshoot/', {
         image_base64: imageBase64,
-        theme: theme
+        theme: theme,
+        relight_mode: relightMode
     });
     return response.data;
 };
