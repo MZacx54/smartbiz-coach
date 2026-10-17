@@ -8,9 +8,10 @@ BASE_URL = BASE_URL.replace(/\/api\/?$/, '');
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/`,
-  // Fast 10-second default timeout so weak 2G/3G ("Lie-Fi") networks in Nigeria
-  // never hang the UI indefinitely; AI routes override this with custom timeouts.
-  timeout: 10000,
+  // Generous 180-second (3-minute) default timeout so heavy AI generation,
+  // Photo Studio background removal, 4K rendering, Business Plans, and OCR
+  // never time out prematurely. Fast POS/Cashbook routes pass their own short timeouts.
+  timeout: 180000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -50,6 +51,14 @@ api.interceptors.request.use(
         config.url = config.url.substring(4);
       }
     }
+
+    // For lightweight cacheable GET requests (non-AI), use a 12s timeout if none was specified
+    // so offline fallback triggers quickly without affecting any AI POST/GET endpoints.
+    const method = (config.method || 'get').toLowerCase();
+    if (method === 'get' && isCacheableGet(config.url) && (!config.timeout || config.timeout === 180000)) {
+      config.timeout = 12000;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

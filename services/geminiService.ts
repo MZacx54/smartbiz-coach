@@ -158,7 +158,7 @@ export const generateVideoScript = async (topic: string, platform: string, tone:
 };
 
 export const editImage = async (imageBase64: string, mimeType: string, prompt: string) => {
-    const response = await api.post('/api/content/edit-image/', { image_base64: imageBase64, mime_type: mimeType, prompt });
+    const response = await api.post('/api/content/edit-image/', { image_base64: imageBase64, mime_type: mimeType, prompt }, { timeout: 180000 });
     return response.data;
 };
 
@@ -174,7 +174,7 @@ export const generateStudioPhotoshoot = async (
         theme: sceneId,
         mode,
         custom_prompt: customPrompt
-    });
+    }, { timeout: 180000 });
     return response.data;
 };
 
@@ -187,7 +187,7 @@ export const runPrecisionStudio = async (
         image_base64: imageBase64,
         theme: theme,
         relight_mode: relightMode
-    });
+    }, { timeout: 180000 });
     return response.data;
 };
 
@@ -196,7 +196,7 @@ export const editProductImage = editImage;
 
 // More content generation functions
 export const generateSocialContent = async (topic: string, platform: string, tone: string, format: string, context?: string) => {
-    const response = await api.post('/api/content/generate-social-content/', { topic, platform, tone, format, context });
+    const response = await api.post('/api/content/generate-social-content/', { topic, platform, tone, format, context }, { timeout: 180000 });
     return response.data;
 };
 
@@ -205,7 +205,7 @@ export const generateWeeklyPlan = async (goal: string, frequency?: string) => {
         goal, 
         niche: goal,
         frequency: frequency || '5 times/week' 
-    });
+    }, { timeout: 180000 });
     return response.data;
 };
 
@@ -217,19 +217,19 @@ export const generateSuggestedPrompts = async (niche: string, contentType: strin
         image_base64: imageBase64,
         image_mime_type: imageMimeType,
         trend_names: trendNames
-    });
+    }, { timeout: 180000 });
     return response.data;
 };
 
 export const generateMarketingVideo = async (script: any, visualStyle: string, onProgress?: (message: string) => void) => {
     if (onProgress) onProgress('Analyzing script for visual scenes...');
-    const response = await api.post('/api/content/generate-video/', { script, visual_style: visualStyle });
+    const response = await api.post('/api/content/generate-video/', { script, visual_style: visualStyle }, { timeout: 180000 });
     if (onProgress) onProgress('Storyboard generated successfully!');
     return response.data; // Now returns { storyboard: [], message: "" }
 };
 
 export const generateBlogPost = async (topic: string, tone: string, length: string) => {
-    const response = await api.post('/api/content/generate-blog-post/', { topic, tone, length });
+    const response = await api.post('/api/content/generate-blog-post/', { topic, tone, length }, { timeout: 180000 });
     return response.data;
 };
 
@@ -238,7 +238,7 @@ export const generatePartnershipPitch = async (partnerName: string, pitchType: s
         partner_name: partnerName,
         pitch_type: pitchType,
         call_to_action: callToAction
-    });
+    }, { timeout: 180000 });
     return response.data;
 };
 
@@ -246,7 +246,7 @@ export const removeBackgroundAi = async (imageBase64: string, mimeType: string =
     const response = await api.post('/api/content/remove-bg/', {
         image_base64: imageBase64,
         mime_type: mimeType
-    });
+    }, { timeout: 180000 });
     return response.data;
 };
 

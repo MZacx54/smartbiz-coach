@@ -272,8 +272,16 @@ class PrecisionPhotoStudioView(views.APIView):
             orig_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
             w, h = orig_img.size
 
+            # Downscale a lightweight 640px copy strictly for Gemini Vision coordinate extraction
+            # (since coordinates are normalized 0-1000, this cuts AI latency by ~50% while keeping 1280p output!)
+            vision_thumb = orig_img.convert("RGB").copy()
+            vision_thumb.thumbnail((640, 640), Image.Resampling.BILINEAR)
+            vision_buf = io.BytesIO()
+            vision_thumb.save(vision_buf, format="JPEG", quality=80)
+            vision_b64 = base64.b64encode(vision_buf.getvalue()).decode("utf-8")
+
             # 1. AI Polygon Segmentation & Metadata Extraction
-            meta = extract_product_polygon_and_meta(clean_b64, mime_type="image/jpeg")
+            meta = extract_product_polygon_and_meta(vision_b64, mime_type="image/jpeg")
             polygons = meta.get("polygons") or ([meta["polygon"]] if meta.get("polygon") else [])
             holes = meta.get("holes") or meta.get("negative_polygons") or []
 
