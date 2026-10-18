@@ -40,6 +40,7 @@ const DailyCashbook = lazy(() => import("./components/DailyCashbook").then(m => 
 const BlogIndex = lazy(() => import("./components/BlogIndex"));
 const BlogPost = lazy(() => import("./components/BlogPost"));
 const DataScienceHub = lazy(() => import("./components/DataScienceHub"));
+const PartnerPortal = lazy(() => import("./components/PartnerPortal"));
 
 import {
   AppView,
@@ -659,6 +660,18 @@ const App: React.FC = () => {
           </Suspense>
         } />
 
+        <Route path="/audit" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicAuditReport />
+          </Suspense>
+        } />
+
+        <Route path="/partner-portal" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-white"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PartnerPortal />
+          </Suspense>
+        } />
+
         <Route path="/login" element={
           user ? <Navigate to="/dashboard" replace /> : (
             <Suspense fallback={
@@ -760,6 +773,7 @@ const App: React.FC = () => {
                   <Route path="marketing" element={<MarketingAgent user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="analytics" element={<DataScienceHub onNavigate={handleNavigate} />} />
                   <Route path="audit" element={<PublicAuditReport />} />
+                  <Route path="partner-portal" element={<PartnerPortal />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>

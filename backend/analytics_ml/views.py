@@ -1,6 +1,16 @@
 from rest_framework import views, permissions, status
 from rest_framework.response import Response
-from .services import CreditScoringService, DemandForecastService, TillAnomalyService, CustomerSegmentationService
+from .services import (
+    CreditScoringService,
+    DemandForecastService,
+    TillAnomalyService,
+    CustomerSegmentationService,
+    PriceElasticityService,
+    CashCliffForecastService,
+    AutonomousAgentService,
+    PartnerPortalService,
+)
+
 
 class CreditScoreAnalyticsView(views.APIView):
     """
@@ -62,14 +72,6 @@ class CustomerSegmentationAnalyticsView(views.APIView):
             return Response({"error": f"Failed to compute RFM segments: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-from .services import (
-    CreditScoringService, 
-    DemandForecastService, 
-    TillAnomalyService, 
-    CustomerSegmentationService,
-    PriceElasticityService
-)
-
 class PriceElasticityAnalyticsView(views.APIView):
     """
     Returns Ordinary Least Squares Price Elasticity of Demand (PED) & Margin recommendations.
@@ -87,7 +89,9 @@ class PriceElasticityAnalyticsView(views.APIView):
 
 class ComprehensiveMLOverviewView(views.APIView):
     """
-    Consolidated single-request ML intelligence dashboard payload.
+    Consolidated single-request ML & AI OS intelligence dashboard payload.
+    Includes SmartScore™ Credit Rating, Ridge Demand Forecaster, Isolation Forest Till Scanner,
+    RFM Customer Cohorts, OLS Price Elasticity, 14-Day Cash Cliff Predictor, and Autonomous AI Agents.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -98,6 +102,10 @@ class ComprehensiveMLOverviewView(views.APIView):
             anomalies = TillAnomalyService.detect_anomalies(request.user)
             segments = CustomerSegmentationService.segment_customers(request.user)
             elasticity = PriceElasticityService.calculate_price_elasticity(request.user)
+            cash_cliff = CashCliffForecastService.predict_cash_runway(request.user)
+            ai_agents = AutonomousAgentService.get_active_directives(
+                request.user, credit, forecasts, anomalies, cash_cliff
+            )
 
             return Response({
                 "credit": credit,
@@ -105,6 +113,8 @@ class ComprehensiveMLOverviewView(views.APIView):
                 "anomalies": anomalies,
                 "segments": segments,
                 "elasticity": elasticity,
+                "cash_cliff": cash_cliff,
+                "ai_agents": ai_agents,
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"ML pipeline error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -113,7 +123,7 @@ class ComprehensiveMLOverviewView(views.APIView):
 class UnderwritingReportDataView(views.APIView):
     """
     Returns complete certified underwriting dossier data including cryptographic
-    verification checksum, business credentials, and bank assessment grades.
+    verification checksum, business credentials, 14-day cash runway, and bank assessment grades.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -126,6 +136,7 @@ class UnderwritingReportDataView(views.APIView):
         user = request.user
         credit = CreditScoringService.calculate_credit_score(user)
         anomalies = TillAnomalyService.detect_anomalies(user)
+        cash_cliff = CashCliffForecastService.predict_cash_runway(user)
 
         comp = UserCompliance.objects.filter(user=user).first()
         vendor = VendorVerification.objects.filter(user=user).first()
@@ -160,13 +171,34 @@ class UnderwritingReportDataView(views.APIView):
                 "metrics": credit['metrics'],
                 "till_integrity_score": anomalies.get('integrity_score', 100),
                 "fraud_risk_status": anomalies.get('status', 'SECURE'),
+                "cash_runway_days": cash_cliff.get('runway_days', 90),
+                "daily_net_velocity": cash_cliff.get('daily_net_velocity', 0),
+                "fuel_gen_burn_pct": cash_cliff.get('fuel_gen_burn_pct', 0),
             },
             "target_institutions": [
-                "Bank of Industry (BOI)",
-                "Tony Elumelu Foundation (TEF)",
-                "Lagos State Employment Trust Fund (LSETF)",
-                "Development Bank of Nigeria (DBN)",
-                "Commercial Commercial Banks (Access, GTCO, Zenith, FirstBank)",
+                "Bank of Industry (BOI) & Development Bank of Nigeria (DBN)",
+                "FCMB SheVentures / Access Bank W Initiative / Sterling OneWoman",
+                "NIRSAL Microfinance Bank (NMFB) & LSETF / AEA Abuja",
+                "SMEDAN / NACCIMA Youth Entrepreneurs (NYE) / NITDA / NASENI",
+                "Tony Elumelu Foundation (TEF) & Tier-1 Commercial Banks",
             ],
-            "verifier_statement": "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs and compliance verification on the SmartBiz Coach platform."
+            "verifier_statement": "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs, Isolation Forest fraud auditing, and compliance verification on the SmartBiz Coach AI Operating System."
         }, status=status.HTTP_200_OK)
+
+
+class PartnerPortalDataView(views.APIView):
+    """
+    Sprint 4: Institutional Partner Intelligence & Loan Underwriting Terminal API.
+    Accessible to institutional partners (SMEDAN, NACCIMA/NYE, NITDA, NASENI, BOI, FCMB SheVentures, NIRSAL MFB)
+    and authenticated platform users.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        try:
+            req_user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
+            data = PartnerPortalService.get_partner_intelligence(req_user)
+            return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Partner portal error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

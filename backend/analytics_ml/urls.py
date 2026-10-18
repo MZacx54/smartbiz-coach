@@ -6,7 +6,8 @@ from .views import (
     CustomerSegmentationAnalyticsView,
     PriceElasticityAnalyticsView,
     ComprehensiveMLOverviewView,
-    UnderwritingReportDataView
+    UnderwritingReportDataView,
+    PartnerPortalDataView,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('customer-segments/', CustomerSegmentationAnalyticsView.as_view(), name='ml_customer_segments'),
     path('price-elasticity/', PriceElasticityAnalyticsView.as_view(), name='ml_price_elasticity'),
     path('underwriting-dossier/', UnderwritingReportDataView.as_view(), name='ml_underwriting_dossier'),
+    path('partner-portal/', PartnerPortalDataView.as_view(), name='ml_partner_portal'),
 ]

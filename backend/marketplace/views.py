@@ -690,9 +690,35 @@ class DailySaleListCreateView(generics.ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
+        from .models import Product
         sale = serializer.save(user=self.request.user)
         _apply_entry_date(sale, self.request.data.get('date'))
-        # If linked to a physical product that is stock-tracked, auto-decrement stock
+
+        update_fields = []
+        # Connected OS Event Bus: Auto-match catalog product by name if not explicitly linked
+        if not sale.product and sale.item_name:
+            matched_product = Product.objects.filter(
+                brand__user=self.request.user,
+                name__iexact=sale.item_name.strip()
+            ).first()
+            if matched_product:
+                sale.product = matched_product
+                update_fields.append('product')
+
+        # Auto-populate COGS (cost_price) from catalog product if 0 so profit margins are accurate
+        if sale.product and float(sale.cost_price or 0) <= 0 and float(sale.product.cost_price or 0) > 0:
+            sale.cost_price = sale.product.cost_price
+            update_fields.append('cost_price')
+
+        # Ensure credit sales are flagged for Gbege Book & SmartScore™ debt velocity
+        if sale.payment_method == 'CREDIT' and not sale.is_debt:
+            sale.is_debt = True
+            update_fields.append('is_debt')
+
+        if update_fields:
+            sale.save(update_fields=update_fields)
+
+        # Auto-decrement physical inventory stock count
         if sale.product and sale.quantity > 0 and sale.product.product_type == 'PHYSICAL' and sale.product.stock_count > 0:
             product = sale.product
             product.stock_count = max(0, product.stock_count - sale.quantity)

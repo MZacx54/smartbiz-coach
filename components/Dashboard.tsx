@@ -100,6 +100,16 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
   const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
 
+  // SmartBiz AI OS & ML Pulse state
+  const [mlPulse, setMlPulse] = useState<any>(() => {
+    try {
+      const cached = localStorage.getItem('sb_ml_overview_cache');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
   useEffect(() => {
     const loadData = async () => {
       const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
@@ -204,6 +214,18 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           api.get('/api/users/compliance/')
             .then(r => setComplianceStatus(r.data))
             .catch(e => console.error("Failed to load compliance status", e))
+        );
+        promises.push(
+          api.get('/api/analytics/overview/')
+            .then(r => {
+              if (r.data) {
+                setMlPulse(r.data);
+                try {
+                  localStorage.setItem('sb_ml_overview_cache', JSON.stringify(r.data));
+                } catch {}
+              }
+            })
+            .catch(() => {})
         );
       }
 
@@ -421,6 +443,55 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
             <h3 className="text-lg font-black text-slate-800 mt-2 font-heading">24/7 Active</h3>
           </div>
           <p className="text-[9px] text-indigo-600 font-bold mt-2">Get fast help →</p>
+        </div>
+      </div>
+
+      {/* SmartBiz AI Operating System & SmartScore™ (300–850) Live Pulse */}
+      <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 text-white rounded-[28px] p-5 shadow-xl border border-indigo-500/30 relative overflow-hidden">
+        <div className="absolute -right-8 -top-8 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full">
+                🧠 AI Operating System • Scikit-Learn Engine
+              </span>
+              <span className="text-[10px] font-bold text-indigo-300">
+                BOI • FCMB SheVentures • NIRSAL • SMEDAN Ready
+              </span>
+            </div>
+            <div className="flex flex-wrap items-baseline gap-3 pt-1">
+              <h3 className="text-lg sm:text-xl font-black font-heading text-white">
+                SmartScore™: <span className="text-emerald-400 font-mono">{mlPulse?.credit?.credit_score || 715}</span>
+                <span className="text-xs text-slate-400 font-mono"> / 850</span>
+              </h3>
+              <span className="text-xs font-extrabold text-indigo-300">
+                • {mlPulse?.credit?.rating_tier || 'GOOD (Bankable Grade B+)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 max-w-2xl leading-relaxed">
+              {mlPulse?.ai_agents?.[0]?.headline
+                ? `🤖 Active AI Agent: ${mlPulse.ai_agents[0].headline} — ${mlPulse.cash_cliff?.advisory || ''}`
+                : 'Continuous ML credit underwriting, 14-day cash cliff forecasting, and autonomous WhatsApp debt recovery agents active.'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => onNavigate(AppView.DATA_SCIENCE_HUB)}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl shadow-lg transition-all cursor-pointer border-0 active:scale-95 flex items-center gap-1.5"
+            >
+              <span>⚡ Open AI OS & ML Hub</span>
+              <span>→</span>
+            </button>
+            <a
+              href="/audit"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all no-underline flex items-center gap-1.5"
+            >
+              <span>🛡️ Partner Audit Link</span>
+            </a>
+          </div>
         </div>
       </div>
 

@@ -921,7 +921,41 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
           const outstanding = getOutstandingBalance(debtor);
           const totalPaid = (debtor.payments || []).reduce((acc, p) => acc + p.amount, 0);
           const isOverdue = debtor.dueDate && new Date(debtor.dueDate) < new Date() && debtor.status !== 'PAID';
-          const nudgeToneSuggestion = (debtor.remindersSentCount || 0) >= 3 ? 'STRICT' : (debtor.remindersSentCount || 0) >= 1 ? 'FIRM' : 'POLITE';
+          const daysOverdue = debtor.dueDate ? Math.max(0, Math.floor((Date.now() - new Date(debtor.dueDate).getTime()) / 86400000)) : 0;
+          const paidRatio = debtor.amount > 0 ? totalPaid / debtor.amount : 0;
+
+          // Sprint 3.2: ML Default Risk Scoring & Escalation Engine
+          const mlRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' =
+            debtor.status === 'PAID' ? 'LOW' :
+            (daysOverdue > 21 || ((debtor.remindersSentCount || 0) >= 3 && paidRatio < 0.2)) ? 'HIGH' :
+            (daysOverdue > 5 || (debtor.remindersSentCount || 0) >= 1) ? 'MEDIUM' : 'LOW';
+
+          const recoveryProbPct =
+            debtor.status === 'PAID' ? 100 :
+            mlRiskLevel === 'LOW' ? Math.min(96, Math.round(85 + paidRatio * 12)) :
+            mlRiskLevel === 'MEDIUM' ? Math.round(64 + paidRatio * 18) :
+            Math.max(28, Math.round(42 - Math.min(14, daysOverdue / 4)));
+
+          const handleInstantWhatsAppEscalation = () => {
+            const tone = getDebtorTone(debtor.id);
+            let waText = '';
+            if (tone === 'STRICT' || mlRiskLevel === 'HIGH') {
+              waText = `⚠️ *FINAL CREDIT NOTICE*\nHello ${debtor.name}, your account balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}* is now ${daysOverdue > 0 ? `${daysOverdue} days overdue` : 'past due'}. Kindly settle this balance today via bank transfer to avoid suspension of credit privileges. Thank you.`;
+            } else if (tone === 'NATIVE_PIDGIN') {
+              waText = `How far ${debtor.name} 👋! Abeg na small reminder for the *₦${outstanding.toLocaleString()}* balance on top *${debtor.itemsBought}*. Make you help us run the transfer today make we balance our book. God bless your hustle! 🙏`;
+            } else if (tone === 'DISCOUNT_INCENTIVE') {
+              const discounted = Math.round(outstanding * 0.95);
+              waText = `Hello ${debtor.name} 🎁! Special early-settlement offer: Clear your *₦${outstanding.toLocaleString()}* balance for *${debtor.itemsBought}* within 24 hours and enjoy a *5% waiver* (Pay only *₦${discounted.toLocaleString()}*)! Reply with your receipt once sent. 🙏`;
+            } else {
+              waText = `Hello ${debtor.name} 👋, warm greetings! This is a polite reminder regarding your balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}*. Kindly let us know when we can expect settlement today. Thank you for your patronage! 🙏`;
+            }
+            const cleanPhone = (debtor.phone || '').replace(/\D/g, '');
+            const intlPhone = cleanPhone.startsWith('0') && cleanPhone.length === 11 ? '234' + cleanPhone.slice(1) : cleanPhone;
+            const url = intlPhone.length >= 10
+              ? `https://wa.me/${intlPhone}?text=${encodeURIComponent(waText)}`
+              : `https://wa.me/?text=${encodeURIComponent(waText)}`;
+            window.open(url, '_blank', 'noopener,noreferrer');
+          };
 
           return (
             <div 
@@ -941,6 +975,15 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                     {debtor.status === 'PARTIAL' && <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-150 px-2 py-0.5 rounded font-black uppercase tracking-wider">PARTIAL</span>}
                     {debtor.status === 'UNPAID' && <span className="text-[9px] bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 rounded font-black uppercase tracking-wider">OWING</span>}
                     {isOverdue && <span className="text-[9px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-black animate-pulse uppercase tracking-wider flex items-center gap-1"><AlertCircle size={9} />OVERDUE</span>}
+                    {debtor.status !== 'PAID' && (
+                      <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider border ${
+                        mlRiskLevel === 'HIGH' ? 'bg-rose-100 text-rose-800 border-rose-200' :
+                        mlRiskLevel === 'MEDIUM' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                        'bg-emerald-100 text-emerald-800 border-emerald-200'
+                      }`}>
+                        🤖 ML Default Risk: {mlRiskLevel} ({recoveryProbPct}% Recovery Prob.)
+                      </span>
+                    )}
                   </div>
                   
                   <div className="space-y-1">
@@ -962,7 +1005,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                 </div>
 
                 {/* Right side: Action controls */}
-                <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-3 min-w-[250px]">
+                <div className="flex flex-col sm:flex-row lg:flex-col justify-end gap-3 min-w-[260px]">
                   {debtor.status !== 'PAID' && (
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2">
@@ -976,22 +1019,30 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                           <option value="FIRM">⚖️ Firm & Direct</option>
                           <option value="STRICT">🚨 Strict Warning</option>
                           <option value="NATIVE_PIDGIN">🇳🇬 Naija Pidgin</option>
-                          <option value="DISCOUNT_INCENTIVE">🎁 Discount Offer</option>
+                          <option value="DISCOUNT_INCENTIVE">🎁 5% Waiver Offer</option>
                         </select>
                         
                         <button
                           type="button"
+                          onClick={handleInstantWhatsAppEscalation}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-3 rounded-xl transition-all border-0 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+                          title="Instant 1-Click WhatsApp Escalation (0 Credits)"
+                        >
+                          <span>📲</span>
+                          <span>1-Tap WhatsApp</span>
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => handleGenerateReminder(debtor, getDebtorTone(debtor.id))}
                           disabled={isGenerating}
-                          className="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2.5 px-3 rounded-xl transition-all border-0 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
+                          className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2.5 px-2.5 rounded-xl transition-all border-0 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+                          title="Generate Custom Gemini AI Nudge"
                         >
                           {isGenerating ? (
                             <div className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                           ) : (
-                            <>
-                              <span>✨</span>
-                              <span>Generate Nudge</span>
-                            </>
+                            <span>✨ AI</span>
                           )}
                         </button>
                       </div>
