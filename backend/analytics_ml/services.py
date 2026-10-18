@@ -985,17 +985,32 @@ class PartnerPortalService:
             {"state": "Rivers & South-South", "msme_count": 68, "gmv_ngn": 29800000, "avg_score": 731, "highlight": "Marine, Retail & Energy MSMEs"},
         ]
 
+        macro_summary = {
+            "total_msmes_monitored": 637 + len(cohort_rows),
+            "total_verified_gmv_ngn": 290800000 + sum(r["monthly_gmv_ngn"] for r in cohort_rows),
+            "total_recommended_credit_pool_ngn": 34500000,
+            "avg_smart_score": round(sum(r["smart_score"] for r in cohort_rows) / max(1, len(cohort_rows))),
+            "cac_formalized_pct": 87.5,
+            "women_led_pct": 64.2,
+            "youth_led_pct": 76.4,
+            "prime_credit_ready_count": sum(1 for r in cohort_rows if r["smart_score"] >= 740) + 406,
+            "estimated_jobs_supported": 1940,
+        }
+
         return {
+            "macro_summary": macro_summary,
             "macro_impact": {
-                "total_msmes_digitized": 637 + len(cohort_rows),
-                "total_gmv_tracked_ngn": 290800000 + sum(r["monthly_gmv_ngn"] for r in cohort_rows),
-                "cac_formalized_pct": 84.6,
+                "total_msmes_digitized": macro_summary["total_msmes_monitored"],
+                "total_gmv_tracked_ngn": macro_summary["total_verified_gmv_ngn"],
+                "cac_formalized_pct": 87.5,
                 "women_youth_led_pct": 76.4,
-                "avg_smart_score": round(sum(r["smart_score"] for r in cohort_rows) / max(1, len(cohort_rows))),
+                "avg_smart_score": macro_summary["avg_smart_score"],
                 "estimated_jobs_supported": 1940,
                 "default_rate_reduction_pct": 68.0,
             },
+            "state_breakdown": state_distribution,
             "state_distribution": state_distribution,
             "underwriting_cohort": cohort_rows,
         }
+
 

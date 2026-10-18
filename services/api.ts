@@ -31,7 +31,8 @@ const isCacheableGet = (url?: string): boolean => {
     url.includes('auth/stats') ||
     url.includes('auth/actions') ||
     url.includes('brands/') ||
-    url.includes('billing/transactions')
+    url.includes('billing/transactions') ||
+    url.includes('analytics/')
   );
 };
 
@@ -43,12 +44,14 @@ api.interceptors.request.use(
       config.headers.Authorization = `Token ${token}`;
     }
 
-    // Strip duplicate /api/ prefix if present to align with the Axios baseURL
+    // Strip duplicate /api/ prefix or leading slash to align with the Axios baseURL (${BASE_URL}/api/)
     if (config.url) {
       if (config.url.startsWith('/api/')) {
         config.url = config.url.substring(5);
       } else if (config.url.startsWith('api/')) {
         config.url = config.url.substring(4);
+      } else if (config.url.startsWith('/')) {
+        config.url = config.url.substring(1);
       }
     }
 
