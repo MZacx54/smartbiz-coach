@@ -8,6 +8,8 @@ from .views import (
     ComprehensiveMLOverviewView,
     UnderwritingReportDataView,
     PartnerPortalDataView,
+    MonteCarloLoanSimulatorView,
+    POSReconciliationView,
 )
 
 urlpatterns = [
@@ -19,4 +21,6 @@ urlpatterns = [
     path('price-elasticity/', PriceElasticityAnalyticsView.as_view(), name='ml_price_elasticity'),
     path('underwriting-dossier/', UnderwritingReportDataView.as_view(), name='ml_underwriting_dossier'),
     path('partner-portal/', PartnerPortalDataView.as_view(), name='ml_partner_portal'),
+    path('loan-simulator/', MonteCarloLoanSimulatorView.as_view(), name='ml_loan_simulator'),
+    path('reconcile-pos/', POSReconciliationView.as_view(), name='ml_reconcile_pos'),
 ]

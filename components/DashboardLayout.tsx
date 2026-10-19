@@ -102,7 +102,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             AppView.BUSINESS_PLAN,
             AppView.GRANT_MATCHER,
             AppView.COMPLIANCE,
-            AppView.DIGITAL_ROADMAP
+            AppView.DIGITAL_ROADMAP,
+            AppView.PARTNER_PORTAL
         ];
 
         if (isCashierMode && ownerOnlyViews.includes(view)) {
@@ -352,6 +353,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
                             <NavItem view={AppView.BUSINESS_PLAN} label="Business Plan" icon="📈" />
                             <NavItem view={AppView.DATA_SCIENCE_HUB} label="ML Intelligence" icon="⚡" />
+                            <NavItem view={AppView.PARTNER_PORTAL} label="Partner & Admin Terminal" icon="🏛️" />
                             <NavItem view={AppView.GRANT_MATCHER} label="Find Funding" icon="💰" />
                             <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
                             <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />

@@ -9,6 +9,9 @@ from .services import (
     CashCliffForecastService,
     AutonomousAgentService,
     PartnerPortalService,
+    AICFOBriefingService,
+    MonteCarloLoanSimulatorService,
+    POSReconciliationService,
 )
 
 
@@ -90,8 +93,9 @@ class PriceElasticityAnalyticsView(views.APIView):
 class ComprehensiveMLOverviewView(views.APIView):
     """
     Consolidated single-request ML & AI OS intelligence dashboard payload.
-    Includes SmartScore™ Credit Rating, Ridge Demand Forecaster, Isolation Forest Till Scanner,
-    RFM Customer Cohorts, OLS Price Elasticity, 14-Day Cash Cliff Predictor, and Autonomous AI Agents.
+    Includes SmartScore™ Credit Rating + IFRS-9 Risk (PD%, ECL, DSCR), Ridge Demand Forecaster,
+    Isolation Forest Till Scanner, RFM Customer Cohorts, OLS Price Elasticity, 14-Day Cash Cliff Predictor,
+    Autonomous AI Agents, AI CFO Audio Briefing, and Monte Carlo Loan Simulator.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -106,6 +110,15 @@ class ComprehensiveMLOverviewView(views.APIView):
             ai_agents = AutonomousAgentService.get_active_directives(
                 request.user, credit, forecasts, anomalies, cash_cliff
             )
+            cfo_briefing = AICFOBriefingService.generate_daily_briefing(
+                request.user, credit, forecasts, cash_cliff
+            )
+            loan_simulation = MonteCarloLoanSimulatorService.simulate_loan_impact(
+                request.user,
+                loan_amount_ngn=float(credit.get("recommended_loan_limit_ngn", 1500000)),
+                annual_interest_rate_pct=9.0,
+                tenor_months=12,
+            )
 
             return Response({
                 "credit": credit,
@@ -115,6 +128,8 @@ class ComprehensiveMLOverviewView(views.APIView):
                 "elasticity": elasticity,
                 "cash_cliff": cash_cliff,
                 "ai_agents": ai_agents,
+                "cfo_briefing": cfo_briefing,
+                "loan_simulation": loan_simulation,
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"ML pipeline error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -167,6 +182,7 @@ class UnderwritingReportDataView(views.APIView):
                 "rating_tier": credit['rating_tier'],
                 "risk_level": credit['risk_level'],
                 "bank_recommendation": credit['bank_recommendation'],
+                "ifrs9_risk": credit.get('ifrs9_risk', {}),
                 "breakdown": credit['breakdown'],
                 "metrics": credit['metrics'],
                 "till_integrity_score": anomalies.get('integrity_score', 100),
@@ -182,23 +198,60 @@ class UnderwritingReportDataView(views.APIView):
                 "SMEDAN / NACCIMA Youth Entrepreneurs (NYE) / NITDA / NASENI",
                 "Tony Elumelu Foundation (TEF) & Tier-1 Commercial Banks",
             ],
-            "verifier_statement": "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs, Isolation Forest fraud auditing, and compliance verification on the SmartBiz Coach AI Operating System."
+            "verifier_statement": "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs, Isolation Forest fraud auditing, RandomForest IFRS-9 PD/ECL modeling, and compliance verification on the SmartBiz Coach AI Operating System."
         }, status=status.HTTP_200_OK)
 
 
 class PartnerPortalDataView(views.APIView):
     """
-    Sprint 4: Institutional Partner Intelligence & Loan Underwriting Terminal API.
-    Accessible to institutional partners (SMEDAN, NACCIMA/NYE, NITDA, NASENI, BOI, FCMB SheVentures, NIRSAL MFB)
-    and authenticated platform users.
+    Sprint 4 & Upgrade 1: Institutional Partner Intelligence & Loan Underwriting Terminal API.
+    Supports ?mode=LIVE (100% real database users) or ?mode=SIMULATION (Real DB + Multi-State Benchmark).
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         try:
             req_user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
-            data = PartnerPortalService.get_partner_intelligence(req_user)
+            mode = request.query_params.get('mode', 'HYBRID')
+            data = PartnerPortalService.get_partner_intelligence(req_user, mode=mode)
             return Response(data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Partner portal error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MonteCarloLoanSimulatorView(views.APIView):
+    """
+    Upgrade 5: Interactive 1,000-Run Monte Carlo Cashflow & Loan Repayment Simulator API.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        try:
+            req_user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
+            loan_amount = float(request.data.get('loan_amount_ngn', 2000000))
+            rate = float(request.data.get('annual_interest_rate_pct', 9.0))
+            tenor = int(request.data.get('tenor_months', 12))
+            gmv_override = float(request.data.get('monthly_gmv_override', 0))
+            res = MonteCarloLoanSimulatorService.simulate_loan_impact(
+                req_user, loan_amount, rate, tenor, gmv_override
+            )
+            return Response(res, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class POSReconciliationView(views.APIView):
+    """
+    Upgrade 4: AI Bank Alert & POS Terminal Slip Reconciliation Engine API.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            raw_text = str(request.data.get('raw_alert_text', ''))
+            res = POSReconciliationService.reconcile_alerts(request.user, raw_text)
+            return Response(res, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 

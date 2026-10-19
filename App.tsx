@@ -156,6 +156,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else if (path.includes('/dashboard/marketing')) setCurrentView(AppView.MARKETING_AGENT);
     else if (path.includes('/dashboard/analytics')) setCurrentView(AppView.DATA_SCIENCE_HUB);
+    else if (path.includes('/dashboard/partner-portal') || path.includes('/partner-portal')) setCurrentView(AppView.PARTNER_PORTAL);
     else setCurrentView(AppView.DASHBOARD);
   }, [location]);
 
@@ -384,6 +385,7 @@ const App: React.FC = () => {
       case AppView.MARKETING_AGENT: navigate(`/dashboard/marketing${query}`); break;
       case AppView.LEAD_MANAGER: navigate(`/dashboard/leads${query}`); break;
       case AppView.DATA_SCIENCE_HUB: navigate(`/dashboard/analytics${query}`); break;
+      case AppView.PARTNER_PORTAL: navigate(`/dashboard/partner-portal${query}`); break;
       default: navigate(`/dashboard${query}`);
     }
   };
