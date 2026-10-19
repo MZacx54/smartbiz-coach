@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppView, User, UserStats, Debtor } from '../types';
 import api from '../services/api';
-import { securityLockService } from '../services/authService';
-import { Card, Button, StatTile, Skeleton, PageHeader } from './ui';
+import { useOwnerLock } from '../hooks/useOwnerLock';
+import { Card, Button, StatTile, Skeleton, PageHeader, useLanguage } from './ui';
 
 interface HomeProps {
   user: User;
@@ -43,10 +43,12 @@ const readCache = <T,>(key: string): T | null => {
   }
 };
 
-const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
+const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
   const navigate = useNavigate();
   const today = localDate();
-  const [isStaff, setIsStaff] = useState(() => securityLockService.isApprenticeModeActive());
+  const { isStaffMode: isStaff } = useOwnerLock();
+  const { t } = useLanguage();
+
   const [summary, setSummary] = useState<Summary | null>(() => readCache<Summary>(`sb_home_summary_${today}`));
   const [trends, setTrends] = useState<Trends | null>(() => readCache<Trends>('sb_home_trends'));
   const [loading, setLoading] = useState(!summary);
@@ -55,15 +57,9 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
   const [storeShared, setStoreShared] = useState(() => localStorage.getItem('sb_store_shared') === 'true');
 
   useEffect(() => {
-    const onMode = (e: any) => setIsStaff(Boolean(e?.detail?.isApprenticeMode ?? securityLockService.isApprenticeModeActive()));
-    window.addEventListener('sb-apprentice-mode-changed', onMode);
-    return () => window.removeEventListener('sb-apprentice-mode-changed', onMode);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const [s, t, p] = await Promise.allSettled([
+      const [s, tRes, p] = await Promise.allSettled([
         api.get(`/api/marketplace/daily-summary/?date=${today}`, { timeout: 8000 }),
         api.get('/api/marketplace/daily-trends/?days=7', { timeout: 8000 }),
         api.get('/api/marketplace/products/', { timeout: 8000 }),
@@ -73,9 +69,9 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
         setSummary(s.value.data);
         try { localStorage.setItem(`sb_home_summary_${today}`, JSON.stringify(s.value.data)); } catch { /* ignore */ }
       }
-      if (t.status === 'fulfilled' && t.value?.data) {
-        setTrends(t.value.data);
-        try { localStorage.setItem('sb_home_trends', JSON.stringify(t.value.data)); } catch { /* ignore */ }
+      if (tRes.status === 'fulfilled' && tRes.value?.data) {
+        setTrends(tRes.value.data);
+        try { localStorage.setItem('sb_home_trends', JSON.stringify(tRes.value.data)); } catch { /* ignore */ }
       }
       if (p.status === 'fulfilled') {
         const d = p.value?.data;
@@ -97,7 +93,8 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
   const salesToday = summary?.sales_count ?? 0;
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greetingEn = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greetingPcm = hour < 12 ? 'How market this morning' : hour < 17 ? 'How market today' : 'Well done today';
   const firstName = (user.name || user.businessName || 'there').split(' ')[0];
   const businessName = user.businessName || user.business_name || 'your business';
   const dateLabel = new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -108,35 +105,47 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
     const top = overdue[0];
     suggestions.push({
       id: 'overdue', icon: '📒', tone: 'rose',
-      title: `${top.name} owes you ${ngn(top.amount)}`,
-      detail: overdue.length > 1 ? `Plus ${overdue.length - 1} more overdue. Send a polite reminder today.` : 'This payment is overdue. Send a polite reminder.',
-      cta: 'Remind', go: () => onNavigate(AppView.DEBTOR_BOOK),
+      title: t(`${top.name} owes you ${ngn(top.amount)}`, `${top.name} dey owe you ${ngn(top.amount)}`),
+      detail: overdue.length > 1
+        ? t(`Plus ${overdue.length - 1} more overdue. Send a polite reminder today.`, `Plus ${overdue.length - 1} other person. Send WhatsApp reminder sharp-sharp.`)
+        : t('This payment is overdue. Send a polite reminder.', 'Time don pass for this money. Send WhatsApp reminder now.'),
+      cta: t('Remind', 'Remind am'),
+      go: () => onNavigate(AppView.DEBTOR_BOOK),
     });
   }
   if (lowStock.length > 0) {
     const item = lowStock[0];
     suggestions.push({
       id: 'stock', icon: '📦', tone: 'amber',
-      title: `Restock ${item.name}`,
-      detail: `Only ${item.stock_count} left${lowStock.length > 1 ? ` (and ${lowStock.length - 1} other items are low)` : ''}.`,
-      cta: 'Open stock', go: () => onNavigate(AppView.PRODUCT_MANAGER),
+      title: t(`Restock ${item.name}`, `${item.name} wan finish for shop`),
+      detail: t(
+        `Only ${item.stock_count} left${lowStock.length > 1 ? ` (and ${lowStock.length - 1} other items are low)` : ''}.`,
+        `Na only ${item.stock_count} remain${lowStock.length > 1 ? ` (plus ${lowStock.length - 1} other market)` : ''}.`
+      ),
+      cta: t('Open stock', 'Check stock'),
+      go: () => onNavigate(AppView.PRODUCT_MANAGER),
     });
   }
   if (!loading && salesToday === 0 && hour >= 10) {
     suggestions.push({
       id: 'nosale', icon: '⚡', tone: 'emerald',
-      title: 'No sales recorded yet today',
-      detail: 'Record each sale as it happens so your till and profit stay accurate.',
-      cta: 'Record sale', go: () => onNavigate(AppView.DAILY_CASHBOOK, 'action=sale'),
+      title: t('No sales recorded yet today', 'You never record any sale today'),
+      detail: t(
+        'Record each sale as it happens so your till and profit stay accurate.',
+        'Anytime you sell market, press Record Sale make your money & profit intact.'
+      ),
+      cta: t('Record sale', 'Record sale'),
+      go: () => onNavigate(AppView.DAILY_CASHBOOK, 'action=sale'),
     });
   }
   const score = readCache<any>('sb_ml_overview_cache')?.credit?.credit_score;
   if (score && !isStaff) {
     suggestions.push({
       id: 'score', icon: '💰', tone: 'blue',
-      title: `Your SmartScore is ${score}`,
-      detail: 'See grants and loans you may qualify for.',
-      cta: 'Find funding', go: () => onNavigate(AppView.GRANT_MATCHER),
+      title: t(`Your SmartScore is ${score}`, `Your SmartScore na ${score}`),
+      detail: t('See grants and loans you may qualify for.', 'Check grants & business money wey fit your shop.'),
+      cta: t('Find funding', 'Check grant'),
+      go: () => onNavigate(AppView.GRANT_MATCHER),
     });
   }
   const shownSuggestions = suggestions.slice(0, 3);
@@ -145,12 +154,33 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
   const hasPasscode = localStorage.getItem('sb_has_owner_passcode') === 'true';
   const hasSold = (trends?.total_revenue || 0) > 0 || salesToday > 0;
   const checklist = [
-    { id: 'product', label: 'Add your first product', done: (productCount ?? 0) > 0, go: () => onNavigate(AppView.PRODUCT_MANAGER) },
-    { id: 'sale', label: 'Record your first sale', done: hasSold, go: () => onNavigate(AppView.DAILY_CASHBOOK, 'action=sale') },
-    { id: 'pass', label: 'Set your Owner password', done: hasPasscode, go: () => onNavigate(AppView.SETTINGS, 'tab=preferences') },
     {
-      id: 'store', label: 'Share your online store link', done: storeShared,
-      go: () => { localStorage.setItem('sb_store_shared', 'true'); setStoreShared(true); onNavigate(AppView.STOREFRONT); },
+      id: 'product',
+      label: t('Add your first product', 'Add your first market/product'),
+      done: (productCount ?? 0) > 0,
+      go: () => onNavigate(AppView.PRODUCT_MANAGER, 'action=new'),
+    },
+    {
+      id: 'sale',
+      label: t('Record your first sale', 'Record your first sale'),
+      done: hasSold,
+      go: () => onNavigate(AppView.DAILY_CASHBOOK, 'action=sale'),
+    },
+    {
+      id: 'pass',
+      label: t('Set your Owner password', 'Set your Oga/Owner password'),
+      done: hasPasscode,
+      go: () => onNavigate(AppView.SETTINGS, 'tab=preferences'),
+    },
+    {
+      id: 'store',
+      label: t('Share your online store link', 'Share your online shop link for WhatsApp'),
+      done: storeShared,
+      go: () => {
+        localStorage.setItem('sb_store_shared', 'true');
+        setStoreShared(true);
+        onNavigate(AppView.STOREFRONT);
+      },
     },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
@@ -167,17 +197,22 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
-      <PageHeader title={`${greeting}, ${firstName} 👋`} subtitle={`${businessName} · ${dateLabel}`} />
+      <PageHeader
+        title={`${t(greetingEn, greetingPcm)}, ${firstName} 👋`}
+        subtitle={`${businessName} · ${dateLabel}`}
+      />
 
       {/* 1. One primary action */}
       <Card className="bg-gradient-to-br from-emerald-600 to-teal-700 border-0 text-white">
-        <p className="text-sm font-semibold text-emerald-100">Made a sale?</p>
+        <p className="text-sm font-semibold text-emerald-100">
+          {t('Made a sale?', 'You just sell something?')}
+        </p>
         <div className="mt-3 flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => onNavigate(AppView.DAILY_CASHBOOK, 'action=sale')}
             className="flex-1 min-h-[56px] rounded-2xl bg-white text-emerald-700 font-black text-base shadow-lg active:scale-[0.98] cursor-pointer"
           >
-            ⚡ Record a sale
+            ⚡ {t('Record a sale', 'Record Sale Now')}
           </button>
           <div className="flex gap-2">
             {!isStaff && (
@@ -185,20 +220,20 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
                 onClick={() => onNavigate(AppView.DAILY_CASHBOOK, 'action=expense')}
                 className="flex-1 sm:flex-none min-h-[56px] px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-sm cursor-pointer"
               >
-                💸 Expense
+                💸 {t('Expense', 'Expense')}
               </button>
             )}
             <button
-              onClick={() => onNavigate(AppView.PRODUCT_MANAGER)}
+              onClick={() => onNavigate(AppView.PRODUCT_MANAGER, 'action=new')}
               className="flex-1 sm:flex-none min-h-[56px] px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-sm cursor-pointer"
             >
-              📦 Add stock
+              📦 {t('Add stock', 'Add stock')}
             </button>
             <button
               onClick={() => onNavigate(AppView.INVOICE_GENERATOR)}
               className="flex-1 sm:flex-none min-h-[56px] px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-sm cursor-pointer"
             >
-              🧾 Invoice
+              🧾 {t('Invoice', 'Receipt')}
             </button>
           </div>
         </div>
@@ -207,42 +242,50 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
       {/* 2. Today strip */}
       <div className={`grid gap-3 ${isStaff ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
         <StatTile
-          label="Sales today" icon="🛒" tone="emerald" loading={loading && !summary}
+          label={t('Sales today', 'Market today')}
+          icon="🛒" tone="emerald" loading={loading && !summary}
           value={summary ? ngn(summary.total_sales_revenue) : undefined}
-          hint={summary ? `${summary.sales_count} sale${summary.sales_count === 1 ? '' : 's'}` : undefined}
+          hint={summary ? `${summary.sales_count} ${t(summary.sales_count === 1 ? 'sale' : 'sales', 'sales')}` : undefined}
           onClick={() => onNavigate(AppView.DAILY_CASHBOOK)}
         />
         {!isStaff && (
           <StatTile
-            label="Cash in till" icon="💵" tone="blue" loading={loading && !summary}
+            label={t('Cash in till', 'Cash for drawer')}
+            icon="💵" tone="blue" loading={loading && !summary}
             value={summary ? ngn(summary.net_cash_in_till) : undefined}
-            hint="Expected in your drawer"
+            hint={t('Expected in your drawer', 'Money wey suppose dey hand')}
             onClick={() => onNavigate(AppView.DAILY_CASHBOOK)}
           />
         )}
         {!isStaff && (
           <StatTile
-            label="Owed to you" icon="📒" tone="rose"
+            label={t('Owed to you', 'Gbege (Debtors)')}
+            icon="📒" tone="rose"
             value={ngn(totalOwed)}
-            hint={`${unpaid.length} debtor${unpaid.length === 1 ? '' : 's'}${overdue.length ? ` · ${overdue.length} overdue` : ''}`}
+            hint={`${unpaid.length} ${t(unpaid.length === 1 ? 'debtor' : 'debtors', 'people')}${overdue.length ? ` · ${overdue.length} overdue` : ''}`}
             onClick={() => onNavigate(AppView.DEBTOR_BOOK)}
           />
         )}
         <StatTile
-          label="Low stock" icon="⚠️" tone="amber" loading={loading && !summary}
+          label={t('Low stock', 'Market wey low')}
+          icon="⚠️" tone="amber" loading={loading && !summary}
           value={summary ? String(lowStock.length) : undefined}
-          hint={lowStock.length ? lowStock.slice(0, 2).map((p) => p.name).join(', ') : 'All good'}
+          hint={lowStock.length ? lowStock.slice(0, 2).map((p) => p.name).join(', ') : t('All good', 'Stock full')}
           onClick={() => onNavigate(AppView.PRODUCT_MANAGER)}
         />
       </div>
 
       {/* 3. Do this next */}
       <Card>
-        <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">✨ Do this next</h2>
+        <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+          ✨ {t('Do this next', 'Wetin to do next')}
+        </h2>
         {loading && !summary ? (
           <div className="mt-3 space-y-2"><Skeleton className="h-16" /><Skeleton className="h-16" /></div>
         ) : shownSuggestions.length === 0 ? (
-          <p className="text-sm text-slate-500 mt-2">You're all caught up. 🎉 Nothing needs your attention right now.</p>
+          <p className="text-sm text-slate-500 mt-2">
+            {t("You're all caught up. 🎉 Nothing needs your attention right now.", "Everything set! 🎉 Nothing dey hold your shop right now.")}
+          </p>
         ) : (
           <div className="mt-3 space-y-2">
             {shownSuggestions.map((s) => (
@@ -263,9 +306,13 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
       {showChecklist && (
         <Card className="border border-emerald-100">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">🚀 Get set up ({doneCount}/{checklist.length})</h2>
+            <h2 className="text-base font-extrabold text-slate-900">
+              🚀 {t(`Get set up (${doneCount}/${checklist.length})`, `Set up your shop (${doneCount}/${checklist.length})`)}
+            </h2>
             <button onClick={() => { localStorage.setItem('sb_checklist_dismissed', 'true'); setChecklistHidden(true); }}
-              className="text-xs font-bold text-slate-400 hover:text-slate-600 min-h-[44px] px-2 cursor-pointer">Hide</button>
+              className="text-xs font-bold text-slate-400 hover:text-slate-600 min-h-[44px] px-2 cursor-pointer">
+              {t('Hide', 'Comot am')}
+            </button>
           </div>
           <div className="h-2 bg-slate-100 rounded-full mt-2 overflow-hidden">
             <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(doneCount / checklist.length) * 100}%` }} />
@@ -286,12 +333,14 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
       {/* 4. Weekly trend */}
       <Card>
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-extrabold text-slate-900">Last 7 days</h2>
-          {trends && <span className="text-sm font-bold text-slate-500">{ngn(trends.total_revenue)} sold</span>}
+          <h2 className="text-base font-extrabold text-slate-900">{t('Last 7 days', 'Last 7 days market')}</h2>
+          {trends && <span className="text-sm font-bold text-slate-500">{ngn(trends.total_revenue)} {t('sold', 'sold')}</span>}
         </div>
         {series.length === 0 ? (
           loading ? <Skeleton className="h-24 mt-3" /> :
-          <p className="text-sm text-slate-500 mt-2">Your weekly sales chart will appear after your first sale.</p>
+          <p className="text-sm text-slate-500 mt-2">
+            {t('Your weekly sales chart will appear after your first sale.', 'Your 7-day sales chart go show once you record your first sale.')}
+          </p>
         ) : (
           <div className="flex items-end gap-2 h-28 mt-4">
             {series.map((d) => (
@@ -310,7 +359,7 @@ const Home: React.FC<HomeProps> = ({ user, userStats, onNavigate }) => {
             onClick={() => navigate('/dashboard/insights')}
             className="mt-3 w-full min-h-[44px] rounded-xl text-sm font-bold text-emerald-700 hover:bg-emerald-50 cursor-pointer"
           >
-            Show more insights ›
+            {t('Show more insights ›', 'See full AI business insights ›')}
           </button>
         )}
       </Card>

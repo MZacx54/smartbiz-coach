@@ -5,9 +5,9 @@ import GlobalSearch from './GlobalSearch';
 import { toast } from 'react-hot-toast';
 import LiveSupportWidget from './LiveSupportWidget';
 import { PWAInstallButton } from './PWAInstallPrompt';
-import { securityLockService } from '../services/authService';
-import api from '../services/api';
-import { OWNER_ONLY_VIEWS, QUICK_ADD, matchNav, sectionsForRole, NavRole } from '../config/navigation';
+import { OWNER_ONLY_VIEWS, QUICK_ADD, matchNav, sectionsForRole, NavRole, isAdminOrPartnerUser } from '../config/navigation';
+import { useOwnerLock } from '../hooks/useOwnerLock';
+import { useLanguage } from './ui';
 
 interface DashboardLayoutProps {
     user: User;
@@ -40,12 +40,19 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const [showProfile, setShowProfile] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
 
-    // Unified, cloud-synced Apprentice / Cashier Mode
-    const [isCashierMode, setIsCashierMode] = useState(() => securityLockService.isApprenticeModeActive());
+    // Unified, cloud-synced Apprentice / Cashier Mode via shared hook
+    const {
+        isStaffMode: isCashierMode,
+        isVerifying: isVerifyingPin,
+        unlockError: pinError,
+        setUnlockError: setPinError,
+        lockToStaff: lockStaffMode,
+        unlockOwner,
+    } = useOwnerLock();
+    const { lang, toggleLang, t } = useLanguage();
+
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [enteredPin, setEnteredPin] = useState('');
-    const [pinError, setPinError] = useState('');
-    const [isVerifyingPin, setIsVerifyingPin] = useState(false);
     const [showPasswordText, setShowPasswordText] = useState(false);
 
     const role: NavRole = isCashierMode ? 'ATTENDANT' : 'OWNER';
@@ -55,40 +62,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const activeSectionData = sections.find((s) => s.id === activeSectionId);
 
     useEffect(() => {
-        const handleModeChanged = (e: any) => {
-            const active = e?.detail?.isApprenticeMode ?? securityLockService.isApprenticeModeActive();
-            setIsCashierMode(Boolean(active));
-        };
-        window.addEventListener('sb-apprentice-mode-changed', handleModeChanged);
-
-        const syncSecurityFromCloud = async () => {
-            if (!localStorage.getItem('sb_auth_token')) return;
-            try {
-                const res = await api.get('users/security-lock/');
-                if (res?.data && typeof res.data.is_apprentice_mode === 'boolean') {
-                    securityLockService.syncFromUserOrBrand(res.data);
-                    setIsCashierMode(res.data.is_apprentice_mode);
-                }
-            } catch {
-                // Keep local state if offline
-            }
-        };
-        syncSecurityFromCloud();
-        window.addEventListener('focus', syncSecurityFromCloud);
-        return () => {
-            window.removeEventListener('sb-apprentice-mode-changed', handleModeChanged);
-            window.removeEventListener('focus', syncSecurityFromCloud);
-        };
-    }, []);
-
-    useEffect(() => {
         const handleOnline = () => {
             setIsOnline(true);
-            toast.success('Back online. Cloud sync active.', { icon: '☁️' });
+            toast.success(t('Back online. Cloud sync active.', 'Network don come back. Cloud sync active.'), { icon: '☁️' });
         };
         const handleOffline = () => {
             setIsOnline(false);
-            toast('📶 You are offline. Your sales are saved on this phone.', { duration: 5000 });
+            toast(t('📶 You are offline. Your sales are saved on this phone.', '📶 Network no dey. Your sales dey save inside this phone.'), { duration: 5000 });
         };
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
@@ -96,7 +76,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         const handleCreditsUpdated = (e: any) => {
@@ -127,20 +107,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
     const handleUnlockOwnerMode = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsVerifyingPin(true);
-        setPinError('');
-        try {
-            const result = await securityLockService.verifyOrUnlockOwnerPasscode(enteredPin, 'UNLOCK');
-            if (result.verified) {
-                setIsCashierMode(false);
-                setShowUnlockModal(false);
-                setEnteredPin('');
-                toast.success('Owner Mode unlocked. Full access restored.', { icon: '👑' });
-            } else {
-                setPinError(result.error || 'Incorrect Owner Security Password.');
-            }
-        } finally {
-            setIsVerifyingPin(false);
+        const ok = await unlockOwner(enteredPin);
+        if (ok) {
+            setShowUnlockModal(false);
+            setEnteredPin('');
         }
     };
 
@@ -161,15 +131,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     };
 
     const lockToStaff = async () => {
-        await securityLockService.lockApprenticeMode();
-        setIsCashierMode(true);
+        await lockStaffMode();
         setShowProfile(false);
-        toast('Staff Mode on. Petty cash and profits are locked on all devices.', { icon: '🔒', duration: 4000 });
     };
 
     const businessName = user.businessName || user.business_name || 'My Business';
     const initial = businessName.charAt(0).toUpperCase();
     const quickItems = QUICK_ADD.filter((q) => role === 'OWNER' || q.attendant);
+    const isAdmin = isAdminOrPartnerUser(user);
 
     /* ---------------- Desktop sidebar ---------------- */
     const Sidebar = (
@@ -181,7 +150,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             <div className="px-5 pt-4 pb-2">
                 <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-                    {isCashierMode ? 'Staff session' : 'Your business'}
+                    {isCashierMode ? t('Staff session', 'Apprentice / Staff') : t('Your business', 'Your shop')}
                 </p>
                 <p className="text-sm font-bold text-white truncate">{businessName}</p>
             </div>
@@ -190,6 +159,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 {sections.map((s) => {
                     const open = s.id === activeSectionId;
                     const single = s.children.length === 1;
+                    const sLabel = lang === 'pcm' ? s.labelPcm || s.label : s.label;
                     return (
                         <div key={s.id}>
                             <button
@@ -199,12 +169,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 }`}
                             >
                                 <span className="text-lg">{s.icon}</span>
-                                <span>{s.label}</span>
+                                <span>{sLabel}</span>
                             </button>
                             {open && !single && (
                                 <div className="ml-5 pl-3 border-l border-slate-800 my-1 space-y-0.5">
                                     {s.children.map((c) => {
                                         const isActive = matchNav(location.pathname).leaf?.route === c.route;
+                                        const cLabel = lang === 'pcm' ? c.labelPcm || c.label : c.label;
                                         return (
                                             <button
                                                 key={c.route}
@@ -214,7 +185,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                                 }`}
                                             >
                                                 <span>{c.icon}</span>
-                                                <span className="truncate">{c.label}</span>
+                                                <span className="truncate">{cLabel}</span>
                                             </button>
                                         );
                                     })}
@@ -240,14 +211,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         onClick={() => setShowUnlockModal(true)}
                         className="w-full min-h-[44px] rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-sm font-bold cursor-pointer"
                     >
-                        🔒 Staff Mode · Unlock
+                        🔒 {t('Staff Mode · Unlock', 'Staff Mode · Open am')}
                     </button>
                 ) : (
                     <button
                         onClick={lockToStaff}
                         className="w-full min-h-[44px] rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-sm font-bold cursor-pointer"
                     >
-                        👤 Hand over to staff
+                        👤 {t('Hand over to staff', 'Give phone to apprentice')}
                     </button>
                 )}
             </div>
@@ -256,13 +227,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
     /* ---------------- Profile menu ---------------- */
     const profileItems: { label: string; icon: string; onClick: () => void; hide?: boolean }[] = [
-        { label: 'Settings & Security', icon: '⚙️', onClick: () => go(AppView.SETTINGS) },
-        { label: 'Credits & Billing', icon: '⚡', onClick: () => go(AppView.SETTINGS, 'tab=billing'), hide: isCashierMode },
-        { label: 'Help & Support', icon: '🎧', onClick: () => go(AppView.WHATSAPP_SUPPORT) },
-        { label: 'Partner & Admin Terminal', icon: '🏛️', onClick: () => go(AppView.PARTNER_PORTAL), hide: isCashierMode },
-        { label: 'More insights', icon: '📊', onClick: () => navigate('/dashboard/insights'), hide: isCashierMode },
-        { label: `Traction demo: ${tractionMode ? 'ON' : 'OFF'}`, icon: '📈', onClick: toggleTraction, hide: user?.email !== 'meshachzax@gmail.com' },
-        { label: 'Log out', icon: '🚪', onClick: () => { setShowProfile(false); onLogout?.(); }, hide: !onLogout },
+        { label: t('Settings & Security', 'Settings & Password'), icon: '⚙️', onClick: () => go(AppView.SETTINGS) },
+        { label: t('Credits & Billing', 'Buy AI Credits'), icon: '⚡', onClick: () => go(AppView.SETTINGS, 'tab=billing'), hide: isCashierMode },
+        { label: t('Help & Support', 'Help & Support'), icon: '🎧', onClick: () => go(AppView.WHATSAPP_SUPPORT) },
+        { label: t('More insights', 'Full AI Insights'), icon: '📊', onClick: () => { setShowProfile(false); navigate('/dashboard/insights'); }, hide: isCashierMode },
+        { label: 'Partner & Admin Terminal', icon: '🏛️', onClick: () => go(AppView.PARTNER_PORTAL), hide: isCashierMode || !isAdmin },
+        { label: `Traction demo: ${tractionMode ? 'ON' : 'OFF'}`, icon: '📈', onClick: toggleTraction, hide: !isAdmin },
+        { label: t('Log out', 'Comot (Log out)'), icon: '🚪', onClick: () => { setShowProfile(false); onLogout?.(); }, hide: !onLogout },
     ];
 
     const TopBar = (
@@ -276,7 +247,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <GlobalSearch onResultClick={() => onNavigate(AppView.PRODUCT_MANAGER)} />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                     {!isOnline && (
                         <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Offline</span>
                     )}
@@ -285,14 +256,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             onClick={() => setShowUnlockModal(true)}
                             className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2.5 min-h-[32px] rounded-full cursor-pointer"
                         >
-                            🔒 Staff mode
+                            🔒 {t('Staff mode', 'Staff')}
                         </button>
                     )}
+                    {/* 1-tap English / Naija Pidgin Toggle */}
+                    <button
+                        onClick={toggleLang}
+                        className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 min-h-[36px] rounded-full text-xs font-extrabold text-slate-700 cursor-pointer"
+                        title="Switch between English and Naija Pidgin"
+                    >
+                        <span>🇳🇬</span>
+                        <span>{lang === 'pcm' ? 'Pidgin' : 'EN'}</span>
+                    </button>
                     <div className="hidden lg:block"><PWAInstallButton variant="nav" label="📲 Install" /></div>
                     {!isCashierMode && (
                         <button
                             onClick={() => go(AppView.SETTINGS, 'tab=billing')}
-                            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 px-3 min-h-[36px] rounded-full text-sm font-bold text-slate-700 cursor-pointer"
+                            className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 sm:px-3 min-h-[36px] rounded-full text-xs sm:text-sm font-bold text-slate-700 cursor-pointer"
                             title="Your AI credits"
                         >
                             ⚡ {userStats.bizCredits}
@@ -302,7 +282,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         onClick={() => setShowQuickAdd(true)}
                         className="hidden md:inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 min-h-[40px] rounded-full text-sm font-bold shadow-md shadow-emerald-600/20 cursor-pointer"
                     >
-                        + Quick add
+                        + {t('Quick add', 'Quick add')}
                     </button>
                     <div className="relative" ref={profileRef}>
                         <button
@@ -318,6 +298,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                     <p className="text-sm font-extrabold text-slate-900 truncate">{businessName}</p>
                                     <p className="text-xs text-slate-500 truncate">{user.email}</p>
                                 </div>
+                                <button
+                                    onClick={toggleLang}
+                                    className="w-full text-left flex items-center justify-between px-4 min-h-[44px] text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                >
+                                    <span className="flex items-center gap-3"><span>🇳🇬</span>{t('Language', 'Language')}</span>
+                                    <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                                        {lang === 'pcm' ? 'Naija Pidgin' : 'English'}
+                                    </span>
+                                </button>
                                 {profileItems.filter((i) => !i.hide).map((i) => (
                                     <button
                                         key={i.label}
@@ -332,7 +321,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                         onClick={lockToStaff}
                                         className="md:hidden w-full text-left flex items-center gap-3 px-4 min-h-[44px] text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                                     >
-                                        <span>👤</span>Hand over to staff
+                                        <span>👤</span>{t('Hand over to staff', 'Give phone to apprentice')}
                                     </button>
                                 )}
                             </div>
@@ -346,6 +335,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <div className="md:hidden flex gap-2 overflow-x-auto px-3 pb-2 no-scrollbar">
                     {activeSectionData.children.map((c) => {
                         const isActive = matchNav(location.pathname).leaf?.route === c.route;
+                        const cLabel = lang === 'pcm' ? c.labelPcm || c.label : c.label;
                         return (
                             <button
                                 key={c.route}
@@ -354,7 +344,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                     isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
                                 }`}
                             >
-                                {c.icon} {c.label}
+                                {c.icon} {cLabel}
                             </button>
                         );
                     })}
@@ -368,6 +358,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         const s = sections.find((x) => x.id === id);
         if (!s) return <div className="flex-1" />;
         const active = activeSectionId === id;
+        const sLabel = lang === 'pcm' ? s.labelPcm || s.label : s.label;
         return (
             <button
                 onClick={() => go(s.children[0].view)}
@@ -376,7 +367,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 }`}
             >
                 <span className="text-xl leading-none">{s.icon}</span>
-                <span className={`text-[11px] mt-1 ${active ? 'font-black' : 'font-semibold'}`}>{s.label}</span>
+                <span className={`text-[11px] mt-1 ${active ? 'font-black' : 'font-semibold'}`}>{sLabel}</span>
             </button>
         );
     };
@@ -410,7 +401,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-base font-extrabold text-slate-900">What do you want to do?</h3>
+                    <h3 className="text-base font-extrabold text-slate-900">
+                        {t('What do you want to do?', 'Wetin you wan do now?')}
+                    </h3>
                     <button onClick={() => setShowQuickAdd(false)} className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 cursor-pointer" aria-label="Close">✕</button>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
@@ -420,7 +413,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             onClick={() => go(q.view, q.params)}
                             className="flex items-center gap-3 px-4 min-h-[56px] rounded-2xl bg-slate-50 hover:bg-emerald-50 text-left text-sm font-bold text-slate-800 cursor-pointer"
                         >
-                            <span className="text-2xl">{q.icon}</span>{q.label}
+                            <span className="text-2xl">{q.icon}</span>
+                            {lang === 'pcm' ? q.labelPcm || q.label : q.label}
                         </button>
                     ))}
                 </div>
@@ -434,9 +428,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
                 <div className="text-center">
                     <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl mx-auto mb-2">🔐</div>
-                    <h3 className="font-extrabold text-slate-900 text-base font-heading">Owner Security Verification</h3>
+                    <h3 className="font-extrabold text-slate-900 text-base font-heading">
+                        {t('Owner Security Verification', 'Oga / Madam Password Check')}
+                    </h3>
                     <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                        Enter your <strong>Owner Security Password</strong> or your <strong>SmartBiz login password</strong> to leave Staff Mode on all devices.
+                        {t(
+                            'Enter your Owner Security Password or your SmartBiz login password to leave Staff Mode on all devices.',
+                            'Put your Owner Security Password or your SmartBiz login password make you comot for Staff Mode.'
+                        )}
                     </p>
                 </div>
                 <form onSubmit={handleUnlockOwnerMode} className="space-y-3">
@@ -444,7 +443,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <input
                             type={showPasswordText ? 'text' : 'password'}
                             autoFocus
-                            placeholder="Owner password"
+                            placeholder={t('Owner password', 'Oga password')}
                             value={enteredPin}
                             onChange={(e) => { setEnteredPin(e.target.value); setPinError(''); }}
                             className="w-full text-center text-base font-bold py-3.5 px-10 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:border-amber-500"
@@ -464,14 +463,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         disabled={isVerifyingPin}
                         className="w-full min-h-[48px] bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white font-black text-sm rounded-xl cursor-pointer"
                     >
-                        {isVerifyingPin ? 'Checking…' : 'Unlock full access'}
+                        {isVerifyingPin ? t('Checking…', 'Dey check am…') : t('Unlock full access', 'Open Oga Mode')}
                     </button>
                     <button
                         type="button"
                         onClick={() => { setShowUnlockModal(false); setEnteredPin(''); setPinError(''); }}
                         className="w-full min-h-[44px] text-slate-500 hover:text-slate-700 text-sm font-bold cursor-pointer"
                     >
-                        Stay in Staff Mode
+                        {t('Stay in Staff Mode', 'Leave am for Staff Mode')}
                     </button>
                 </form>
             </div>

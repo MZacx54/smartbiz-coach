@@ -1,14 +1,15 @@
 /**
- * Single source of truth for navigation (Phase 1).
+ * Single source of truth for navigation (Phase 1 + Phase 4/6).
  * The desktop sidebar and the mobile bottom bar + section chips are both
- * generated from this list, per role.
+ * generated from this list, per role and language.
  */
-import { AppView } from '../types';
+import { AppView, User } from '../types';
 
 export type NavRole = 'OWNER' | 'ATTENDANT';
 
 export interface NavLeaf {
   label: string;
+  labelPcm?: string;
   route: string; // path segment under /dashboard ('' = Home)
   view: AppView;
   icon: string;
@@ -21,6 +22,7 @@ export interface NavLeaf {
 export interface NavSection {
   id: 'home' | 'sell' | 'money' | 'stock' | 'grow';
   label: string;
+  labelPcm?: string;
   icon: string;
   children: NavLeaf[];
 }
@@ -29,55 +31,74 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     id: 'home',
     label: 'Home',
+    labelPcm: 'Home',
     icon: '🏠',
-    children: [{ label: 'Home', route: '', view: AppView.DASHBOARD, icon: '🏠', aliases: ['insights'], attendant: true }],
+    children: [
+      {
+        label: 'Home',
+        labelPcm: 'Home',
+        route: '',
+        view: AppView.DASHBOARD,
+        icon: '🏠',
+        aliases: ['insights'],
+        attendant: true,
+      },
+    ],
   },
   {
     id: 'sell',
     label: 'Sell',
+    labelPcm: 'Market',
     icon: '🛒',
     children: [
-      { label: 'Day-Book (Sales)', route: 'cashbook', view: AppView.DAILY_CASHBOOK, icon: '⚡', attendant: true },
-      { label: 'Invoices & Receipts', route: 'invoices', view: AppView.INVOICE_GENERATOR, icon: '🧾', attendant: true },
-      { label: 'Online Store', route: 'store-preview', view: AppView.STOREFRONT, icon: '🔗', attendant: true },
-      { label: 'Orders', route: 'order-gen', view: AppView.ORDER_GENERATOR, icon: '📦' },
-      { label: 'Leads Inbox', route: 'leads', view: AppView.LEAD_MANAGER, icon: '📬' },
+      { label: 'Day-Book (Sales)', labelPcm: 'Day-Book (Sales)', route: 'cashbook', view: AppView.DAILY_CASHBOOK, icon: '⚡', attendant: true },
+      { label: 'Invoices & Receipts', labelPcm: 'Receipt & Invoice', route: 'invoices', view: AppView.INVOICE_GENERATOR, icon: '🧾', attendant: true },
+      { label: 'Online Store', labelPcm: 'Online Shop', route: 'store-preview', view: AppView.STOREFRONT, icon: '🔗', attendant: true },
+      { label: 'Orders', labelPcm: 'Orders', route: 'order-gen', view: AppView.ORDER_GENERATOR, icon: '📦' },
+      { label: 'Leads Inbox', labelPcm: 'Customer Leads', route: 'leads', view: AppView.LEAD_MANAGER, icon: '📬' },
     ],
   },
   {
     id: 'money',
     label: 'Money',
+    labelPcm: 'Money',
     icon: '💰',
     children: [
-      { label: 'Debtors (Gbege)', route: 'debtor', view: AppView.DEBTOR_BOOK, icon: '📒', aliases: ['debtors'], attendant: true },
-      { label: 'Find Funding', route: 'grants', view: AppView.GRANT_MATCHER, icon: '💰' },
-      { label: 'Business Plan', route: 'business-plan', view: AppView.BUSINESS_PLAN, icon: '📈' },
-      { label: 'Pricing Helper', route: 'pricing-assistant', view: AppView.PRICING_ASSISTANT, icon: '🏷️' },
-      { label: 'Money Insights', route: 'analytics', view: AppView.DATA_SCIENCE_HUB, icon: '📊' },
+      { label: 'Debtors (Gbege)', labelPcm: 'Gbege Book (Debt)', route: 'debtor', view: AppView.DEBTOR_BOOK, icon: '📒', aliases: ['debtors'], attendant: true },
+      { label: 'Find Funding', labelPcm: 'Grants & Loans', route: 'grants', view: AppView.GRANT_MATCHER, icon: '💰' },
+      { label: 'Business Plan', labelPcm: 'Business Plan', route: 'business-plan', view: AppView.BUSINESS_PLAN, icon: '📈' },
+      { label: 'Pricing Helper', labelPcm: 'Check Price', route: 'pricing-assistant', view: AppView.PRICING_ASSISTANT, icon: '🏷️' },
+      { label: 'Money Insights', labelPcm: 'Money Sense', route: 'analytics', view: AppView.DATA_SCIENCE_HUB, icon: '📊' },
     ],
   },
   {
     id: 'stock',
     label: 'Stock',
+    labelPcm: 'Stock',
     icon: '📦',
     children: [
-      { label: 'Inventory', route: 'inventory', view: AppView.PRODUCT_MANAGER, icon: '📦', attendant: true },
-      { label: 'Market Square', route: 'marketplace', view: AppView.MARKETPLACE, icon: '🏛️' },
-      { label: 'Business Hub (B2B)', route: 'hub', view: AppView.HUB, icon: '🤝' },
+      { label: 'Inventory', labelPcm: 'Shop Goods', route: 'inventory', view: AppView.PRODUCT_MANAGER, icon: '📦', attendant: true },
+      { label: 'Market Square', labelPcm: 'Market Square', route: 'marketplace', view: AppView.MARKETPLACE, icon: '🏛️' },
+      { label: 'Business Hub (B2B)', labelPcm: 'Wholesale (B2B)', route: 'hub', view: AppView.HUB, icon: '🤝' },
     ],
   },
   {
     id: 'grow',
     label: 'Grow',
+    labelPcm: 'Grow',
     icon: '🚀',
     children: [
-      { label: 'Brand Builder', route: 'brand', view: AppView.BRAND_BUILDER, icon: '✨' },
-      { label: 'Content Studio', route: 'content', view: AppView.CONTENT_GENERATOR, icon: '✍️' },
-      { label: 'Broadcast HQ', route: 'marketing', view: AppView.MARKETING_AGENT, icon: '📣' },
-      { label: 'Sales Closer', route: 'sales-assistant', view: AppView.SALES_ASSISTANT, icon: '💬' },
-      { label: 'Growth Roadmap', route: 'roadmap', view: AppView.DIGITAL_ROADMAP, icon: '🗺️' },
-      { label: 'Learning Hub', route: 'learning', view: AppView.LEARNING_HUB, icon: '🎓' },
-      { label: 'Compliance', route: 'compliance', view: AppView.COMPLIANCE, icon: '⚖️' },
+      {
+        label: 'AI Studio',
+        labelPcm: 'AI Studio',
+        route: 'brand',
+        view: AppView.BRAND_BUILDER,
+        icon: '🤖',
+        aliases: ['content', 'marketing', 'sales-assistant', 'ai-studio'],
+      },
+      { label: 'Growth Roadmap', labelPcm: 'Growth Map', route: 'roadmap', view: AppView.DIGITAL_ROADMAP, icon: '🗺️' },
+      { label: 'Learning Hub', labelPcm: 'Learn Work', route: 'learning', view: AppView.LEARNING_HUB, icon: '🎓' },
+      { label: 'Compliance', labelPcm: 'CAC & Tax', route: 'compliance', view: AppView.COMPLIANCE, icon: '⚖️' },
     ],
   },
 ];
@@ -86,8 +107,27 @@ export const NAV_SECTIONS: NavSection[] = [
 export const OWNER_ONLY_VIEWS: AppView[] = [
   AppView.SETTINGS,
   AppView.PARTNER_PORTAL,
+  AppView.CONTENT_GENERATOR,
+  AppView.MARKETING_AGENT,
+  AppView.SALES_ASSISTANT,
   ...NAV_SECTIONS.flatMap((s) => s.children.filter((c) => !c.attendant).map((c) => c.view)),
 ];
+
+const ADMIN_EMAILS = [
+  'meshachzax@gmail.com',
+  'admin@smartbiz.com.ng',
+  'admin@smartbizcoach.com.ng',
+  'partners@smartbizcoach.com.ng',
+  'info@smartbizcoach.com.ng',
+  'mzacs54@gmail.com',
+];
+
+export const isAdminOrPartnerUser = (user?: User | null): boolean => {
+  if (!user) return false;
+  if ((user as any).is_staff || (user as any).is_superuser) return true;
+  const email = (user.email || '').toLowerCase().trim();
+  return ADMIN_EMAILS.includes(email);
+};
 
 export const leafVisible = (leaf: NavLeaf, role: NavRole) => role === 'OWNER' || !!leaf.attendant;
 
@@ -107,10 +147,20 @@ export const matchNav = (pathname: string): { section?: NavSection; leaf?: NavLe
   return {};
 };
 
-export const QUICK_ADD = [
-  { id: 'sale', label: 'Record Sale', icon: '⚡', view: AppView.DAILY_CASHBOOK, params: 'action=sale', attendant: true },
-  { id: 'expense', label: 'Petty Cash / Expense', icon: '💸', view: AppView.DAILY_CASHBOOK, params: 'action=expense', attendant: false },
-  { id: 'debt', label: 'Add Debtor', icon: '📒', view: AppView.DEBTOR_BOOK, params: undefined, attendant: true },
-  { id: 'product', label: 'Add Product', icon: '📦', view: AppView.PRODUCT_MANAGER, params: undefined, attendant: true },
-  { id: 'invoice', label: 'New Invoice', icon: '🧾', view: AppView.INVOICE_GENERATOR, params: undefined, attendant: true },
-] as const;
+export interface QuickAddItem {
+  id: string;
+  label: string;
+  labelPcm: string;
+  icon: string;
+  view: AppView;
+  params?: string;
+  attendant: boolean;
+}
+
+export const QUICK_ADD: QuickAddItem[] = [
+  { id: 'sale', label: 'Record Sale', labelPcm: 'Record Sale', icon: '⚡', view: AppView.DAILY_CASHBOOK, params: 'action=sale', attendant: true },
+  { id: 'expense', label: 'Petty Cash / Expense', labelPcm: 'Comot Expense', icon: '💸', view: AppView.DAILY_CASHBOOK, params: 'action=expense', attendant: false },
+  { id: 'debt', label: 'Add Debtor', labelPcm: 'Write Gbege (Debt)', icon: '📒', view: AppView.DEBTOR_BOOK, params: 'action=new', attendant: true },
+  { id: 'product', label: 'Add Product', labelPcm: 'Add New Market', icon: '📦', view: AppView.PRODUCT_MANAGER, params: 'action=new', attendant: true },
+  { id: 'invoice', label: 'New Invoice', labelPcm: 'Write Receipt', icon: '🧾', view: AppView.INVOICE_GENERATOR, params: 'action=new', attendant: true },
+];

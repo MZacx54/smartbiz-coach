@@ -15,6 +15,7 @@ const Auth = lazy(() => import("./components/Auth"));
 const Settings = lazy(() => import("./components/Settings"));
 
 // Lazy loaded components (large, less frequently used)
+const AIStudio = lazy(() => import("./components/AIStudio"));
 const BrandBuilder = lazy(() => import("./components/BrandBuilder"));
 const ContentStudio = lazy(() => import("./components/ContentStudio"));
 const Compliance = lazy(() => import("./components/Compliance"));
@@ -770,8 +771,9 @@ const App: React.FC = () => {
                       <Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />
                     </div>
                   } />
-                  <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
-                  <Route path="content" element={<ContentStudio brand={savedBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="ai-studio" element={<AIStudio initialTab="brand" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
+                  <Route path="brand" element={<AIStudio initialTab="brand" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
+                  <Route path="content" element={<AIStudio initialTab="content" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="grants" element={<GrantMatcher businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="learning" element={<LearningHub onNavigate={handleNavigate} />} />
@@ -786,13 +788,13 @@ const App: React.FC = () => {
                   <Route path="compliance" element={<Compliance brand={savedBrand} user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="roadmap" element={<DigitalRoadmap onNavigate={handleNavigate} />} />
                   <Route path="support" element={<WhatsAppSupport credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="sales-assistant" element={<SalesAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="sales-assistant" element={<AIStudio initialTab="sales" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onUpdateUser={handleUpdateUser} onTopUpSuccess={handleUpdateCredits} />} />
                   <Route path="order-gen" element={<OrderGenerator />} />
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="marketing" element={<MarketingAgent user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="marketing" element={<AIStudio initialTab="marketing" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
                   <Route path="analytics" element={<DataScienceHub onNavigate={handleNavigate} />} />
                   <Route path="audit" element={<PublicAuditReport />} />
                   <Route path="partner-portal" element={<PartnerPortal />} />

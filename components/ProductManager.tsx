@@ -116,7 +116,13 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('action') === 'new';
+    } catch {
+      return false;
+    }
+  });
 
   // Unsplash Photo Studio States
   const [showStudioModal, setShowStudioModal] = useState(false);

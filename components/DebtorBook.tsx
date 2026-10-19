@@ -44,7 +44,13 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     notes: ''
   });
   
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('action') === 'new';
+    } catch {
+      return false;
+    }
+  });
   const [activeTab, setActiveTab] = useState<'english' | 'pidgin'>('english');
   const [isGenerating, setIsGenerating] = useState(false);
   

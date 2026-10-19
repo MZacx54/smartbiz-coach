@@ -1,11 +1,57 @@
 /**
- * SmartBiz Design System (Phase 1)
+ * SmartBiz Design System (Phase 1 + Phase 6 Language Helper)
  * One small kit used by every redesigned screen so spacing, colours and tap
  * targets stay consistent.
  *   emerald = primary / success   amber = caution   rose = danger   slate = neutral
  * All interactive elements have a minimum 44px tap target.
  */
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+
+export type Lang = 'en' | 'pcm';
+
+const LANG_KEY = 'sb_lang';
+
+export function getSavedLang(): Lang {
+  try {
+    return localStorage.getItem(LANG_KEY) === 'pcm' ? 'pcm' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+export function useLanguage() {
+  const [lang, setLangState] = useState<Lang>(getSavedLang);
+
+  useEffect(() => {
+    const onLang = (e: any) => {
+      const next: Lang = e?.detail === 'pcm' ? 'pcm' : getSavedLang();
+      setLangState(next);
+    };
+    window.addEventListener('sb-lang-changed', onLang);
+    return () => window.removeEventListener('sb-lang-changed', onLang);
+  }, []);
+
+  const setLang = useCallback((next: Lang) => {
+    try {
+      localStorage.setItem(LANG_KEY, next);
+    } catch {
+      /* ignore */
+    }
+    setLangState(next);
+    window.dispatchEvent(new CustomEvent('sb-lang-changed', { detail: next }));
+  }, []);
+
+  const toggleLang = useCallback(() => {
+    setLang(lang === 'en' ? 'pcm' : 'en');
+  }, [lang, setLang]);
+
+  const t = useCallback(
+    (en: string, pcm: string) => (lang === 'pcm' ? pcm : en),
+    [lang]
+  );
+
+  return { lang, setLang, toggleLang, t };
+}
 
 type Tone = 'emerald' | 'amber' | 'rose' | 'blue' | 'slate' | 'purple';
 
