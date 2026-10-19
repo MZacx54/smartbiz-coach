@@ -47,8 +47,9 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
-    if (tabParam === 'billing') {
-      setActiveTab('billing');
+    const validTabs: SettingsTab[] = ['profile', 'payout', 'billing', 'social', 'preferences', 'data', 'admin'];
+    if (tabParam && (validTabs as string[]).includes(tabParam)) {
+      setActiveTab(tabParam as SettingsTab);
     }
   }, [location]);
 

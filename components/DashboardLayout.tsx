@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AppView, User, CartItem, UserStats, ActionCard } from '../types';
 import GlobalSearch from './GlobalSearch';
 import { toast } from 'react-hot-toast';
@@ -7,6 +7,7 @@ import LiveSupportWidget from './LiveSupportWidget';
 import { PWAInstallButton } from './PWAInstallPrompt';
 import { securityLockService } from '../services/authService';
 import api from '../services/api';
+import { OWNER_ONLY_VIEWS, QUICK_ADD, matchNav, sectionsForRole, NavRole } from '../config/navigation';
 
 interface DashboardLayoutProps {
     user: User;
@@ -17,35 +18,41 @@ interface DashboardLayoutProps {
     onNavigate: (view: AppView, params?: string) => void;
     onUpdateUser?: (user: User) => void;
     onUpdateCredits?: (credits: number) => void;
+    onLogout?: () => void;
     children: React.ReactNode;
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     user,
     userStats,
-    actions,
     cartItems,
     currentView,
     onNavigate,
-    onUpdateUser,
     onUpdateCredits,
+    onLogout,
     children
 }) => {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
     const navigate = useNavigate();
-    const [tractionMode, setTractionMode] = useState(() => localStorage.getItem('sb_idice_traction_mode') === 'true');
-
-    // Recommendation 3: Offline-First PWA Mode state
+    const location = useLocation();
+    const [tractionMode] = useState(() => localStorage.getItem('sb_idice_traction_mode') === 'true');
     const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
+    const profileRef = useRef<HTMLDivElement>(null);
 
-    // Recommendation 4: Unified Cloud-Synced Cashier / Apprentice Mode state
+    // Unified, cloud-synced Apprentice / Cashier Mode
     const [isCashierMode, setIsCashierMode] = useState(() => securityLockService.isApprenticeModeActive());
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [enteredPin, setEnteredPin] = useState('');
     const [pinError, setPinError] = useState('');
     const [isVerifyingPin, setIsVerifyingPin] = useState(false);
     const [showPasswordText, setShowPasswordText] = useState(false);
+
+    const role: NavRole = isCashierMode ? 'ATTENDANT' : 'OWNER';
+    const sections = sectionsForRole(role);
+    const { section: activeSection } = matchNav(location.pathname);
+    const activeSectionId = activeSection?.id || 'home';
+    const activeSectionData = sections.find((s) => s.id === activeSectionId);
 
     useEffect(() => {
         const handleModeChanged = (e: any) => {
@@ -66,10 +73,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 // Keep local state if offline
             }
         };
-
         syncSecurityFromCloud();
         window.addEventListener('focus', syncSecurityFromCloud);
-
         return () => {
             window.removeEventListener('sb-apprentice-mode-changed', handleModeChanged);
             window.removeEventListener('focus', syncSecurityFromCloud);
@@ -79,16 +84,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     useEffect(() => {
         const handleOnline = () => {
             setIsOnline(true);
-            toast.success('Internet connection restored! Cloud synchronization active.', { icon: '☁️' });
+            toast.success('Back online. Cloud sync active.', { icon: '☁️' });
         };
         const handleOffline = () => {
             setIsOnline(false);
-            toast('📶 Network dropped. Open Market Offline Mode active.', { duration: 5000 });
+            toast('📶 You are offline. Your sales are saved on this phone.', { duration: 5000 });
         };
-
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
-
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
@@ -98,13 +101,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     useEffect(() => {
         const handleCreditsUpdated = (e: any) => {
             const newBal = e.detail;
-            if (typeof newBal === 'number' && onUpdateCredits) {
-                onUpdateCredits(newBal);
-            }
+            if (typeof newBal === 'number' && onUpdateCredits) onUpdateCredits(newBal);
         };
         window.addEventListener('smartbiz_credits_updated', handleCreditsUpdated);
         return () => window.removeEventListener('smartbiz_credits_updated', handleCreditsUpdated);
     }, [onUpdateCredits]);
+
+    // Close profile menu on outside click
+    useEffect(() => {
+        if (!showProfile) return;
+        const onDown = (e: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(e.target as Node)) setShowProfile(false);
+        };
+        document.addEventListener('mousedown', onDown);
+        return () => document.removeEventListener('mousedown', onDown);
+    }, [showProfile]);
+
+    // Route guard: apprentices opening an owner-only page by URL get the password prompt
+    useEffect(() => {
+        if (isCashierMode && OWNER_ONLY_VIEWS.includes(currentView)) {
+            navigate('/dashboard', { replace: true });
+            setShowUnlockModal(true);
+        }
+    }, [isCashierMode, currentView, navigate]);
 
     const handleUnlockOwnerMode = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -116,8 +135,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 setIsCashierMode(false);
                 setShowUnlockModal(false);
                 setEnteredPin('');
-                setPinError('');
-                toast.success('Owner Mode Unlocked across account! Full privileges restored.', { icon: '👑' });
+                toast.success('Owner Mode unlocked. Full access restored.', { icon: '👑' });
             } else {
                 setPinError(result.error || 'Incorrect Owner Security Password.');
             }
@@ -127,561 +145,352 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     };
 
     const toggleTraction = () => {
-        const newVal = !tractionMode;
-        setTractionMode(newVal);
-        localStorage.setItem('sb_idice_traction_mode', String(newVal));
+        localStorage.setItem('sb_idice_traction_mode', String(!tractionMode));
         window.location.reload();
     };
 
-    const handleNavigate = (view: AppView, params?: string) => {
-        const ownerOnlyViews = [
-            AppView.SETTINGS,
-            AppView.PRICING_ASSISTANT,
-            AppView.BUSINESS_PLAN,
-            AppView.GRANT_MATCHER,
-            AppView.COMPLIANCE,
-            AppView.DIGITAL_ROADMAP,
-            AppView.PARTNER_PORTAL,
-            AppView.DATA_SCIENCE_HUB
-        ];
-
-        if (isCashierMode && ownerOnlyViews.includes(view)) {
+    const go = (view: AppView, params?: string) => {
+        if (isCashierMode && OWNER_ONLY_VIEWS.includes(view)) {
             setShowUnlockModal(true);
             return;
         }
-
         onNavigate(view, params);
-        setIsMenuOpen(false);
+        setShowQuickAdd(false);
+        setShowProfile(false);
         window.scrollTo(0, 0);
     };
 
-    const NavItem = ({
-        view,
-        label,
-        icon,
-    }: {
-        view: AppView;
-        label: string;
-        icon: string;
-    }) => (
-        <button
-            onClick={() => handleNavigate(view)}
-            className={`flex items-center w-full p-2.5 rounded-xl transition-all duration-200 ${
-                isCollapsed ? "justify-center space-x-0" : "space-x-3"
-            } ${currentView === view
-                ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
-                : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
+    const lockToStaff = async () => {
+        await securityLockService.lockApprenticeMode();
+        setIsCashierMode(true);
+        setShowProfile(false);
+        toast('Staff Mode on. Petty cash and profits are locked on all devices.', { icon: '🔒', duration: 4000 });
+    };
+
+    const businessName = user.businessName || user.business_name || 'My Business';
+    const initial = businessName.charAt(0).toUpperCase();
+    const quickItems = QUICK_ADD.filter((q) => role === 'OWNER' || q.attendant);
+
+    /* ---------------- Desktop sidebar ---------------- */
+    const Sidebar = (
+        <aside className="hidden md:flex flex-col w-64 shrink-0 bg-slate-950 text-slate-300 h-screen sticky top-0">
+            <div className="flex items-center gap-2.5 px-5 h-16 border-b border-slate-800/80">
+                <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover" />
+                <span className="font-extrabold text-white text-base font-heading">SmartBiz Coach</span>
+            </div>
+
+            <div className="px-5 pt-4 pb-2">
+                <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                    {isCashierMode ? 'Staff session' : 'Your business'}
+                </p>
+                <p className="text-sm font-bold text-white truncate">{businessName}</p>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
+                {sections.map((s) => {
+                    const open = s.id === activeSectionId;
+                    const single = s.children.length === 1;
+                    return (
+                        <div key={s.id}>
+                            <button
+                                onClick={() => go(s.children[0].view)}
+                                className={`w-full flex items-center gap-3 px-3 min-h-[44px] rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                                    open ? 'bg-emerald-600/15 text-emerald-300' : 'hover:bg-slate-900 text-slate-300'
+                                }`}
+                            >
+                                <span className="text-lg">{s.icon}</span>
+                                <span>{s.label}</span>
+                            </button>
+                            {open && !single && (
+                                <div className="ml-5 pl-3 border-l border-slate-800 my-1 space-y-0.5">
+                                    {s.children.map((c) => {
+                                        const isActive = matchNav(location.pathname).leaf?.route === c.route;
+                                        return (
+                                            <button
+                                                key={c.route}
+                                                onClick={() => go(c.view)}
+                                                className={`w-full text-left flex items-center gap-2 px-3 min-h-[38px] rounded-lg text-[13px] transition-all cursor-pointer ${
+                                                    isActive ? 'text-white font-bold bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                                                }`}
+                                            >
+                                                <span>{c.icon}</span>
+                                                <span className="truncate">{c.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                {cartItems.length > 0 && !isCashierMode && (
+                    <button
+                        onClick={() => go(AppView.CART)}
+                        className="w-full flex items-center justify-between px-3 min-h-[44px] rounded-xl text-sm font-bold hover:bg-slate-900 cursor-pointer"
+                    >
+                        <span className="flex items-center gap-3"><span className="text-lg">🛍️</span>Cart</span>
+                        <span className="bg-rose-500 text-white text-[11px] px-2 py-0.5 rounded-full">{cartItems.length}</span>
+                    </button>
+                )}
+            </nav>
+
+            <div className="p-3 border-t border-slate-800/80">
+                {isCashierMode ? (
+                    <button
+                        onClick={() => setShowUnlockModal(true)}
+                        className="w-full min-h-[44px] rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-sm font-bold cursor-pointer"
+                    >
+                        🔒 Staff Mode · Unlock
+                    </button>
+                ) : (
+                    <button
+                        onClick={lockToStaff}
+                        className="w-full min-h-[44px] rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-sm font-bold cursor-pointer"
+                    >
+                        👤 Hand over to staff
+                    </button>
+                )}
+            </div>
+        </aside>
+    );
+
+    /* ---------------- Profile menu ---------------- */
+    const profileItems: { label: string; icon: string; onClick: () => void; hide?: boolean }[] = [
+        { label: 'Settings & Security', icon: '⚙️', onClick: () => go(AppView.SETTINGS) },
+        { label: 'Credits & Billing', icon: '⚡', onClick: () => go(AppView.SETTINGS, 'tab=billing'), hide: isCashierMode },
+        { label: 'Help & Support', icon: '🎧', onClick: () => go(AppView.WHATSAPP_SUPPORT) },
+        { label: 'Partner & Admin Terminal', icon: '🏛️', onClick: () => go(AppView.PARTNER_PORTAL), hide: isCashierMode },
+        { label: 'More insights', icon: '📊', onClick: () => navigate('/dashboard/insights'), hide: isCashierMode },
+        { label: `Traction demo: ${tractionMode ? 'ON' : 'OFF'}`, icon: '📈', onClick: toggleTraction, hide: user?.email !== 'meshachzax@gmail.com' },
+        { label: 'Log out', icon: '🚪', onClick: () => { setShowProfile(false); onLogout?.(); }, hide: !onLogout },
+    ];
+
+    const TopBar = (
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100">
+            <div className="flex items-center justify-between gap-3 px-3 sm:px-5 h-14 md:h-16">
+                <div className="flex items-center gap-2 md:hidden">
+                    <img src="/favicon.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
+                    <span className="font-extrabold text-slate-900 text-sm font-heading truncate max-w-[130px]">{businessName}</span>
+                </div>
+                <div className="hidden md:block flex-1 max-w-md">
+                    <GlobalSearch onResultClick={() => onNavigate(AppView.PRODUCT_MANAGER)} />
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {!isOnline && (
+                        <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Offline</span>
+                    )}
+                    {isCashierMode && (
+                        <button
+                            onClick={() => setShowUnlockModal(true)}
+                            className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2.5 min-h-[32px] rounded-full cursor-pointer"
+                        >
+                            🔒 Staff mode
+                        </button>
+                    )}
+                    <div className="hidden lg:block"><PWAInstallButton variant="nav" label="📲 Install" /></div>
+                    {!isCashierMode && (
+                        <button
+                            onClick={() => go(AppView.SETTINGS, 'tab=billing')}
+                            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 px-3 min-h-[36px] rounded-full text-sm font-bold text-slate-700 cursor-pointer"
+                            title="Your AI credits"
+                        >
+                            ⚡ {userStats.bizCredits}
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowQuickAdd(true)}
+                        className="hidden md:inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 min-h-[40px] rounded-full text-sm font-bold shadow-md shadow-emerald-600/20 cursor-pointer"
+                    >
+                        + Quick add
+                    </button>
+                    <div className="relative" ref={profileRef}>
+                        <button
+                            onClick={() => setShowProfile((v) => !v)}
+                            className="w-10 h-10 rounded-2xl bg-emerald-600 text-white font-black text-sm cursor-pointer"
+                            aria-label="Account menu"
+                        >
+                            {initial}
+                        </button>
+                        {showProfile && (
+                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50">
+                                <div className="px-4 py-2 border-b border-slate-100">
+                                    <p className="text-sm font-extrabold text-slate-900 truncate">{businessName}</p>
+                                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                                </div>
+                                {profileItems.filter((i) => !i.hide).map((i) => (
+                                    <button
+                                        key={i.label}
+                                        onClick={i.onClick}
+                                        className="w-full text-left flex items-center gap-3 px-4 min-h-[44px] text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                    >
+                                        <span>{i.icon}</span>{i.label}
+                                    </button>
+                                ))}
+                                {!isCashierMode && (
+                                    <button
+                                        onClick={lockToStaff}
+                                        className="md:hidden w-full text-left flex items-center gap-3 px-4 min-h-[44px] text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                    >
+                                        <span>👤</span>Hand over to staff
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Section chips: how mobile users reach every page in the current section */}
+            {activeSectionData && activeSectionData.children.length > 1 && (
+                <div className="md:hidden flex gap-2 overflow-x-auto px-3 pb-2 no-scrollbar">
+                    {activeSectionData.children.map((c) => {
+                        const isActive = matchNav(location.pathname).leaf?.route === c.route;
+                        return (
+                            <button
+                                key={c.route}
+                                onClick={() => go(c.view)}
+                                className={`shrink-0 px-3.5 min-h-[36px] rounded-full text-xs font-bold whitespace-nowrap cursor-pointer ${
+                                    isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                                }`}
+                            >
+                                {c.icon} {c.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </header>
+    );
+
+    /* ---------------- Mobile bottom bar (4 tabs + centre quick-add + Grow) ---------------- */
+    const Tab = ({ id }: { id: string }) => {
+        const s = sections.find((x) => x.id === id);
+        if (!s) return <div className="flex-1" />;
+        const active = activeSectionId === id;
+        return (
+            <button
+                onClick={() => go(s.children[0].view)}
+                className={`flex-1 flex flex-col items-center justify-center min-h-[56px] rounded-xl cursor-pointer ${
+                    active ? 'text-emerald-400' : 'text-slate-400'
                 }`}
-            title={isCollapsed ? label : undefined}
-        >
-            <span className="text-base">{icon}</span>
-            {!isCollapsed && <span className="text-sm">{label}</span>}
-        </button>
+            >
+                <span className="text-xl leading-none">{s.icon}</span>
+                <span className={`text-[11px] mt-1 ${active ? 'font-black' : 'font-semibold'}`}>{s.label}</span>
+            </button>
+        );
+    };
+
+    const BottomBar = (
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1 pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center">
+                <Tab id="home" />
+                <Tab id="sell" />
+                <div className="flex-1 flex justify-center">
+                    <button
+                        onClick={() => setShowQuickAdd(true)}
+                        aria-label="Quick add"
+                        className="-mt-6 w-14 h-14 rounded-full bg-emerald-500 text-white text-3xl font-light shadow-xl shadow-emerald-500/30 border-4 border-slate-950 flex items-center justify-center cursor-pointer active:scale-95"
+                    >
+                        +
+                    </button>
+                </div>
+                <Tab id="money" />
+                <Tab id="stock" />
+                {!isCashierMode && <Tab id="grow" />}
+            </div>
+        </nav>
+    );
+
+    /* ---------------- Quick-add sheet ---------------- */
+    const QuickAddSheet = showQuickAdd && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowQuickAdd(false)}>
+            <div
+                className="bg-white w-full md:max-w-sm rounded-t-3xl md:rounded-3xl p-5 pb-8 md:pb-5 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-extrabold text-slate-900">What do you want to do?</h3>
+                    <button onClick={() => setShowQuickAdd(false)} className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 cursor-pointer" aria-label="Close">✕</button>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                    {quickItems.map((q) => (
+                        <button
+                            key={q.id}
+                            onClick={() => go(q.view, q.params)}
+                            className="flex items-center gap-3 px-4 min-h-[56px] rounded-2xl bg-slate-50 hover:bg-emerald-50 text-left text-sm font-bold text-slate-800 cursor-pointer"
+                        >
+                            <span className="text-2xl">{q.icon}</span>{q.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    /* ---------------- Unlock modal ---------------- */
+    const UnlockModal = showUnlockModal && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-[60] no-print">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+                <div className="text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl mx-auto mb-2">🔐</div>
+                    <h3 className="font-extrabold text-slate-900 text-base font-heading">Owner Security Verification</h3>
+                    <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                        Enter your <strong>Owner Security Password</strong> or your <strong>SmartBiz login password</strong> to leave Staff Mode on all devices.
+                    </p>
+                </div>
+                <form onSubmit={handleUnlockOwnerMode} className="space-y-3">
+                    <div className="relative">
+                        <input
+                            type={showPasswordText ? 'text' : 'password'}
+                            autoFocus
+                            placeholder="Owner password"
+                            value={enteredPin}
+                            onChange={(e) => { setEnteredPin(e.target.value); setPinError(''); }}
+                            className="w-full text-center text-base font-bold py-3.5 px-10 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:border-amber-500"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPasswordText(!showPasswordText)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 cursor-pointer"
+                            aria-label="Show or hide password"
+                        >
+                            {showPasswordText ? '🙈' : '👁️'}
+                        </button>
+                    </div>
+                    {pinError && <p className="text-xs text-rose-600 font-bold text-center leading-relaxed">{pinError}</p>}
+                    <button
+                        type="submit"
+                        disabled={isVerifyingPin}
+                        className="w-full min-h-[48px] bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white font-black text-sm rounded-xl cursor-pointer"
+                    >
+                        {isVerifyingPin ? 'Checking…' : 'Unlock full access'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setShowUnlockModal(false); setEnteredPin(''); setPinError(''); }}
+                        className="w-full min-h-[44px] text-slate-500 hover:text-slate-700 text-sm font-bold cursor-pointer"
+                    >
+                        Stay in Staff Mode
+                    </button>
+                </form>
+            </div>
+        </div>
     );
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row font-sans selection:bg-green-200">
-
-            {/* Recommendation 3: Open Market Offline Mode Banner */}
-            {!isOnline && (
-                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md z-50 sticky top-0">
-                    <div className="flex items-center gap-2">
-                        <span className="text-base animate-pulse">📶</span>
-                        <span>
-                            <strong>Open Market Offline Mode Active (Alaba/Balogun):</strong> Internet disconnected. Day-book sales, debtor records, and stock changes are saved safely on this device and will auto-sync to cloud when online.
-                        </span>
-                    </div>
-                    <span className="bg-amber-900/60 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider hidden sm:inline-block">
-                        Offline Safe
-                    </span>
-                </div>
-            )}
-
-            {/* Mobile Header */}
-            <div className="md:hidden bg-slate-950 border-b border-emerald-950/45 p-4 flex justify-between items-center sticky top-0 z-20 text-white">
-                <div
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => handleNavigate(AppView.DASHBOARD)}
-                >
-                    <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
-                    <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    {/* Recommendation 4: Cashier Badge / Credits on Mobile */}
-                    {isCashierMode ? (
-                        <button
-                            onClick={() => setShowUnlockModal(true)}
-                            className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 px-2 py-1 rounded-xl text-xs font-bold transition-all active:scale-95"
-                            title="Cashier Mode active. Tap to enter Owner PIN."
-                        >
-                            <span>👤</span>
-                            <span>Cashier</span>
-                        </button>
-                    ) : (
-                        <button
-                            onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                            className="flex items-center gap-1 bg-emerald-950/90 border border-emerald-500/40 hover:border-emerald-400 px-2.5 py-1 rounded-xl text-emerald-300 text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
-                            title="Available Credits. Tap to top up."
-                        >
-                            <span className="text-emerald-400">⚡</span>
-                            <span>{userStats.bizCredits}</span>
-                        </button>
-                    )}
-                    <PWAInstallButton variant="nav" label="Install" />
-                    {user?.email === 'meshachzax@gmail.com' && (
-                        <button
-                            onClick={toggleTraction}
-                            className={`text-[10px] font-bold px-2 py-1 rounded-full border transition-all ${
-                                tractionMode
-                                    ? 'bg-emerald-500 text-white border-emerald-450'
-                                    : 'bg-slate-800 text-slate-400 border-slate-700'
-                            }`}
-                        >
-                            📈 {tractionMode ? 'ON' : 'OFF'}
-                        </button>
-                    )}
-                    {cartItems.length > 0 && (
-                        <button
-                            onClick={() => handleNavigate(AppView.CART)}
-                            className="relative text-lg"
-                        >
-                            🛒
-                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
-                                {cartItems.length}
-                            </span>
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="text-slate-300 focus:outline-none text-xl p-1 cursor-pointer"
-                        title="Toggle Navigation Menu"
-                    >
-                        {isMenuOpen ? "✕" : "☰"}
-                    </button>
-                </div>
+        <div className="flex min-h-screen bg-slate-50">
+            {Sidebar}
+            <div className="flex-1 min-w-0 flex flex-col">
+                {TopBar}
+                <main className="flex-1 p-3 sm:p-5 md:p-8">
+                    <div className="max-w-5xl mx-auto pb-28 md:pb-8">{children}</div>
+                </main>
             </div>
-
-            {/* Mobile Drawer Backdrop Overlay */}
-            {isMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
-                    onClick={() => setIsMenuOpen(false)}
-                />
-            )}
-
-            {/* Sidebar Navigation */}
-            <div
-                className={`
-          fixed inset-y-0 left-0 transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          md:relative md:translate-x-0 transition-all duration-300 ease-in-out
-          ${isCollapsed ? "md:w-20" : "md:w-64"} w-72 sm:w-64 bg-slate-950 border-r border-emerald-950/20 z-50 md:z-30 flex flex-col h-screen text-slate-100 shadow-2xl md:shadow-none
-        `}
-            >
-                {/* Mobile Drawer Header */}
-                <div className="p-4 border-b border-emerald-950/60 flex md:hidden items-center justify-between gap-2 bg-slate-950">
-                    <div
-                        className="flex items-center gap-2 cursor-pointer"
-                        onClick={() => { handleNavigate(AppView.DASHBOARD); setIsMenuOpen(false); }}
-                    >
-                        <img src="/favicon.png" alt="SmartBiz Coach" className="w-7 h-7 rounded-lg object-cover" />
-                        <span className="font-extrabold text-base text-white font-heading">SmartBiz Coach</span>
-                    </div>
-                    <button
-                        onClick={() => setIsMenuOpen(false)}
-                        className="text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-bold cursor-pointer"
-                        title="Close Menu"
-                    >
-                        ✕
-                    </button>
-                </div>
-
-                {/* Desktop Header */}
-                <div
-                    className="p-5 border-b border-emerald-950/60 hidden md:flex items-center justify-between gap-2"
-                >
-                    <div
-                        className="flex items-center gap-2 cursor-pointer min-w-0"
-                        onClick={() => handleNavigate(AppView.DASHBOARD)}
-                    >
-                        <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
-                        {!isCollapsed && (
-                            <span className="font-extrabold text-lg text-white font-heading truncate">SmartBiz Coach</span>
-                        )}
-                    </div>
-                    <button
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-slate-900 transition-all hidden md:block flex-shrink-0"
-                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                    >
-                        {isCollapsed ? "▶" : "◀"}
-                    </button>
-                </div>
-
-                {/* User Mini Profile */}
-                {!isCollapsed && (
-                    <div className="px-6 pt-6 pb-2">
-                        <p className="text-[10px] font-black text-emerald-550 uppercase tracking-widest">
-                            Business
-                        </p>
-                        <p className="font-bold text-white truncate mt-1 text-sm">
-                            {user.businessName}
-                        </p>
-                    </div>
-                )}
-
-                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    {isCashierMode ? (
-                        <>
-                            <div className="bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl mb-3 text-center">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">👤 Staff / Cashier Mode</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5">Sales & Stock tools only</p>
-                            </div>
-                            <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
-                            <NavItem view={AppView.DAILY_CASHBOOK} label="Daily Day-Book" icon="⚡" />
-                            <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory & Stock" icon="📦" />
-                            <NavItem view={AppView.DEBTOR_BOOK} label="Gbege (Debtors)" icon="📒" />
-                            <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices & Receipts" icon="🧾" />
-                            <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
-                        </>
-                    ) : (
-                        <>
-                            <NavItem view={AppView.DASHBOARD} label="Dashboard" icon="📊" />
-                            <NavItem view={AppView.DAILY_CASHBOOK} label="Daily Day-Book" icon="⚡" />
-                            <NavItem view={AppView.PRODUCT_MANAGER} label="Inventory" icon="📦" />
-                            <NavItem view={AppView.DEBTOR_BOOK} label="Gbege Book" icon="📒" />
-                            <NavItem view={AppView.INVOICE_GENERATOR} label="Invoices & Receipts" icon="🧾" />
-                            <NavItem view={AppView.BRAND_BUILDER} label="Brand Builder" icon="✨" />
-                            <NavItem view={AppView.CONTENT_GENERATOR} label="Content Gen" icon="✍️" />
-
-                            {!isCollapsed ? (
-                                <div className="pt-4 pb-1 px-3">
-                                    <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
-                                        Marketplace Ecosystem
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="border-t border-slate-800/40 my-3" />
-                            )}
-                            
-                            <NavItem view={AppView.MARKETPLACE} label="Market Square" icon="🏛️" />
-                            <NavItem view={AppView.MARKETING_AGENT} label="Broadcast HQ" icon="📣" />
-                            <NavItem view={AppView.LEAD_MANAGER} label="Lead Inbox" icon="📬" />
-                            <NavItem view={AppView.STOREFRONT} label="Public Store" icon="🔗" />
-                            <NavItem view={AppView.SALES_ASSISTANT} label="Sales Closer" icon="💬" />
-
-                            {cartItems.length > 0 && (
-                                <button
-                                    onClick={() => handleNavigate(AppView.CART)}
-                                    className={`flex items-center justify-between w-full p-2.5 rounded-xl transition-all ${currentView === AppView.CART
-                                        ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/5 border-l-4 border-emerald-500 text-green-400 font-bold"
-                                        : "text-slate-400 hover:bg-slate-900 hover:text-green-400"
-                                        }`}
-                                    title={isCollapsed ? "Cart" : undefined}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <span>🛍️</span>
-                                        {!isCollapsed && <span className="text-sm">Cart</span>}
-                                    </div>
-                                    {!isCollapsed && (
-                                        <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                                            {cartItems.length}
-                                        </span>
-                                    )}
-                                </button>
-                            )}
-
-                            <NavItem view={AppView.BUSINESS_PLAN} label="Business Plan" icon="📈" />
-                            <NavItem view={AppView.DATA_SCIENCE_HUB} label="ML Intelligence" icon="⚡" />
-                            <NavItem view={AppView.PARTNER_PORTAL} label="Partner & Admin Terminal" icon="🏛️" />
-                            <NavItem view={AppView.GRANT_MATCHER} label="Find Funding" icon="💰" />
-                            <NavItem view={AppView.DIGITAL_ROADMAP} label="Growth Roadmap" icon="🗺️" />
-                            <NavItem view={AppView.LEARNING_HUB} label="Learning Hub" icon="🎓" />
-
-                            {!isCollapsed ? (
-                                <div className="pt-4 pb-1 px-3">
-                                    <p className="text-[9px] font-black text-emerald-500/60 uppercase tracking-widest">
-                                        Help
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="border-t border-slate-800/40 my-3" />
-                            )}
-                            <NavItem view={AppView.COMPLIANCE} label="Compliance" icon="⚖️" />
-                            <NavItem view={AppView.WHATSAPP_SUPPORT} label="Live Support" icon="🎧" />
-                            <NavItem view={AppView.SETTINGS} label="Settings" icon="⚙️" />
-                        </>
-                    )}
-                </nav>
-
-                <div className="p-3 pb-24 md:pb-3 border-t border-emerald-950/60 bg-slate-950 shrink-0">
-                    {isCashierMode ? (
-                        !isCollapsed ? (
-                            <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-2xl text-center space-y-2">
-                                <span className="text-xl">🔒</span>
-                                <p className="text-[10px] font-black uppercase tracking-wider text-amber-400">Owner Access Locked</p>
-                                <p className="text-[10px] text-slate-400 leading-tight">Financial payouts & billing hidden</p>
-                                <button
-                                    onClick={() => setShowUnlockModal(true)}
-                                    className="w-full bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs py-2 rounded-xl transition-all border border-amber-500/20 cursor-pointer"
-                                >
-                                    Unlock with PIN
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={() => setShowUnlockModal(true)}
-                                className="w-full bg-slate-900 p-2 rounded-xl text-center border border-slate-800 text-amber-400 text-xs font-bold"
-                                title="Unlock Owner Mode"
-                            >
-                                🔒
-                            </button>
-                        )
-                    ) : (
-                        !isCollapsed ? (
-                            <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-4 rounded-2xl text-white text-center shadow-lg relative overflow-hidden border border-emerald-900/40">
-                                <div className="absolute -right-4 -top-4 text-4xl opacity-10">⚡</div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
-                                    Available Credits
-                                </p>
-                                <p className="text-3xl font-black mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
-                                    {userStats.bizCredits}
-                                </p>
-                                <button
-                                    onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                                    className="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.25)]"
-                                >
-                                    ⚡ Top Up Balance
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                                className="w-full bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 p-2 rounded-xl text-center shadow-md border border-emerald-900/40 flex flex-col items-center justify-center gap-1 hover:border-emerald-500/60 transition-all"
-                                title="Available Credits. Click to Top Up."
-                            >
-                                <span className="text-[9px] font-bold text-emerald-450">⚡</span>
-                                <span className="text-xs font-black text-green-400">{userStats.bizCredits}</span>
-                            </button>
-                        )
-                    )}
-                </div>
-            </div>
-
-            {/* Main Content Area */}
-            <main className="flex-1 p-3 sm:p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen bg-slate-50/30">
-                <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 pb-28 md:pb-8">
-                    {/* Header with Search */}
-                    <header className="hidden md:flex justify-between items-center bg-white/40 backdrop-blur-md p-4 rounded-3xl border border-white/60 sticky top-0 z-20 shadow-sm">
-                        <GlobalSearch onResultClick={(item) => onNavigate(AppView.PRODUCT_MANAGER)} />
-                        
-                        <div className="flex items-center gap-3">
-                            {isCashierMode ? (
-                                <button
-                                    onClick={() => setShowUnlockModal(true)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-700 font-bold text-xs hover:bg-amber-500/25 transition-all cursor-pointer"
-                                    title="Click to enter Owner PIN and return to Owner Mode"
-                                >
-                                    <span>👤 Cashier Mode</span>
-                                    <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-black">Unlock</span>
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => {
-                                        securityLockService.lockApprenticeMode();
-                                        setIsCashierMode(true);
-                                        toast('👤 Apprentice / Cashier Mode Activated across all devices!', { duration: 4000, icon: '🔒' });
-                                    }}
-                                    className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
-                                    title="Lock Petty Cash, profits, and payout settings across all connected phones before handing to staff"
-                                >
-                                    <span>🔒 Staff Mode</span>
-                                </button>
-                            )}
-
-                            <PWAInstallButton variant="nav" label="📲 Install App" />
-                            {user?.email === 'meshachzax@gmail.com' && (
-                                <button
-                                    onClick={toggleTraction}
-                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition-all ${
-                                        tractionMode
-                                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border-emerald-450 shadow-sm shadow-emerald-100'
-                                            : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border-slate-200 hover:text-slate-700'
-                                    }`}
-                                >
-                                    <span>📈</span>
-                                    <span>Traction Mode: {tractionMode ? 'ON' : 'OFF'}</span>
-                                </button>
-                            )}
-                            
-                            {!isCashierMode ? (
-                                <div
-                                  onClick={() => handleNavigate(AppView.SETTINGS, 'tab=billing')}
-                                  className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"
-                                >
-                                    <span className="text-sm">⚡</span>
-                                    <span className="text-sm font-bold text-slate-700">{userStats.bizCredits}</span>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Credits</span>
-                                </div>
-                            ) : (
-                                <div
-                                  onClick={() => setShowUnlockModal(true)}
-                                  className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 cursor-pointer px-3 py-1.5 rounded-full transition-colors border border-slate-200"
-                                  title="Credits hidden in Cashier Mode. Tap to unlock."
-                                >
-                                    <span className="text-sm">⚡</span>
-                                    <span className="text-sm font-bold text-slate-700">••••</span>
-                                </div>
-                            )}
-
-                            <div className="text-right ml-2 hidden sm:block">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    {isCashierMode ? 'Attendant Session' : 'Logged in as'}
-                                </p>
-                                <p className="text-xs font-bold text-slate-800">{user.businessName}</p>
-                            </div>
-                            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-emerald-100">
-                                {user.businessName?.charAt(0) || 'B'}
-                            </div>
-                        </div>
-                    </header>
-
-                    {children}
-                </div>
-            </main>
-
-
-
-            {/* Mobile Bottom Navigation Dock (Sticky for 1-thumb quick action) */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-lg border-t border-emerald-900/40 px-2 py-1.5 flex justify-around items-center shadow-2xl">
-                <button
-                    onClick={() => handleNavigate(AppView.DASHBOARD)}
-                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-                        currentView === AppView.DASHBOARD
-                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
-                            : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                    <span className="text-lg leading-none">📊</span>
-                    <span className="text-[10px] mt-1 font-bold">Home</span>
-                </button>
-
-                <button
-                    onClick={() => handleNavigate(AppView.DAILY_CASHBOOK)}
-                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-                        currentView === AppView.DAILY_CASHBOOK
-                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
-                            : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                    <span className="text-lg leading-none">⚡</span>
-                    <span className="text-[10px] mt-1 font-bold">Day-Book</span>
-                </button>
-
-                <button
-                    onClick={() => handleNavigate(AppView.PRODUCT_MANAGER)}
-                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-                        currentView === AppView.PRODUCT_MANAGER
-                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
-                            : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                    <span className="text-lg leading-none">📦</span>
-                    <span className="text-[10px] mt-1 font-bold">Stock</span>
-                </button>
-
-                <button
-                    onClick={() => handleNavigate(AppView.DEBTOR_BOOK)}
-                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-                        currentView === AppView.DEBTOR_BOOK
-                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
-                            : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                    <span className="text-lg leading-none">📒</span>
-                    <span className="text-[10px] mt-1 font-bold">Gbege</span>
-                </button>
-
-                <button
-                    onClick={() => handleNavigate(AppView.INVOICE_GENERATOR)}
-                    className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-                        currentView === AppView.INVOICE_GENERATOR
-                            ? 'text-emerald-400 bg-emerald-950/60 font-black'
-                            : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                    <span className="text-lg leading-none">🧾</span>
-                    <span className="text-[10px] mt-1 font-bold">Invoices</span>
-                </button>
-            </nav>
-
-            {/* Global Floating Live Support Widget */}
+            {BottomBar}
+            {QuickAddSheet}
             <LiveSupportWidget credits={userStats.bizCredits} onUpdateCredits={onUpdateCredits} />
-
-            {/* Cashier / Staff Mode Owner Security Password Unlock Modal */}
-            {showUnlockModal && (
-                <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in no-print">
-                    <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
-                        <div className="text-center">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl mx-auto mb-2">
-                                🔐
-                            </div>
-                            <h3 className="font-extrabold text-slate-900 text-base font-heading">
-                                Owner Security Verification
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                Enter your <strong>Owner Security Password</strong> or your <strong>SmartBiz Account Login Password</strong> to exit Apprentice / Cashier Mode across devices.
-                            </p>
-                        </div>
-
-                        <form onSubmit={handleUnlockOwnerMode} className="space-y-3">
-                            <div>
-                                <div className="relative">
-                                    <input
-                                        type={showPasswordText ? 'text' : 'password'}
-                                        autoFocus
-                                        placeholder="Enter Owner Password..."
-                                        value={enteredPin}
-                                        onChange={(e) => {
-                                            setEnteredPin(e.target.value);
-                                            setPinError('');
-                                        }}
-                                        className="w-full text-center text-sm font-bold py-3.5 px-10 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:border-amber-500 focus:bg-white transition-all"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPasswordText(!showPasswordText)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
-                                    >
-                                        {showPasswordText ? '🙈' : '👁️'}
-                                    </button>
-                                </div>
-                                {pinError && (
-                                    <p className="text-[11px] text-rose-500 font-bold mt-1.5 text-center leading-relaxed">{pinError}</p>
-                                )}
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={isVerifyingPin}
-                                className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-600/20 cursor-pointer"
-                            >
-                                {isVerifyingPin ? 'Verifying Owner Credentials...' : 'Unlock Full Owner Access'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowUnlockModal(false);
-                                    setEnteredPin('');
-                                    setPinError('');
-                                }}
-                                className="w-full py-2 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
-                            >
-                                Keep in Apprentice / Cashier Mode
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
+            {UnlockModal}
         </div>
     );
 };

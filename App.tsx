@@ -10,6 +10,7 @@ const LandingPage = lazy(() => import("./components/LandingPage"));
 
 // Lazy loaded core components
 const Dashboard = lazy(() => import("./components/Dashboard"));
+const Home = lazy(() => import("./components/Home"));
 const Auth = lazy(() => import("./components/Auth"));
 const Settings = lazy(() => import("./components/Settings"));
 
@@ -751,6 +752,7 @@ const App: React.FC = () => {
                 onNavigate={handleNavigate}
                 onUpdateUser={setUser}
                 onUpdateCredits={handleUpdateCredits}
+                onLogout={handleLogout}
               >
               <Suspense
                 fallback={
@@ -761,7 +763,13 @@ const App: React.FC = () => {
                 }
               >
                 <Routes>
-                  <Route path="" element={<Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
+                  <Route path="" element={<Home user={user} userStats={userStats} onNavigate={handleNavigate} />} />
+                  <Route path="insights" element={
+                    <div className="space-y-3">
+                      <button onClick={() => navigate('/dashboard')} className="min-h-[44px] px-3 rounded-xl text-sm font-bold text-emerald-700 hover:bg-emerald-50 cursor-pointer">← Back to Home</button>
+                      <Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />
+                    </div>
+                  } />
                   <Route path="brand" element={<BrandBuilder savedBrand={savedBrand} onSave={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
                   <Route path="content" element={<ContentStudio brand={savedBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />

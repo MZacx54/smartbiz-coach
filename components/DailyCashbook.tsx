@@ -167,6 +167,26 @@ export const DailyCashbook: React.FC = () => {
     };
   }, []);
 
+  // Deep links from Home / Quick-add: /dashboard/cashbook?action=sale|expense
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    if (!action) return;
+    if (action === 'sale') {
+      setShowSaleModal(true);
+    } else if (action === 'expense') {
+      if (securityLockService.isApprenticeModeActive()) {
+        setPinAction('VIEW_EXPENSES');
+        setPinInput('');
+        setPinError('');
+        setShowPinModal(true);
+      } else {
+        setShowExpenseModal(true);
+      }
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
+
   // Physical Cash Till Reconciliation
   const [openingCashInTill, setOpeningCashInTill] = useState<string>(() => {
     return localStorage.getItem(`sb_opening_till_${localDateStr()}`) || '0';
