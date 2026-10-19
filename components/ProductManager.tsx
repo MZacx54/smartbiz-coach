@@ -1953,6 +1953,55 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         ) : (
           activeTab === 'catalog' ? (
              <div className="space-y-8 animate-in fade-in w-full">
+                {/* 🏪 Share My Online Store & National Market Square Bar */}
+                {(() => {
+                  const firstSlug = (products[0] as any)?.brand_slug || '';
+                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://smartbizcoach.com.ng';
+                  const storeUrl = firstSlug ? `${origin}/u/${firstSlug}` : `${origin}/dashboard/store-preview`;
+                  return (
+                    <div className="bg-slate-900 rounded-[28px] p-5 sm:p-6 text-white flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shadow-lg border border-slate-800">
+                      <div className="space-y-1 min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                          🏪 Your Public Storefront & National Market Square
+                        </p>
+                        <p className="text-sm sm:text-base font-extrabold truncate">
+                          {firstSlug ? storeUrl : 'Every item you list appears in your Personal Store & Nigeria Market Square'}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(storeUrl);
+                            toast.success('Your Store Link copied! Paste it on WhatsApp or Instagram bio.');
+                          }}
+                          className="flex-1 lg:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold cursor-pointer"
+                        >
+                          🔗 Copy My Store Link
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const msg = `🛍️ Shop from our official online store on SmartBiz:\n👉 ${storeUrl}`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                          }}
+                          className="flex-1 lg:flex-initial bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold cursor-pointer"
+                        >
+                          📲 Share on WhatsApp
+                        </button>
+                        <a
+                          href="/market"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold text-center"
+                        >
+                          🇳🇬 Open Market Square
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Prominent AI Snap & List Onboarding Banner Card */}
                 <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-[32px] p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl shadow-emerald-100/50">
                   <div className="space-y-2">
@@ -1981,6 +2030,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                       const stock = product.stock_count || 0;
                       const threshold = product.low_stock_threshold || 5;
                       const isLowStock = stock <= threshold;
+                      const pSlug = (product as any).brand_slug || '';
+                      const directItemUrl = pSlug
+                        ? `${window.location.origin}/u/${pSlug}/p/${product.id}`
+                        : `${window.location.origin}/market/p/${product.id}`;
                       
                       return (
                         <motion.div 
@@ -2042,22 +2095,30 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                               <span>Value: <strong className="text-slate-800 font-bold">₦{(stock * parseFloat(product.price)).toLocaleString()}</strong></span>
                             </div>
 
-                            {/* Market Square Showcase Strip */}
-                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-[10px]">
-                              <span className="text-slate-500 font-bold flex items-center gap-1">
-                                <Globe className="w-3 h-3 text-indigo-600" /> Market Square:
-                              </span>
+                            {/* Market Square Showcase & Direct Product Link Strip */}
+                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-[10px] gap-2">
                               <button
                                 type="button"
                                 onClick={() => handleToggleShowcase(product)}
-                                className={`px-2 py-0.5 rounded-lg flex items-center gap-1 transition-all cursor-pointer text-[10px] ${
+                                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer text-[10px] ${
                                   product.is_public !== false 
                                     ? 'bg-emerald-100 text-emerald-800 font-extrabold hover:bg-emerald-200' 
                                     : 'bg-slate-200 text-slate-600 font-bold hover:bg-slate-300'
                                 }`}
                                 title={product.is_public !== false ? "Click to set private" : "Click to showcase across Nigeria"}
                               >
-                                {product.is_public !== false ? '🌐 Live Nationwide' : '🔒 Private Store'}
+                                {product.is_public !== false ? '🌐 Live on Market Square' : '🔒 Private Store'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard?.writeText(directItemUrl);
+                                  toast.success('Direct product link copied! Paste on WhatsApp to sell.');
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold cursor-pointer text-[10px]"
+                                title="Copy shareable link for this product"
+                              >
+                                🔗 Copy Item Link
                               </button>
                             </div>
                             

@@ -509,11 +509,23 @@ const PublicStorefront: React.FC = () => {
                <Check className="w-3.5 h-3.5 text-emerald-600" /> SmartBiz Verified
              </span>
              <Link
-               to="/dashboard/marketplace"
+               to="/market"
                className="bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-full text-[10px] font-black text-indigo-700 border border-indigo-200 flex items-center gap-1.5 uppercase tracking-wider transition-colors"
              >
-               <Globe className="w-3.5 h-3.5 text-indigo-600" /> Market Square Hub ➔
+               <Globe className="w-3.5 h-3.5 text-indigo-600" /> 🇳🇬 Market Square Hub ➔
              </Link>
+             <button
+               type="button"
+               onClick={() => {
+                 const storeSlug = slug || (brand as any)?.slug || '';
+                 const url = storeSlug ? `${window.location.origin}/u/${storeSlug}` : window.location.href;
+                 navigator.clipboard?.writeText(url);
+                 toast.success('Store link copied! Share it on WhatsApp or Instagram.');
+               }}
+               className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider cursor-pointer"
+             >
+               🔗 Copy Store Link
+             </button>
           </div>
         </div>
       </header>
@@ -671,12 +683,26 @@ const PublicStorefront: React.FC = () => {
                             <p className="text-[10px] text-slate-400 line-clamp-2 leading-normal">{product.description}</p>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-3 gap-2">
                             <button 
                               onClick={() => setSelectedDetailProduct(product)}
                               className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-[9px] font-black uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
                             >
-                              <span>👁️ View Details</span>
+                              <span>👁️ Details</span>
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const storeSlug = slug || (brand as any)?.slug || '';
+                                const itemUrl = storeSlug
+                                  ? `${window.location.origin}/u/${storeSlug}/p/${product.id}`
+                                  : `${window.location.origin}/market/p/${product.id}`;
+                                navigator.clipboard?.writeText(itemUrl);
+                                toast.success('Product link copied! Share it directly with buyers.');
+                              }}
+                              className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              title="Copy Direct Product Link"
+                            >
+                              <span>🔗 Link</span>
                             </button>
                             <button 
                               onClick={() => addToCart(product)}
@@ -725,12 +751,12 @@ const PublicStorefront: React.FC = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                    <span>🔥</span> Explore More on SmartBiz Marketplace
+                    <span>🔥</span> Explore More on SmartBiz Market Square
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Top verified items from other merchants in the ecosystem</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Top verified items from other Nigerian MSMEs in the ecosystem</p>
                 </div>
-                <Link to="/marketplace" className="text-xs font-bold text-indigo-650 hover:underline">
-                  View All Marketplace →
+                <Link to="/market" className="text-xs font-bold text-indigo-650 hover:underline">
+                  View All Market Square →
                 </Link>
               </div>
 

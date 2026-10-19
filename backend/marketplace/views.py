@@ -89,12 +89,14 @@ class OrderCreateView(views.APIView):
                             'Standard Waybill / Delivery').strip()
         order_notes = (request.data.get('notes') or '').strip()
         
+        from .models import DailySale
         leads_created = []
+        sales_recorded = []
         for item in items:
             product_id = item.get('productId') or item.get('product_id') or item.get('id')
             try:
                 product = Product.objects.get(id=product_id)
-                qty = int(item.get('quantity') or 1)
+                qty = max(1, int(item.get('quantity') or 1))
                 item_price = float(item.get('price') or product.price)
                 
                 # Compose detailed order lead message
@@ -119,6 +121,28 @@ class OrderCreateView(views.APIView):
                     quoted_price=item_price * qty
                 )
                 leads_created.append(lead.id)
+
+                # Phase 4: Auto-deduct stock & sync directly into Merchant's Day-Book (DailySale)
+                if product.product_type == 'PHYSICAL' and (product.stock_count or 0) > 0:
+                    product.stock_count = max(0, (product.stock_count or 0) - qty)
+                    product.save(update_fields=['stock_count', 'updated_at'])
+
+                if product.brand and product.brand.user:
+                    sale = DailySale.objects.create(
+                        user=product.brand.user,
+                        product=product,
+                        item_name=f"{product.name} (Online Order)",
+                        quantity=qty,
+                        unit_price=item_price,
+                        cost_price=product.cost_price or 0,
+                        total_amount=item_price * qty,
+                        payment_method='TRANSFER',
+                        customer_name=customer_name,
+                        customer_phone=customer_contact,
+                        is_debt=False,
+                        notes=f"Storefront/Market Order Ref: {reference or 'DIRECT'} · Delivery: {customer_address}"
+                    )
+                    sales_recorded.append(sale.id)
             except (Product.DoesNotExist, ValueError, TypeError):
                 continue
 
@@ -281,6 +305,40 @@ class PublicBrandProductListView(generics.ListAPIView):
     def get_queryset(self):
         slug = self.kwargs.get('slug')
         return Product.objects.filter(brand__slug=slug, is_public=True)
+
+class PublicProductDetailView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, pk):
+        try:
+            product = Product.objects.select_related(
+                'brand',
+                'brand__user',
+                'brand__user__vendor_profile'
+            ).get(id=pk)
+        except Product.DoesNotExist:
+            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        product_data = ProductSerializer(product).data
+        more_from_seller = Product.objects.filter(
+            brand=product.brand,
+            is_public=True
+        ).exclude(id=product.id).order_by('-is_promoted', '-created_at')[:6]
+
+        similar_qs = Product.objects.filter(
+            is_public=True
+        ).exclude(id=product.id).exclude(brand=product.brand)
+        if product.category:
+            cat_qs = similar_qs.filter(category__iexact=product.category)
+            if cat_qs.exists():
+                similar_qs = cat_qs
+        similar_items = similar_qs.order_by('-is_promoted', '-created_at')[:6]
+
+        return Response({
+            'product': product_data,
+            'more_from_seller': ProductSerializer(more_from_seller, many=True).data,
+            'similar_products': ProductSerializer(similar_items, many=True).data,
+        })
 
 class GlobalMarketplaceListView(generics.ListAPIView):
     serializer_class = ProductSerializer

@@ -47,8 +47,12 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_whatsapp_number(self, obj):
         try:
-            num = obj.brand.user.vendor_profile.whatsapp_number
-            return "".join(c for c in num if c.isdigit())
+            vp = getattr(obj.brand.user, 'vendor_profile', None)
+            raw = (getattr(vp, 'whatsapp_number', '') if vp else '') or getattr(obj.brand.user, 'phone', '') or ''
+            digits = "".join(c for c in str(raw) if c.isdigit())
+            if digits.startswith('0') and len(digits) == 11:
+                digits = '234' + digits[1:]
+            return digits or "2348000000000"
         except Exception:
             return "2348000000000"
 

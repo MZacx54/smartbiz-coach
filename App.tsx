@@ -32,6 +32,7 @@ const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
 const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
 const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
+const PublicProductPage = lazy(() => import("./components/PublicProductPage"));
 const ProductManager = lazy(() => import("./components/ProductManager"));
 const LeadManager = lazy(() => import("./components/LeadManager"));
 const PricingAssistant = lazy(() => import("./components/PricingAssistant"));
@@ -600,7 +601,20 @@ const App: React.FC = () => {
         <Route
           path="/"
           element={
-            isStandalonePWA() ? (
+            typeof window !== 'undefined' && window.location.hostname.toLowerCase().startsWith('market.') ? (
+              <Suspense
+                fallback={
+                  <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white">
+                    <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-sm font-semibold text-emerald-400">Loading SmartBiz Market Square 🇳🇬...</p>
+                  </div>
+                }
+              >
+                <div className="min-h-screen bg-slate-50 pt-2">
+                  <Marketplace isPublicMode={true} onAddToCart={handleAddToCart} initialType="PHYSICAL" />
+                </div>
+              </Suspense>
+            ) : isStandalonePWA() ? (
               user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
             ) : (
               <Suspense
@@ -616,6 +630,27 @@ const App: React.FC = () => {
             )
           }
         />
+
+        {/* Public National Market Square Routes (Accessible without Login) */}
+        <Route path="/market" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <div className="min-h-screen bg-slate-50 pt-2">
+              <Marketplace isPublicMode={true} onAddToCart={handleAddToCart} initialType="PHYSICAL" />
+            </div>
+          </Suspense>
+        } />
+        <Route path="/marketplace" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <div className="min-h-screen bg-slate-50 pt-2">
+              <Marketplace isPublicMode={true} onAddToCart={handleAddToCart} initialType="PHYSICAL" />
+            </div>
+          </Suspense>
+        } />
+        <Route path="/market/p/:productId" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicProductPage />
+          </Suspense>
+        } />
         
         {/* Static Pages Routes */}
         <Route path="/about" element={
@@ -667,6 +702,21 @@ const App: React.FC = () => {
         <Route path="/u/:slug" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-650 border-t-transparent rounded-full animate-spin" /></div>}>
             <PublicStorefront />
+          </Suspense>
+        } />
+        <Route path="/shop/:slug" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-650 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicStorefront />
+          </Suspense>
+        } />
+        <Route path="/u/:slug/p/:productId" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-650 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicProductPage />
+          </Suspense>
+        } />
+        <Route path="/shop/:slug/p/:productId" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-650 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicProductPage />
           </Suspense>
         } />
         

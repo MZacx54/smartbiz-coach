@@ -18,6 +18,7 @@ interface MarketplaceProps {
   onAddToCart?: (item: UnifiedItem) => void;
   currentUser?: User;
   initialType?: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B';
+  isPublicMode?: boolean;
 }
 
 // ── Subcategories for ALL 4 Core Pillars ──────────────────
@@ -62,16 +63,24 @@ const PILLAR_SUBCATEGORIES = {
 
 // ── Major Nigerian Commercial Trade Hubs & States ─────────
 const NIGERIAN_GEO_HUBS = [
-  { id: '', label: '🇳🇬 All Nigeria' },
-  { id: 'Lagos', label: '📍 Lagos (Alaba/Balogun/Ikeja)' },
-  { id: 'Abuja', label: '📍 Abuja (FCT)' },
-  { id: 'Port Harcourt', label: '📍 Port Harcourt / Rivers' },
-  { id: 'Onitsha', label: '📍 Onitsha / Aba / SE' },
-  { id: 'Kano', label: '📍 Kano / North' },
-  { id: 'Ibadan', label: '📍 Ibadan / Oyo' },
-  { id: 'Ogun', label: '📍 Ogun (Abeokuta/Ota)' },
-  { id: 'Benin', label: '📍 Benin / Edo / Delta' },
-  { id: 'Enugu', label: '📍 Enugu' },
+  { id: '', label: '🇳🇬 All 36 States + FCT' },
+  { id: 'Lagos', label: '📍 Lagos (Alaba / Balogun / Ikeja / Trade Fair)' },
+  { id: 'Abuja', label: '📍 Abuja FCT (Wuse / Banex / Garki)' },
+  { id: 'Port Harcourt', label: '📍 Port Harcourt / Rivers (Oil Mill / Garrison)' },
+  { id: 'Onitsha', label: '📍 Onitsha Main Market / Nnewi (Anambra)' },
+  { id: 'Aba', label: '📍 Aba Ariaria Market / Umuahia (Abia)' },
+  { id: 'Kano', label: '📍 Kano (Kantin Kwari / Sabon Gari)' },
+  { id: 'Ibadan', label: '📍 Ibadan (Dugbe / Bodija) / Oyo' },
+  { id: 'Ogun', label: '📍 Ogun (Abeokuta / Sango Ota)' },
+  { id: 'Enugu', label: '📍 Enugu (Ogbete Main Market)' },
+  { id: 'Benin', label: '📍 Benin City / Edo' },
+  { id: 'Warri', label: '📍 Warri / Asaba (Delta)' },
+  { id: 'Kaduna', label: '📍 Kaduna Central' },
+  { id: 'Jos', label: '📍 Jos / Plateau' },
+  { id: 'Ilorin', label: '📍 Ilorin / Kwara' },
+  { id: 'Uyo', label: '📍 Uyo / Akwa Ibom' },
+  { id: 'Owerri', label: '📍 Owerri / Imo' },
+  { id: 'Calabar', label: '📍 Calabar / Cross River' },
 ];
 
 // ── Price Range Buckets ──────────────────────────────────
@@ -86,7 +95,7 @@ const PRICE_BUCKETS = [
 // Client-side in-memory cache for instant tab switching (2 minutes TTL)
 const marketplaceClientCache = new Map<string, { data: UnifiedItem[]; timestamp: number }>();
 
-const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'PHYSICAL' }) => {
+const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'PHYSICAL', isPublicMode = false }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'>(initialType);
   const [items, setItems] = useState<UnifiedItem[]>([]);
@@ -229,12 +238,24 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
     }
   };
 
-  const handleShareListing = async (item: UnifiedItem) => {
-    const rawNum = item.whatsapp_number || '2349064556107';
-    const cleanNum = rawNum.replace(/\D/g, '');
-    const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum;
+  const getProductDeepLink = (item: UnifiedItem) => {
+    const slug = item.brand_slug;
+    return slug ? `/u/${slug}/p/${item.id}` : `/market/p/${item.id}`;
+  };
 
-    const shareText = `🔥 *CHECK THIS OUT ON SMARTBIZ MARKET SQUARE!*\n\n📦 *${item.name}*\n💰 *Price:* ₦${Number(item.price).toLocaleString()}\n🏪 *Vendor:* ${item.brand_name || 'Verified Merchant'}\n📍 *Location:* ${item.location || 'Nigeria'}\n\nChat with the vendor directly on WhatsApp: https://wa.me/${waNum}`;
+  const handleShareListing = async (item: UnifiedItem) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://smartbizcoach.com.ng';
+    const productLink = `${origin}${getProductDeepLink(item)}`;
+    const storeLink = item.brand_slug ? `${origin}/u/${item.brand_slug}` : `${origin}/market`;
+
+    const shareText =
+      `🔥 *CHECK THIS OUT ON SMARTBIZ MARKET SQUARE!*\n\n` +
+      `📦 *${item.name}*\n` +
+      `💰 *Price:* ₦${Number(item.price).toLocaleString()}\n` +
+      `🏪 *Vendor:* ${item.brand_name || 'Verified Merchant'}\n` +
+      `📍 *Location:* ${item.location || 'Nigeria'}\n\n` +
+      `👉 *Buy / View Item:* ${productLink}\n` +
+      `🏪 *Seller's Full Store:* ${storeLink}`;
     
     // Reward +5 SmartBiz Credits for sharing
     try {
@@ -250,15 +271,59 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);
       setHasCopiedLink(true);
-      toast.success('Listing copied! Share it to your WhatsApp Status or customer chat.');
+      toast.success('Product link & details copied! Share to WhatsApp Status or customer chat.');
       setTimeout(() => setHasCopiedLink(false), 2500);
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
     }
   };
 
+  const hasAuthToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('sb_auth_token'));
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 pb-24 px-3 sm:px-6">
+      {/* Public Top Navigation Bar when accessed at /market or market.smartbizcoach.com.ng */}
+      {isPublicMode && (
+        <header className="sticky top-0 z-40 -mx-3 sm:-mx-6 px-4 sm:px-6 py-3 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/market')}>
+            <img src="/favicon.png" alt="SmartBiz Market Square" className="w-8 h-8 rounded-xl object-cover" />
+            <div>
+              <span className="font-black text-slate-900 text-sm sm:text-base font-heading block leading-none">
+                SmartBiz Market Square 🇳🇬
+              </span>
+              <span className="text-[10px] font-bold text-emerald-600">
+                Verified Nigerian Small Businesses & Local Products
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasAuthToken ? (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="inline-flex items-center gap-1.5 px-4 min-h-[40px] rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold cursor-pointer"
+              >
+                <span>🏠 My Shop Dashboard</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="px-3.5 min-h-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold cursor-pointer"
+                >
+                  Merchant Login
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="inline-flex items-center gap-1.5 px-4 min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20 cursor-pointer"
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Open Free Store</span>
+                </button>
+              </>
+            )}
+          </div>
+        </header>
+      )}
       
       {/* ── 1. Hero Banner (Nationwide MSME Commerce Hub) ── */}
       <section className="relative rounded-3xl sm:rounded-[36px] overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-10 md:p-14 shadow-2xl border border-slate-800">
@@ -272,7 +337,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> #1 Nigerian MSME Central Market Square
                 </div>
                 <button
-                  onClick={() => navigate('/dashboard/inventory')}
+                  onClick={() => navigate(hasAuthToken ? '/dashboard/inventory?action=new' : '/register')}
                   className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold transition-all cursor-pointer shadow-sm"
                 >
                    <Sparkles className="w-3 h-3 text-emerald-400" /> 🏪 Showcase Your Business (1-Click) ➔
@@ -283,7 +348,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                Showcasing Nigerian <span className="bg-gradient-to-r from-emerald-400 via-indigo-300 to-pink-400 bg-clip-text text-transparent">MSMEs</span> Nationwide
              </h1>
              <p className="text-slate-300 text-xs sm:text-sm md:text-base max-w-xl leading-relaxed">
-               Discover authentic products, verified artisans, B2B wholesale commodities, and commercial trade spaces across all 36 Nigerian states.
+               Discover authentic local products, verified artisans, B2B wholesale commodities, and commercial trade spaces across all 36 Nigerian states + FCT.
              </p>
           </motion.div>
  
@@ -295,7 +360,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products, services, Alaba merchants, Abuja hubs..."
+                placeholder="Ask AI Shopper: e.g. 'Ankara in Lagos', 'Catering Abuja', 'Wholesale nylon'..."
                 className="w-full bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all shadow-inner"
               />
               {searchQuery && (
@@ -325,6 +390,33 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
             </button>
           </form>
 
+          {/* AI Smart Shopper Quick Discovery Chips */}
+          <div className="flex items-center gap-1.5 flex-wrap pt-1">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300 flex items-center gap-1 mr-1">
+              <Sparkles className="w-3 h-3" /> Popular in Naija:
+            </span>
+            {[
+              { label: '👗 Ankara & Aso-Ebi', q: 'Ankara' },
+              { label: '🍲 Foodstuff & Grains', q: 'Food' },
+              { label: '📱 Phones & Gadgets', q: 'Phone' },
+              { label: '🚚 Dispatch & Waybill', q: 'Dispatch' },
+              { label: '💄 Wigs & Skincare', q: 'Beauty' },
+              { label: '📦 Wholesale B2B', q: 'Wholesale' },
+            ].map((chip) => (
+              <button
+                key={chip.q}
+                type="button"
+                onClick={() => {
+                  setSearchQuery(chip.q);
+                  setTimeout(() => fetchItems(true), 20);
+                }}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 hover:bg-emerald-500/30 border border-white/15 text-slate-200 transition-colors cursor-pointer"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+
           {/* Trust Guarantees Strip */}
           <div className="flex flex-wrap items-center gap-4 pt-2 text-[11px] text-slate-300 font-medium">
             <span className="flex items-center gap-1.5 text-emerald-400">
@@ -334,7 +426,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
               <Truck className="w-3.5 h-3.5" /> Nationwide Waybill & In-Store Pickup
             </span>
             <span className="flex items-center gap-1.5 text-amber-300">
-              <Zap className="w-3.5 h-3.5" /> 1-Tap Direct WhatsApp Negotiation
+              <Zap className="w-3.5 h-3.5" /> 1-Tap Direct WhatsApp & Paystack Checkout
             </span>
           </div>
         </div>
@@ -711,16 +803,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                   </div>
 
                   {/* 1-Tap Quick Action Buttons on Card */}
-                  <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-2">
+                  <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-1.5">
                     {item.product_type === 'PHYSICAL' ? (
                       <button
                         onClick={() => {
-                          onAddToCart && onAddToCart(item);
-                          toast.success(`Added "${item.name}" to cart!`);
+                          if (onAddToCart && !isPublicMode) {
+                            onAddToCart(item);
+                            toast.success(`Added "${item.name}" to cart!`);
+                          } else {
+                            navigate(getProductDeepLink(item));
+                          }
                         }}
                         className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
-                        <ShoppingBag className="w-3.5 h-3.5" /> Buy / Bag
+                        <ShoppingBag className="w-3.5 h-3.5" /> {isPublicMode || !onAddToCart ? 'Buy Now' : 'Buy / Bag'}
                       </button>
                     ) : item.product_type === 'B2B' ? (
                       <button
@@ -731,12 +827,21 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                       </button>
                     ) : (
                       <button
-                        onClick={() => setSelectedItem(item)}
+                        onClick={() => navigate(getProductDeepLink(item))}
                         className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
-                        <span>📋</span> Book / Inspect
+                        <span>📋</span> Book / View
                       </button>
                     )}
+
+                    {/* Open Dedicated Product Page */}
+                    <button
+                      onClick={() => navigate(getProductDeepLink(item))}
+                      className="w-9 h-9 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      title="Open Product Page & Seller Store"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
+                    </button>
 
                     {/* Direct WhatsApp Quick Chat */}
                     <button
@@ -759,7 +864,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     <button
                       onClick={() => handleShareListing(item)}
                       className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                      title="Share to WhatsApp Status"
+                      title="Copy Product Link & Share to WhatsApp Status"
                     >
                       <Share2 className="w-3.5 h-3.5 text-slate-600" />
                     </button>
