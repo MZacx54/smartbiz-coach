@@ -5,6 +5,8 @@ import GlobalSearch from './GlobalSearch';
 import { toast } from 'react-hot-toast';
 import LiveSupportWidget from './LiveSupportWidget';
 import { PWAInstallButton } from './PWAInstallPrompt';
+import { securityLockService } from '../services/authService';
+import api from '../services/api';
 
 interface DashboardLayoutProps {
     user: User;
@@ -37,11 +39,42 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     // Recommendation 3: Offline-First PWA Mode state
     const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
 
-    // Recommendation 4: Cashier vs Owner Mode state
-    const [isCashierMode, setIsCashierMode] = useState(() => localStorage.getItem('sb_cashier_mode') === 'true');
+    // Recommendation 4: Unified Cloud-Synced Cashier / Apprentice Mode state
+    const [isCashierMode, setIsCashierMode] = useState(() => securityLockService.isApprenticeModeActive());
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [enteredPin, setEnteredPin] = useState('');
     const [pinError, setPinError] = useState('');
+    const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+    const [showPasswordText, setShowPasswordText] = useState(false);
+
+    useEffect(() => {
+        const handleModeChanged = (e: any) => {
+            const active = e?.detail?.isApprenticeMode ?? securityLockService.isApprenticeModeActive();
+            setIsCashierMode(Boolean(active));
+        };
+        window.addEventListener('sb-apprentice-mode-changed', handleModeChanged);
+
+        const syncSecurityFromCloud = async () => {
+            if (!localStorage.getItem('sb_auth_token')) return;
+            try {
+                const res = await api.get('users/security-lock/');
+                if (res?.data && typeof res.data.is_apprentice_mode === 'boolean') {
+                    securityLockService.syncFromUserOrBrand(res.data);
+                    setIsCashierMode(res.data.is_apprentice_mode);
+                }
+            } catch {
+                // Keep local state if offline
+            }
+        };
+
+        syncSecurityFromCloud();
+        window.addEventListener('focus', syncSecurityFromCloud);
+
+        return () => {
+            window.removeEventListener('sb-apprentice-mode-changed', handleModeChanged);
+            window.removeEventListener('focus', syncSecurityFromCloud);
+        };
+    }, []);
 
     useEffect(() => {
         const handleOnline = () => {
@@ -73,18 +106,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         return () => window.removeEventListener('smartbiz_credits_updated', handleCreditsUpdated);
     }, [onUpdateCredits]);
 
-    const handleUnlockOwnerMode = (e: React.FormEvent) => {
+    const handleUnlockOwnerMode = async (e: React.FormEvent) => {
         e.preventDefault();
-        const actualPin = localStorage.getItem('sb_owner_pin') || '1234';
-        if (enteredPin === actualPin) {
-            localStorage.setItem('sb_cashier_mode', 'false');
-            setIsCashierMode(false);
-            setShowUnlockModal(false);
-            setEnteredPin('');
-            setPinError('');
-            toast.success('Owner Mode Unlocked! Full privileges restored.', { icon: '👑' });
-        } else {
-            setPinError('Incorrect Owner PIN. (Default PIN: 1234)');
+        setIsVerifyingPin(true);
+        setPinError('');
+        try {
+            const result = await securityLockService.verifyOrUnlockOwnerPasscode(enteredPin, 'UNLOCK');
+            if (result.verified) {
+                setIsCashierMode(false);
+                setShowUnlockModal(false);
+                setEnteredPin('');
+                setPinError('');
+                toast.success('Owner Mode Unlocked across account! Full privileges restored.', { icon: '👑' });
+            } else {
+                setPinError(result.error || 'Incorrect Owner Security Password.');
+            }
+        } finally {
+            setIsVerifyingPin(false);
         }
     };
 
@@ -103,7 +141,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             AppView.GRANT_MATCHER,
             AppView.COMPLIANCE,
             AppView.DIGITAL_ROADMAP,
-            AppView.PARTNER_PORTAL
+            AppView.PARTNER_PORTAL,
+            AppView.DATA_SCIENCE_HUB
         ];
 
         if (isCashierMode && ownerOnlyViews.includes(view)) {
@@ -448,12 +487,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             ) : (
                                 <button
                                     onClick={() => {
-                                        localStorage.setItem('sb_cashier_mode', 'true');
+                                        securityLockService.lockApprenticeMode();
                                         setIsCashierMode(true);
-                                        toast('👤 Cashier Mode Activated. Handing device to staff.', { duration: 4000 });
+                                        toast('👤 Apprentice / Cashier Mode Activated across all devices!', { duration: 4000, icon: '🔒' });
                                     }}
                                     className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
-                                    title="Lock sensitive financial and payout settings before handing device to sales attendants"
+                                    title="Lock Petty Cash, profits, and payout settings across all connected phones before handing to staff"
                                 >
                                     <span>🔒 Staff Mode</span>
                                 </button>
@@ -578,7 +617,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {/* Global Floating Live Support Widget */}
             <LiveSupportWidget credits={userStats.bizCredits} onUpdateCredits={onUpdateCredits} />
 
-            {/* Cashier / Staff Mode PIN Unlock Modal */}
+            {/* Cashier / Staff Mode Owner Security Password Unlock Modal */}
             {showUnlockModal && (
                 <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in no-print">
                     <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
@@ -587,37 +626,46 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 🔐
                             </div>
                             <h3 className="font-extrabold text-slate-900 text-base font-heading">
-                                Enter Owner PIN
+                                Owner Security Verification
                             </h3>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Enter your 4-digit security PIN to unlock full administrative features.
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                Enter your <strong>Owner Security Password</strong> or your <strong>SmartBiz Account Login Password</strong> to exit Apprentice / Cashier Mode across devices.
                             </p>
                         </div>
 
                         <form onSubmit={handleUnlockOwnerMode} className="space-y-3">
                             <div>
-                                <input
-                                    type="password"
-                                    maxLength={8}
-                                    autoFocus
-                                    placeholder="••••"
-                                    value={enteredPin}
-                                    onChange={(e) => {
-                                        setEnteredPin(e.target.value);
-                                        setPinError('');
-                                    }}
-                                    className="w-full text-center tracking-[0.5em] text-2xl font-black py-3 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:border-amber-500 focus:bg-white transition-all"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={showPasswordText ? 'text' : 'password'}
+                                        autoFocus
+                                        placeholder="Enter Owner Password..."
+                                        value={enteredPin}
+                                        onChange={(e) => {
+                                            setEnteredPin(e.target.value);
+                                            setPinError('');
+                                        }}
+                                        className="w-full text-center text-sm font-bold py-3.5 px-10 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:border-amber-500 focus:bg-white transition-all"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPasswordText(!showPasswordText)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
+                                    >
+                                        {showPasswordText ? '🙈' : '👁️'}
+                                    </button>
+                                </div>
                                 {pinError && (
-                                    <p className="text-[11px] text-rose-500 font-bold mt-1 text-center">{pinError}</p>
+                                    <p className="text-[11px] text-rose-500 font-bold mt-1.5 text-center leading-relaxed">{pinError}</p>
                                 )}
                             </div>
 
                             <button
                                 type="submit"
-                                className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-600/20 cursor-pointer"
+                                disabled={isVerifyingPin}
+                                className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-600/20 cursor-pointer"
                             >
-                                Unlock Full Access
+                                {isVerifyingPin ? 'Verifying Owner Credentials...' : 'Unlock Full Owner Access'}
                             </button>
                             <button
                                 type="button"
@@ -628,7 +676,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                                 }}
                                 className="w-full py-2 text-slate-400 hover:text-slate-600 text-xs font-bold transition-colors cursor-pointer"
                             >
-                                Keep in Cashier Mode
+                                Keep in Apprentice / Cashier Mode
                             </button>
                         </form>
                     </div>

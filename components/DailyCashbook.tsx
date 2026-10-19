@@ -10,6 +10,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { DailySale, DailyExpense, DailySummary, DailyAIInsights, Product } from '../types';
 import api from '../services/api';
+import { securityLockService } from '../services/authService';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import BarcodeScannerModal from './BarcodeScannerModal';
@@ -125,18 +126,46 @@ export const DailyCashbook: React.FC = () => {
   const [expensePaymentMethod, setExpensePaymentMethod] = useState<'CASH' | 'TRANSFER'>('CASH');
   const [expenseNotes, setExpenseNotes] = useState('');
 
-  // Anti-Theft Shift Mode & PIN security
+  // Anti-Theft Shift Mode & Cloud-Synced Owner Security Password
   const [isShiftMode, setIsShiftMode] = useState<boolean>(() => {
-    return localStorage.getItem('sb_shift_mode') === 'true';
-  });
-  const [ownerPin, setOwnerPin] = useState<string>(() => {
-    return localStorage.getItem('sb_owner_pin') || '0000';
+    return securityLockService.isApprenticeModeActive();
   });
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pinAction, setPinAction] = useState<'ENTER' | 'SET' | 'EDIT_AUTH'>('ENTER');
+  const [pinAction, setPinAction] = useState<'ENTER' | 'SET' | 'EDIT_AUTH' | 'VIEW_EXPENSES'>('ENTER');
   const [pendingEditTarget, setPendingEditTarget] = useState<{ type: 'SALE' | 'EXPENSE'; item: any } | null>(null);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
+  const [isSubmittingPin, setIsSubmittingPin] = useState(false);
+  const [showPasswordText, setShowPasswordText] = useState(false);
+
+  useEffect(() => {
+    const handleModeChanged = (e: any) => {
+      const nextMode = e?.detail?.isApprenticeMode ?? securityLockService.isApprenticeModeActive();
+      setIsShiftMode(Boolean(nextMode));
+    };
+    window.addEventListener('sb-apprentice-mode-changed', handleModeChanged);
+
+    const syncCloudLock = async () => {
+      if (!localStorage.getItem('sb_auth_token')) return;
+      try {
+        const res = await api.get('users/security-lock/');
+        if (res?.data && typeof res.data.is_apprentice_mode === 'boolean') {
+          securityLockService.syncFromUserOrBrand(res.data);
+          setIsShiftMode(res.data.is_apprentice_mode);
+        }
+      } catch {
+        // Keep local state if offline
+      }
+    };
+
+    syncCloudLock();
+    window.addEventListener('focus', syncCloudLock);
+
+    return () => {
+      window.removeEventListener('sb-apprentice-mode-changed', handleModeChanged);
+      window.removeEventListener('focus', syncCloudLock);
+    };
+  }, []);
 
   // Physical Cash Till Reconciliation
   const [openingCashInTill, setOpeningCashInTill] = useState<string>(() => {
@@ -1374,8 +1403,8 @@ export const DailyCashbook: React.FC = () => {
             </div>
             <p className={`text-[11px] mt-0.5 ${isShiftMode ? 'text-amber-800' : 'text-slate-400'}`}>
               {isShiftMode
-                ? 'Profit margins, COGS, and wholesale cost prices are locked. Only sales logging & receipts are accessible.'
-                : 'Full visibility enabled. Hand over to your shop attendant or apprentice when leaving your store.'}
+                ? 'Petty Cash Log, profit margins, COGS, and wholesale cost prices are locked across all devices. Owner Password required.'
+                : 'Full visibility enabled. Hand over to your shop attendant or apprentice to lock Petty Cash & Profits across all devices.'}
             </p>
           </div>
         </div>
@@ -1391,7 +1420,7 @@ export const DailyCashbook: React.FC = () => {
               }}
               className="bg-amber-600 hover:bg-amber-500 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
             >
-              <Lock className="w-3.5 h-3.5" /> Exit Shift (Enter PIN)
+              <Lock className="w-3.5 h-3.5" /> Exit Shift (Owner Password)
             </button>
           ) : (
             <>
@@ -1403,16 +1432,19 @@ export const DailyCashbook: React.FC = () => {
                   setShowPinModal(true);
                 }}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Change Owner PIN (Default: 0000)"
+                title="Set or Update Strong Owner Security Password (Synced Across All Devices)"
               >
-                <Key className="w-3.5 h-3.5 text-amber-400" /> Change PIN
+                <Key className="w-3.5 h-3.5 text-amber-400" /> Set Owner Password
               </button>
 
               <button
-                onClick={() => {
+                onClick={async () => {
                   setIsShiftMode(true);
-                  localStorage.setItem('sb_shift_mode', 'true');
-                  toast.success('Apprentice Shift Mode active! Financial margins are now locked 🔒');
+                  if (activeTab === 'EXPENSES' || activeTab === 'AI_INSIGHTS') {
+                    setActiveTab('SALES');
+                  }
+                  await securityLockService.lockApprenticeMode();
+                  toast.success('Apprentice Shift Mode locked across all devices! Petty Cash & Profits are now password-protected 🔒');
                 }}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
               >
@@ -1484,8 +1516,29 @@ export const DailyCashbook: React.FC = () => {
         {/* Petty Cash Out */}
         <div className="bg-white p-4 rounded-3xl border border-amber-100 shadow-sm bg-gradient-to-b from-white to-amber-50/30">
           <p className="text-[10px] font-black uppercase tracking-wider text-amber-650">📉 Petty Cash Spent</p>
-          <p className="text-lg sm:text-xl font-black text-amber-700 mt-1">{formatNgn(totalExpenses)}</p>
-          <p className="text-[11px] font-bold text-amber-600 mt-0.5">{expenses.length} expense{expenses.length === 1 ? '' : 's'}</p>
+          {isShiftMode ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPinAction('VIEW_EXPENSES');
+                setPinInput('');
+                setPinError('');
+                setShowPinModal(true);
+              }}
+              className="mt-2.5 flex items-center gap-1.5 cursor-pointer"
+              title="Enter Owner Security Password to view Petty Cash Log"
+            >
+              <Lock className="w-4 h-4 text-amber-500" />
+              <span className="text-[11px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-xl">
+                🔒 Password Locked
+              </span>
+            </button>
+          ) : (
+            <>
+              <p className="text-lg sm:text-xl font-black text-amber-700 mt-1">{formatNgn(totalExpenses)}</p>
+              <p className="text-[11px] font-bold text-amber-600 mt-0.5">{expenses.length} expense{expenses.length === 1 ? '' : 's'}</p>
+            </>
+          )}
         </div>
 
         {/* Credit Given Out */}
@@ -1502,7 +1555,7 @@ export const DailyCashbook: React.FC = () => {
             <div className="mt-2.5 flex items-center gap-1.5">
               <Lock className="w-4 h-4 text-amber-500" />
               <span className="text-[11px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-xl">
-                🔒 PIN Protected
+                🔒 Password Locked
               </span>
             </div>
           ) : (
@@ -1567,14 +1620,24 @@ export const DailyCashbook: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('EXPENSES')}
-            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+            onClick={() => {
+              if (isShiftMode) {
+                setPinAction('VIEW_EXPENSES');
+                setPinInput('');
+                setPinError('');
+                setShowPinModal(true);
+              } else {
+                setActiveTab('EXPENSES');
+              }
+            }}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'EXPENSES'
                 ? 'bg-amber-600 text-white shadow-md'
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
             }`}
           >
-            💸 Petty Cash & Expenses ({expenses.length})
+            <span>{isShiftMode ? '🔒' : '💸'}</span>
+            <span>Petty Cash & Expenses {isShiftMode ? '(Password Protected)' : `(${expenses.length})`}</span>
           </button>
 
           <button
@@ -1590,6 +1653,13 @@ export const DailyCashbook: React.FC = () => {
 
           <button
             onClick={() => {
+              if (isShiftMode) {
+                setPinAction('ENTER');
+                setPinInput('');
+                setPinError('');
+                setShowPinModal(true);
+                return;
+              }
               setActiveTab('AI_INSIGHTS');
               if (!aiInsights) fetchAIInsights();
             }}
@@ -1600,7 +1670,7 @@ export const DailyCashbook: React.FC = () => {
             }`}
           >
             <Bot className="w-3.5 h-3.5 text-purple-400" />
-            <span>AI Operations Brief</span>
+            <span>{isShiftMode ? '🔒 AI Operations Brief' : 'AI Operations Brief'}</span>
             <span className="bg-purple-100 text-purple-700 text-[9px] font-black px-1.5 py-0.5 rounded-full">New</span>
           </button>
         </div>
@@ -1767,14 +1837,14 @@ export const DailyCashbook: React.FC = () => {
               </p>
               <button
                 onClick={() => {
-                  setPinAction('ENTER');
+                  setPinAction('VIEW_EXPENSES');
                   setPinInput('');
                   setPinError('');
                   setShowPinModal(true);
                 }}
                 className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center gap-2"
               >
-                <Lock className="w-4 h-4" /> Enter Owner PIN to Unlock
+                <Lock className="w-4 h-4" /> Enter Owner Password to Unlock Petty Cash
               </button>
             </div>
           ) : expenses.length === 0 ? (
@@ -1918,23 +1988,35 @@ export const DailyCashbook: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-600">💸 Cash Deducted from Till</span>
-                  <strong className="text-slate-900 font-extrabold">{formatNgn(cashExpenses)}</strong>
+                  {isShiftMode ? (
+                    <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg text-[10px]">🔒 Password Locked</span>
+                  ) : (
+                    <strong className="text-slate-900 font-extrabold">{formatNgn(cashExpenses)}</strong>
+                  )}
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-600">🏦 Transfer Expenses Paid</span>
-                  <strong className="text-slate-900 font-extrabold">{formatNgn(transferExpenses)}</strong>
+                  {isShiftMode ? (
+                    <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg text-[10px]">🔒 Password Locked</span>
+                  ) : (
+                    <strong className="text-slate-900 font-extrabold">{formatNgn(transferExpenses)}</strong>
+                  )}
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-slate-600">📦 Cost of Goods Sold (COGS)</span>
                   {isShiftMode ? (
-                    <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg text-[10px]">🔒 PIN Protected</span>
+                    <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-lg text-[10px]">🔒 Password Locked</span>
                   ) : (
                     <strong className="text-slate-700 font-extrabold">{formatNgn(cogs)}</strong>
                   )}
                 </div>
                 <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm">
                   <span className="font-extrabold text-slate-800">Total Operational Expenses</span>
-                  <span className="font-black text-amber-600 text-base">{formatNgn(totalExpenses)}</span>
+                  {isShiftMode ? (
+                    <span className="text-amber-600 font-black bg-amber-50 px-2.5 py-0.5 rounded-lg text-xs">🔒 Password Locked</span>
+                  ) : (
+                    <span className="font-black text-amber-600 text-base">{formatNgn(totalExpenses)}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1946,7 +2028,7 @@ export const DailyCashbook: React.FC = () => {
               <p className="text-[11px] font-black uppercase tracking-widest text-indigo-400">Net Estimated Profit After All Expenses</p>
               {isShiftMode ? (
                 <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xl font-black text-amber-400">🔒 PIN Protected</span>
+                  <span className="text-xl font-black text-amber-400">🔒 Password Locked</span>
                   <span className="text-xs text-slate-400">(Owner access only)</span>
                 </div>
               ) : (
@@ -3132,7 +3214,7 @@ export const DailyCashbook: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 3: OWNER PIN / APPRENTICE LOCK MODAL */}
+      {/* MODAL 3: CLOUD-SYNCED OWNER SECURITY PASSWORD / APPRENTICE LOCK MODAL */}
       {showPinModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-[32px] max-w-sm w-full p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 text-center">
@@ -3140,88 +3222,133 @@ export const DailyCashbook: React.FC = () => {
               {pinAction === 'SET' ? '🔑' : '🔒'}
             </div>
             <h3 className="text-lg font-black text-slate-900">
-              {pinAction === 'SET' 
-                ? 'Set Owner 4-Digit PIN' 
-                : pinAction === 'EDIT_AUTH'
-                ? 'Authorize Transaction Edit'
-                : 'Enter Owner PIN'}
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
               {pinAction === 'SET'
-                ? 'Choose a 4-digit security PIN to protect profit margins from staff & apprentices.'
+                ? 'Set Strong Owner Security Password'
                 : pinAction === 'EDIT_AUTH'
-                ? 'Modifying past transactions requires owner authorization to prevent till theft.'
-                : 'Enter your 4-digit PIN to exit shift mode and unlock full financial reports.'}
+                ? 'Owner Authorization Required'
+                : pinAction === 'VIEW_EXPENSES'
+                ? 'Unlock Petty Cash & Expense Log'
+                : 'Owner Security Verification'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              {pinAction === 'SET'
+                ? 'Choose a strong Owner Security Password (minimum 6 characters: letters, numbers, or symbols). Synced across all phones & devices.'
+                : pinAction === 'EDIT_AUTH'
+                ? 'Modifying past transactions requires your Owner Security Password or SmartBiz Account Login Password to prevent till theft.'
+                : pinAction === 'VIEW_EXPENSES'
+                ? 'Apprentice Mode is active on this account. Enter your Owner Security Password or SmartBiz Account Login Password to access Petty Cash.'
+                : 'Enter your Owner Security Password or SmartBiz Account Login Password to exit Apprentice Mode across devices.'}
             </p>
 
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                if (pinAction === 'SET') {
-                  if (pinInput.length !== 4 || !/^\d{4}$/.test(pinInput)) {
-                    setPinError('PIN must be exactly 4 digits.');
-                    return;
-                  }
-                  setOwnerPin(pinInput);
-                  localStorage.setItem('sb_owner_pin', pinInput);
-                  setShowPinModal(false);
-                  toast.success('Owner PIN updated successfully! 🔐');
-                } else if (pinAction === 'EDIT_AUTH') {
-                  if (pinInput === ownerPin) {
-                    setShowPinModal(false);
-                    if (pendingEditTarget?.type === 'SALE') {
-                      openSaleEditModal(pendingEditTarget.item);
-                    } else if (pendingEditTarget?.type === 'EXPENSE') {
-                      openExpenseEditModal(pendingEditTarget.item);
+                setIsSubmittingPin(true);
+                setPinError('');
+                try {
+                  if (pinAction === 'SET') {
+                    const res = await securityLockService.setOwnerPasscode(pinInput);
+                    if (!res.success) {
+                      setPinError(res.error || 'Password must be at least 6 characters long.');
+                      return;
                     }
-                    setPendingEditTarget(null);
-                    toast.success('Owner Authorized! Record unlocked for editing. 🔓');
-                  } else {
-                    setPinError('Incorrect PIN. Default PIN is 0000.');
-                  }
-                } else {
-                  if (pinInput === ownerPin) {
-                    setIsShiftMode(false);
-                    localStorage.setItem('sb_shift_mode', 'false');
                     setShowPinModal(false);
-                    toast.success('Owner Super-Admin Mode Unlocked! 👔');
+                    setPinInput('');
+                    toast.success('Strong Owner Security Password saved & synced across all devices! 🔐');
+                  } else if (pinAction === 'EDIT_AUTH') {
+                    const res = await securityLockService.verifyOrUnlockOwnerPasscode(pinInput, 'VERIFY');
+                    if (res.verified) {
+                      setShowPinModal(false);
+                      setPinInput('');
+                      if (pendingEditTarget?.type === 'SALE') {
+                        openSaleEditModal(pendingEditTarget.item);
+                      } else if (pendingEditTarget?.type === 'EXPENSE') {
+                        openExpenseEditModal(pendingEditTarget.item);
+                      }
+                      setPendingEditTarget(null);
+                      toast.success('Owner Authorized! Record unlocked for editing. 🔓');
+                    } else {
+                      setPinError(res.error || 'Incorrect Owner Security Password.');
+                    }
+                  } else if (pinAction === 'VIEW_EXPENSES') {
+                    const res = await securityLockService.verifyOrUnlockOwnerPasscode(pinInput, 'UNLOCK');
+                    if (res.verified) {
+                      setIsShiftMode(false);
+                      setShowPinModal(false);
+                      setPinInput('');
+                      setActiveTab('EXPENSES');
+                      toast.success('Petty Cash & Expense Log unlocked! 💸');
+                    } else {
+                      setPinError(res.error || 'Incorrect Owner Security Password.');
+                    }
                   } else {
-                    setPinError('Incorrect PIN. Default PIN is 0000.');
+                    const res = await securityLockService.verifyOrUnlockOwnerPasscode(pinInput, 'UNLOCK');
+                    if (res.verified) {
+                      setIsShiftMode(false);
+                      setShowPinModal(false);
+                      setPinInput('');
+                      toast.success('Owner Super-Admin Mode Unlocked across devices! 👔');
+                    } else {
+                      setPinError(res.error || 'Incorrect Owner Security Password.');
+                    }
                   }
+                } finally {
+                  setIsSubmittingPin(false);
                 }
               }}
               className="mt-5 space-y-4"
             >
               <div>
-                <input
-                  type="password"
-                  maxLength={4}
-                  autoFocus
-                  required
-                  value={pinInput}
-                  onChange={(e) => {
-                    setPinInput(e.target.value.replace(/\D/g, ''));
-                    setPinError('');
-                  }}
-                  placeholder="••••"
-                  className="w-36 mx-auto text-center text-3xl font-black tracking-widest bg-slate-100 border border-slate-200 rounded-2xl py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                {pinError && <p className="text-xs text-rose-600 font-bold mt-2">{pinError}</p>}
+                <div className="relative">
+                  <input
+                    type={showPasswordText ? 'text' : 'password'}
+                    autoFocus
+                    required
+                    value={pinInput}
+                    onChange={(e) => {
+                      setPinInput(e.target.value);
+                      setPinError('');
+                    }}
+                    placeholder={pinAction === 'SET' ? 'Min 6 chars (e.g. Boss@2026)' : 'Enter Owner Password...'}
+                    className="w-full text-center text-sm font-bold bg-slate-100 border border-slate-200 rounded-2xl py-3.5 px-10 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
+                  >
+                    {showPasswordText ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {pinError && <p className="text-xs text-rose-600 font-bold mt-2 leading-relaxed">{pinError}</p>}
               </div>
 
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPinModal(false)}
+                  onClick={() => {
+                    setShowPinModal(false);
+                    setPinInput('');
+                    setPinError('');
+                  }}
                   className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all cursor-pointer"
+                  disabled={isSubmittingPin}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all cursor-pointer"
                 >
-                  {pinAction === 'SET' ? 'Save PIN' : pinAction === 'EDIT_AUTH' ? 'Authorize Edit' : 'Unlock'}
+                  {isSubmittingPin
+                    ? 'Verifying...'
+                    : pinAction === 'SET'
+                    ? 'Save Password'
+                    : pinAction === 'EDIT_AUTH'
+                    ? 'Authorize Edit'
+                    : pinAction === 'VIEW_EXPENSES'
+                    ? 'Unlock Petty Cash'
+                    : 'Unlock Owner Mode'}
                 </button>
               </div>
             </form>

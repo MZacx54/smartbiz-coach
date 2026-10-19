@@ -55,12 +55,13 @@ import {
   UnifiedItem,
 } from "./types";
 import api from "./services/api";
-import { authService } from "./services/authService";
+import { authService, securityLockService } from "./services/authService";
 import { brandService } from "./services/brandService";
 import { billingService } from "./services/billingService";
 
 const normalizeUser = (backendUser: any): User | null => {
   if (!backendUser) return null;
+  securityLockService.syncFromUserOrBrand(backendUser);
   return {
     ...backendUser,
     id: String(backendUser.id || backendUser.username || ''),
@@ -249,8 +250,10 @@ const App: React.FC = () => {
           }
         }
 
-        if (brand.status === "fulfilled" && brand.value)
+        if (brand.status === "fulfilled" && brand.value) {
+          securityLockService.syncFromUserOrBrand(brand.value);
           setSavedBrand(brand.value);
+        }
         if (txs.status === "fulfilled" && Array.isArray(txs.value)) {
           const mappedTxs: Transaction[] = txs.value.map((t: any) => ({
             id: String(t.id),
@@ -391,6 +394,7 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (userData: any) => {
+    securityLockService.syncFromUserOrBrand(userData);
     setUser(normalizeUser(userData));
     if (userData && typeof userData.credits === 'number') {
       setUserStats((prev) => ({ ...prev, bizCredits: userData.credits }));
@@ -398,7 +402,12 @@ const App: React.FC = () => {
     authService.getStats().then(stats => {
       if (stats) setUserStats(stats);
     }).catch(() => {});
-    navigate('/dashboard');
+    if (securityLockService.isApprenticeModeActive()) {
+      toast('👨‍💼 Apprentice / Cashier Mode is active on this account. Owner Password required for Petty Cash & Admin.', { icon: '🔒' });
+      navigate('/dashboard/cashbook');
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   const handleUpdateUser = async (updatedUser: User) => {
@@ -435,7 +444,10 @@ const App: React.FC = () => {
       'sb_cart',
       'sb_transactions',
       'sb_user_stats',
-      'sb_user_actions'
+      'sb_user_actions',
+      'sb_shift_mode',
+      'sb_cashier_mode',
+      'sb_has_owner_passcode'
     ];
     sessionKeys.forEach((k) => localStorage.removeItem(k));
     navigate('/');

@@ -799,3 +799,140 @@ class PartnershipInquiryView(views.APIView):
             'message': 'Thank you! Your partnership proposal has been received and saved in the Executive Portal.'
         }, status=status.HTTP_201_CREATED)
 
+
+class SecurityLockView(views.APIView):
+    """
+    Cloud-synced Apprentice / Cashier Mode & Robust Owner Security Password Vault.
+    Ensures logging into the same account on any phone/device enforces Apprentice Mode
+    and requires the Owner's Security Password (or SmartBiz Account Password) to unlock
+    the Petty Cash Log, Profit Metrics, or Owner Dashboard.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    WEAK_PASSCODES = {
+        '0000', '1234', '1111', '2222', '5555', '9999',
+        '123456', '12345678', '000000', '111111', '654321',
+        'password', 'password123', 'qwerty', 'admin', 'admin123', 'smartbiz'
+    }
+
+    def _get_brand_and_vault(self, user):
+        from brand.models import BrandIdentity
+        brand, _ = BrandIdentity.objects.get_or_create(
+            user=user,
+            defaults={'business_name': getattr(user, 'business_name', '') or user.username}
+        )
+        if not isinstance(brand.policies, dict):
+            brand.policies = {}
+        vault = brand.policies.get('__security_vault__')
+        if not isinstance(vault, dict):
+            vault = {
+                'is_apprentice_mode': False,
+                'owner_passcode_hash': '',
+            }
+        return brand, vault
+
+    def _save_vault(self, brand, vault):
+        policies = dict(brand.policies) if isinstance(brand.policies, dict) else {}
+        policies['__security_vault__'] = vault
+        brand.policies = policies
+        brand.save(update_fields=['policies', 'updated_at'])
+
+    def _verify_owner_secret(self, user, vault, raw_secret: str) -> bool:
+        from django.contrib.auth.hashers import check_password
+        if not raw_secret:
+            return False
+        stored_hash = vault.get('owner_passcode_hash') or ''
+        # 1. Check custom hashed Owner Security Password if configured
+        if stored_hash and check_password(raw_secret, stored_hash):
+            return True
+        # 2. Always allow the Owner's actual SmartBiz account login password as master key
+        if user.check_password(raw_secret):
+            return True
+        return False
+
+    def get(self, request):
+        _, vault = self._get_brand_and_vault(request.user)
+        return Response({
+            'is_apprentice_mode': bool(vault.get('is_apprentice_mode', False)),
+            'has_owner_passcode': bool(vault.get('owner_passcode_hash')),
+        })
+
+    def post(self, request):
+        from django.contrib.auth.hashers import make_password
+        from django.utils import timezone
+
+        action = str(request.data.get('action') or '').strip().upper()
+        brand, vault = self._get_brand_and_vault(request.user)
+
+        if action == 'LOCK':
+            vault['is_apprentice_mode'] = True
+            vault['updated_at'] = timezone.now().isoformat()
+            self._save_vault(brand, vault)
+            return Response({
+                'success': True,
+                'is_apprentice_mode': True,
+                'has_owner_passcode': bool(vault.get('owner_passcode_hash')),
+                'message': 'Apprentice / Cashier Mode locked across all connected phones & devices.'
+            })
+
+        if action in ('UNLOCK', 'VERIFY'):
+            passcode = str(request.data.get('passcode') or '').strip()
+            if not self._verify_owner_secret(request.user, vault, passcode):
+                return Response({
+                    'verified': False,
+                    'error': 'Incorrect Owner Security Password. Enter your Owner Security Password or your SmartBiz Account Login Password.'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            if action == 'UNLOCK':
+                vault['is_apprentice_mode'] = False
+                vault['updated_at'] = timezone.now().isoformat()
+                self._save_vault(brand, vault)
+
+            return Response({
+                'verified': True,
+                'is_apprentice_mode': bool(vault.get('is_apprentice_mode', False)),
+                'has_owner_passcode': bool(vault.get('owner_passcode_hash')),
+                'message': 'Owner identity verified.'
+            })
+
+        if action == 'SET_PASSCODE':
+            new_passcode = str(request.data.get('new_passcode') or '').strip()
+            current_passcode = str(request.data.get('current_passcode') or '').strip()
+            lock_immediately = bool(request.data.get('lock_immediately', False))
+
+            # If Apprentice Mode is currently active OR an owner passcode already exists, verify current credentials if in apprentice mode
+            if vault.get('is_apprentice_mode'):
+                if not self._verify_owner_secret(request.user, vault, current_passcode):
+                    return Response({
+                        'success': False,
+                        'error': 'Cannot change Owner Security Password while Apprentice Mode is locked without current Owner Password.'
+                    }, status=status.HTTP_403_FORBIDDEN)
+
+            if len(new_passcode) < 6:
+                return Response({
+                    'success': False,
+                    'error': 'Owner Security Password must be at least 6 characters long for cross-device protection.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            if new_passcode.lower() in self.WEAK_PASSCODES or len(set(new_passcode)) < 2:
+                return Response({
+                    'success': False,
+                    'error': 'This password is too easy for staff to guess (e.g. 0000, 123456, 111111). Choose a stronger Owner Password.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            vault['owner_passcode_hash'] = make_password(new_passcode)
+            if lock_immediately:
+                vault['is_apprentice_mode'] = True
+            vault['updated_at'] = timezone.now().isoformat()
+            self._save_vault(brand, vault)
+
+            return Response({
+                'success': True,
+                'has_owner_passcode': True,
+                'is_apprentice_mode': bool(vault.get('is_apprentice_mode', False)),
+                'message': 'Strong Owner Security Password saved and synced across all devices!'
+            })
+
+        return Response({'error': 'Invalid security action.'}, status=status.HTTP_400_BAD_REQUEST)
+
+

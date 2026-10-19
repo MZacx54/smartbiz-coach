@@ -2,13 +2,15 @@ from django.urls import path
 from .views import (
      RegisterView, LoginView, ProfileView, UserStatsView, UserActionsView,
      ForgotPasswordView, ResetPasswordView, ComplianceStatusView, AgentHireRequestView,
-     SetupAdminView, VerifyCACLiveView, EmailDiagnosticTestView, PartnershipInquiryView
+     SetupAdminView, VerifyCACLiveView, EmailDiagnosticTestView, PartnershipInquiryView,
+     SecurityLockView
 )
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('security-lock/', SecurityLockView.as_view(), name='security-lock'),
     path('stats/', UserStatsView.as_view(), name='stats'),
     path('actions/', UserActionsView.as_view(), name='actions'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
@@ -20,4 +22,5 @@ urlpatterns = [
     path('test-email/', EmailDiagnosticTestView.as_view(), name='test-email'),
     path('partnership-inquiry/', PartnershipInquiryView.as_view(), name='partnership-inquiry'),
 ]
+
 

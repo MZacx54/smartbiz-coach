@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, UserStats } from '../types';
 import PaymentModal from './PaymentModal';
 import { billingService, TransactionData, CreditLedgerData, AdminDashboardData } from '../services/billingService';
-import { authService } from '../services/authService';
+import { authService, securityLockService } from '../services/authService';
 import { marketingService } from '../services/marketingService';
 import { toast } from 'react-hot-toast';
 
@@ -68,8 +68,9 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   const [defaultTone, setDefaultTone] = useState(() => localStorage.getItem('sb_default_tone') || 'Exciting');
   const [invoiceCurrency, setInvoiceCurrency] = useState(() => localStorage.getItem('sb_invoice_currency') || 'NGN');
   const [invoicePaymentTerms, setInvoicePaymentTerms] = useState(() => localStorage.getItem('sb_invoice_payment_terms') || 'DUE_ON_RECEIPT');
-  const [ownerPin, setOwnerPin] = useState(() => localStorage.getItem('sb_owner_pin') || '1234');
-  const [isCashierActive, setIsCashierActive] = useState(() => localStorage.getItem('sb_cashier_mode') === 'true');
+  const [ownerPin, setOwnerPin] = useState('');
+  const [isCashierActive, setIsCashierActive] = useState(() => securityLockService.isApprenticeModeActive());
+  const [hasCustomPasscode, setHasCustomPasscode] = useState(() => localStorage.getItem('sb_has_owner_passcode') === 'true');
 
   // Data Management states
   const [dataStats, setDataStats] = useState({
@@ -344,7 +345,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   };
 
   // Save preferences handler
-  const handleSavePreferences = () => {
+  const handleSavePreferences = async () => {
     localStorage.setItem('sb_idice_traction_mode', String(tractionMode));
     localStorage.setItem('sb_default_reminder_tone', defaultReminderTone);
     localStorage.setItem('sb_auto_deduct_stock', String(autoDeductStock));
@@ -352,7 +353,17 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
     localStorage.setItem('sb_default_tone', defaultTone);
     localStorage.setItem('sb_invoice_currency', invoiceCurrency);
     localStorage.setItem('sb_invoice_payment_terms', invoicePaymentTerms);
-    localStorage.setItem('sb_owner_pin', ownerPin.trim() || '1234');
+    if (ownerPin.trim()) {
+      const res = await securityLockService.setOwnerPasscode(ownerPin.trim());
+      if (!res.success) {
+        toast.error(res.error || 'Please choose a stronger Owner Security Password (min 6 characters).');
+        return;
+      }
+      setHasCustomPasscode(true);
+      setOwnerPin('');
+      toast.success("Preferences & strong Owner Security Password synced across all devices!");
+      return;
+    }
     toast.success("Preferences saved successfully!");
   };
 
@@ -1197,53 +1208,75 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
             </div>
           </div>
 
-          {/* Recommendation 4: Staff & Cashier PIN Protection Card */}
+          {/* Recommendation 4: Staff & Cashier Strong Password Protection Card */}
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🛡️</span>
                 <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-widest">
-                  Shop Staff & Cashier Role Protection
+                  Shop Staff & Apprentice Multi-Device Security Lock
                 </h3>
               </div>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                 isCashierActive ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
               }`}>
-                {isCashierActive ? '👤 Cashier Mode Active' : '👑 Owner Admin Mode'}
+                {isCashierActive ? '👤 Apprentice Mode Locked (All Devices)' : '👑 Owner Admin Mode'}
               </span>
             </div>
             <div className="p-6 sm:p-8 space-y-5">
               <p className="text-xs text-slate-500 leading-relaxed">
-                When you activate Cashier Mode, shop attendants can only record daily sales, manage stock, and issue invoices. Your bank payout account, credit top-up, and business plans are locked behind your Owner PIN.
+                When you activate Apprentice / Cashier Mode, <strong>every phone or browser logged into this account</strong> is locked to Sales & Stock only. Your Petty Cash Log, Net Profit margins, Bank Payouts, and Admin Portal are strictly locked behind your <strong>Owner Security Password</strong> (or your SmartBiz Account Login Password).
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                    4-Digit Owner Security PIN
+                    {hasCustomPasscode ? 'Update Owner Security Password (Min 6 Chars)' : 'Set Strong Owner Security Password (Min 6 Chars)'}
                   </label>
                   <input
                     type="password"
-                    maxLength={8}
                     value={ownerPin}
                     onChange={(e) => setOwnerPin(e.target.value)}
-                    placeholder="1234"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-xs font-mono font-bold tracking-widest focus:ring-2 focus:ring-emerald-500 outline-none"
+                    placeholder={hasCustomPasscode ? '•••••••• (Cloud-Synced Active)' : 'Enter strong password (min 6 chars)...'}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-xs font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
-                  <p className="text-[10px] text-slate-400">Default PIN is 1234. Change it to secure your owner dashboard.</p>
+                  <p className="text-[10px] text-slate-400">
+                    {hasCustomPasscode
+                      ? '✅ Custom Owner Security Password is active & synced across all devices. You can also unlock anytime with your SmartBiz Account Login Password.'
+                      : 'Weak PINs like 0000 or 1234 are blocked. Your SmartBiz Account Login Password also works as your master unlock key.'}
+                  </p>
                 </div>
 
                 <div className="flex flex-col justify-end">
                   <button
                     type="button"
-                    onClick={() => {
-                      const nextState = !isCashierActive;
-                      localStorage.setItem('sb_cashier_mode', String(nextState));
-                      setIsCashierActive(nextState);
-                      toast(nextState ? '👤 Cashier Mode activated! Hand device to staff.' : '👑 Owner Mode restored!', {
-                        icon: nextState ? '🔒' : '🔓'
-                      });
-                      setTimeout(() => window.location.reload(), 800);
+                    onClick={async () => {
+                      if (!isCashierActive) {
+                        if (ownerPin.trim()) {
+                          const res = await securityLockService.setOwnerPasscode(ownerPin.trim(), '', true);
+                          if (!res.success) {
+                            toast.error(res.error || 'Please enter a stronger Owner Security Password (min 6 chars).');
+                            return;
+                          }
+                          setHasCustomPasscode(true);
+                          setOwnerPin('');
+                        } else {
+                          await securityLockService.lockApprenticeMode();
+                        }
+                        setIsCashierActive(true);
+                        toast('👤 Apprentice / Cashier Mode locked across all devices!', { icon: '🔒' });
+                        setTimeout(() => window.location.reload(), 600);
+                      } else {
+                        const entered = window.prompt('Enter your Owner Security Password or SmartBiz Account Login Password to unlock:');
+                        if (!entered) return;
+                        const verify = await securityLockService.verifyOrUnlockOwnerPasscode(entered, 'UNLOCK');
+                        if (verify.verified) {
+                          setIsCashierActive(false);
+                          toast.success('👑 Owner Admin Mode restored across devices!');
+                        } else {
+                          toast.error(verify.error || 'Incorrect Owner Security Password.');
+                        }
+                      }
                     }}
                     className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
                       isCashierActive
@@ -1251,7 +1284,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                         : 'bg-slate-900 hover:bg-slate-800 text-white'
                     }`}
                   >
-                    <span>{isCashierActive ? '🔓 Exit Cashier Mode' : '👤 Hand Device to Staff (Lock to Cashier Mode)'}</span>
+                    <span>{isCashierActive ? '🔓 Unlock Owner Mode (Password Required)' : '🔒 Lock Account to Apprentice / Staff Mode (All Devices)'}</span>
                   </button>
                 </div>
               </div>

@@ -5,12 +5,37 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     logo = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    is_apprentice_mode = serializers.SerializerMethodField(read_only=True)
+    has_owner_passcode = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'first_name', 'last_name', 'business_name', 'plan', 'credits', 'has_onboarded', 'logo', 'phone', 'location', 'currency']
-        read_only_fields = ['credits', 'plan']
+        fields = [
+            'id', 'username', 'email', 'password', 'first_name', 'last_name',
+            'business_name', 'plan', 'credits', 'has_onboarded', 'logo',
+            'phone', 'location', 'currency', 'is_apprentice_mode', 'has_owner_passcode'
+        ]
+        read_only_fields = ['credits', 'plan', 'is_apprentice_mode', 'has_owner_passcode']
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
+
+    def _get_security_vault(self, obj):
+        try:
+            brand = getattr(obj, 'brand_identity', None)
+            if brand and isinstance(brand.policies, dict):
+                vault = brand.policies.get('__security_vault__', {})
+                if isinstance(vault, dict):
+                    return vault
+        except Exception:
+            pass
+        return {}
+
+    def get_is_apprentice_mode(self, obj):
+        vault = self._get_security_vault(obj)
+        return bool(vault.get('is_apprentice_mode', False))
+
+    def get_has_owner_passcode(self, obj):
+        vault = self._get_security_vault(obj)
+        return bool(vault.get('owner_passcode_hash'))
 
     def validate_password(self, value):
         if value:
