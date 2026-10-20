@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppView, User, UserStats, Debtor } from '../types';
+import { toast } from 'react-hot-toast';
 import api from '../services/api';
+import { storeShareUrl } from '../services/commerceService';
 import { useOwnerLock } from '../hooks/useOwnerLock';
 import { Card, Button, StatTile, Skeleton, PageHeader, useLanguage } from './ui';
 
@@ -53,16 +55,18 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
   const [trends, setTrends] = useState<Trends | null>(() => readCache<Trends>('sb_home_trends'));
   const [loading, setLoading] = useState(!summary);
   const [productCount, setProductCount] = useState<number | null>(null);
+  const [featuredMarket, setFeaturedMarket] = useState<any[]>([]);
   const [checklistHidden, setChecklistHidden] = useState(() => localStorage.getItem('sb_checklist_dismissed') === 'true');
   const [storeShared, setStoreShared] = useState(() => localStorage.getItem('sb_store_shared') === 'true');
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const [s, tRes, p] = await Promise.allSettled([
+      const [s, tRes, p, mkt] = await Promise.allSettled([
         api.get(`/api/marketplace/daily-summary/?date=${today}`, { timeout: 8000 }),
         api.get('/api/marketplace/daily-trends/?days=7', { timeout: 8000 }),
         api.get('/api/marketplace/products/', { timeout: 8000 }),
+        api.get('/api/marketplace/global/?sort_by=boosted', { timeout: 8000 }),
       ]);
       if (cancelled) return;
       if (s.status === 'fulfilled' && s.value?.data) {
@@ -76,6 +80,9 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
       if (p.status === 'fulfilled') {
         const d = p.value?.data;
         setProductCount(Array.isArray(d) ? d.length : Array.isArray(d?.results) ? d.results.length : 0);
+      }
+      if (mkt.status === 'fulfilled' && Array.isArray(mkt.value?.data)) {
+        setFeaturedMarket(mkt.value.data.slice(0, 6));
       }
       setLoading(false);
     };
@@ -361,6 +368,82 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
           >
             {t('Show more insights ›', 'See full AI business insights ›')}
           </button>
+        )}
+      </Card>
+
+      {/* 5. National Market Square & Public Storefront Spotlight */}
+      <Card className="space-y-4 border border-emerald-100/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              🇳🇬 {t('National Market Square & Your Store', 'Market Square & Your Public Shop')}
+            </h2>
+            <p className="text-xs text-slate-500">
+              {t(
+                'Share your public storefront link with customers or explore verified products across Nigeria.',
+                'Share your shop link for WhatsApp Status or check wetin other people dey sell for Market Square.'
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                const rawSlug = (user as any)?.brand_slug || businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                const url = storeShareUrl(rawSlug || 'my-store');
+                navigator.clipboard?.writeText(url);
+                localStorage.setItem('sb_store_shared', 'true');
+                setStoreShared(true);
+                toast.success('Public store link copied! Ready to paste on WhatsApp.');
+              }}
+              className="px-3.5 min-h-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold cursor-pointer"
+            >
+              🔗 {t('Copy Store Link', 'Copy Shop Link')}
+            </button>
+            <button
+              onClick={() => onNavigate(AppView.ORDER_INBOX)}
+              className="px-3.5 min-h-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold cursor-pointer"
+            >
+              📦 {t('Online Orders', 'Online Orders')}
+            </button>
+            <button
+              onClick={() => onNavigate(AppView.MARKETPLACE)}
+              className="px-4 min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-sm cursor-pointer"
+            >
+              🏪 {t('Open Market Square →', 'Enter Market Square →')}
+            </button>
+          </div>
+        </div>
+
+        {featuredMarket.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
+            {featuredMarket.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => navigate(item.brand_slug ? `/u/${item.brand_slug}/p/${item.id}` : `/market/p/${item.id}`)}
+                className="group bg-slate-50 hover:bg-white rounded-2xl border border-slate-200/70 hover:border-emerald-400 p-2.5 transition-all cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="aspect-square rounded-xl bg-slate-200/60 overflow-hidden mb-2 relative">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xl">🛍️</div>
+                    )}
+                    {item.is_promoted && (
+                      <span className="absolute top-1.5 left-1.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase">
+                        ⚡ Boosted
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-extrabold text-slate-800 line-clamp-1">{item.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{item.brand_name || 'Verified MSME'}</p>
+                </div>
+                <p className="text-xs font-black text-emerald-700 mt-1.5">
+                  ₦{Number(item.price || 0).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </Card>
     </div>

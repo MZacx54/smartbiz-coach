@@ -259,6 +259,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                             🔒 {t('Staff mode', 'Staff')}
                         </button>
                     )}
+                    {/* 1-tap Market Square Shortcut */}
+                    <button
+                        onClick={() => go(AppView.MARKETPLACE)}
+                        className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 min-h-[36px] rounded-full text-xs font-extrabold text-emerald-800 cursor-pointer"
+                        title="Open National Market Square"
+                    >
+                        <span>🏪</span>
+                        <span className="hidden sm:inline">{t('Market', 'Market')}</span>
+                    </button>
                     {/* 1-tap English / Naija Pidgin Toggle */}
                     <button
                         onClick={toggleLang}

@@ -44,6 +44,37 @@ const LandingPage: React.FC = () => {
     const [roiRevenue, setRoiRevenue] = useState(500000);
     const [roiHours, setRoiHours] = useState(10);
 
+    // Live Public Market Square Showcase State
+    const [marketItems, setMarketItems] = useState<any[]>([]);
+    const [marketLoading, setMarketLoading] = useState(true);
+    const [marketCategory, setMarketCategory] = useState<string>('');
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadFeaturedMarket = async () => {
+            setMarketLoading(true);
+            try {
+                const params: Record<string, string> = { sort_by: 'boosted' };
+                if (marketCategory === 'SERVICE' || marketCategory === 'B2B') {
+                    params.product_type = marketCategory;
+                } else if (marketCategory) {
+                    params.product_type = 'PHYSICAL';
+                    params.category = marketCategory;
+                }
+                const res = await api.get('/api/marketplace/global/', { params, timeout: 8000 });
+                if (!cancelled && Array.isArray(res.data)) {
+                    setMarketItems(res.data.slice(0, 8));
+                }
+            } catch {
+                // graceful fallback if offline
+            } finally {
+                if (!cancelled) setMarketLoading(false);
+            }
+        };
+        loadFeaturedMarket();
+        return () => { cancelled = true; };
+    }, [marketCategory]);
+
     // Partnership Form States
     const [partnerSubmitted, setPartnerSubmitted] = useState(false);
     const [partnerLoading, setPartnerLoading] = useState(false);
@@ -367,6 +398,12 @@ const LandingPage: React.FC = () => {
                             {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
                                 <a key={href} href={href} className="text-slate-600 hover:text-green-600 font-semibold transition-colors text-sm">{label}</a>
                             ))}
+                            <button onClick={() => navigate('/market')} className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3.5 py-1.5 rounded-full font-extrabold transition-colors text-xs flex items-center gap-1.5 cursor-pointer">
+                                <span>🇳🇬</span> Market Square
+                            </button>
+                            <button onClick={() => navigate('/track')} className="text-slate-600 hover:text-green-600 font-semibold transition-colors text-xs cursor-pointer">
+                                Track Order
+                            </button>
                             <button onClick={() => navigate('/blog')} className="text-slate-600 hover:text-green-600 font-semibold transition-colors text-sm flex items-center gap-1">
                                 Blog <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                             </button>
@@ -395,6 +432,12 @@ const LandingPage: React.FC = () => {
                             {[['#features', 'Features'], ['#how-it-works', 'How It Works'], ['#guarantee', 'Free Tools Guarantee'], ['#pricing', 'Pricing'], ['#faq', 'FAQ'], ['#partnership', 'Partners']].map(([href, label]) => (
                                 <a key={href} href={href} onClick={() => setMobileMenuOpen(false)} className="block py-2.5 px-3 text-slate-700 font-semibold hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">{label}</a>
                             ))}
+                            <button onClick={() => { setMobileMenuOpen(false); navigate('/market'); }} className="block w-full text-left py-2.5 px-3 text-emerald-700 bg-emerald-50 font-extrabold hover:bg-emerald-100 rounded-xl transition-colors">
+                                🇳🇬 Shop Nigerian Market Square
+                            </button>
+                            <button onClick={() => { setMobileMenuOpen(false); navigate('/track'); }} className="block w-full text-left py-2.5 px-3 text-slate-700 font-semibold hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">
+                                🚚 Track an Order
+                            </button>
                             <button onClick={() => { setMobileMenuOpen(false); navigate('/blog'); }} className="block w-full text-left py-2.5 px-3 text-slate-700 font-semibold hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">
                                 📰 Impact & Partnership Blog
                             </button>
@@ -482,13 +525,13 @@ const LandingPage: React.FC = () => {
                             </div>
 
                             <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-12">
-                                <button onClick={() => navigate('/register')} className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-base font-black rounded-2xl shadow-2xl shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-1 transition-all">
+                                <button onClick={() => navigate('/register')} className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-base font-black rounded-2xl shadow-2xl shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-1 transition-all cursor-pointer">
                                     🚀 Start Free — Claim 50 Free Welcome Credits 🎁
                                 </button>
-                                <PWAInstallButton variant="hero" label="📲 Install Free App (Phone / PC)" />
-                                <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center justify-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 text-white text-base font-bold rounded-2xl border border-white/20 hover:border-white/40 transition-all">
-                                    See All Features ↓
+                                <button onClick={() => navigate('/market')} className="flex items-center justify-center gap-2 px-7 py-4 bg-white text-slate-950 hover:bg-emerald-50 text-base font-black rounded-2xl shadow-xl transition-all cursor-pointer">
+                                    🇳🇬 Shop Market Square (No Login) →
                                 </button>
+                                <PWAInstallButton variant="hero" label="📲 Install Free App (Phone / PC)" />
                             </div>
 
                             {/* Social proof numbers */}
@@ -578,6 +621,203 @@ const LandingPage: React.FC = () => {
                     <svg viewBox="0 0 1440 96" className="absolute bottom-0 w-full" preserveAspectRatio="none">
                         <path d="M0,64 C480,96 960,0 1440,64 L1440,96 L0,96 Z" fill="white" />
                     </svg>
+                </div>
+            </section>
+
+            {/* ═══════════ LIVE PUBLIC MARKET SQUARE SHOWCASE (NO LOGIN REQUIRED) ═══════════ */}
+            <section id="live-marketplace" className="py-16 bg-gradient-to-b from-white via-emerald-50/30 to-white border-b border-slate-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                        <div>
+                            <div className="inline-flex items-center gap-2 py-1 px-3 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black tracking-widest uppercase mb-3 border border-emerald-200">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                                Live Public Marketplace · 36 States + FCT
+                            </div>
+                            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                                🇳🇬 Featured Products from Nigerian Small Businesses
+                            </h2>
+                            <p className="text-sm sm:text-base text-slate-600 mt-1 max-w-2xl">
+                                Browse and buy directly from verified Nigerian MSMEs — pay securely via Paystack or order on WhatsApp with zero account required.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <button
+                                onClick={() => navigate('/track')}
+                                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold cursor-pointer"
+                            >
+                                🚚 Track an Order
+                            </button>
+                            <button
+                                onClick={() => navigate('/market')}
+                                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-black shadow-lg shadow-emerald-600/20 cursor-pointer"
+                            >
+                                View All Products in Market Square →
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Quick Category Filter Pills */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                        {[
+                            { id: '', label: '🔥 All Featured' },
+                            { id: 'Fashion', label: '👗 Fashion & Wears' },
+                            { id: 'Electronics', label: '📱 Electronics & Gadgets' },
+                            { id: 'Groceries', label: '🍲 Agro & Groceries' },
+                            { id: 'Beauty', label: '💄 Beauty & Hair' },
+                            { id: 'Home', label: '🛋️ Home & Living' },
+                            { id: 'SERVICE', label: '🛠️ Professional Services' },
+                            { id: 'B2B', label: '📦 B2B Wholesale' },
+                        ].map((cat) => (
+                            <button
+                                key={cat.id || 'all'}
+                                onClick={() => setMarketCategory(cat.id)}
+                                className={`shrink-0 px-4 py-2 rounded-full text-xs font-extrabold border transition-all cursor-pointer ${
+                                    marketCategory === cat.id
+                                        ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                                        : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400'
+                                }`}
+                            >
+                                {cat.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Product Grid */}
+                    {marketLoading ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                            {[1, 2, 3, 4].map((n) => (
+                                <div key={n} className="bg-white rounded-3xl border border-slate-100 p-4 space-y-3 animate-pulse">
+                                    <div className="aspect-[4/3] rounded-2xl bg-slate-100" />
+                                    <div className="h-3 w-2/3 bg-slate-100 rounded" />
+                                    <div className="h-4 w-1/2 bg-slate-100 rounded" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : marketItems.length === 0 ? (
+                        <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center space-y-3">
+                            <p className="text-base font-extrabold text-slate-800">Explore the National Market Square</p>
+                            <p className="text-xs text-slate-500 max-w-md mx-auto">
+                                Discover verified products, services, and wholesale suppliers across Nigeria or list your own shop items in 60 seconds.
+                            </p>
+                            <div className="flex justify-center gap-3 pt-1">
+                                <button onClick={() => navigate('/market')} className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black cursor-pointer">
+                                    🇳🇬 Open Market Square
+                                </button>
+                                <button onClick={() => navigate('/register')} className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-black cursor-pointer">
+                                    🏪 List Your Products Free
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                            {marketItems.map((item) => {
+                                const itemUrl = item.brand_slug ? `/u/${item.brand_slug}/p/${item.id}` : `/market/p/${item.id}`;
+                                const storeUrl = item.brand_slug ? `/u/${item.brand_slug}` : '/market';
+                                return (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => navigate(itemUrl)}
+                                        className="group bg-white rounded-3xl border border-slate-200/80 hover:border-emerald-400 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between cursor-pointer"
+                                    >
+                                        <div>
+                                            <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden">
+                                                {item.image_url ? (
+                                                    <img
+                                                        src={item.image_url}
+                                                        alt={item.name}
+                                                        loading="lazy"
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-3xl">🛍️</div>
+                                                )}
+                                                <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1">
+                                                    {item.is_promoted && (
+                                                        <span className="bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase shadow">
+                                                            ⚡ Featured
+                                                        </span>
+                                                    )}
+                                                    {item.deal_active && item.discount_percent ? (
+                                                        <span className="bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase shadow">
+                                                            -{item.discount_percent}% Deal
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                                {item.location && (
+                                                    <span className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm text-slate-800 text-[9px] font-bold px-2 py-0.5 rounded-md">
+                                                        📍 {item.location}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="p-3.5 sm:p-4 space-y-1">
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigate(storeUrl);
+                                                        }}
+                                                        className="text-[10px] font-extrabold text-emerald-700 hover:underline truncate cursor-pointer"
+                                                    >
+                                                        🏪 {item.brand_name || 'Verified MSME'}
+                                                    </button>
+                                                    {item.is_vendor_verified && (
+                                                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                                            ✓ Verified
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-1 group-hover:text-emerald-700">
+                                                    {item.name}
+                                                </h3>
+                                            </div>
+                                        </div>
+                                        <div className="px-3.5 sm:px-4 pb-3.5 sm:pb-4 pt-1 flex items-center justify-between border-t border-slate-100">
+                                            <div>
+                                                <span className="text-sm sm:text-base font-black text-slate-900">
+                                                    ₦{Number(item.price || 0).toLocaleString()}
+                                                </span>
+                                                {item.compare_at_price && Number(item.compare_at_price) > Number(item.price) && (
+                                                    <span className="block text-[10px] text-slate-400 line-through">
+                                                        ₦{Number(item.compare_at_price).toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-xl transition-colors">
+                                                Buy / View →
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Bottom Callout Strip for Merchants & Buyers */}
+                    <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="space-y-1 text-center sm:text-left">
+                            <p className="text-sm sm:text-base font-black">
+                                🏪 Own a small business in Nigeria? Get your own shareable online store & Market Square listing free.
+                            </p>
+                            <p className="text-xs text-slate-300">
+                                Every product you add gets a direct WhatsApp/Paystack link (`/u/your-shop/p/item`) and appears in the nationwide Market Square.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap justify-center gap-2.5 shrink-0">
+                            <button
+                                onClick={() => navigate('/market')}
+                                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold cursor-pointer"
+                            >
+                                Browse All Listings
+                            </button>
+                            <button
+                                onClick={() => navigate('/register')}
+                                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black cursor-pointer"
+                            >
+                                Open Your Free Store →
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
