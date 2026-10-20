@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Heart } from 'lucide-react';
+import { useWishlist } from '../hooks/useWishlist';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingBag, Search, Filter, MapPin, Star, ArrowRight, Tag, 
@@ -97,14 +99,18 @@ const marketplaceClientCache = new Map<string, { data: UnifiedItem[]; timestamp:
 
 const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'PHYSICAL', isPublicMode = false }) => {
   const navigate = useNavigate();
+  const routeParams = useParams<{ category?: string; state?: string }>();
+  const wishlist = useWishlist();
   const [activeTab, setActiveTab] = useState<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'>(initialType);
   const [items, setItems] = useState<UnifiedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => routeParams.category ? decodeURIComponent(routeParams.category) : '');
+  const [selectedLocation, setSelectedLocation] = useState<string>(() => routeParams.state ? decodeURIComponent(routeParams.state) : '');
   const [selectedPriceBucket, setSelectedPriceBucket] = useState<string>('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [dealsOnly, setDealsOnly] = useState(false);
+  const [savedOnly, setSavedOnly] = useState(false);
   const [sortBy, setSortBy] = useState<string>('boosted');
   const [selectedItem, setSelectedItem] = useState<UnifiedItem | null>(null);
 
@@ -134,7 +140,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
     const minPrice = bucket?.min || '';
     const maxPrice = bucket?.max || '';
 
-    const cacheKey = `${activeTab}_${searchQuery}_${selectedCategory}_${selectedLocation}_${selectedPriceBucket}_${verifiedOnly}_${sortBy}`;
+    const cacheKey = `${activeTab}_${searchQuery}_${selectedCategory}_${selectedLocation}_${selectedPriceBucket}_${verifiedOnly}_${dealsOnly}_${sortBy}`;
     const cached = marketplaceClientCache.get(cacheKey);
 
     if (cached && !forceRefresh && (Date.now() - cached.timestamp < 120000)) {
@@ -157,6 +163,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           min_price: minPrice,
           max_price: maxPrice,
           verified_only: verifiedOnly ? 'true' : '',
+          deals: dealsOnly ? 'true' : '',
           sort_by: sortBy
         }
       });
@@ -176,7 +183,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
   useEffect(() => {
     fetchItems();
-  }, [selectedCategory, selectedLocation, selectedPriceBucket, verifiedOnly, sortBy]);
+  }, [selectedCategory, selectedLocation, selectedPriceBucket, verifiedOnly, dealsOnly, sortBy]);
+
+  const displayedItems = savedOnly ? items.filter(it => wishlist.has(it.id)) : items;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,6 +306,13 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/track')}
+              className="inline-flex items-center gap-1.5 px-3 min-h-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold cursor-pointer"
+            >
+              <Truck className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">Track Order</span>
+            </button>
             {hasAuthToken ? (
               <button
                 onClick={() => navigate('/dashboard')}
@@ -542,6 +558,29 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
             {/* Right Controls: Verified MSME Only + Sorter */}
             <div className="flex items-center gap-3 ml-auto">
+              {/* Flash Deals Toggle */}
+              <button
+                type="button"
+                onClick={() => setDealsOnly(v => !v)}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold border cursor-pointer transition-all ${
+                  dealsOnly ? 'bg-rose-600 text-white border-rose-600' : 'bg-rose-50/70 text-rose-700 border-rose-200'
+                }`}
+              >
+                🔥 Flash Deals
+              </button>
+
+              {/* Saved / Wishlist Toggle */}
+              <button
+                type="button"
+                onClick={() => setSavedOnly(v => !v)}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-extrabold border cursor-pointer transition-all ${
+                  savedOnly ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'
+                }`}
+              >
+                <Heart className={`w-3 h-3 ${savedOnly ? 'fill-white' : 'text-pink-600'}`} />
+                <span>Saved ({wishlist.ids.length})</span>
+              </button>
+
               {/* Verified Toggle */}
               <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700 bg-emerald-50/60 border border-emerald-200/70 px-2.5 py-1 rounded-xl">
                 <input
@@ -650,7 +689,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       {/* ── 6. Main Modern Commerce Product & B2B Grid ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         <AnimatePresence mode="popLayout">
-          {items.map((item) => {
+          {displayedItems.map((item) => {
             const isBoosted = item.is_promoted;
             return (
               <motion.div
@@ -696,6 +735,11 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                           ⚡ Boosted
                         </span>
                       )}
+                      {item.deal_active && item.discount_percent ? (
+                        <span className="bg-rose-600 text-white px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm">
+                          -{item.discount_percent}% DEAL
+                        </span>
+                      ) : null}
                     </div>
                     {item.location && (
                       <span className="bg-white/90 backdrop-blur-md text-slate-800 px-2 py-1 rounded-lg text-[9px] font-bold shadow-sm flex items-center gap-1">
@@ -730,11 +774,23 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                       <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                         RC: {item.cac_number}
                       </span>
-                    ) : (
-                      <span className="text-[9px] font-bold text-slate-400">
-                        ⭐ 4.9 (12+)
+                    ) : (item.review_count || 0) > 0 ? (
+                      <span className="text-[9px] font-bold text-amber-600">
+                        ⭐ {Number(item.avg_rating || 5).toFixed(1)} ({item.review_count})
                       </span>
-                    )}
+                    ) : null}
+                    <button
+                      type="button"
+                      aria-label="Save item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const saved = wishlist.toggle(item.id);
+                        toast.success(saved ? 'Saved to your wishlist!' : 'Removed from wishlist');
+                      }}
+                      className="p-1.5 rounded-full hover:bg-pink-50 text-slate-400 hover:text-pink-600 cursor-pointer"
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${wishlist.has(item.id) ? 'fill-pink-600 text-pink-600' : ''}`} />
+                    </button>
                   </div>
 
                   {/* Title & Price */}

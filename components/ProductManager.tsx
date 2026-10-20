@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Plus, Trash2, Edit3, Sparkles, Globe, Megaphone, DollarSign, Package, Tag, ArrowRight, Save, X, Download, ShieldAlert, TrendingUp, AlertTriangle, Camera, Rocket, Zap, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { commerceService, productShareUrl, storeShareUrl } from '../services/commerceService';
 import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 import CreditPromptModal from './CreditPromptModal';
@@ -14,6 +15,8 @@ interface Product {
   description: string;
   price: string;
   price_max?: string;
+  compare_at_price?: string | number | null;
+  deal_ends_at?: string | null;
   image_url: string;
   category: string;
   product_type: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B';
@@ -517,6 +520,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     description: '',
     price: '',
     price_max: '',
+    compare_at_price: '',
+    deal_ends_at: '',
     image_url: '',
     category: '',
     product_type: 'PHYSICAL',
@@ -661,6 +666,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         image_url: compressedImage,
         price: parseFloat(currentProduct.price as string).toFixed(2),
         price_max: currentProduct.price_max ? parseFloat(currentProduct.price_max as string).toFixed(2) : null,
+        compare_at_price: currentProduct.compare_at_price ? parseFloat(currentProduct.compare_at_price as string).toFixed(2) : null,
+        deal_ends_at: currentProduct.deal_ends_at || null,
         cost_price: currentProduct.cost_price ? parseFloat(currentProduct.cost_price as string).toFixed(2) : "0.00",
         stock_count: parseInt(currentProduct.stock_count as any) || 0,
         low_stock_threshold: parseInt(currentProduct.low_stock_threshold as any) || 5,
@@ -1246,6 +1253,29 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                     </div>
                   </div>
 
+                  {/* Flash Deal / Promo Pricing (Phase 8) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-rose-50/50 border border-rose-100 rounded-2xl p-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-rose-700 uppercase tracking-widest ml-1">🔥 Compare-At / Original Price (₦) (Optional Flash Deal)</label>
+                      <input
+                        type="number"
+                        value={(currentProduct.compare_at_price as any) || ''}
+                        onChange={(e) => setCurrentProduct({ ...currentProduct, compare_at_price: e.target.value })}
+                        placeholder="Higher original price e.g. 25000"
+                        className="w-full bg-white border border-rose-200 rounded-xl px-4 py-2.5 text-xs font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-rose-700 uppercase tracking-widest ml-1">⏰ Flash Deal Ends At (Optional)</label>
+                      <input
+                        type="datetime-local"
+                        value={currentProduct.deal_ends_at ? String(currentProduct.deal_ends_at).slice(0, 16) : ''}
+                        onChange={(e) => setCurrentProduct({ ...currentProduct, deal_ends_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                        className="w-full bg-white border border-rose-200 rounded-xl px-4 py-2.5 text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
@@ -1752,12 +1782,49 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center">
                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
-                      <button 
-                        onClick={polishDescription}
-                        className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg flex items-center gap-1.5 hover:bg-indigo-100 transition-all"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" /> AI Sales Copy
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!currentProduct.name) {
+                              toast.error('Enter a product name first');
+                              return;
+                            }
+                            const tId = toast.loading('AI is optimizing title, price & copy...');
+                            try {
+                              const suggestion = await commerceService.listingAssist({
+                                name: currentProduct.name,
+                                category: currentProduct.category,
+                                price: currentProduct.price,
+                                description: currentProduct.description,
+                                location: currentProduct.location,
+                              });
+                              setCurrentProduct(prev => ({
+                                ...prev,
+                                name: suggestion.title || prev.name,
+                                description: suggestion.description || prev.description,
+                                price: (!prev.price && suggestion.price_min) ? String(suggestion.price_min) : prev.price,
+                              }));
+                              const priceHint = suggestion.price_min && suggestion.price_max
+                                ? ` · Suggested NGN ${suggestion.price_min.toLocaleString()}–${suggestion.price_max.toLocaleString()}`
+                                : '';
+                              toast.success(`AI listing optimized!${priceHint}`, { id: tId, duration: 4500 });
+                            } catch {
+                              toast.error('Could not run AI listing helper', { id: tId });
+                            }
+                          }}
+                          className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg flex items-center gap-1 hover:bg-emerald-100 transition-all cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" /> AI Listing & Price Helper
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={polishDescription}
+                          className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg flex items-center gap-1.5 hover:bg-indigo-100 transition-all cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" /> AI Sales Copy
+                        </button>
+                      </div>
                     </div>
                     <textarea 
                       value={currentProduct.description}

@@ -112,6 +112,11 @@ class Product(models.Model):
     
     stock_count = models.IntegerField(default=1)
     
+    # Flash deals & moderation (Commerce Phase 6/8)
+    compare_at_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    deal_ends_at = models.DateTimeField(null=True, blank=True)
+    is_suspended = models.BooleanField(default=False)
+    
     # Inventory Valuation & Auditing fields
     cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     sku = models.CharField(max_length=100, blank=True, null=True)
@@ -215,3 +220,137 @@ class DailyExpense(models.Model):
 
     def __str__(self):
         return f"[{self.category}] {self.title} - ₦{self.amount:,.2f}"
+
+
+# ---------------------------------------------------------------------------
+# Commerce Phase 5-8: Orders, delivery, reviews, moderation
+# ---------------------------------------------------------------------------
+import secrets as _secrets
+
+
+def _generate_tracking_code():
+    return 'SB-' + _secrets.token_hex(4).upper()
+
+
+class DeliveryRate(models.Model):
+    """Per-merchant delivery fee by Nigerian state. state='*' is the default rate."""
+    brand = models.ForeignKey('brand.BrandIdentity', on_delete=models.CASCADE, related_name='delivery_rates')
+    state = models.CharField(max_length=60, default='*')
+    fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    eta_days = models.PositiveIntegerField(default=3)
+
+    class Meta:
+        unique_together = ('brand', 'state')
+        ordering = ['state']
+
+    def __str__(self):
+        return f"{self.brand_id}:{self.state} ₦{self.fee}"
+
+
+class Order(models.Model):
+    STATUS_CHOICES = [
+        ('PAID', 'Paid / New'),
+        ('PACKED', 'Packed'),
+        ('SHIPPED', 'Shipped'),
+        ('DELIVERED', 'Delivered'),
+        ('CANCELLED', 'Cancelled'),
+        ('DISPUTED', 'Disputed'),
+    ]
+
+    # One order per (payment reference, merchant) so multi-seller carts split cleanly.
+    reference = models.CharField(max_length=100, db_index=True)
+    tracking_code = models.CharField(max_length=20, unique=True, default=_generate_tracking_code)
+    brand = models.ForeignKey('brand.BrandIdentity', on_delete=models.CASCADE, related_name='orders')
+
+    buyer_name = models.CharField(max_length=255)
+    buyer_phone = models.CharField(max_length=50, blank=True, default='')
+    delivery_address = models.TextField(blank=True, default='')
+    delivery_state = models.CharField(max_length=60, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment_verified = models.BooleanField(default=False)  # confirmed with Paystack server-side
+
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='PAID')
+    courier = models.CharField(max_length=120, blank=True, default='')
+    waybill_number = models.CharField(max_length=120, blank=True, default='')
+    dispute_reason = models.TextField(blank=True, default='')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    shipped_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    buyer_confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('reference', 'brand')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.tracking_code} · {self.buyer_name} · {self.status}"
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(max_length=255)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    line_total = models.DecimalField(max_digits=12, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.name} x{self.quantity}"
+
+
+class OrderEvent(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='events')
+    status = models.CharField(max_length=12)
+    note = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+
+class ProductReview(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviews')
+    reviewer_name = models.CharField(max_length=120)
+    rating = models.PositiveSmallIntegerField()  # 1-5
+    comment = models.TextField(blank=True, default='')
+    verified_purchase = models.BooleanField(default=False)
+    is_hidden = models.BooleanField(default=False)
+    seller_reply = models.TextField(blank=True, default='')
+    seller_replied_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.rating}★ {self.product_id} by {self.reviewer_name}"
+
+
+class ListingReport(models.Model):
+    REASONS = [
+        ('SCAM', 'Suspected scam / fraud'),
+        ('FAKE', 'Fake or counterfeit item'),
+        ('PROHIBITED', 'Prohibited item'),
+        ('WRONG_INFO', 'Misleading price or description'),
+        ('OTHER', 'Other'),
+    ]
+    STATUS = [('OPEN', 'Open'), ('ACTIONED', 'Listing suspended'), ('DISMISSED', 'Dismissed')]
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reports')
+    reason = models.CharField(max_length=12, choices=REASONS, default='OTHER')
+    details = models.TextField(blank=True, default='')
+    reporter_contact = models.CharField(max_length=120, blank=True, default='')
+    status = models.CharField(max_length=10, choices=STATUS, default='OPEN')
+    resolution_note = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']

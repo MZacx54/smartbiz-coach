@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import VendorVerification, MarketplaceListing, Product, Lead, DailySale, DailyExpense
+from .models import VendorVerification, MarketplaceListing, Product, Lead, DailySale, DailyExpense, Order, OrderItem, ProductReview, ListingReport, DeliveryRate
 
 @admin.register(VendorVerification)
 class VendorVerificationAdmin(admin.ModelAdmin):
@@ -45,3 +45,30 @@ class DailyExpenseAdmin(admin.ModelAdmin):
     list_display_links = ['id', 'title']
     date_hierarchy = 'created_at'
 
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ['tracking_code', 'brand', 'buyer_name', 'total_amount', 'status', 'payment_verified', 'created_at']
+    list_filter = ['status', 'payment_verified']
+    search_fields = ['tracking_code', 'reference', 'buyer_name', 'buyer_phone']
+    inlines = [OrderItemInline]
+
+
+@admin.register(ProductReview)
+class ProductReviewAdmin(admin.ModelAdmin):
+    list_display = ['product', 'rating', 'reviewer_name', 'verified_purchase', 'is_hidden', 'created_at']
+    list_filter = ['rating', 'is_hidden', 'verified_purchase']
+
+
+@admin.register(ListingReport)
+class ListingReportAdmin(admin.ModelAdmin):
+    list_display = ['product', 'reason', 'status', 'created_at']
+    list_filter = ['status', 'reason']
+
+
+admin.site.register(DeliveryRate)

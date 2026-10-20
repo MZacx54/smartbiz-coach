@@ -30,6 +30,16 @@ from .views import (
     VisualSearchProductView,
     WhatsAppCartRecoveryView
 )
+from .commerce_orders import DeliveryQuoteView
+from .commerce_views import (
+    MerchantOrderListView, MerchantOrderDetailView,
+    DeliveryRateListCreateView, DeliveryRateDetailView,
+    PublicOrderTrackView, BuyerOrderActionView,
+    ReviewListCreateView, MerchantReviewListView, ReviewReplyView,
+    ReportListingView, ModerationReportListView, ModerationReportActionView,
+    ShareProductPageView, ShareProductImageView, ShareStorePageView, MarketSitemapView,
+    ListingAssistView,
+)
 from .smart_catalog import (
     BarcodeLookupAutoFillView,
     VisualShelfScannerView,
@@ -80,4 +90,23 @@ urlpatterns = [
     path('barcode-lookup/', BarcodeLookupAutoFillView.as_view(), name='barcode_lookup'),
     path('shelf-scan/', VisualShelfScannerView.as_view(), name='shelf_scan'),
     path('restock-from-receipt/', BulkApplyReceiptToStockView.as_view(), name='restock_from_receipt'),
+    # Commerce Phases 5-8
+    path('orders/mine/', MerchantOrderListView.as_view(), name='merchant_orders'),
+    path('orders/<int:pk>/', MerchantOrderDetailView.as_view(), name='merchant_order_detail'),
+    path('orders/track/<str:code>/', PublicOrderTrackView.as_view(), name='order_track'),
+    path('orders/track/<str:code>/action/', BuyerOrderActionView.as_view(), name='order_track_action'),
+    path('delivery-quote/', DeliveryQuoteView.as_view(), name='delivery_quote'),
+    path('delivery-rates/', DeliveryRateListCreateView.as_view(), name='delivery_rates'),
+    path('delivery-rates/<int:pk>/', DeliveryRateDetailView.as_view(), name='delivery_rate_detail'),
+    path('reviews/', ReviewListCreateView.as_view(), name='reviews'),
+    path('reviews/mine/', MerchantReviewListView.as_view(), name='merchant_reviews'),
+    path('reviews/<int:pk>/reply/', ReviewReplyView.as_view(), name='review_reply'),
+    path('reports/', ReportListingView.as_view(), name='report_listing'),
+    path('moderation/reports/', ModerationReportListView.as_view(), name='moderation_reports'),
+    path('moderation/reports/<int:pk>/', ModerationReportActionView.as_view(), name='moderation_report_action'),
+    path('share/p/<int:pk>/', ShareProductPageView.as_view(), name='share_product'),
+    path('share/p/<int:pk>/image/', ShareProductImageView.as_view(), name='share_product_image'),
+    path('share/u/<slug:slug>/', ShareStorePageView.as_view(), name='share_store'),
+    path('sitemap-market.xml', MarketSitemapView.as_view(), name='market_sitemap'),
+    path('listing-assist/', ListingAssistView.as_view(), name='listing_assist'),
 ]

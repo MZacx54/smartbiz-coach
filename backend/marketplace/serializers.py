@@ -1,5 +1,13 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import VendorVerification, MarketplaceListing, Product, Lead
+
+
+def is_deal_active(product):
+    """A flash deal is live when a higher compare-at price is set and the deal has not expired."""
+    if not product.compare_at_price or product.compare_at_price <= product.price:
+        return False
+    return product.deal_ends_at is None or product.deal_ends_at > timezone.now()
 
 class VendorVerificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,11 +35,37 @@ class ProductSerializer(serializers.ModelSerializer):
     whatsapp_number = serializers.SerializerMethodField()
     paystack_subaccount_code = serializers.SerializerMethodField()
     is_vendor_verified = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+    deal_active = serializers.SerializerMethodField()
+    discount_percent = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = '__all__'
-        read_only_fields = ['brand']
+        read_only_fields = ['brand', 'is_suspended']
+
+    def _review_stats(self, obj):
+        cache = self.__dict__.setdefault('_stats_cache', {})
+        if obj.pk not in cache:
+            from django.db.models import Avg, Count
+            agg = obj.reviews.filter(is_hidden=False).aggregate(a=Avg('rating'), c=Count('id'))
+            cache[obj.pk] = (round(float(agg['a']), 1) if agg['a'] else 0, agg['c'] or 0)
+        return cache[obj.pk]
+
+    def get_avg_rating(self, obj):
+        return self._review_stats(obj)[0] if obj.pk else 0
+
+    def get_review_count(self, obj):
+        return self._review_stats(obj)[1] if obj.pk else 0
+
+    def get_deal_active(self, obj):
+        return is_deal_active(obj)
+
+    def get_discount_percent(self, obj):
+        if is_deal_active(obj):
+            return int(round((1 - float(obj.price) / float(obj.compare_at_price)) * 100))
+        return 0
 
     def get_cac_number(self, obj):
         try:

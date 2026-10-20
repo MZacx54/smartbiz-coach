@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { Heart } from 'lucide-react';
+import { commerceService, productShareUrl } from '../services/commerceService';
+import { NIGERIAN_STATES } from '../config/nigeriaStates';
+import { useWishlist } from '../hooks/useWishlist';
+import ReviewsSection, { Stars } from './ReviewsSection';
 import {
   ShoppingBag, ShieldCheck, MapPin, MessageCircle, CreditCard,
   Share2, Store, ArrowLeft, CheckCircle2, Truck, Plus, Minus,
@@ -11,7 +16,10 @@ import { openPaystackCheckout } from '../services/paystackService';
 
 const PublicProductPage: React.FC = () => {
   const { slug, productId } = useParams<{ slug?: string; productId: string }>();
+  const [searchParams] = useSearchParams();
+  const trackParam = searchParams.get('track') || undefined;
   const navigate = useNavigate();
+  const wishlist = useWishlist();
 
   const [product, setProduct] = useState<any | null>(null);
   const [moreFromSeller, setMoreFromSeller] = useState<any[]>([]);
@@ -27,11 +35,15 @@ const PublicProductPage: React.FC = () => {
     email: '',
     phone: '',
     address: '',
+    state: 'Lagos',
     notes: '',
   });
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [deliveryEta, setDeliveryEta] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{
     reference: string;
+    trackingCode?: string;
     total: number;
     waUrl?: string;
   } | null>(null);
@@ -60,6 +72,16 @@ const PublicProductPage: React.FC = () => {
       cancelled = true;
     };
   }, [productId]);
+
+  useEffect(() => {
+    if (!product?.id || !buyerForm.state) return;
+    commerceService.deliveryQuote([product.id], buyerForm.state)
+      .then((q) => {
+        setDeliveryFee(q.total_fee || 0);
+        setDeliveryEta(q.quotes?.[0]?.eta_days || 3);
+      })
+      .catch(() => setDeliveryFee(0));
+  }, [product?.id, buyerForm.state]);
 
   if (isLoading) {
     return (
@@ -99,13 +121,12 @@ const PublicProductPage: React.FC = () => {
   }
 
   const unitPrice = parseFloat(product.price || '0') || 0;
-  const maxPrice = parseFloat(product.price_max || '0') || 0;
-  const totalAmount = unitPrice * quantity;
+  const compareAtPrice = parseFloat(product.compare_at_price || product.price_max || '0') || 0;
+  const subtotalAmount = unitPrice * quantity;
+  const totalAmount = subtotalAmount + (checkoutMode === 'PAYSTACK' ? deliveryFee : 0);
   const storeSlug = product.brand_slug || slug || '';
   const storeUrl = storeSlug ? `/u/${storeSlug}` : '/market';
-  const shareUrl = storeSlug
-    ? `${window.location.origin}/u/${storeSlug}/p/${product.id}`
-    : `${window.location.origin}/market/p/${product.id}`;
+  const shareUrl = productShareUrl(product.id);
 
   const cleanWhatsApp = () => {
     const raw = product.whatsapp_number || '';
@@ -193,6 +214,7 @@ const PublicProductPage: React.FC = () => {
               customer_name: buyerForm.name,
               customer_phone: buyerForm.phone,
               customer_address: buyerForm.address,
+              delivery_state: buyerForm.state,
               notes: buyerForm.notes,
               items: [
                 {
@@ -210,6 +232,7 @@ const PublicProductPage: React.FC = () => {
             setShowCheckoutModal(false);
             setOrderSuccess({
               reference,
+              trackingCode: res.data?.orders?.[0]?.tracking_code,
               total: totalAmount,
               waUrl: res.data?.whatsapp_dispatch?.merchant_wa_url || (waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(orderSummaryText)}` : undefined),
             });
@@ -354,16 +377,29 @@ const PublicProductPage: React.FC = () => {
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Price
                   </p>
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-3xl font-black text-emerald-600">
                       ₦{unitPrice.toLocaleString()}
                     </span>
-                    {maxPrice > unitPrice && (
+                    {compareAtPrice > unitPrice && (
                       <span className="text-sm font-bold text-slate-400 line-through">
-                        ₦{maxPrice.toLocaleString()}
+                        ₦{compareAtPrice.toLocaleString()}
                       </span>
                     )}
+                    {product.deal_active && product.discount_percent ? (
+                      <span className="text-[11px] font-black bg-rose-600 text-white px-2.5 py-0.5 rounded-lg">
+                        -{product.discount_percent}% FLASH DEAL
+                      </span>
+                    ) : null}
                   </div>
+                  {(product.review_count || 0) > 0 && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Stars value={product.avg_rating || 5} size={13} />
+                      <span className="text-xs font-bold text-slate-600">
+                        {Number(product.avg_rating || 5).toFixed(1)} ({product.review_count} verified review{product.review_count === 1 ? '' : 's'})
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {product.metadata?.moq && (
                   <span className="text-xs font-extrabold bg-amber-100 text-amber-800 px-3 py-1 rounded-xl">
@@ -438,6 +474,28 @@ const PublicProductPage: React.FC = () => {
                 </button>
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleShareProduct}
+                  className="inline-flex items-center justify-center gap-2 px-3 min-h-[44px] rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Share Link</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const saved = wishlist.toggle(product.id);
+                    toast.success(saved ? 'Saved to your wishlist!' : 'Removed from wishlist');
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-3 min-h-[44px] rounded-2xl bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold text-xs cursor-pointer"
+                >
+                  <Heart className={`w-4 h-4 ${wishlist.has(product.id) ? 'fill-pink-600 text-pink-600' : ''}`} />
+                  <span>{wishlist.has(product.id) ? 'Saved' : 'Save Item'}</span>
+                </button>
+              </div>
+
               {/* Seller Card Link */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -461,6 +519,15 @@ const PublicProductPage: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Verified Customer Reviews & Listing Safety */}
+        <div id="reviews" className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-7 shadow-sm">
+          <ReviewsSection
+            productId={product.id}
+            productName={product.name}
+            initialTrackingCode={trackParam}
+          />
         </div>
 
         {/* More From This Seller */}
@@ -611,14 +678,29 @@ const PublicProductPage: React.FC = () => {
                   className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold"
                 />
               )}
+              <select
+                value={buyerForm.state}
+                onChange={(e) => setBuyerForm({ ...buyerForm, state: e.target.value })}
+                aria-label="Delivery state"
+                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold"
+              >
+                {NIGERIAN_STATES.map((st) => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
               <input
                 type="text"
                 required
-                placeholder="Delivery Address / City & State *"
+                placeholder="Street Address / Landmark *"
                 value={buyerForm.address}
                 onChange={(e) => setBuyerForm({ ...buyerForm, address: e.target.value })}
                 className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-semibold"
               />
+              {checkoutMode === 'PAYSTACK' && (
+                <p className="text-[11px] font-bold text-slate-500 px-1">
+                  🚚 Delivery to {buyerForm.state}: {deliveryFee > 0 ? `₦${deliveryFee.toLocaleString()}` : 'Free'} (~{deliveryEta} day(s))
+                </p>
+              )}
               <input
                 type="text"
                 placeholder="Order notes (size, colour, waybill instructions)"
@@ -652,8 +734,19 @@ const PublicProductPage: React.FC = () => {
             </div>
             <h3 className="text-lg font-black text-slate-900">Order Paid & Confirmed!</h3>
             <p className="text-xs text-slate-500">
-              Ref: <strong>{orderSuccess.reference}</strong> · Paid <strong>₦{orderSuccess.total.toLocaleString()}</strong>. The merchant's stock and Day-Book have been updated automatically.
+              Ref: <strong>{orderSuccess.reference}</strong> · Paid <strong>₦{orderSuccess.total.toLocaleString()}</strong>.
+              {orderSuccess.trackingCode && (
+                <> Tracking Code: <strong className="text-emerald-700">{orderSuccess.trackingCode}</strong>.</>
+              )}
             </p>
+            {orderSuccess.trackingCode && (
+              <Link
+                to={`/track/${orderSuccess.trackingCode}`}
+                className="block w-full py-3 rounded-2xl bg-slate-900 text-white font-black text-xs"
+              >
+                🔎 Track Your Order ({orderSuccess.trackingCode})
+              </Link>
+            )}
             {orderSuccess.waUrl && (
               <a
                 href={orderSuccess.waUrl}

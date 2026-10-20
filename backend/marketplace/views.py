@@ -68,127 +68,7 @@ class EcosystemAnalyticsView(views.APIView):
             'top_categories': user_products.values('category').annotate(count=Count('id')).order_by('-count')[:3]
         })
 
-class OrderCreateView(views.APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        items = request.data.get('items', [])
-        reference = request.data.get('reference', '')
-        total_amount = request.data.get('total_amount', 0)
-        
-        # Extract rich customer profile details
-        customer_name = (request.data.get('customer_name') or 
-                         (request.user.is_authenticated and (request.user.get_full_name() or request.user.username)) or 
-                         'Customer').strip()
-        customer_contact = (request.data.get('customer_phone') or 
-                            request.data.get('customer_contact') or 
-                            (request.user.is_authenticated and request.user.email) or 
-                            'Direct Buyer').strip()
-        customer_address = (request.data.get('customer_address') or 
-                            request.data.get('delivery_address') or 
-                            'Standard Waybill / Delivery').strip()
-        order_notes = (request.data.get('notes') or '').strip()
-        
-        from .models import DailySale
-        leads_created = []
-        sales_recorded = []
-        for item in items:
-            product_id = item.get('productId') or item.get('product_id') or item.get('id')
-            try:
-                product = Product.objects.get(id=product_id)
-                qty = max(1, int(item.get('quantity') or 1))
-                item_price = float(item.get('price') or product.price)
-                
-                # Compose detailed order lead message
-                msg_parts = [
-                    f"🛒 Order Paid & Confirmed (Ref: {reference or 'DIRECT'})",
-                    f"Item: {product.name} (Qty: {qty})",
-                    f"Total: ₦{item_price * qty:,.2f}",
-                    f"Customer: {customer_name} ({customer_contact})",
-                    f"Delivery Address: {customer_address}"
-                ]
-                if order_notes:
-                    msg_parts.append(f"Notes: {order_notes}")
-
-                lead = Lead.objects.create(
-                    brand=product.brand,
-                    product=product,
-                    customer_name=customer_name,
-                    customer_contact=customer_contact,
-                    message="\n".join(msg_parts),
-                    lead_type='ORDER',
-                    status='WON',
-                    quoted_price=item_price * qty
-                )
-                leads_created.append(lead.id)
-
-                # Phase 4: Auto-deduct stock & sync directly into Merchant's Day-Book (DailySale)
-                if product.product_type == 'PHYSICAL' and (product.stock_count or 0) > 0:
-                    product.stock_count = max(0, (product.stock_count or 0) - qty)
-                    product.save(update_fields=['stock_count', 'updated_at'])
-
-                if product.brand and product.brand.user:
-                    sale = DailySale.objects.create(
-                        user=product.brand.user,
-                        product=product,
-                        item_name=f"{product.name} (Online Order)",
-                        quantity=qty,
-                        unit_price=item_price,
-                        cost_price=product.cost_price or 0,
-                        total_amount=item_price * qty,
-                        payment_method='TRANSFER',
-                        customer_name=customer_name,
-                        customer_phone=customer_contact,
-                        is_debt=False,
-                        notes=f"Storefront/Market Order Ref: {reference or 'DIRECT'} · Delivery: {customer_address}"
-                    )
-                    sales_recorded.append(sale.id)
-            except (Product.DoesNotExist, ValueError, TypeError):
-                continue
-
-        # Generate WhatsApp notification dispatch templates
-        import urllib.parse
-        clean_cust_phone = ''.join(filter(str.isdigit, customer_contact))
-        if clean_cust_phone.startswith('0') and len(clean_cust_phone) == 11:
-            clean_cust_phone = '234' + clean_cust_phone[1:]
-        elif not clean_cust_phone.startswith('234'):
-            clean_cust_phone = ''
-
-        cust_wa_msg = (
-            f"🧾 *ORDER PAYMENT CONFIRMATION*\n"
-            f"Your payment of *₦{float(total_amount):,.2f}* was successful!\n\n"
-            f"🆔 *Order Ref:* {reference or 'DIRECT'}\n"
-            f"👤 *Customer:* {customer_name}\n"
-            f"📍 *Delivery:* {customer_address}\n"
-            f"✨ *Status:* Paid & Confirmed via Paystack\n\n"
-            f"The merchant is preparing your order for dispatch. Thank you for your patronage!"
-        )
-
-        merchant_wa_msg = (
-            f"🔔 *NEW PAID STOREFRONT ORDER (Paystack)*\n"
-            f"💰 *Amount Paid:* ₦{float(total_amount):,.2f}\n"
-            f"🆔 *Ref:* {reference or 'DIRECT'}\n\n"
-            f"👤 *Buyer:* {customer_name} ({customer_contact})\n"
-            f"📍 *Address:* {customer_address}\n"
-            f"{f'📝 Notes: {order_notes}' if order_notes else ''}\n"
-            f"⚡ This order is validated and settlement processed."
-        )
-
-        wa_dispatch = {
-            "reference": reference,
-            "customer_phone": clean_cust_phone,
-            "customer_wa_url": f"https://wa.me/{clean_cust_phone}?text={urllib.parse.quote(cust_wa_msg)}" if clean_cust_phone else f"https://wa.me/?text={urllib.parse.quote(cust_wa_msg)}",
-            "merchant_wa_url": f"https://wa.me/?text={urllib.parse.quote(merchant_wa_msg)}",
-            "customer_message": cust_wa_msg,
-            "merchant_message": merchant_wa_msg
-        }
-
-        return Response({
-            "message": "Order processed and verified. WhatsApp confirmation dispatched.",
-            "leads": leads_created,
-            "reference": reference,
-            "whatsapp_dispatch": wa_dispatch
-        }, status=status.HTTP_201_CREATED)
+from .commerce_orders import OrderCreateView  # noqa: E402,F401  (moved: Commerce Phase 5)
 
 
 class PaystackWebhookView(views.APIView):
@@ -199,6 +79,15 @@ class PaystackWebhookView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        import hashlib, hmac
+        from django.conf import settings as dj_settings
+        secret = getattr(dj_settings, 'PAYSTACK_SECRET_KEY', None)
+        if secret:
+            sig = request.META.get('HTTP_X_PAYSTACK_SIGNATURE', '')
+            expected = hmac.new(secret.encode(), request.body, hashlib.sha512).hexdigest()
+            if not hmac.compare_digest(sig, expected):
+                return Response({'error': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
+
         payload = request.data or {}
         event = payload.get('event', '')
         data = payload.get('data', {})
@@ -223,6 +112,10 @@ class PaystackWebhookView(views.APIView):
             leads = Lead.objects.filter(message__contains=reference)
             if leads.exists():
                 leads.update(status='WON')
+
+            # Phase 5: a signed charge.success confirms payment for the matching orders
+            from .models import Order
+            Order.objects.filter(reference=reference).update(payment_verified=True)
 
             return Response({
                 "status": "success",
@@ -304,7 +197,7 @@ class PublicBrandProductListView(generics.ListAPIView):
 
     def get_queryset(self):
         slug = self.kwargs.get('slug')
-        return Product.objects.filter(brand__slug=slug, is_public=True)
+        return Product.objects.filter(brand__slug=slug, is_public=True, is_suspended=False)
 
 class PublicProductDetailView(views.APIView):
     permission_classes = [permissions.AllowAny]
@@ -315,18 +208,20 @@ class PublicProductDetailView(views.APIView):
                 'brand',
                 'brand__user',
                 'brand__user__vendor_profile'
-            ).get(id=pk)
+            ).get(id=pk, is_suspended=False)
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
         product_data = ProductSerializer(product).data
         more_from_seller = Product.objects.filter(
             brand=product.brand,
-            is_public=True
+            is_public=True,
+            is_suspended=False
         ).exclude(id=product.id).order_by('-is_promoted', '-created_at')[:6]
 
         similar_qs = Product.objects.filter(
-            is_public=True
+            is_public=True,
+            is_suspended=False
         ).exclude(id=product.id).exclude(brand=product.brand)
         if product.category:
             cat_qs = similar_qs.filter(category__iexact=product.category)
@@ -355,11 +250,17 @@ class GlobalMarketplaceListView(generics.ListAPIView):
         if expired_qs.exists():
             expired_qs.update(is_promoted=False)
 
-        queryset = Product.objects.filter(is_public=True).select_related(
+        queryset = Product.objects.filter(is_public=True, is_suspended=False).select_related(
             'brand',
             'brand__user',
             'brand__user__vendor_profile'
         )
+
+        # Flash deals only (compare-at price set, deal not expired)
+        if self.request.query_params.get('deals') in ['true', '1']:
+            queryset = queryset.filter(compare_at_price__isnull=False).filter(
+                Q(deal_ends_at__isnull=True) | Q(deal_ends_at__gt=now)
+            )
         
         # Product type filter (PHYSICAL, SERVICE, PROPERTY, B2B)
         product_type = self.request.query_params.get('product_type')
@@ -594,7 +495,7 @@ class RelatedEcosystemProductsView(views.APIView):
         category = request.query_params.get('category', '').strip()
         exclude_brand_id = request.query_params.get('exclude_brand_id', '').strip()
 
-        qs = Product.objects.all().order_by('-created_at')
+        qs = Product.objects.filter(is_suspended=False).order_by('-created_at')
 
         if exclude_brand_id:
             qs = qs.exclude(brand_id=exclude_brand_id)

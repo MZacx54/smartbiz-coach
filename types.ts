@@ -115,6 +115,7 @@ export enum AppView {
   HUB = 'HUB',
   SALES_ASSISTANT = 'SALES_ASSISTANT',
   ORDER_GENERATOR = 'ORDER_GENERATOR',
+  ORDER_INBOX = 'ORDER_INBOX',
   STOREFRONT = 'STOREFRONT',
   PRODUCT_MANAGER = 'PRODUCT_MANAGER',
   LEAD_MANAGER = 'LEAD_MANAGER',
@@ -233,6 +234,12 @@ export interface Product {
   description: string;
   price: string; // stored as decimal string from backend
   price_max?: string | number;
+  compare_at_price?: string | number | null;
+  deal_ends_at?: string | null;
+  deal_active?: boolean;
+  discount_percent?: number;
+  avg_rating?: number;
+  review_count?: number;
   cost_price?: string;
   category: string;
   product_type: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B';
@@ -491,6 +498,12 @@ export interface UnifiedItem {
     description: string; 
     price: string | number; 
     price_max?: number | string; 
+    compare_at_price?: number | string | null;
+    deal_ends_at?: string | null;
+    deal_active?: boolean;
+    discount_percent?: number;
+    avg_rating?: number;
+    review_count?: number;
     image_url: string; 
     category: string; 
     product_type: 'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'; 

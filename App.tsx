@@ -31,6 +31,8 @@ const DebtorBook = lazy(() => import("./components/DebtorBook"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
 const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
+const OrderInbox = lazy(() => import("./components/OrderInbox"));
+const OrderTracking = lazy(() => import("./components/OrderTracking"));
 const PublicStorefront = lazy(() => import("./components/PublicStorefront"));
 const PublicProductPage = lazy(() => import("./components/PublicProductPage"));
 const ProductManager = lazy(() => import("./components/ProductManager"));
@@ -154,6 +156,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/support')) setCurrentView(AppView.WHATSAPP_SUPPORT);
     else if (path.includes('/dashboard/sales-assistant')) setCurrentView(AppView.SALES_ASSISTANT);
     else if (path.includes('/dashboard/order-gen')) setCurrentView(AppView.ORDER_GENERATOR);
+    else if (path.includes('/dashboard/orders')) setCurrentView(AppView.ORDER_INBOX);
     else if (path.includes('/dashboard/store-preview')) setCurrentView(AppView.STOREFRONT);
     else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.PRODUCT_MANAGER);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
@@ -383,6 +386,7 @@ const App: React.FC = () => {
       case AppView.WHATSAPP_SUPPORT: navigate(`/dashboard/support${query}`); break;
       case AppView.SALES_ASSISTANT: navigate(`/dashboard/sales-assistant${query}`); break;
       case AppView.ORDER_GENERATOR: navigate(`/dashboard/order-gen${query}`); break;
+      case AppView.ORDER_INBOX: navigate(`/dashboard/orders${query}`); break;
       case AppView.STOREFRONT: navigate(`/dashboard/store-preview${query}`); break;
       case AppView.PRODUCT_MANAGER: navigate(`/dashboard/inventory${query}`); break;
       case AppView.SETTINGS: navigate(`/dashboard/settings${query}`); break;
@@ -646,6 +650,30 @@ const App: React.FC = () => {
             </div>
           </Suspense>
         } />
+        <Route path="/market/c/:category" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <div className="min-h-screen bg-slate-50 pt-2">
+              <Marketplace isPublicMode={true} onAddToCart={handleAddToCart} initialType="PHYSICAL" />
+            </div>
+          </Suspense>
+        } />
+        <Route path="/market/l/:state" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <div className="min-h-screen bg-slate-50 pt-2">
+              <Marketplace isPublicMode={true} onAddToCart={handleAddToCart} initialType="PHYSICAL" />
+            </div>
+          </Suspense>
+        } />
+        <Route path="/track" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <OrderTracking />
+          </Suspense>
+        } />
+        <Route path="/track/:code" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <OrderTracking />
+          </Suspense>
+        } />
         <Route path="/market/p/:productId" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
             <PublicProductPage />
@@ -841,6 +869,7 @@ const App: React.FC = () => {
                   <Route path="sales-assistant" element={<AIStudio initialTab="sales" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onUpdateUser={handleUpdateUser} onTopUpSuccess={handleUpdateCredits} />} />
                   <Route path="order-gen" element={<OrderGenerator />} />
+            <Route path="orders" element={<OrderInbox user={user} />} />
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
                   <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />

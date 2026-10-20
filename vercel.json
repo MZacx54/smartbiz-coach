@@ -10,6 +10,18 @@
     ],
     "routes": [
         {
+            "src": "^/s/p/(\\d+)/?$",
+            "dest": "https://api.smartbizcoach.com.ng/api/marketplace/share/p/$1/"
+        },
+        {
+            "src": "^/s/u/([^/]+)/?$",
+            "dest": "https://api.smartbizcoach.com.ng/api/marketplace/share/u/$1/"
+        },
+        {
+            "src": "^/sitemap-market\\.xml$",
+            "dest": "https://api.smartbizcoach.com.ng/api/marketplace/sitemap-market.xml"
+        },
+        {
             "handle": "filesystem"
         },
         {
