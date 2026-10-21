@@ -521,39 +521,53 @@ class BoostProductView(views.APIView):
             return Response({'error': 'Product not found or you do not have permission to boost this item.'}, status=status.HTTP_404_NOT_FOUND)
 
         duration_days = int(request.data.get('duration_days') or 3)
-        credits_required = 150 if duration_days <= 3 else (300 if duration_days <= 7 else 500)
+        # Micro-tier pricing: accessible even with 50 free welcome credits
+        if duration_days <= 1:
+            credits_required = 10   # 10 Credits (~N100) - 24-Hour Spotlight Trial
+        elif duration_days <= 3:
+            credits_required = 25   # 25 Credits (~N250) - 3-Day Priority
+        elif duration_days <= 7:
+            credits_required = 50   # 50 Credits (~N500) - 7-Day National VIP
+        elif duration_days <= 14:
+            credits_required = 90   # 90 Credits (~N900) - 14-Day Mega Spotlight
+        else:
+            credits_required = 150  # 150 Credits (~N1,500) - 30-Day Oga VIP
 
-        if request.user.credits < credits_required:
-            return Response({
-                'error': f'Insufficient BizCredits. You have {request.user.credits} credits, but {credits_required} credits are required to boost this listing for {duration_days} days.',
-                'credits_required': credits_required,
-                'current_credits': request.user.credits
-            }, status=status.HTTP_402_PAYMENT_REQUIRED)
-
-        # Deduct credits
-        request.user.credits -= credits_required
-        request.user.save(update_fields=['credits'])
-
-        # Record in CreditLedger
-        from billing.models import CreditLedger
-        CreditLedger.objects.create(
-            user=request.user,
-            amount=-credits_required,
-            activity=f"Marketplace Boost ({duration_days} Days) for '{product.name}'"
-        )
-
-        # Set product promoted state & duration
+        from django.db import transaction
+        from django.contrib.auth import get_user_model
         from django.utils import timezone
-        product.is_promoted = True
-        product.promoted_until = timezone.now() + timezone.timedelta(days=duration_days)
-        product.save(update_fields=['is_promoted', 'promoted_until'])
+        from billing.models import CreditLedger
+        User = get_user_model()
+
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(id=request.user.id)
+            if user.credits < credits_required:
+                return Response({
+                    'error': f'Insufficient BizCredits. You have {user.credits} credits, but {credits_required} credits are required to boost this listing for {duration_days} days.',
+                    'credits_required': credits_required,
+                    'current_credits': user.credits
+                }, status=status.HTTP_402_PAYMENT_REQUIRED)
+
+            user.credits -= credits_required
+            user.save(update_fields=['credits'])
+
+            CreditLedger.objects.create(
+                user=user,
+                amount=-credits_required,
+                activity=f"Marketplace Boost ({duration_days} Days) for '{product.name[:80]}'"
+            )
+
+            product.is_promoted = True
+            product.promoted_until = timezone.now() + timezone.timedelta(days=duration_days)
+            product.save(update_fields=['is_promoted', 'promoted_until'])
 
         return Response({
-            'message': f"Product successfully boosted for {duration_days} days! It is now featured across the Marketplace.",
+            'message': f"Product successfully boosted for {duration_days} days! It is now featured at the top of the Market Square.",
             'product_id': product.id,
             'is_promoted': product.is_promoted,
             'promoted_until': product.promoted_until,
-            'remaining_credits': request.user.credits
+            'remaining_credits': user.credits,
+            'credits_deducted': credits_required
         }, status=status.HTTP_200_OK)
 
 
@@ -562,6 +576,11 @@ class VerifyVendorWithCreditsView(views.APIView):
 
     def post(self, request):
         from .models import VendorVerification
+        from django.db import transaction
+        from django.contrib.auth import get_user_model
+        from billing.models import CreditLedger
+        User = get_user_model()
+
         vendor, _ = VendorVerification.objects.get_or_create(
             user=request.user,
             defaults={
@@ -577,33 +596,36 @@ class VerifyVendorWithCreditsView(views.APIView):
                 'is_verified': True
             }, status=status.HTTP_200_OK)
 
-        credits_required = 500
-        if request.user.credits < credits_required:
-            return Response({
-                'error': f'Insufficient BizCredits. You have {request.user.credits} credits, but {credits_required} credits are required to obtain the Verified Vendor Badge.',
-                'credits_required': credits_required,
-                'current_credits': request.user.credits
-            }, status=status.HTTP_402_PAYMENT_REQUIRED)
+        plan = str(request.data.get('plan') or 'lifetime').lower()
+        # 30-Day Starter Badge: 35 credits; Lifetime Badge: 100 credits (down from 500)
+        credits_required = 35 if plan in ('trial', 'trial_30', 'monthly') else 100
 
-        # Deduct credits
-        request.user.credits -= credits_required
-        request.user.save(update_fields=['credits'])
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(id=request.user.id)
+            if user.credits < credits_required:
+                return Response({
+                    'error': f'Insufficient BizCredits. You have {user.credits} credits, but {credits_required} credits are required to obtain the Verified Vendor Badge ({plan}).',
+                    'credits_required': credits_required,
+                    'current_credits': user.credits
+                }, status=status.HTTP_402_PAYMENT_REQUIRED)
 
-        # Record in CreditLedger
-        from billing.models import CreditLedger
-        CreditLedger.objects.create(
-            user=request.user,
-            amount=-credits_required,
-            activity="Official Verified Vendor Badge Activation"
-        )
+            user.credits -= credits_required
+            user.save(update_fields=['credits'])
 
-        vendor.is_verified = True
-        vendor.save(update_fields=['is_verified'])
+            CreditLedger.objects.create(
+                user=user,
+                amount=-credits_required,
+                activity=f"Verified Vendor Badge Activation ({'30-Day' if credits_required == 35 else 'Lifetime'})"
+            )
+
+            vendor.is_verified = True
+            vendor.save(update_fields=['is_verified'])
 
         return Response({
             'message': 'Congratulations! Your Vendor profile is now verified with the official Verified Badge on all Marketplace listings.',
             'is_verified': True,
-            'remaining_credits': request.user.credits
+            'remaining_credits': user.credits,
+            'credits_deducted': credits_required
         }, status=status.HTTP_200_OK)
 
 

@@ -542,3 +542,109 @@ Return STRICT JSON: {{"title": "clear title under 70 chars", "description": "2-3
         except Exception as exc:  # pragma: no cover - AI is best-effort
             print(f"Listing assist error: {exc}")
         return Response(fallback)
+
+
+class WhatsAppPromoAssistView(views.APIView):
+    """
+    Generates a viral Nigerian WhatsApp broadcast & status promotional copy for a product.
+    Charges 2 BizCredits (with atomic ledger logging and balance return).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from django.db import transaction
+        from django.contrib.auth import get_user_model
+        from billing.models import CreditLedger
+        User = get_user_model()
+
+        product_id = request.data.get('product_id')
+        product = None
+        if product_id:
+            try:
+                product = Product.objects.select_related('brand').get(pk=int(product_id), brand__user=request.user)
+            except (Product.DoesNotExist, ValueError):
+                pass
+
+        name = (product.name if product else str(request.data.get('name') or '')).strip()
+        if not name:
+            return Response({'error': 'Product name or valid product_id is required.'}, status=400)
+
+        price = product.price if product else request.data.get('price')
+        desc = (product.description if product else str(request.data.get('description') or '')).strip()
+        brand_name = (product.brand.business_name if product and product.brand else getattr(request.user, 'business_name', '') or 'SmartBiz Merchant').strip()
+        store_slug = product.brand.slug if product and product.brand else None
+        
+        frontend_url = frontend_base()
+        product_link = f"{frontend_url}/p/{product.id}" if product else f"{frontend_url}/market"
+        store_link = f"{frontend_url}/u/{store_slug}" if store_slug else f"{frontend_url}/market"
+
+        credits_cost = 2
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(id=request.user.id)
+            if user.credits < credits_cost:
+                return Response({
+                    'error': f'Insufficient BizCredits. You have {user.credits} credits, but {credits_cost} credits are required to generate an AI WhatsApp Promo Pack.',
+                    'credits_required': credits_cost,
+                    'current_credits': user.credits
+                }, status=status.HTTP_402_PAYMENT_REQUIRED)
+
+            user.credits -= credits_cost
+            user.save(update_fields=['credits'])
+            CreditLedger.objects.create(
+                user=user,
+                amount=-credits_cost,
+                activity=f"AI WhatsApp Promo Pack: '{name[:60]}'"
+            )
+
+        fallback_status = f"🔥 Hot in stock at {brand_name}! {name} now available for ₦{price or 'DM'}. Nationwide delivery! Tap link to order: {product_link}"
+        fallback_broadcast = f"""🚨 SPECIAL OFFER FROM {brand_name.upper()} 🚨
+
+Looking for premium {name}? We got you covered!
+💰 Price: ₦{price or 'Best Market Price'}
+📦 Delivery: Fast delivery across all 36 states & Abuja.
+🛡️ Pay securely via Paystack or order directly with us.
+
+👉 Click here to view & order directly:
+{product_link}
+
+💬 Or reply this message to claim yours before stock finishes!"""
+
+        prompt = f"""You are a master Nigerian social media copywriter for small business owners.
+Product: "{name}"
+Price: "{price} NGN"
+Description: "{desc}"
+Brand: "{brand_name}"
+Product Link: "{product_link}"
+Store Link: "{store_link}"
+
+Generate two high-converting promotional copies:
+1. "status_copy": A punchy 2-3 line WhatsApp Status text with emojis, price, and urgency.
+2. "broadcast_copy": A complete, engaging WhatsApp broadcast message with a strong hook, bullet-point benefits, price, delivery assurance, and a call-to-action link.
+Blend natural Nigerian conversational English and business Pidgin ("No dull yourself", "Nationwide waybill").
+Return STRICT JSON: {{"status_copy": "...", "broadcast_copy": "..."}}"""
+
+        try:
+            from smartbiz_backend import gemini_utils
+            out = gemini_utils.generate_json_content(prompt)
+            if isinstance(out, dict) and out.get('broadcast_copy'):
+                return Response({
+                    'status_copy': str(out.get('status_copy') or fallback_status).strip(),
+                    'broadcast_copy': str(out.get('broadcast_copy') or fallback_broadcast).strip(),
+                    'product_link': product_link,
+                    'store_link': store_link,
+                    'remaining_credits': user.credits,
+                    'credits_deducted': credits_cost,
+                    'source': 'ai'
+                }, status=200)
+        except Exception as e:
+            print("WhatsApp promo assist error:", e)
+
+        return Response({
+            'status_copy': fallback_status,
+            'broadcast_copy': fallback_broadcast,
+            'product_link': product_link,
+            'store_link': store_link,
+            'remaining_credits': user.credits,
+            'credits_deducted': credits_cost,
+            'source': 'template'
+        }, status=200)

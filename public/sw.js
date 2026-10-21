@@ -1,5 +1,5 @@
-// SmartBiz Coach Service Worker - High-Speed Offline-First PWA (v3)
-const CACHE_NAME = 'smartbiz-cache-v3';
+// SmartBiz Coach Service Worker - High-Speed Offline-First PWA (v4)
+const CACHE_NAME = 'smartbiz-cache-v4';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS).catch(() => {
-        // Ignore individual asset failure so SW still installs cleanly
+        // Individual asset failure will not prevent SW installation
       });
     }).then(() => self.skipWaiting())
   );
@@ -27,11 +27,17 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((cacheName) => cacheName !== CACHE_NAME)
-          .map((cacheName) => caches.delete(cacheName))
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
       );
     }).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -39,9 +45,12 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Skip cross-origin API calls (handled by services/api.ts localStorage cache)
+  // 1. Never intercept backend API or external critical services
   if (
     url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/s/p/') ||
+    url.pathname.startsWith('/s/u/') ||
+    url.pathname === '/sw.js' ||
     url.hostname.includes('api.smartbizcoach.com.ng') ||
     url.hostname.includes('onrender.com') ||
     url.hostname.includes('paystack.co')
@@ -49,12 +58,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Cache-First for immutable hashed Vite bundles (/assets/*), images, icons, and fonts
+  // 2. Cache-First for static hashed assets (/assets/*), fonts, and images (never sw.js)
   if (
-    url.pathname.startsWith('/assets/') ||
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2?|ttf|css|js)$/) ||
-    url.hostname.includes('fonts.googleapis.com') ||
-    url.hostname.includes('fonts.gstatic.com')
+    (url.pathname.startsWith('/assets/') ||
+     url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2?|ttf|css)$/)) &&
+    !url.pathname.endsWith('/sw.js')
   ) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
@@ -73,26 +81,34 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Stale-While-Revalidate for SPA navigation (/dashboard/cashbook, /login, etc.)
-  // Serves cached app shell immediately (<50ms) and updates cache in background!
+  // 3. Network-First with Offline Fallback for SPA navigations (/dashboard, /market, /login, etc.)
+  // When online: users always get the freshest deployment bundle.
+  // When offline: instantly falls back to cached index.html so the PWA works anywhere.
   if (event.request.mode === 'navigate' || (event.request.headers.get('accept') || '').includes('text/html')) {
     event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const cachedShell = (await cache.match(event.request)) || (await cache.match('/index.html')) || (await cache.match('/'));
-
-        const networkFetch = fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              cache.put('/index.html', networkResponse.clone());
-              cache.put('/', networkResponse.clone());
-            }
-            return networkResponse;
-          })
-          .catch(() => cachedShell);
-
-        // If we have the cached SPA shell, return it immediately for instant load, while updating in background
-        return cachedShell || networkFetch;
-      })
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('/index.html', clone.clone());
+              cache.put('/', clone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          // Offline fallback
+          const cache = await caches.open(CACHE_NAME);
+          const cached = (await cache.match(event.request)) ||
+                         (await cache.match('/index.html')) ||
+                         (await cache.match('/'));
+          if (cached) return cached;
+          return new Response('Offline - SmartBiz Coach requires an internet connection for this page.', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain' }
+          });
+        })
     );
     return;
   }

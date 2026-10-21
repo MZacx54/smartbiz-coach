@@ -123,6 +123,56 @@ export const commerceService = {
     api.post(`${M}/listing-assist/`, body).then(r => r.data as {
       title: string; description: string; price_min: number | null; price_max: number | null; tags: string[]; source: 'ai' | 'template';
     }),
+
+  promoAssist: (body: { product_id?: number | string; name?: string; price?: number | string; description?: string }) =>
+    api.post(`${M}/promo-assist/`, body).then(r => {
+      if (typeof r.data?.remaining_credits === 'number') {
+        try {
+          window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: r.data.remaining_credits }));
+        } catch (e) {}
+      }
+      return r.data as {
+        status_copy: string;
+        broadcast_copy: string;
+        product_link: string;
+        store_link: string;
+        remaining_credits: number;
+        credits_deducted: number;
+        source: 'ai' | 'template';
+      };
+    }),
+
+  boostProduct: (productId: number | string, durationDays: number) =>
+    api.post(`${M}/products/${productId}/boost/`, { duration_days: durationDays }).then(r => {
+      if (typeof r.data?.remaining_credits === 'number') {
+        try {
+          window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: r.data.remaining_credits }));
+        } catch (e) {}
+      }
+      return r.data as {
+        message: string;
+        product_id: number;
+        is_promoted: boolean;
+        promoted_until: string;
+        remaining_credits: number;
+        credits_deducted: number;
+      };
+    }),
+
+  verifyVendor: (plan: 'trial_30' | 'lifetime' = 'lifetime') =>
+    api.post(`${M}/vendor/verify-with-credits/`, { plan }).then(r => {
+      if (typeof r.data?.remaining_credits === 'number') {
+        try {
+          window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: r.data.remaining_credits }));
+        } catch (e) {}
+      }
+      return r.data as {
+        message: string;
+        is_verified: boolean;
+        remaining_credits: number;
+        credits_deducted: number;
+      };
+    }),
 };
 
 export const errorMessage = (err: any, fallback: string) =>

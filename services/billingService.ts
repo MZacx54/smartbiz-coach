@@ -39,6 +39,11 @@ export const billingService = {
       reference,
       amount,
     });
+    if (typeof response.data?.credits === 'number') {
+      try {
+        window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: response.data.credits }));
+      } catch (e) {}
+    }
     return response.data;
   },
 
@@ -47,6 +52,11 @@ export const billingService = {
       amount,
       activity,
     });
+    if (typeof response.data?.credits === 'number') {
+      try {
+        window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: response.data.credits }));
+      } catch (e) {}
+    }
     return response.data;
   },
 
@@ -55,6 +65,11 @@ export const billingService = {
       product_id: productId,
       product_title: productTitle
     });
+    if (typeof response.data?.credits === 'number') {
+      try {
+        window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: response.data.credits }));
+      } catch (e) {}
+    }
     return response.data;
   },
 

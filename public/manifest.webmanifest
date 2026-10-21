@@ -1,16 +1,18 @@
 {
   "name": "SmartBiz Coach - SME Operating System",
   "short_name": "SmartBiz",
-  "description": "The #1 AI Business Operating System for Nigerian SMEs. Daily Day-Book POS, Photo Studio, Inventory, and Debt Recovery.",
-  "start_url": "/dashboard?source=pwa",
+  "description": "The #1 AI Business Operating System & Market Square for Nigerian SMEs. Daily Day-Book POS, Photo Studio, Inventory, Debt Recovery, and Verified Stores.",
+  "id": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "background_color": "#0F172A",
   "theme_color": "#059669",
   "categories": [
     "business",
     "finance",
+    "shopping",
     "productivity"
   ],
   "icons": [
@@ -44,6 +46,18 @@
       "short_name": "POS",
       "description": "5-Second Quick Sale & Day-Book POS",
       "url": "/dashboard/cashbook?source=pwa",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "🇳🇬 MSME Market Square",
+      "short_name": "Market",
+      "description": "Explore and buy from verified Nigerian small businesses",
+      "url": "/market?source=pwa",
       "icons": [
         {
           "src": "/icon-192.png",

@@ -81,13 +81,35 @@
 
 <body>
   <div id="root"></div>
+  <!-- Early PWA beforeinstallprompt capture so install event is never lost before React mounts -->
+  <script>
+    window.__deferredPwaPrompt = null;
+    window.__pwaIsInstalled = false;
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+      window.__pwaIsInstalled = true;
+    }
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.__deferredPwaPrompt = e;
+      try {
+        window.dispatchEvent(new CustomEvent('smartbiz_pwa_prompt_ready'));
+      } catch (err) {}
+    });
+    window.addEventListener('appinstalled', function () {
+      window.__pwaIsInstalled = true;
+      window.__deferredPwaPrompt = null;
+      try {
+        window.dispatchEvent(new CustomEvent('smartbiz_pwa_installed'));
+      } catch (err) {}
+    });
+  </script>
   <!-- Paystack Inline Popup SDK -->
   <script src="https://js.paystack.co/v1/inline.js" defer></script>
   <script type="module" src="/index.tsx"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
           .then((reg) => {
             reg.update().catch(() => {});
           })

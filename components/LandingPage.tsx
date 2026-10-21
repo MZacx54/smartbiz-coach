@@ -221,17 +221,19 @@ const LandingPage: React.FC = () => {
             mockup: 'debt',
         },
         {
-            label: '🏪 Central MSME Market Square',
-            headline: 'Showcase Your Products Nationwide Across 36 States with Verified Badges',
-            subheadline: 'Physical Goods, Services, Commercial Real Estate & Wholesale Hub',
-            body: 'The central marketplace for Nigerian MSMEs. Showcase your products and services to buyers nationwide across all 36 states and Abuja. Build instant buyer trust with CAC and SMEDAN verification badges, share listings directly to WhatsApp Status with 1 click, and boost featured items for maximum sales.',
+            label: '🏪 Central Market Square & Online Storefronts',
+            headline: 'Your Personal Online Store + Nationwide Marketplace Across 36 States',
+            subheadline: 'Zero Listing Fees • Verified Badges • Paystack Escrow • Live Order Tracking',
+            body: 'Every business on SmartBiz Coach gets an instant public online store (/u/your-brand) and central placement in the Nigerian MSME Market Square. Showcase products to millions of shoppers with custom delivery fees per state, Paystack escrow card/transfer payments, WhatsApp instant checkout, real-time waybill tracking (/track/:code), and 100% verified buyer reviews.',
             bullets: [
-                '🇳🇬 Nationwide trade directory spanning all 36 Nigerian states & FCT Abuja',
-                '🛡️ Official CAC & SMEDAN Verified Merchant Trust Badges to stop buyer doubt',
-                '📲 1-Click WhatsApp Status showcase sharing with pre-formatted viral cards',
-                '💬 Direct WhatsApp buyer routing with zero middlemen commissions or platform cuts',
-                '🛍️ 4 Core Trade Pillars: Physical Goods, Professional Services, Commercial Real Estate & Wholesale',
-                '🚀 7-Day Priority Showcase Boosts powered by SmartBiz BizCredits',
+                '🏪 Personal Brand Storefront (/u/:slug) ready to put in your WhatsApp & Instagram bio',
+                '🇳🇬 Central Market Square (/market) connecting buyers across all 36 Nigerian states & FCT Abuja',
+                '🚚 Real-time Nationwide Delivery Calculator with custom delivery rates per state',
+                '🛡️ Paystack Escrow Protection & direct WhatsApp order routing (Zero commission cuts)',
+                '📦 Live Public Order Tracking (/track/:code) from dispatch to doorstep delivery',
+                '⭐ 100% Verified-Purchase Buyer Reviews & Seller Responses to build authentic trust',
+                '📣 AI WhatsApp Promo Assistant generating viral Status captions & sales broadcasts',
+                '⚡ Micro-Boosts starting at just 10 BizCredits (~₦100) with 50 Free Welcome Credits upon sign-up',
             ],
             color: 'from-blue-600 to-indigo-700',
             mockup: 'market',
@@ -327,8 +329,10 @@ const LandingPage: React.FC = () => {
         { feature: 'FICO 300-850 Credit Risk & Bankable PDF Dossier', cost: '100% FREE FOREVER (0 Credits)', type: 'Data Science & Credit', icon: '🧠' },
         { feature: 'Ridge Regression Stockout Velocity & Days Left', cost: '100% FREE FOREVER (0 Credits)', type: 'Predictive Inventory', icon: '📈' },
         { feature: 'Till Fraud Isolation Forest (Cashier Anomaly Audit)', cost: '100% FREE FOREVER (0 Credits)', type: 'Anti-Theft AI', icon: '🛡️' },
+        { feature: 'Micro-Boost Trial (24-Hour Spotlight)', cost: '10 BizCredits (~₦100)', type: 'Marketplace Growth', icon: '⚡' },
+        { feature: 'AI WhatsApp Promo Pack (Status & Broadcast)', cost: '2 BizCredits', type: 'Viral Sales AI', icon: '📣' },
         { feature: 'Voice Note POS Ingestion & Paper Receipt OCR', cost: '2 BizCredits per audio/photo', type: 'Multimodal AI', icon: '🎙️' },
-        { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits', type: 'Merchant Growth', icon: '🚀' },
+        { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits (~₦500)', type: 'National VIP', icon: '🚀' },
         { feature: 'Snap-to-Studio 2.0 (4K Commercial Photos)', cost: '5 BizCredits per set', type: 'Advanced AI Compute', icon: '📸' },
         { feature: 'BOI-Compliant 5-Year Business Plan (PDF)', cost: '200 BizCredits', type: 'Financial Engine', icon: '📄' },
     ];
@@ -337,13 +341,13 @@ const LandingPage: React.FC = () => {
         { q: 'Are the Daily POS, Phone Barcode Scanner, and Day-Book really 100% free forever?', a: 'YES. We believe no Nigerian entrepreneur should ever be locked out of their daily sales records or bookkeeping. The Daily 5-Second POS, Phone Camera Barcode/QR Scanner (zero hardware needed), Apprentice Shift Lock, Petty Cash & Fuel Tracker, Gbege Debt Book, Central Market Square basic listings, 1-Tap WhatsApp Invoicing, Section 23 CITA Tax Exemption Memo, and Machine Learning Credit Scoring require 0 credits and are 100% free for life.' },
         { q: 'How does the FICO 300–850 Credit Risk Engine and Machine Learning Hub work without extra fees?', a: 'Traditional commercial banks demand landed property C-of-O or heavy collateral that 95% of small business owners do not possess. SmartBiz Coach includes an in-house Scikit-Learn data science engine running locally on your transactional records. It computes your 300–850 Credit Score based on live turnover consistency, customer debt recovery velocity, and inventory turnover. It also uses Ridge regression to predict stockout dates and Isolation Forest to audit tills for theft. Because this runs on serverless mathematical algorithms rather than expensive third-party APIs, it is completely free for business owners to generate institutional, bankable PDF Underwriting Dossiers with SHA-256 verification.' },
         { q: 'How does the Phone Camera Barcode & QR Scanner work?', a: 'You do not need to buy an expensive Bluetooth or USB barcode reader. Simply open POS checkout on your smartphone, tap "Scan Barcode", point your camera at any item barcode or QR code. The scanner reads it instantly with audio beep feedback, adjusts inventory, and adds the item to the active bill in milliseconds.' },
-        { q: 'What is the Central MSME Market Square and how do I sell nationwide?', a: 'Central Market Square is our national trade directory connecting small business owners across all 36 Nigerian states and Abuja. You can showcase physical goods, professional services, commercial real estate, or wholesale offers with verified CAC and SMEDAN badges. Buyers connect directly with you on WhatsApp with zero middlemen taking cuts. You can also feature your listings with high-visibility credit boosts.' },
+        { q: 'What is the Central MSME Market Square and how does my personal online store work?', a: 'Every registered merchant gets a dedicated personal web store (smartbizcoach.com.ng/u/your-brand) and public marketplace listing on /market. Buyers across all 36 Nigerian states can browse products, see automated delivery quotes based on their state, and checkout securely via Paystack escrow protection or order on WhatsApp. Orders include live parcel tracking (/track/:code) and 100% verified customer reviews. You can boost any listing starting at just 10 BizCredits (~₦100) or earn +5 free credits daily by sharing your store!' },
         { q: 'How does the Anti-Theft Apprentice Shift Mode protect my shop?', a: 'When you activate Apprentice Mode, the cashier/attendant screen is locked behind a 4-digit supervisor PIN. Attendants can rapidly record sales, but they CANNOT edit prices, delete previous sales, backdate transactions, or see your total profit margins. At the end of the shift, the system generates a reconciliation report comparing physical cash to recorded sales.' },
         { q: 'Does the POS Day-Book work when there is no internet / network is down?', a: 'Yes! SmartBiz Coach features an Open Market Offline-First engine specifically engineered for crowded hubs like Alaba International, Balogun, and Computer Village. If your data runs out or cell towers disconnect, you can record sales, scan barcodes, and issue offline receipts. As soon as you are reconnected, all data syncs automatically to the cloud.' },
         { q: 'How does Snap-to-Studio 2.0 work on photos taken on a bedsheet?', a: 'You do not need an expensive camera or backdrop. Simply snap your product on your bedspread, shop counter, or tile floor. Our vision AI removes the background, generates realistic ambient contact shadows and reflections, and composites the item into 16 photorealistic commercial studio environments like Luxury Marble, Sunlight & Shadows, African Raffia, or Warm Oak Cafe Tables.' },
         { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigerian Companies Income Tax Act (CITA) Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦25,000,000 are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
         { q: 'How do customers pay me through Gbege Book debt reminders and WhatsApp invoices?', a: 'When you send an automated polite WhatsApp reminder or 1-tap invoice, it automatically includes an encrypted Paystack payment link. Your customer can tap the link and pay instantly using their debit card, bank transfer, or USSD. Once paid, the debt or invoice is automatically marked as settled in your ledger with real-time webhook confirmation.' },
-        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new Nigerian entrepreneur receives 50 Free Welcome Credits upon creating an account. You can use them immediately to experience Snap-to-Studio 4K photo shoots, debt recovery escalations, voice note POS transcription, or marketplace boosts. When you need more compute, credit packs start at just ₦500 via Paystack. Credits never expire and there are zero recurring monthly subscription traps.' },
+        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new merchant gets 50 Free Welcome Credits upon creating an account. You can use them right away to boost products (a 24-hour spotlight boost is just 10 credits!), generate viral AI WhatsApp promo captions (2 credits), or render 4K studio photos. When you need more compute, credit packs start at just ₦500 for 50 credits (only ₦10 per credit) via Paystack. Credits never expire and all core store management tools stay 100% free forever.' },
     ];
 
     const stats = [
@@ -980,29 +984,29 @@ const LandingPage: React.FC = () => {
                                     )}
 
                                     {tab.mockup === 'market' && (
-                                        <div className="relative z-10 space-y-2">
+                                        <div className="relative z-10 space-y-2.5">
                                             <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between items-center">
-                                                <span>🏪 Central MSME Market Square</span>
-                                                <span className="bg-emerald-400/30 text-emerald-200 border border-emerald-400/40 px-2 py-0.5 rounded-full text-[9px] font-bold">CAC & SMEDAN Verified ✓</span>
+                                                <span>🏪 Storefront /u/kemi-couture</span>
+                                                <span className="bg-emerald-400/30 text-emerald-200 border border-emerald-400/40 px-2 py-0.5 rounded-full text-[9px] font-bold">⭐ 4.9 (58 Reviews)</span>
                                             </div>
                                             {[
-                                                { icon: '🛍️', type: 'Physical Goods', example: 'Fabrics, Phones, Groceries, Beauty' },
-                                                { icon: '🛠️', type: 'Professional Services', example: 'CAC Legal, Accounting, Repairs, Media' },
-                                                { icon: '🏠', type: 'Commercial Real Estate', example: 'Plaza Shops, Warehouses, Office Hubs' },
-                                                { icon: '⚡', type: 'B2B Wholesale Hub', example: 'Raw Materials, Dispatch Fleets, Influencers' },
-                                            ].map(({ icon, type, example }) => (
-                                                <div key={type} className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 flex items-center gap-3">
+                                                { icon: '📦', title: 'Live Order #SB-8921', sub: 'In Transit via GIG Logistics • Track at /track/SB-8921', badge: 'Paid (Paystack Escrow)' },
+                                                { icon: '🚚', title: 'Nationwide Delivery Quotes', sub: 'Lagos ₦1,500 • Abuja ₦2,500 • Rivers ₦2,500', badge: '36 States' },
+                                                { icon: '📣', title: 'AI WhatsApp Promo Pack', sub: '1-Click viral Status & Broadcast captions in Pidgin/English', badge: '2 Credits' },
+                                                { icon: '⚡', title: '24-Hour Spotlight Boost', sub: 'Promoted to #1 in Market Square Fashion Category', badge: '10 Credits' },
+                                            ].map(({ icon, title, sub, badge }) => (
+                                                <div key={title} className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 flex items-center gap-3">
                                                     <span className="text-base">{icon}</span>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="text-white text-[10px] font-black">{type}</div>
-                                                        <div className="text-white/70 text-[9px] truncate">{example}</div>
+                                                        <div className="text-white text-[10px] font-black">{title}</div>
+                                                        <div className="text-white/70 text-[9px] truncate">{sub}</div>
                                                     </div>
-                                                    <span className="text-white/90 text-[9px] font-bold bg-white/20 px-2 py-0.5 rounded-full">WhatsApp Direct</span>
+                                                    <span className="text-white/90 text-[9px] font-bold bg-white/20 px-2 py-0.5 rounded-full whitespace-nowrap">{badge}</span>
                                                 </div>
                                             ))}
                                             <div className="flex gap-2 pt-1">
-                                                <div className="flex-1 bg-white text-blue-900 rounded-xl py-2 text-[10px] font-black text-center shadow">1-Click WhatsApp Status Share</div>
-                                                <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">36 States Filter</div>
+                                                <div className="flex-1 bg-white text-blue-900 rounded-xl py-2 text-[10px] font-black text-center shadow">1-Click WhatsApp Store Share (+5 🪙)</div>
+                                                <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">Free Unlimited Listings</div>
                                             </div>
                                         </div>
                                     )}

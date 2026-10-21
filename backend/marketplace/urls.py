@@ -39,6 +39,7 @@ from .commerce_views import (
     ReportListingView, ModerationReportListView, ModerationReportActionView,
     ShareProductPageView, ShareProductImageView, ShareStorePageView, MarketSitemapView,
     ListingAssistView,
+    WhatsAppPromoAssistView,
 )
 from .smart_catalog import (
     BarcodeLookupAutoFillView,
@@ -109,4 +110,5 @@ urlpatterns = [
     path('share/u/<slug:slug>/', ShareStorePageView.as_view(), name='share_store'),
     path('sitemap-market.xml', MarketSitemapView.as_view(), name='market_sitemap'),
     path('listing-assist/', ListingAssistView.as_view(), name='listing_assist'),
+    path('promo-assist/', WhatsAppPromoAssistView.as_view(), name='promo_assist'),
 ]

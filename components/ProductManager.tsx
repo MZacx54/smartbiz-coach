@@ -177,6 +177,40 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
 
   // Product Boosting & Credits States
   const [boostingProduct, setBoostingProduct] = useState<Product | null>(null);
+  const [promoProduct, setPromoProduct] = useState<Product | null>(null);
+  const [isGeneratingPromo, setIsGeneratingPromo] = useState(false);
+  const [promoResult, setPromoResult] = useState<{
+    status_copy: string;
+    broadcast_copy: string;
+    product_link: string;
+  } | null>(null);
+
+  const handleOpenPromoModal = async (product: Product) => {
+    setPromoProduct(product);
+    setPromoResult(null);
+    setIsGeneratingPromo(true);
+    try {
+      const res = await commerceService.promoAssist({ product_id: product.id });
+      setPromoResult({
+        status_copy: res.status_copy,
+        broadcast_copy: res.broadcast_copy,
+        product_link: res.product_link,
+      });
+      toast.success('🎉 AI WhatsApp Promo Pack ready! (2 BizCredits)');
+    } catch (err: any) {
+      if (err?.response?.status === 402) {
+        setCreditPromptCost(2);
+        setCreditPromptFeature('AI WhatsApp Promo Pack');
+        setShowCreditPrompt(true);
+        setPromoProduct(null);
+      } else {
+        toast.error(err?.response?.data?.error || 'Failed to generate promo copy.');
+        setPromoProduct(null);
+      }
+    } finally {
+      setIsGeneratingPromo(false);
+    }
+  };
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [isBoosting, setIsBoosting] = useState(false);
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
@@ -185,7 +219,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
 
   const handleBoostListing = async (durationDays: number) => {
     if (!boostingProduct) return;
-    const cost = durationDays <= 3 ? 150 : (durationDays <= 7 ? 300 : 500);
+    const cost = durationDays <= 1 ? 10 : (durationDays <= 3 ? 25 : (durationDays <= 7 ? 50 : 150));
     setCreditPromptCost(cost);
     setIsBoosting(true);
     try {
@@ -2192,6 +2226,15 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <div className="flex gap-2 pt-2">
                                <button 
                                  type="button"
+                                 onClick={() => handleOpenPromoModal(product)}
+                                 className="px-2.5 py-3 rounded-2xl text-[11px] font-extrabold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-all flex items-center justify-center gap-1 border-0 cursor-pointer"
+                                 title="Generate AI WhatsApp Status & Broadcast Copy (2 BizCredits)"
+                               >
+                                 <span>📣</span>
+                                 <span>Promo</span>
+                               </button>
+                               <button 
+                                 type="button"
                                  onClick={() => {
                                    setBoostingProduct(product);
                                    setShowBoostModal(true);
@@ -2446,62 +2489,81 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
 
             <div className="space-y-3 mb-6">
               <div 
-                onClick={() => handleBoostListing(3)}
-                className="p-4 rounded-2xl border-2 border-indigo-100 hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-50/80 cursor-pointer transition-all flex items-center justify-between group"
+                onClick={() => handleBoostListing(1)}
+                className="p-3.5 rounded-2xl border-2 border-emerald-100 hover:border-emerald-600 bg-emerald-50/40 hover:bg-emerald-50/80 cursor-pointer transition-all flex items-center justify-between group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-indigo-600 text-white rounded-xl">
+                  <div className="p-2 bg-emerald-600 text-white rounded-xl">
                     <Zap className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-indigo-700">3-Day Fast Boost</h4>
-                    <p className="text-[10px] text-slate-500">Marketplace highlight for 72 hours</p>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-700">24-Hour Spotlight Trial</h4>
+                    <p className="text-[10px] text-slate-500">Quick 24h boost (Only ~₦100)</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-black text-indigo-700 block">150 Credits</span>
-                  <span className="text-[9px] text-slate-400">Instant Activation</span>
+                  <span className="text-xs font-black text-emerald-700 block">10 Credits</span>
+                  <span className="text-[9px] text-slate-400">Micro-Boost</span>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => handleBoostListing(3)}
+                className="p-3.5 rounded-2xl border-2 border-indigo-100 hover:border-indigo-600 bg-indigo-50/40 hover:bg-indigo-50/80 cursor-pointer transition-all flex items-center justify-between group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-600 text-white rounded-xl">
+                    <Rocket className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-indigo-700">3-Day Priority Boost</h4>
+                    <p className="text-[10px] text-slate-500">Category & state priority for 72 hours</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-black text-indigo-700 block">25 Credits</span>
+                  <span className="text-[9px] text-slate-400">Popular</span>
                 </div>
               </div>
 
               <div 
                 onClick={() => handleBoostListing(7)}
-                className="p-4 rounded-2xl border-2 border-amber-200 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50/80 cursor-pointer transition-all flex items-center justify-between group relative overflow-hidden"
+                className="p-3.5 rounded-2xl border-2 border-amber-200 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50/80 cursor-pointer transition-all flex items-center justify-between group relative overflow-hidden"
               >
                 <div className="absolute top-0 right-0 bg-amber-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-bl-lg">
                   Best Value
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-amber-500 text-white rounded-xl">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl">
                     <Flame className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-amber-800">7-Day Hot Deal Featured</h4>
-                    <p className="text-[10px] text-slate-500">Prime placement & top badge for 1 week</p>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-amber-800">7-Day National VIP Boost</h4>
+                    <p className="text-[10px] text-slate-500">Prime placement across Landing Page & Market</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-black text-amber-800 block">300 Credits</span>
+                  <span className="text-xs font-black text-amber-800 block">50 Credits</span>
                   <span className="text-[9px] text-slate-400">Maximum Reach</span>
                 </div>
               </div>
 
               <div 
-                onClick={() => handleBoostListing(14)}
-                className="p-4 rounded-2xl border-2 border-purple-200 hover:border-purple-500 bg-purple-50/40 hover:bg-purple-50/80 cursor-pointer transition-all flex items-center justify-between group relative overflow-hidden"
+                onClick={() => handleBoostListing(30)}
+                className="p-3.5 rounded-2xl border-2 border-purple-200 hover:border-purple-500 bg-purple-50/40 hover:bg-purple-50/80 cursor-pointer transition-all flex items-center justify-between group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-purple-600 text-white rounded-xl">
-                    <Rocket className="w-4 h-4" />
+                  <div className="p-2 bg-purple-600 text-white rounded-xl">
+                    <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-purple-800">14-Day Mega Spotlight</h4>
-                    <p className="text-[10px] text-slate-500">2 weeks nationwide spotlight & top carousel banner</p>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-purple-800">30-Day Oga VIP Spotlight</h4>
+                    <p className="text-[10px] text-slate-500">1 full month of top search ranking</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-black text-purple-900 block">500 Credits</span>
-                  <span className="text-[9px] text-slate-400">Mega Impact</span>
+                  <span className="text-xs font-black text-purple-900 block">150 Credits</span>
+                  <span className="text-[9px] text-slate-400">30 Days</span>
                 </div>
               </div>
             </div>
@@ -2509,6 +2571,117 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
             <p className="text-[11px] text-slate-400 text-center">
               BizCredits will be deducted from your wallet immediately.
             </p>
+          </div>
+        </div>
+      )}
+
+            {/* AI WhatsApp Promo Modal */}
+      {promoProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 sm:p-8 relative border border-emerald-100 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setPromoProduct(null);
+                setPromoResult(null);
+              }}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 text-lg font-bold bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center"
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-2 mb-6">
+              <div className="w-14 h-14 bg-emerald-100 rounded-3xl flex items-center justify-center text-2xl mx-auto shadow-inner">
+                📣
+              </div>
+              <h3 className="text-xl font-black text-slate-900">AI WhatsApp Promo Pack</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Ready-to-post high-converting copies for <strong className="text-slate-800 font-bold">"{promoProduct.name}"</strong>
+              </p>
+            </div>
+
+            {isGeneratingPromo && (
+              <div className="py-12 text-center space-y-3">
+                <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-bold text-slate-600">Generating Nigerian Status & Broadcast copy with Gemini AI...</p>
+              </div>
+            )}
+
+            {!isGeneratingPromo && promoResult && (
+              <div className="space-y-5">
+                {/* 1. Status Copy */}
+                <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+                      📱 1-Tap WhatsApp Status Copy
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(promoResult.status_copy);
+                        toast.success('Status copy copied! Paste to WhatsApp Status.');
+                      }}
+                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                    >
+                      Copy Status
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-800 whitespace-pre-wrap font-sans leading-relaxed">
+                    {promoResult.status_copy}
+                  </p>
+                </div>
+
+                {/* 2. Broadcast Copy */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                      📢 Broadcast & DM Sales Script
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(promoResult.broadcast_copy);
+                        toast.success('Broadcast script copied!');
+                      }}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold cursor-pointer"
+                    >
+                      Copy Script
+                    </button>
+                  </div>
+                  <pre className="text-xs text-slate-800 whitespace-pre-wrap font-sans leading-relaxed bg-white p-3 rounded-xl border border-slate-100 max-h-48 overflow-y-auto">
+                    {promoResult.broadcast_copy}
+                  </pre>
+                </div>
+
+                {/* Direct Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msg = promoResult.broadcast_copy;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                      billingService.rewardShare(promoProduct.id, promoProduct.name).catch(() => {});
+                    }}
+                    className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
+                  >
+                    <span>📲 Open in WhatsApp (+5 Free Credits)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPromoProduct(null);
+                      setPromoResult(null);
+                    }}
+                    className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-xs cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-slate-400 text-center">
+                  Cost: 2 BizCredits • Sharing also earns +5 Free Bonus BizCredits daily!
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
