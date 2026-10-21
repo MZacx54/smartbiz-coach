@@ -70,10 +70,10 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
     estimated_jobs_supported: 1940,
   },
   state_breakdown: [
-    { state: 'Abuja (FCT)', msme_count: 148, avg_smart_score: 761, total_gmv_ngn: 68400000, women_led_pct: 64.0, highlight: 'AEA, BOI, NITDA, NASENI, NYE HQ' },
-    { state: 'Lagos', msme_count: 215, avg_smart_score: 752, total_gmv_ngn: 112500000, women_led_pct: 58.0, highlight: 'LSETF, Commercial Bank Hubs' },
-    { state: 'Bauchi', msme_count: 112, avg_smart_score: 724, total_gmv_ngn: 38900000, women_led_pct: 68.0, highlight: 'SMEDAN Bauchi, WEIN, RAHAMA' },
-    { state: 'Kano & Kaduna', msme_count: 94, avg_smart_score: 718, total_gmv_ngn: 41200000, women_led_pct: 61.0, highlight: 'Agro-Processing & Textile Clusters' },
+    { state: 'Abuja (FCT)', msme_count: 148, avg_smart_score: 761, total_gmv_ngn: 68400000, women_led_pct: 64.0, highlight: 'BOI Regional Office, SMEDAN HQ, AEA, Tech & Agro Hubs' },
+    { state: 'Lagos', msme_count: 215, avg_smart_score: 752, total_gmv_ngn: 112500000, women_led_pct: 58.0, highlight: 'LSETF, Commercial Banking Clusters, Retail Trade' },
+    { state: 'Bauchi', msme_count: 112, avg_smart_score: 724, total_gmv_ngn: 38900000, women_led_pct: 68.0, highlight: 'SMEDAN Bauchi, DBN Lending Network, Agribusiness' },
+    { state: 'Kano & Kaduna', msme_count: 94, avg_smart_score: 718, total_gmv_ngn: 41200000, women_led_pct: 61.0, highlight: 'Agro-Processing, Light Manufacturing & Textile Clusters' },
   ],
   underwriting_cohort: [
     {
@@ -81,7 +81,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       is_live_db: false,
       business_name: 'Amina Glow & Organics Hub',
       owner_name: 'Hajiya Amina Bello',
-      gender_category: 'Women-Led (SheVentures / Access W Eligible)',
+      gender_category: 'Women-Led Enterprise (CBN / BOI / Donor Gender Quota)',
       state: 'FCT Abuja (Wuse 2)',
       sector: 'FMCG & Beauty Retail',
       cac_status: 'VERIFIED (BN-4829103)',
@@ -96,7 +96,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       ecl_ngn: 10080,
       dscr: 2.65,
       ifrs9_stage: 'Stage 1 (Performing • Bankable)',
-      eligible_partners: ['FCMB SheVentures', 'BOI', 'Access Bank W', 'SMEDAN'],
+      eligible_partners: ['Bank of Industry (BOI)', 'Development Bank of Nigeria (DBN)', 'Commercial Banks', 'SMEDAN'],
       audit_slug: 'amina-glow-organics',
     },
     {
@@ -104,7 +104,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       is_live_db: false,
       business_name: 'Zuma Agro-Allied & Grains Processing',
       owner_name: 'Engr. Ibrahim Danjuma',
-      gender_category: 'Youth-Led (NYE / BOI / NASENI Eligible)',
+      gender_category: 'Youth-Led Enterprise (Under 35 • BOI / SMEDAN Eligible)',
       state: 'FCT Abuja (Gwagwalada)',
       sector: 'Agro-Processing & Food Security',
       cac_status: 'VERIFIED (RC-1928374)',
@@ -119,7 +119,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       ecl_ngn: 23936,
       dscr: 2.34,
       ifrs9_stage: 'Stage 1 (Performing • Bankable)',
-      eligible_partners: ['NASENI', 'NITDA', 'BOI', 'NACCIMA/NYE'],
+      eligible_partners: ['Bank of Industry (BOI)', 'SMEDAN Matching Fund', 'DBN Participating Banks', 'Federal Agro Grants'],
       audit_slug: 'zuma-agro-allied',
     },
     {
@@ -127,7 +127,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       is_live_db: false,
       business_name: 'Chidinma MedPlus Pharmacy & Diagnostics',
       owner_name: 'Pharm. Chidinma Okafor',
-      gender_category: 'Women-Led (SheVentures / Access W Eligible)',
+      gender_category: 'Women-Led Enterprise (Healthcare / DBN / Donor Eligible)',
       state: 'FCT Abuja (Garki Area 11)',
       sector: 'Healthcare & Pharmaceuticals',
       cac_status: 'VERIFIED (RC-2049182)',
@@ -142,7 +142,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       ecl_ngn: 6912,
       dscr: 2.88,
       ifrs9_stage: 'Stage 1 (Performing • Bankable)',
-      eligible_partners: ['FCMB SheVentures', 'Access Bank W', 'DBN'],
+      eligible_partners: ['Development Bank of Nigeria (DBN)', 'Commercial Banks', 'BOI Healthcare Fund'],
       audit_slug: 'chidinma-medplus',
     },
     {
@@ -150,7 +150,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       is_live_db: false,
       business_name: 'Eko Solar & Inverter Assembly Micro-Factory',
       owner_name: 'Tunde & Zainab Adeyemi',
-      gender_category: 'Women & Youth Co-Owned',
+      gender_category: 'Co-Owned Youth & Women Enterprise (Renewable Energy)',
       state: 'Lagos (Ikeja)',
       sector: 'Renewable Energy & Cleantech',
       cac_status: 'VERIFIED (RC-3194821)',
@@ -165,7 +165,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       ecl_ngn: 11600,
       dscr: 2.21,
       ifrs9_stage: 'Stage 1 (Performing • Bankable)',
-      eligible_partners: ['DBN', 'BOI', 'LSETF', 'NASENI'],
+      eligible_partners: ['Bank of Industry (BOI)', 'DBN Green Energy Facility', 'World Bank / REA Grants', 'LSETF'],
       audit_slug: 'eko-solar-assembly',
     },
     {
@@ -173,7 +173,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       is_live_db: false,
       business_name: 'Yankari Modern Poultry & Feed Mill',
       owner_name: 'Musa Abdullahi',
-      gender_category: 'Youth-Led (NYE / SMEDAN Eligible)',
+      gender_category: 'Youth-Led Enterprise (Agribusiness / Food Security)',
       state: 'Bauchi (Bauchi Metro)',
       sector: 'Livestock & Agribusiness',
       cac_status: 'VERIFIED (BN-3381920)',
@@ -188,7 +188,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       ecl_ngn: 10656,
       dscr: 1.62,
       ifrs9_stage: 'Stage 1 (Performing • Bankable)',
-      eligible_partners: ['SMEDAN', 'NIRSAL MFB', 'BOI'],
+      eligible_partners: ['SMEDAN National Fund', 'NIRSAL MFB Agribusiness', 'Bank of Industry (BOI)'],
       audit_slug: 'yankari-poultry-mill',
     },
     {
@@ -196,7 +196,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       is_live_db: false,
       business_name: 'Arewa Heritage Textiles & Adire Exports',
       owner_name: 'Hajiya Fatima Suleiman',
-      gender_category: 'Women-Led (SheVentures / Tony Elumelu Eligible)',
+      gender_category: 'Women-Led Enterprise (Manufacturing & Non-Oil Export)',
       state: 'Kano (Nassarawa)',
       sector: 'Light Manufacturing & Creative',
       cac_status: 'PENDING_FORMALIZATION',
@@ -211,7 +211,7 @@ const FALLBACK_PORTAL_DATA: PartnerPortalResponse = {
       ecl_ngn: 14560,
       dscr: 1.45,
       ifrs9_stage: 'Stage 2 (Under-Performing Watchlist)',
-      eligible_partners: ['FCMB SheVentures', 'NEPC', 'SMEDAN'],
+      eligible_partners: ['SMEDAN Formalization Grant', 'Nigerian Export Promotion Council (NEPC)', 'BOI Cotton/Textile'],
       audit_slug: 'arewa-heritage-textiles',
     },
   ],
@@ -330,7 +330,7 @@ export const PartnerPortal: React.FC = () => {
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [approvedIds, setApprovedIds] = useState<string[]>([]);
-  const [partnerProgram, setPartnerProgram] = useState<string>('FCMB SheVentures / Access W');
+  const [partnerProgram, setPartnerProgram] = useState<string>('ALL');
 
   // Upgrade 5: Interactive Monte Carlo Loan & Grant Underwriting Simulator state
   const [selectedSimMsmeId, setSelectedSimMsmeId] = useState<string>('');
@@ -455,6 +455,20 @@ export const PartnerPortal: React.FC = () => {
     const sectorStr = (m?.sector || '').toLowerCase();
     const q = searchQuery.trim().toLowerCase();
 
+    // Universal Institutional Mandate Lenses
+    if (partnerProgram === 'BOI_DBN') {
+      const isProductive = sectorStr.includes('agro') || sectorStr.includes('wholesale') || sectorStr.includes('pharma') || sectorStr.includes('fab') || sectorStr.includes('produce') || sectorStr.includes('distrib');
+      const hasCacOrDscr = (m?.cac_status || '').includes('VERIFIED') || (m?.dscr ?? 0) >= 1.35;
+      if (!isProductive && !hasCacOrDscr) return false;
+    } else if (partnerProgram === 'SMEDAN_FED') {
+      if ((m?.smart_score ?? 0) < 600) return false;
+    } else if (partnerProgram === 'COMMERCIAL_MFB') {
+      if ((m?.smart_score ?? 0) < 680 || (m?.pd_pct ?? 10) > 6.5) return false;
+    } else if (partnerProgram === 'DONOR_NGO') {
+      const isGenderOrYouth = genderCat.includes('women') || genderCat.includes('youth');
+      if (!isGenderOrYouth) return false;
+    }
+
     if (activeLens === 'WOMEN' && !genderCat.includes('women')) return false;
     if (activeLens === 'YOUTH' && !genderCat.includes('youth')) return false;
     if (activeLens === 'PRIME' && (m?.smart_score ?? 0) < 750) return false;
@@ -556,10 +570,11 @@ export const PartnerPortal: React.FC = () => {
               onChange={(e) => setPartnerProgram(e.target.value)}
               className="bg-slate-900 border border-slate-700 text-xs font-bold text-emerald-300 rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500"
             >
-              <option value="FCMB SheVentures / Access W">🏦 Lens: FCMB SheVentures & Access W</option>
-              <option value="BOI / DBN / NIRSAL MFB">🏦 Lens: BOI / DBN / NIRSAL Credit</option>
-              <option value="SMEDAN / NITDA / NASENI">🇳🇬 Lens: SMEDAN / NITDA / NASENI Impact</option>
-              <option value="NACCIMA Youth (NYE) / TEF">🚀 Lens: NACCIMA Youth (NYE) & TEF</option>
+              <option value="ALL">🌐 Lens: Universal MSME Portfolio (BOI / SMEDAN / Banks / Donors)</option>
+              <option value="BOI_DBN">🏛️ Lens: Bank of Industry (BOI) & DBN Industrial Mandate</option>
+              <option value="SMEDAN_FED">🇳🇬 Lens: SMEDAN & Federal MSME Expansion Fund</option>
+              <option value="COMMERCIAL_MFB">🏦 Lens: Commercial Banks & Tier-1 MFBs (IFRS-9 Performing)</option>
+              <option value="DONOR_NGO">🌍 Lens: International Donors & Impact Agencies (AfDB / USAID / TEF)</option>
             </select>
 
             <button
@@ -854,6 +869,62 @@ export const PartnerPortal: React.FC = () => {
           </div>
         )}
 
+        {/* Universal Institutional Underwriting Standards Alignment Banner */}
+        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-inner">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-3 border-b border-slate-800/80">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
+                🏛️ Universal Nigerian & International Institutional Alignment
+              </span>
+              <h3 className="text-sm sm:text-base font-black text-white mt-0.5">
+                Standardized Underwriting Framework (BOI, DBN, SMEDAN, CBN & Donors)
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>IFRS-9 Expected Credit Loss (ECL) Compliant</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 text-xs">
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+              <div className="font-black text-indigo-400 flex items-center gap-1.5">
+                <span>🏛️</span> Bank of Industry & DBN
+              </div>
+              <p className="text-slate-400 text-[11px] mt-1 leading-relaxed">
+                Requires DSCR ≥ 1.30x, verified CAC registration, productive/agro value chain verification, and 6-month continuous POS/cashbook turnover.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+              <div className="font-black text-emerald-400 flex items-center gap-1.5">
+                <span>🇳🇬</span> SMEDAN & Federal MSME Fund
+              </div>
+              <p className="text-slate-400 text-[11px] mt-1 leading-relaxed">
+                Prioritizes micro/small business formalization across all 36 states + FCT, verifiable owner NIN/BVN, and job creation tracking.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+              <div className="font-black text-amber-400 flex items-center gap-1.5">
+                <span>🏦</span> Commercial Banks & MFBs
+              </div>
+              <p className="text-slate-400 text-[11px] mt-1 leading-relaxed">
+                IFRS-9 Stage 1 low-risk assets, 12-month Probability of Default (PD &lt; 6.5%), and 14+ day cash runway for unsecured working capital lines.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
+              <div className="font-black text-pink-400 flex items-center gap-1.5">
+                <span>🌍</span> Donors & Impact Agencies (AfDB/TEF)
+              </div>
+              <p className="text-slate-400 text-[11px] mt-1 leading-relaxed">
+                Disbursement against gender targets (≥60% women-led), youth under 35, livelihood sustainability, and tamper-evident digital audit trail.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Underwriting Filter Controls & Table */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5">
@@ -876,7 +947,7 @@ export const PartnerPortal: React.FC = () => {
                     : 'bg-slate-800 text-pink-300 hover:bg-slate-700'
                 }`}
               >
-                👩🏾‍💼 Women-Led / SheVentures / Access W
+                👩🏾‍💼 Women-Led (BOI / CBN / Donor Gender Quota)
               </button>
               <button
                 onClick={() => setActiveLens('YOUTH')}
@@ -886,7 +957,7 @@ export const PartnerPortal: React.FC = () => {
                     : 'bg-slate-800 text-indigo-300 hover:bg-slate-700'
                 }`}
               >
-                🚀 Youth-Led / NYE / NASENI
+                🚀 Youth-Led (Under 35 • BOI / SMEDAN Eligible)
               </button>
               <button
                 onClick={() => setActiveLens('PRIME')}
@@ -903,7 +974,7 @@ export const PartnerPortal: React.FC = () => {
             <div className="w-full lg:w-72">
               <input
                 type="text"
-                placeholder="Search MSME, Owner, Sector, or Abuja Area..."
+                placeholder="Search MSME, Owner, Sector, State, or LGA..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"

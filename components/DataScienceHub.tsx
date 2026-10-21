@@ -222,6 +222,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
   const [simInterestRate, setSimInterestRate] = useState<number>(9.0);
   const [simTenorMonths, setSimTenorMonths] = useState<number>(12);
 
+  // Upgrade 6: Plain English Owner Action View vs Institutional Technical View Toggle
+  const [viewMode, setViewMode] = useState<'ACTION' | 'TECHNICAL'>('ACTION');
+
   const handleSpeakCFO = (lang: 'EN' | 'PIDGIN') => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       toast.error('Speech synthesis is not supported in this browser.');
@@ -346,7 +349,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
         credit_score: 715,
         rating_tier: "GOOD (Bankable Grade B+)",
         risk_level: "MODERATE_LOW_RISK",
-        bank_recommendation: "Eligible for Up to ₦3,500,000 Microfinance Credit (FCMB SheVentures, NIRSAL MFB, BOI) & Equipment Financing.",
+        bank_recommendation: "Eligible for Up to ₦3,500,000 Working Capital & Equipment Facility (BOI, DBN, SMEDAN & Commercial Bank/MFB Partner Networks).",
         breakdown: {
           compliance_points: 75,
           cashflow_points: 140,
@@ -412,8 +415,8 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           icon: '🏛️',
           priority: 'MEDIUM',
           badge_color: 'indigo',
-          headline: 'SmartScore™ 715/850 • Pre-Qualified for BOI & SheVentures',
-          insight: 'Your SHA-256 audited ledger is ready for one-click submission to BOI, FCMB SheVentures, NIRSAL MFB, and SMEDAN.',
+          headline: 'SmartScore™ 715/850 • Pre-Qualified for BOI, DBN & Commercial Facilities',
+          insight: 'Your SHA-256 audited ledger is ready for one-click submission to Bank of Industry (BOI), DBN, SMEDAN, Tier-1 MFBs, and international donor grant programs.',
           action_type: 'DOWNLOAD_DOSSIER',
           action_label: '📄 Download Bank Underwriting PDF',
           target_route: '/dashboard/grants'
@@ -541,10 +544,10 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           },
           target_institutions: [
             "Bank of Industry (BOI) & Development Bank of Nigeria (DBN)",
-            "FCMB SheVentures / Access Bank W Initiative / Sterling OneWoman",
-            "NIRSAL Microfinance Bank (NMFB) & LSETF / AEA Abuja",
-            "SMEDAN / NACCIMA Youth Entrepreneurs (NYE) / NITDA / NASENI",
-            "Tony Elumelu Foundation (TEF) & Tier-1 Commercial Banks",
+            "Commercial Banks & Tier-1 Microfinance Banks (IFRS-9 Performing Underwriting)",
+            "SMEDAN & Federal Ministry of Industry, Trade and Investment (FMITI)",
+            "NIRSAL Microfinance Bank (NMFB) & State Enterprise Funds (LSETF / KADIPA / AEA)",
+            "International Impact Agencies & Foundations (World Bank, AfDB, USAID, TEF)",
           ],
           verifier_statement: "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs, Isolation Forest fraud auditing, and compliance verification on the SmartBiz Coach AI Operating System."
         };
@@ -678,9 +681,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
       doc.setFontSize(8);
       doc.setTextColor(71, 85, 105);
       doc.text("This certified dossier is formatted for pre-underwriting appraisal and grant disbursement by:", 14, instTop + 5);
-      doc.text("• Bank of Industry (BOI) & Development Bank of Nigeria (DBN)   • SMEDAN & NACCIMA Youth (NYE)", 14, instTop + 10);
-      doc.text("• FCMB SheVentures / Access Bank W Initiative / Sterling OneWoman • NIRSAL MFB & Abuja Enterprise Agency", 14, instTop + 15);
-      doc.text("• NITDA / NASENI Innovation Funds & Tony Elumelu Foundation (TEF)", 14, instTop + 20);
+      doc.text("• Bank of Industry (BOI) & Development Bank of Nigeria (DBN)   • SMEDAN & Federal MSME Expansion Fund", 14, instTop + 10);
+      doc.text("• Commercial Banks & Tier-1 Microfinance Banks (IFRS-9)      • NIRSAL MFB & State Enterprise Funds (LSETF)", 14, instTop + 15);
+      doc.text("• International Impact Agencies (World Bank, AfDB, USAID)    • Tony Elumelu Foundation (TEF) & Donor Grants", 14, instTop + 20);
 
       // Footer Verification Box
       doc.setFillColor(248, 250, 252);
@@ -867,127 +870,345 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
             exit={{ opacity: 0 }}
             className="space-y-6"
           >
-            {/* Top 4 KPI Cards */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              
-              {/* 1. SmartScore Credit Gauge Card */}
-              <div 
-                onClick={() => setActiveTab('CREDIT')}
-                className="bg-slate-950 text-white rounded-[28px] p-5 border border-indigo-950/40 shadow-xl relative overflow-hidden group cursor-pointer hover:border-indigo-500 transition-all flex flex-col justify-between"
-              >
-                <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full filter blur-3xl" />
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block mb-1.5">
-                    SmartScore™ Credit Rating
+            {/* Upgrade 6: Owner Money Action View vs Institutional Technical ML View Toggle */}
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                    AI Lens & Operational View
                   </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-4xl font-black font-mono ${getScoreColor(creditData?.credit_score || 685)}`}>
-                      {creditData?.credit_score || '---'}
-                    </span>
-                    <span className="text-slate-400 text-xs font-bold font-mono">/ 850</span>
-                  </div>
-                  <p className="text-xs font-bold text-white mt-1.5">
-                    {creditData?.rating_tier || 'Evaluating...'}
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                    {creditData?.bank_recommendation}
-                  </p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-indigo-400 font-bold">
-                  <span>Underwriting Factors</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
+                <h3 className="text-base sm:text-lg font-black text-white mt-1">
+                  {viewMode === 'ACTION'
+                    ? '🏪 Merchant Money Actions (Plain English & Immediate Next Steps)'
+                    : '🔬 Institutional Data Science View (Scikit-Learn & Bank Underwriting Models)'}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5 max-w-2xl">
+                  {viewMode === 'ACTION'
+                    ? 'Translates complex algorithms into direct Naira impact: what to restock today, till security, generator fuel burn, and available loans & grants.'
+                    : 'Deep technical view for bank credit risk officers, microfinance auditors, and development agencies.'}
+                </p>
               </div>
 
-              {/* 2. 14-Day Cash Cliff & Fuel Monitor Card */}
-              <div 
-                onClick={() => setActiveTab('AI_AGENTS')}
-                className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm relative group cursor-pointer hover:border-emerald-300 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
-                    14-Day Cash Runway
-                  </span>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className={`text-3xl font-black font-mono ${(cashCliff?.daily_net_velocity || 0) >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {(cashCliff?.daily_net_velocity || 0) >= 0 ? '+' : ''}₦{Math.round(cashCliff?.daily_net_velocity || 16700).toLocaleString()}
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-500">/ day</span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-800 mt-1.5">
-                    Runway: {cashCliff?.runway_days || 90}+ Days Safe
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    Gen Fuel Burn: <strong>{cashCliff?.fuel_gen_burn_pct || 18.5}%</strong> of petty cash expenses.
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-emerald-600 font-bold">
-                  <span>View 14-Day Trajectory</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('ACTION')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer border-0 flex items-center gap-2 ${
+                    viewMode === 'ACTION'
+                      ? 'bg-emerald-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white bg-transparent'
+                  }`}
+                >
+                  <span>🏪</span>
+                  <span>Shop Money Actions</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('TECHNICAL')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer border-0 flex items-center gap-2 ${
+                    viewMode === 'TECHNICAL'
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white bg-transparent'
+                  }`}
+                >
+                  <span>🔬</span>
+                  <span>Institutional ML</span>
+                </button>
               </div>
-
-              {/* 3. Demand Velocity Card */}
-              <div 
-                onClick={() => setActiveTab('DEMAND')}
-                className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm relative group cursor-pointer hover:border-indigo-300 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
-                    Inventory Stockout Risk
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black font-mono text-slate-900">
-                      {forecasts.filter(f => f.urgency === 'CRITICAL' || f.urgency === 'HIGH').length}
-                    </span>
-                    <span className="text-xs font-bold text-slate-500">SKUs At Risk</span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-700 mt-1.5">
-                    Ridge Regression Forecast
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
-                    {forecasts.length > 0 
-                      ? `${forecasts[0].name} depletes in ~${forecasts[0].days_remaining} days.`
-                      : 'Inventory depletion velocity healthy across all lines.'}
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-bold">
-                  <span>Open Demand Forecaster</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-
-              {/* 4. Till Integrity Card */}
-              <div 
-                onClick={() => setActiveTab('ANOMALY')}
-                className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm relative group cursor-pointer hover:border-indigo-300 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
-                    Till Fraud Shield
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black font-mono text-emerald-600">
-                      {anomalies?.integrity_score || 100}%
-                    </span>
-                    <span className="text-xs font-bold text-slate-500">Integrity</span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-700 mt-1.5">
-                    Isolation Forest Classifier
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    {anomalies?.anomalies_found === 0
-                      ? 'Zero suspicious cash variance anomalies.'
-                      : `${anomalies?.anomalies_found} outlier shift entries flagged.`}
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-bold">
-                  <span>Inspect Audit Scanner</span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-
             </div>
+
+            {/* View Mode 1: Owner Money Action Cards (High-Converting & Actionable) */}
+            {viewMode === 'ACTION' ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Loan & Grant Readiness Action Card */}
+                <div className="bg-gradient-to-br from-slate-900 to-indigo-950/70 rounded-[28px] p-5 border border-indigo-500/40 shadow-xl flex flex-col justify-between relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                        🏛️ Loan & Grant Capacity
+                      </span>
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                        Pre-Qualified
+                      </span>
+                    </div>
+                    <div className="mt-2 text-2xl sm:text-3xl font-black text-white font-mono">
+                      Up to ₦3.5M
+                    </div>
+                    <div className="text-xs font-bold text-indigo-300 mt-1">
+                      SmartScore™: <span className="text-emerald-400">{creditData?.credit_score || 715}/850</span> (Bankable Grade)
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-2 leading-relaxed">
+                      Your verified till volume qualifies you for facilities across <strong>BOI, DBN, SMEDAN, and Commercial Banks</strong>.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-800 space-y-2">
+                    <button
+                      onClick={handleDownloadUnderwritingPDF}
+                      disabled={isExportingPDF}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isExportingPDF ? 'Generating...' : 'Download Bank Dossier (PDF)'}</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('CREDIT')}
+                      className="w-full py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border-0"
+                    >
+                      <span>Inspect Score Factors</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Shop Cash Health & Generator Fuel Burn */}
+                <div className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm flex flex-col justify-between relative group hover:border-emerald-300 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        💡 Daily Net Cash Velocity
+                      </span>
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded-full">
+                        {cashCliff?.runway_days || 90}+ Days Safe
+                      </span>
+                    </div>
+                    <div className="mt-2 text-2xl sm:text-3xl font-black text-emerald-600 font-mono">
+                      +₦{Math.round(cashCliff?.daily_net_velocity || 16700).toLocaleString()}
+                      <span className="text-xs font-bold text-slate-400">/day</span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-800 mt-1">
+                      Working Capital Runway: Healthy
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                      Generator fuel consumes <strong>{cashCliff?.fuel_gen_burn_pct || 18.5}%</strong> of your petty cash expenses. Cash inflows outpace burn.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <button
+                      onClick={() => setActiveTab('AI_AGENTS')}
+                      className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>View 14-Day Trajectory</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Fast-Moving Stockout Alert */}
+                <div className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm flex flex-col justify-between relative group hover:border-amber-300 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        📦 Stock Depletion Alert
+                      </span>
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 rounded-full">
+                        {forecasts.filter(f => f.urgency === 'CRITICAL' || f.urgency === 'HIGH').length || 1} SKU Ending
+                      </span>
+                    </div>
+                    <div className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 font-mono">
+                      ~{forecasts[0]?.days_remaining || 3} Days Left
+                    </div>
+                    <div className="text-xs font-bold text-amber-700 mt-1 truncate">
+                      {forecasts[0]?.name || 'Fast-Moving Inventory Line'}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                      Reordering now prevents losing ~₦{(forecasts[0]?.projected_lost_revenue || 45000).toLocaleString()} in paying walk-in customer sales.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                    <button
+                      onClick={() =>
+                        openWhatsAppDispatch(
+                          `Hello Supplier, please send price invoice and restock availability for: ${forecasts[0]?.name || 'Fast-moving inventory'}. Need delivery within 48 hours.`
+                        )
+                      }
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp Supplier to Reorder</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('DEMAND')}
+                      className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border-0"
+                    >
+                      <span>Check All Stock Lines</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Staff Till Security & Reconciliation */}
+                <div className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm flex flex-col justify-between relative group hover:border-indigo-300 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        🛡️ Till & Bank Verification
+                      </span>
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded-full">
+                        {anomalies?.integrity_score || 100}% Clean
+                      </span>
+                    </div>
+                    <div className="mt-2 text-2xl sm:text-3xl font-black text-indigo-700 font-mono">
+                      {anomalies?.anomalies_found === 0 ? '0 Leaks' : `${anomalies?.anomalies_found} Flagged`}
+                    </div>
+                    <div className="text-xs font-bold text-slate-800 mt-1">
+                      Shift Log & Cashbook Match
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                      {anomalies?.anomalies_found === 0
+                        ? 'Every shift entry, recorded cash receipt, and petty cash expense matches your ledger.'
+                        : `${anomalies?.anomalies_found} shift entries flagged for unusual void or cash variance.`}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab('ANOMALY');
+                      }}
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Reconcile POS & Cashbook</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('ANOMALY')}
+                      className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border-0"
+                    >
+                      <span>Inspect Audit Log</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* View Mode 2: Institutional Technical ML Models (Scikit-Learn, Ridge, Isolation Forest) */
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                {/* 1. SmartScore Credit Gauge Card */}
+                <div 
+                  onClick={() => setActiveTab('CREDIT')}
+                  className="bg-slate-950 text-white rounded-[28px] p-5 border border-indigo-950/40 shadow-xl relative overflow-hidden group cursor-pointer hover:border-indigo-500 transition-all flex flex-col justify-between"
+                >
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full filter blur-3xl" />
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block mb-1.5">
+                      SmartScore™ Credit Rating
+                    </span>
+                    <div className="flex items-baseline gap-2">
+                      <span className={`text-4xl font-black font-mono ${getScoreColor(creditData?.credit_score || 685)}`}>
+                        {creditData?.credit_score || '---'}
+                      </span>
+                      <span className="text-slate-400 text-xs font-bold font-mono">/ 850</span>
+                    </div>
+                    <p className="text-xs font-bold text-white mt-1.5">
+                      {creditData?.rating_tier || 'Evaluating...'}
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      {creditData?.bank_recommendation}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-indigo-400 font-bold">
+                    <span>Underwriting Factors</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+
+                {/* 2. 14-Day Cash Cliff & Fuel Monitor Card */}
+                <div 
+                  onClick={() => setActiveTab('AI_AGENTS')}
+                  className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm relative group cursor-pointer hover:border-emerald-300 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
+                      14-Day Cash Runway
+                    </span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={`text-3xl font-black font-mono ${(cashCliff?.daily_net_velocity || 0) >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {(cashCliff?.daily_net_velocity || 0) >= 0 ? '+' : ''}₦{Math.round(cashCliff?.daily_net_velocity || 16700).toLocaleString()}
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-500">/ day</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 mt-1.5">
+                      Runway: {cashCliff?.runway_days || 90}+ Days Safe
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      Gen Fuel Burn: <strong>{cashCliff?.fuel_gen_burn_pct || 18.5}%</strong> of petty cash expenses.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-emerald-600 font-bold">
+                    <span>View 14-Day Trajectory</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+
+                {/* 3. Demand Velocity Card */}
+                <div 
+                  onClick={() => setActiveTab('DEMAND')}
+                  className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm relative group cursor-pointer hover:border-indigo-300 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
+                      Inventory Stockout Risk
+                    </span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black font-mono text-slate-900">
+                        {forecasts.filter(f => f.urgency === 'CRITICAL' || f.urgency === 'HIGH').length}
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">SKUs At Risk</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-700 mt-1.5">
+                      Ridge Regression Forecast
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">
+                      {forecasts.length > 0 
+                        ? `${forecasts[0].name} depletes in ~${forecasts[0].days_remaining} days.`
+                        : 'Inventory depletion velocity healthy across all lines.'}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-bold">
+                    <span>Open Demand Forecaster</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+
+                {/* 4. Till Integrity Card */}
+                <div 
+                  onClick={() => setActiveTab('ANOMALY')}
+                  className="bg-white rounded-[28px] p-5 border border-slate-200 shadow-sm relative group cursor-pointer hover:border-indigo-300 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1.5">
+                      Till Fraud Shield
+                    </span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black font-mono text-emerald-600">
+                        {anomalies?.integrity_score || 100}%
+                      </span>
+                      <span className="text-xs font-bold text-slate-500">Integrity</span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-700 mt-1.5">
+                      Isolation Forest Classifier
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {anomalies?.anomalies_found === 0
+                        ? 'Zero suspicious cash variance anomalies.'
+                        : `${anomalies?.anomalies_found} outlier shift entries flagged.`}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-bold">
+                    <span>Inspect Audit Scanner</span>
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+
+              </div>
+            )}
 
             {/* Autonomous AI OS Agents Command Center (Live 1-Click Actions) */}
             {aiAgents.length > 0 && (
@@ -1068,7 +1289,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                   <span>Download Certified MSME Credit Underwriting Report</span>
                 </h3>
                 <p className="text-xs text-slate-300 leading-relaxed font-medium max-w-xl">
-                  Export a cryptographically verified PDF credit assessment to submit directly to Bank of Industry (BOI), FCMB SheVentures, NIRSAL MFB, SMEDAN, NACCIMA/NYE, and commercial banks.
+                  Export a cryptographically verified PDF credit assessment to submit directly to Bank of Industry (BOI), Development Bank of Nigeria (DBN), SMEDAN, commercial banks, MFBs, and international donor grant agencies.
                 </p>
               </div>
               <button 
@@ -1413,7 +1634,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                   Interactive "What-If" Loan & Grant Impact Simulator
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Drag the sliders below to simulate how a working capital loan or grant from BOI, FCMB SheVentures, or NIRSAL MFB affects your 90-day net profit and repayment confidence.
+                  Drag the sliders below to simulate how a working capital loan or grant from BOI, DBN, SMEDAN, commercial banks, or donor agencies affects your 90-day net profit and repayment confidence.
                 </p>
               </div>
 
@@ -1503,7 +1724,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
             {/* Download Action Card */}
             <div className="p-6 bg-white rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <h4 className="text-sm font-bold text-slate-900">Applying to BOI, FCMB SheVentures, NIRSAL MFB, or SMEDAN?</h4>
+                <h4 className="text-sm font-bold text-slate-900">Applying to BOI, DBN, SMEDAN, Commercial Banks, or Donors?</h4>
                 <p className="text-xs text-slate-500 mt-0.5">Generate a tamper-evident institutional PDF dossier certified with an SHA-256 digital verification hash.</p>
               </div>
               <button
