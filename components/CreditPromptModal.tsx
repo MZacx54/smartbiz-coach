@@ -16,10 +16,10 @@ interface CreditPromptModalProps {
 }
 
 const CREDIT_PACK_OPTIONS = [
-  { credits: 50, price: 500, label: 'Pocket Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
-  { credits: 110, price: 1000, label: 'Starter Pack', desc: '110 🪙 (+10 Bonus) for 7-day boost + photo AI' },
-  { credits: 300, price: 2500, label: 'Grower Pack', desc: '300 🪙 (+50 Bonus) for Verified Badge + Boosts', popular: true },
-  { credits: 700, price: 5000, label: 'Vendor Pro', desc: '700 🪙 (+200 Bonus) for 30-Day VIP + Full AI Studio' },
+  { credits: 50, price: 500, label: 'Micro Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
+  { credits: 150, price: 1500, label: 'Starter Pack', desc: '150 🪙 for 7-day boost + photo AI' },
+  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 🪙 (+50 Bonus) for Verified Badge + Boosts', popular: true },
+  { credits: 1000, price: 7500, label: 'Vendor Pro', desc: '1,000 🪙 (+250 Bonus) for 30-Day VIP + Full AI Studio' },
   { credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 🪙 for continuous heavy boosts & business plans' },
 ];
 

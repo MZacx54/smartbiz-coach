@@ -264,9 +264,154 @@ class AdminTransactionsView(APIView):
         if not (request.user.is_staff or request.user.is_superuser or user_email in trusted_admins):
             return Response({"error": "Admin clearance required."}, status=status.HTTP_403_FORBIDDEN)
 
-        transactions = Transaction.objects.all().order_by('-created_at')[:200]
-        serializer = TransactionSerializer(transactions, many=True)
-        return Response(serializer.data)
+        from django.db.models import Sum
+        from users.models import AgentHireRequest, PartnershipInquiry
+        from marketplace.models import Order, DailySale, DailyExpense, VendorVerification, Product
+
+        # 1. Transactions (BizCredit AI Purchases)
+        tx_qs = Transaction.objects.filter(type='CREDIT_TOPUP').select_related('user').order_by('-created_at')[:200]
+        tx_list = []
+        for t in tx_qs:
+            tx_list.append({
+                "id": t.id,
+                "username": getattr(t.user, 'username', '') if t.user else '',
+                "email": getattr(t.user, 'email', '') if t.user else '',
+                "business_name": getattr(getattr(t.user, 'brand', None), 'business_name', '') or getattr(t.user, 'business_name', '') or getattr(t.user, 'first_name', '') or 'Merchant',
+                "amount": float(t.amount or 0),
+                "description": t.description or 'BizCredit Purchase',
+                "status": t.status,
+                "reference": t.reference or '',
+                "created_at": t.created_at.isoformat() if t.created_at else ''
+            })
+
+        # 2. Storefront Orders
+        orders_qs = Order.objects.select_related('brand').prefetch_related('items').order_by('-created_at')[:200]
+        orders_list = []
+        for o in orders_qs:
+            item_summary = ", ".join([f"{item.name} x{item.quantity}" for item in o.items.all()]) or "Storefront Order"
+            orders_list.append({
+                "id": o.id,
+                "business_name": getattr(o.brand, 'business_name', '') or "Verified Merchant",
+                "customer_name": o.buyer_name or "Storefront Customer",
+                "customer_contact": f"{o.buyer_phone} ({o.delivery_state or 'NG'})".strip(),
+                "product_name": item_summary,
+                "amount": float(o.total_amount or 0),
+                "details": f"{o.delivery_state or 'Nigeria'} · Track: {o.tracking_code}",
+                "status": o.status or "PAID",
+                "created_at": o.created_at.isoformat() if o.created_at else ""
+            })
+
+        # 3. Institutional & NGO Partnership Proposals
+        inq_qs = PartnershipInquiry.objects.order_by('-created_at')[:200]
+        inquiry_list = []
+        for p in inq_qs:
+            inquiry_list.append({
+                "id": p.id,
+                "organization": p.organization or 'Organization',
+                "name": p.name or 'Representative',
+                "email": p.email or '',
+                "phone": p.phone or 'N/A',
+                "partnership_type": p.partnership_type or 'Strategic Partnership',
+                "cohort_size": p.cohort_size or 'Not specified',
+                "message": p.message or '',
+                "source": p.source or 'Direct',
+                "status": p.status or 'NEW',
+                "created_at": p.created_at.isoformat() if p.created_at else ''
+            })
+
+        # 4. CAC Accredited Agent Desk Registrations
+        cac_qs = AgentHireRequest.objects.select_related('user').order_by('-created_at')[:200]
+        cac_list = []
+        for c in cac_qs:
+            cac_list.append({
+                "id": c.id,
+                "business_name": c.business_name or 'Business Name',
+                "registration_type": c.registration_type or 'CAC Registration',
+                "user_email": getattr(c.user, 'email', '') if c.user else '',
+                "user_name": getattr(c.user, 'name', '') or getattr(c.user, 'username', '') if c.user else 'Applicant',
+                "amount": float(c.amount_paid or 0),
+                "payment_status": c.payment_status or 'PENDING',
+                "payment_reference": c.payment_reference or 'N/A',
+                "status": c.status or 'Pending',
+                "created_at": c.created_at.isoformat() if c.created_at else ''
+            })
+
+        # 5. POS Retail Day-Book & Cashflow
+        total_sales_volume = float(DailySale.objects.aggregate(total=Sum('total_amount'))['total'] or 0)
+        total_sales_count = DailySale.objects.count()
+        cash_sales_volume = float(DailySale.objects.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0)
+        transfer_sales_volume = float(DailySale.objects.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('total_amount'))['total'] or 0)
+        credit_sales_volume = float(DailySale.objects.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0)
+        total_expenses_volume = float(DailyExpense.objects.aggregate(total=Sum('amount'))['total'] or 0)
+        total_expenses_count = DailyExpense.objects.count()
+
+        pos_stats = {
+            "total_sales_volume": total_sales_volume,
+            "total_sales_count": total_sales_count,
+            "cash_sales_volume": cash_sales_volume,
+            "transfer_sales_volume": transfer_sales_volume,
+            "credit_sales_volume": credit_sales_volume,
+            "total_expenses_volume": total_expenses_volume,
+            "total_expenses_count": total_expenses_count,
+        }
+
+        # 6. Merchant Bank Subaccounts & Payout Directory
+        payout_qs = VendorVerification.objects.select_related('user').order_by('-created_at')[:200]
+        payout_list = []
+        for v in payout_qs:
+            payout_list.append({
+                "id": v.id,
+                "business_name": v.business_name or getattr(v.user, 'business_name', '') or "Merchant",
+                "business_type": v.business_type or "Retail",
+                "whatsapp_number": v.whatsapp_number or getattr(v.user, 'phone', '') or "",
+                "bank_name": v.bank_name or "Not configured",
+                "account_number": v.account_number or "",
+                "account_name": v.account_name or "",
+                "paystack_subaccount_code": v.paystack_subaccount_code or "Pending Setup",
+                "is_verified": v.is_verified,
+                "created_at": v.created_at.isoformat() if v.created_at else ""
+            })
+
+        # Top Executive Aggregates
+        total_users_count = User.objects.count()
+        active_users_count = User.objects.filter(is_active=True).count()
+        onboarded_users_count = User.objects.filter(has_onboarded=True).count()
+        total_products_count = Product.objects.count()
+        total_cac_requests = AgentHireRequest.objects.count()
+        paid_cac_requests = AgentHireRequest.objects.filter(payment_status='PAID').count()
+
+        credit_rev = float(Transaction.objects.filter(type='CREDIT_TOPUP', status='SUCCESS').aggregate(total=Sum('amount'))['total'] or 0)
+        storefront_gmv = float(Order.objects.aggregate(total=Sum('total_amount'))['total'] or 0)
+        combined_total = credit_rev + storefront_gmv
+
+        total_count = Transaction.objects.filter(type='CREDIT_TOPUP').count()
+        success_count = Transaction.objects.filter(type='CREDIT_TOPUP', status='SUCCESS').count()
+        failed_count = Transaction.objects.filter(type='CREDIT_TOPUP', status='FAILED').count()
+        pending_count = Transaction.objects.filter(type='CREDIT_TOPUP', status='PENDING').count()
+        active_subaccounts_count = VendorVerification.objects.filter(paystack_subaccount_code__isnull=False).exclude(paystack_subaccount_code='').count()
+
+        return Response({
+            "total_users_count": total_users_count,
+            "active_users_count": active_users_count,
+            "onboarded_users_count": onboarded_users_count,
+            "total_products_count": total_products_count,
+            "total_cac_requests": total_cac_requests,
+            "paid_cac_requests": paid_cac_requests,
+            "total_revenue": credit_rev,
+            "storefront_gmv": storefront_gmv,
+            "combined_total": combined_total,
+            "total_count": total_count,
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "pending_count": pending_count,
+            "active_subaccounts_count": active_subaccounts_count,
+            "transactions": tx_list,
+            "storefront_orders": orders_list,
+            "merchant_payout_directory": payout_list,
+            "partnership_inquiries": inquiry_list,
+            "cac_requests": cac_list,
+            "pos_stats": pos_stats,
+        })
 
 class PaystackWebhookView(APIView):
     permission_classes = [permissions.AllowAny]

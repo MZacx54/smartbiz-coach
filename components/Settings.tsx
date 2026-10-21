@@ -17,10 +17,10 @@ interface SettingsProps {
 }
 
 const CREDIT_PACKS = [
-  { credits: 50, price: 500, label: 'Pocket Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
-  { credits: 110, price: 1000, label: 'Starter Pack', desc: '110 🪙 (+10 Bonus) for 7-day boost + photo AI' },
-  { credits: 300, price: 2500, label: 'Grower Pack', desc: '300 🪙 (+50 Bonus) for Verified Badge + Boosts', popular: true },
-  { credits: 700, price: 5000, label: 'Vendor Pro Pack', desc: '700 🪙 (+200 Bonus) for 30-Day VIP + Full AI Studio' },
+  { credits: 50, price: 500, label: 'Micro Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
+  { credits: 150, price: 1500, label: 'Starter Pack', desc: '150 🪙 for 7-day boost + photo AI' },
+  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 🪙 (+50 Bonus) for Verified Badge + Boosts', popular: true },
+  { credits: 1000, price: 7500, label: 'Vendor Pro Pack', desc: '1,000 🪙 (+250 Bonus) for 30-Day VIP + Full AI Studio' },
   { credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 🪙 for continuous weekly boosts & business plans' },
 ];
 
@@ -188,7 +188,47 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
         setLoadingAdmin(true);
         try {
           const res = await billingService.getAdminTransactions();
-          setAdminData(res);
+          if (Array.isArray(res)) {
+            setAdminData({
+              total_revenue: (res as any[]).reduce((acc, t) => acc + (Number(t.amount) || 0), 0),
+              total_count: (res as any[]).length,
+              success_count: (res as any[]).filter(t => t.status === 'SUCCESS').length,
+              failed_count: (res as any[]).filter(t => t.status === 'FAILED').length,
+              pending_count: (res as any[]).filter(t => t.status === 'PENDING').length,
+              transactions: res as any[],
+              storefront_orders: [],
+              merchant_payout_directory: [],
+              partnership_inquiries: [],
+              cac_requests: [],
+              pos_stats: {
+                total_sales_volume: 0,
+                total_sales_count: 0,
+                cash_sales_volume: 0,
+                transfer_sales_volume: 0,
+                credit_sales_volume: 0,
+                total_expenses_volume: 0,
+                total_expenses_count: 0
+              }
+            });
+          } else if (res && typeof res === 'object') {
+            setAdminData({
+              ...res,
+              transactions: Array.isArray(res.transactions) ? res.transactions : [],
+              storefront_orders: Array.isArray(res.storefront_orders) ? res.storefront_orders : [],
+              merchant_payout_directory: Array.isArray(res.merchant_payout_directory) ? res.merchant_payout_directory : [],
+              partnership_inquiries: Array.isArray(res.partnership_inquiries) ? res.partnership_inquiries : [],
+              cac_requests: Array.isArray(res.cac_requests) ? res.cac_requests : [],
+              pos_stats: res.pos_stats || {
+                total_sales_volume: 0,
+                total_sales_count: 0,
+                cash_sales_volume: 0,
+                transfer_sales_volume: 0,
+                credit_sales_volume: 0,
+                total_expenses_volume: 0,
+                total_expenses_count: 0
+              }
+            });
+          }
         } catch (err) {
           toast.error("Failed to load admin transactions ledger");
           console.error(err);
@@ -1581,10 +1621,10 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                             </span>
                           </div>
                           <p className="text-xs font-bold text-slate-700">{ord.product_name}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">Date: {new Date(ord.created_at).toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">Date: {ord.created_at ? new Date(ord.created_at).toLocaleString() : 'N/A'}</p>
                         </div>
                         <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1">
-                          <p className="text-sm font-black text-emerald-600">₦{ord.amount.toLocaleString()}</p>
+                          <p className="text-sm font-black text-emerald-600">₦{(Number(ord.amount) || 0).toLocaleString()}</p>
                           <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase tracking-wider">
                             {ord.status}
                           </span>
@@ -1609,7 +1649,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                 <div className="divide-y divide-slate-100 overflow-y-auto max-h-[480px]">
                   {loadingAdmin ? (
                     <div className="p-8 text-center text-xs text-slate-400">Loading wallet purchases...</div>
-                  ) : !adminData || adminData.transactions.length === 0 ? (
+                  ) : !adminData?.transactions || adminData.transactions.length === 0 ? (
                     <div className="p-8 text-center text-xs text-slate-400 italic">No credit purchases recorded.</div>
                   ) : (
                     adminData.transactions.map(tx => (
@@ -1620,10 +1660,10 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                             <span className="text-[10px] text-slate-400">({tx.email})</span>
                           </div>
                           <p className="text-xs font-medium text-slate-600">{tx.description}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">Ref: {tx.reference} • {new Date(tx.created_at).toLocaleString()}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">Ref: {tx.reference} • {tx.created_at ? new Date(tx.created_at).toLocaleString() : 'N/A'}</p>
                         </div>
                         <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1">
-                          <p className="text-sm font-black text-indigo-600">₦{tx.amount.toLocaleString()}</p>
+                          <p className="text-sm font-black text-indigo-600">₦{(Number(tx.amount) || 0).toLocaleString()}</p>
                           <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
                             tx.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
                           }`}>
@@ -1702,7 +1742,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                         </div>
 
                         <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                          <span>Received: {new Date(inq.created_at).toLocaleString()}</span>
+                          <span>Received: {inq.created_at ? new Date(inq.created_at).toLocaleString() : 'N/A'}</span>
                           <div className="flex items-center gap-2">
                             <a
                               href={`mailto:${inq.email}?subject=Response to ${inq.organization} Partnership Inquiry&body=Dear ${inq.name},%0D%0A%0D%0AThank you for reaching out to SmartBiz Coach.`}
@@ -1712,7 +1752,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                             </a>
                             {inq.phone && inq.phone !== 'N/A' && (
                               <a
-                                href={`https://wa.me/${inq.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(inq.name)}%2C%20regarding%20your%20partnership%20proposal%20with%20SmartBiz%20Coach`}
+                                href={`https://wa.me/${(inq.phone || '').replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(inq.name || 'Partner')}%2C%20regarding%20your%20partnership%20proposal%20with%20SmartBiz%20Coach`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-3 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-bold text-[10px] transition-colors"
@@ -1776,11 +1816,11 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                             Applicant: <strong>{req.user_name}</strong> ({req.user_email})
                           </p>
                           <p className="text-[10px] text-slate-400 font-mono">
-                            Ref: {req.payment_reference} · Date: {new Date(req.created_at).toLocaleString()}
+                            Ref: {req.payment_reference} · Date: {req.created_at ? new Date(req.created_at).toLocaleString() : 'N/A'}
                           </p>
                         </div>
                         <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 gap-1.5">
-                          <p className="text-sm font-black text-slate-900">₦{req.amount.toLocaleString()}</p>
+                          <p className="text-sm font-black text-slate-900">₦{(Number(req.amount) || 0).toLocaleString()}</p>
                           <span className="text-[10px] font-bold bg-slate-900 text-amber-300 px-2.5 py-1 rounded-md">
                             Desk Status: {req.status}
                           </span>
