@@ -1,0 +1,62 @@
+# SmartBiz Coach — AI Business Operating System & Market Square for Nigerian MSMEs
+
+> SmartBiz Coach (https://www.smartbizcoach.com.ng/) is Nigeria's premier AI Business Operating System, National MSME Market Square, and Alternative Credit Underwriting Suite built specifically for small business owners across Nigeria.
+
+## Core Pillars & Solutions
+
+### 1. Central MSME Market Square & Personal Online Storefronts
+- **Market Square URL**: https://www.smartbizcoach.com.ng/market
+- **Personal Storefronts**: `https://www.smartbizcoach.com.ng/u/{brand_slug}`
+- **Capabilities**: Connects buyers and sellers across all 36 Nigerian states and Abuja. Zero listing fees, verified CAC and SMEDAN trust badges, 1-click WhatsApp order routing, and secure Paystack Escrow payments.
+- **Nationwide Delivery Quoting**: Automatic delivery fee calculation customized by merchants for all 36 states and FCT.
+- **Live Order Tracking**: Public tracking portal at `https://www.smartbizcoach.com.ng/track` allowing buyers to confirm receipt using a 4-digit code.
+- **Verified Buyer Reviews**: 100% verified-purchase feedback system with seller public replies.
+
+### 2. Daily Retail POS & Camera Barcode Scanner
+- **Capabilities**: 5-second counter checkout supporting Cash, POS Card, Bank Transfer, and Customer Debt.
+- **Smartphone Camera Barcode/QR Scanner**: Reads UPC/EAN barcodes using phone cameras with audio feedback, eliminating the need for expensive hardware.
+- **Anti-Theft Apprentice Lock**: Supervisor 4-digit PIN locks cashier attendants from backdating records, modifying prices, or viewing total owner profits.
+- **100% Open Market Offline PWA Mode**: Functions without internet connectivity in high-density Nigerian open markets (Alaba, Balogun, Computer Village) and syncs when reconnected.
+
+### 3. Gbege Book (Receivables & WhatsApp Debt Recovery)
+- **Capabilities**: Dual ledger tracking "Who Dey Owe Me" and "Who I Owe".
+- **WhatsApp Automated Reminders**: 3-tier polite-to-formal escalation messages with embedded encrypted Paystack debit/transfer payment links.
+- **1-Tap Invoicing & Receipts**: Instant itemized PDF receipts and automated debt reconciliation upon payment.
+
+### 4. Snap-to-Studio 2.0 (Commercial AI Photography)
+- **Capabilities**: Transforms raw smartphone photos taken on bedsheets, shop counters, or floors into 16 luxury commercial 4K sets (Marble, Fluted Wood, African Raffia, Sunlight & Shadows, Cafe Tables) with realistic contact shadows and glossy reflections.
+- **1-Click WhatsApp Promo Copy**: Auto-generates Nigerian Pidgin and English promotional broadcast and status captions.
+
+### 5. Institutional Credit Underwriting & Data Science
+- **Algorithmic FICO 300-850 Score**: Scikit-Learn machine learning engine evaluating real-world ledger volume, cashflow consistency, and debt recovery velocity without collateral.
+- **Stockout Demand Forecaster**: Ridge regression predicting exact stockout dates before weekend trading rushes.
+- **Till Fraud Isolation Forest**: Unsupervised anomaly detection uncovering petty cash leakage and cashier till discrepancies.
+
+### 6. Legal Tax Shield & Accredited CAC Desk
+- **Section 23 CITA Exemption Memo**: Official legal memorandum citing Companies Income Tax Act Section 23/40 (0% corporate tax for MSMEs with gross turnover under ₦25,000,000).
+- **Accredited CAC Desk**: Done-for-you CAC Business Name, Limited Liability Company, and SCUML registrations.
+
+## Pricing & The BizCredits Model
+- **Core Free Guarantee**: 50 Free Welcome Credits upon signup. The POS Day-Book, Camera Barcode Scanner, Apprentice Lock, Gbege Book, Unlimited Market Square Listings, and Personal Online Storefronts are 100% FREE FOREVER with zero monthly subscription traps.
+- **Micro-Compute BizCredits**:
+  - 24-Hour Spotlight Market Boost: 10 BizCredits (~₦100)
+  - 3-Day Priority Boost: 25 BizCredits (~₦250)
+  - 7-Day National VIP Boost: 50 BizCredits (~₦500)
+  - AI WhatsApp Promo Pack: 2 BizCredits
+  - Snap-to-Studio 4K Rendering: 5 BizCredits
+- **Credit Packs**:
+  - Pocket Pack: 50 Credits for ₦500 (~₦10/credit)
+  - Starter Pack: 110 Credits for ₦1,000
+  - Grower Pack: 300 Credits for ₦2,500
+  - Vendor Pro: 700 Credits for ₦5,000
+  - Mogul Pack: 2,500 Credits for ₦15,000
+
+## Official Links & Resources
+- Main Platform: https://www.smartbizcoach.com.ng
+- National Market Square: https://www.smartbizcoach.com.ng/market
+- Order Tracking: https://www.smartbizcoach.com.ng/track
+- SME Grants & Funding Guide: https://www.smartbizcoach.com.ng/grants-guide
+- CAC Registration Desk: https://www.smartbizcoach.com.ng/cac-checklist
+- SME Knowledge & Blog: https://www.smartbizcoach.com.ng/blog
+- WhatsApp Business Hotline: https://wa.me/2349064556107
+- Contact Email: support@smartbizcoach.com.ng

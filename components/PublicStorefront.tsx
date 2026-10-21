@@ -7,6 +7,8 @@ import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { mapDbToBrand } from '../services/brandService';
 import { openPaystackCheckout } from '../services/paystackService';
+import SEO from './SEO';
+import { QrCode } from 'lucide-react';
 
 // Inline SVG replacements for brand icons
 const InstagramIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -48,6 +50,7 @@ const PublicStorefront: React.FC = () => {
   });
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [selectedDetailProduct, setSelectedDetailProduct] = useState<any | null>(null);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [showStoreEditModal, setShowStoreEditModal] = useState(false);
   const [isSavingStoreProfile, setIsSavingStoreProfile] = useState(false);
   const [editStoreForm, setEditStoreForm] = useState({
@@ -633,7 +636,7 @@ const PublicStorefront: React.FC = () => {
                     <ShoppingBag className="w-5 h-5 text-slate-300" />
                  </div>
 
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 animate-in fade-in">
+                 <div className="grid grid-cols-2 gap-3 sm:gap-6 animate-in fade-in">
                     {typeProducts.map((product) => (
                       <motion.div 
                         key={product.id}

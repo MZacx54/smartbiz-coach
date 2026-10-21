@@ -5,6 +5,7 @@ import { commerceService, productShareUrl } from '../services/commerceService';
 import { NIGERIAN_STATES } from '../config/nigeriaStates';
 import { useWishlist } from '../hooks/useWishlist';
 import ReviewsSection, { Stars } from './ReviewsSection';
+import SEO from './SEO';
 import {
   ShoppingBag, ShieldCheck, MapPin, MessageCircle, CreditCard,
   Share2, Store, ArrowLeft, CheckCircle2, Truck, Plus, Minus,
@@ -624,6 +625,39 @@ const PublicProductPage: React.FC = () => {
           </section>
         )}
       </main>
+
+      {/* Mobile Sticky Bottom Action Bar for instant mobile conversion */}
+      <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] z-40 sm:hidden shadow-2xl flex items-center justify-between gap-3">
+        <div className="shrink-0 min-w-0 max-w-[130px]">
+          <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Total Amount</div>
+          <div className="text-base font-black text-emerald-700 truncate">₦{totalAmount.toLocaleString()}</div>
+        </div>
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setCheckoutMode('PAYSTACK');
+              setShowCheckoutModal(true);
+            }}
+            className="min-h-[46px] px-3.5 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 flex-1 cursor-pointer"
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>Buy Now</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCheckoutMode('WHATSAPP');
+              setShowCheckoutModal(true);
+            }}
+            className="min-h-[46px] px-3 rounded-xl bg-slate-900 active:bg-slate-800 text-white font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
+            title="Order via WhatsApp"
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-400" />
+            <span>WhatsApp</span>
+          </button>
+        </div>
+      </div>
 
       {/* Checkout Modal */}
       {showCheckoutModal && (

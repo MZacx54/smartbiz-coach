@@ -7,7 +7,8 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLMs Information (GEO)" />
   <meta name="theme-color" content="#059669" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -77,6 +78,39 @@
     }
   </style>
   <link rel="stylesheet" href="/index.css">
+  <!-- SearchAction & Organization JSON-LD for Google & Generative AI Engines -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://www.smartbizcoach.com.ng/#website",
+        "url": "https://www.smartbizcoach.com.ng/",
+        "name": "SmartBiz Coach",
+        "description": "Nigeria's #1 AI Business Operating System, National MSME Market Square & Alternative Credit Underwriting Suite.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://www.smartbizcoach.com.ng/market?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://www.smartbizcoach.com.ng/#organization",
+        "name": "SmartBiz Coach",
+        "url": "https://www.smartbizcoach.com.ng/",
+        "logo": "https://www.smartbizcoach.com.ng/logo-square.png",
+        "sameAs": [
+          "https://www.facebook.com/profile.php?id=61580131486753",
+          "https://www.instagram.com/smartbizcoach1/",
+          "https://www.linkedin.com/in/meshach-zachariah-5a578912a/",
+          "https://wa.me/2349064556107"
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 
 <body>

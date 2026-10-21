@@ -15,6 +15,7 @@ import api from '../services/api';
 import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 import { MerchantProfileDrawer } from './MerchantProfileDrawer';
+import SEO from './SEO';
 
 interface MarketplaceProps {
   onAddToCart?: (item: UnifiedItem) => void;
@@ -289,8 +290,40 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
   const hasAuthToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('sb_auth_token'));
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.smartbizcoach.com.ng';
+  const marketplaceUrl = `${origin}/market`;
+
+  const marketplaceSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    'name': 'Nigerian MSME Market Square',
+    'url': marketplaceUrl,
+    'description': 'The central national marketplace for verified Nigerian small businesses. Browse physical goods, professional services, commercial property, and B2B wholesale offers across all 36 Nigerian states and Abuja.',
+    'isPartOf': {
+      '@type': 'WebSite',
+      'name': 'SmartBiz Coach',
+      'url': origin
+    },
+    'mainEntity': {
+      '@type': 'ItemList',
+      'itemListElement': (displayedItems || []).slice(0, 20).map((it, idx) => ({
+        '@type': 'ListItem',
+        'position': idx + 1,
+        'url': `${origin}/p/${it.id}`,
+        'name': it.name
+      }))
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 pb-24 px-3 sm:px-6">
+    <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 pb-24 px-3 sm:px-6 overflow-touch">
+      <SEO
+        title="Nigerian MSME Market Square — Buy from Verified Local Businesses across 36 States"
+        description="The central digital marketplace for Nigerian MSMEs. Discover authentic local fashion, electronics, beauty, groceries, and services from CAC verified sellers across all 36 states and Abuja. Pay via Paystack escrow or order directly on WhatsApp."
+        url={marketplaceUrl}
+        keywords="Nigerian marketplace, MSME market square, buy local Nigeria, Lagos fashion, Computer Village phones, Abuja wholesale, Nigerian small business directory, Paystack escrow checkout"
+        schema={marketplaceSchema}
+      />
       {/* Public Top Navigation Bar when accessed at /market or market.smartbizcoach.com.ng */}
       {isPublicMode && (
         <header className="sticky top-0 z-40 -mx-3 sm:-mx-6 px-4 sm:px-6 py-3 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between gap-3">
@@ -687,7 +720,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       )}
 
       {/* ── 6. Main Modern Commerce Product & B2B Grid ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         <AnimatePresence mode="popLayout">
           {displayedItems.map((item) => {
             const isBoosted = item.is_promoted;
@@ -750,7 +783,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 </div>
 
                 {/* Card Content Details */}
-                <div className="p-4 sm:p-5 flex flex-col flex-1 space-y-3">
+                <div className="p-3 sm:p-5 flex flex-col flex-1 space-y-2 sm:space-y-3">
                   
                   {/* Vendor Brand & Verified Badge (Click to open Drawer) */}
                   <div className="flex items-center justify-between gap-2">
@@ -795,10 +828,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
                   {/* Title & Price */}
                   <div onClick={() => setSelectedItem(item)} className="cursor-pointer">
-                    <h3 className="text-sm sm:text-base font-extrabold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="text-xs sm:text-base font-extrabold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
                       {item.name}
                     </h3>
-                    <p className="text-base sm:text-lg font-black text-slate-900 font-heading mt-0.5">
+                    <p className="text-sm sm:text-lg font-black text-slate-900 font-heading mt-0.5">
                       ₦{Number(item.price).toLocaleString()}
                     </p>
                   </div>

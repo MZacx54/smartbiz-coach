@@ -6,11 +6,18 @@
 
 :root {
   --primary-glow: conic-gradient(from 180deg at 50% 50%, #2a8af6 0deg, #a853ba 180deg, #e92a67 360deg);
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
 }
 
-body {
+html, body {
   @apply text-slate-900 bg-slate-50 antialiased;
   font-family: 'Inter', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -22,12 +29,41 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .animate-in {
-  animation: fadeIn 0.5s ease-out;
+  animation: fadeIn 0.4s ease-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Safe-area utility classes for notch and home-bar devices */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.min-h-screen-safe {
+  min-height: calc(100vh - env(safe-area-inset-bottom, 0px));
+}
+
+/* Prevent unwanted mobile browser auto-zoom on input focus */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Mobile momentum touch scrolling */
+.overflow-touch {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -37,5 +73,5 @@ h1, h2, h3, h4, h5, h6 {
 /* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  scrollbar-width: none;     /* Firefox */
 }

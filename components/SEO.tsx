@@ -46,36 +46,36 @@ const SEO: React.FC<SEOProps> = ({
         'offers': [
           {
             '@type': 'Offer',
-            'name': 'Core Free Tier (POS, FICO Score, Market Square)',
+            'name': 'Core Free Tier (POS, Day-Book, FICO Score, Unlimited Market Listings)',
             'price': '0',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Micro Pack (40 BizCredits)',
+            'name': 'Pocket Pack (50 BizCredits)',
             'price': '500',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Starter Pack (150 BizCredits)',
-            'price': '1500',
+            'name': 'Starter Pack (110 BizCredits)',
+            'price': '1000',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Grower Pack (400 BizCredits)',
-            'price': '3500',
+            'name': 'Grower Pack (300 BizCredits)',
+            'price': '2500',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Vendor Pro Pack (1,000 BizCredits)',
-            'price': '7500',
+            'name': 'Vendor Pro Pack (700 BizCredits)',
+            'price': '5000',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },

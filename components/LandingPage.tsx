@@ -1614,16 +1614,19 @@ const LandingPage: React.FC = () => {
             </footer>
 
             {/* ═══════════ STICKY MOBILE FLOATING CTA BAR ═══════════ */}
-            <div className="md:hidden fixed bottom-0 inset-x-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/80 p-3 z-40 flex items-center justify-between shadow-2xl">
-                <div className="flex items-center gap-2.5">
-                    <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover shadow-sm flex-shrink-0" />
-                    <div>
-                        <div className="text-white text-xs font-bold font-heading leading-tight">SmartBiz Coach</div>
-                        <div className="text-[9px] text-green-400 font-semibold">Active Pilot Cohort</div>
-                    </div>
-                </div>
-                <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-4 py-2.5 rounded-xl font-extrabold text-xs shadow-lg shadow-green-600/30 active:scale-95 transition-all">
-                    🚀 Start Free →
+            <div className="md:hidden fixed bottom-0 inset-x-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800/80 px-4 py-2.5 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] z-40 flex items-center justify-between gap-2 shadow-2xl">
+                <button
+                    onClick={() => navigate('/market')}
+                    className="flex-1 min-h-[44px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-700 active:scale-95 transition"
+                >
+                    <span>🇳🇬</span>
+                    <span>Market Square</span>
+                </button>
+                <button
+                    onClick={() => navigate('/register')}
+                    className="flex-1 min-h-[44px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-3 py-2 rounded-xl font-black text-xs shadow-lg shadow-green-600/30 active:scale-95 transition flex items-center justify-center gap-1"
+                >
+                    <span>🚀 Free +50 🪙</span>
                 </button>
             </div>
         </div>

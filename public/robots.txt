@@ -1,10 +1,10 @@
-# SmartBiz Coach Robots.txt - Search & AI Engine Optimization (SEO & GEO)
+# SmartBiz Coach Robots.txt - Search & Generative AI Engine Optimization (SEO & GEO)
 User-agent: *
 Allow: /
 Disallow: /dashboard/
 Disallow: /api/
 
-# AI Generative Search Engines (GEO)
+# AI Generative Search Engines & LLMs (GEO)
 User-agent: GPTBot
 Allow: /
 
@@ -17,10 +17,26 @@ Allow: /
 User-agent: ClaudeBot
 Allow: /
 
-User-agent: Google-Extended
-Allow: /
-
 User-agent: AnthropicBot
 Allow: /
 
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# LLM Direct Knowledge Context
+# https://www.smartbizcoach.com.ng/llms.txt
+
 Sitemap: https://www.smartbizcoach.com.ng/sitemap.xml
+Sitemap: https://api.smartbizcoach.com.ng/api/marketplace/sitemap-market.xml

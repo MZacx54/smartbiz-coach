@@ -382,7 +382,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     };
 
     const BottomBar = (
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1 pb-[env(safe-area-inset-bottom)]">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] shadow-2xl">
             <div className="flex items-center">
                 <Tab id="home" />
                 <Tab id="sell" />
@@ -487,12 +487,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     );
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-slate-50 overflow-touch selection:bg-emerald-500 selection:text-white">
             {Sidebar}
             <div className="flex-1 min-w-0 flex flex-col">
                 {TopBar}
                 <main className="flex-1 p-3 sm:p-5 md:p-8">
-                    <div className="max-w-5xl mx-auto pb-28 md:pb-8">{children}</div>
+                    <div className="max-w-5xl mx-auto pb-32 md:pb-8">{children}</div>
                 </main>
             </div>
             {BottomBar}
