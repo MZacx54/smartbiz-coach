@@ -4,7 +4,7 @@ import { Heart } from 'lucide-react';
 import { useWishlist } from '../hooks/useWishlist';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ShoppingBag, Search, Filter, MapPin, Star, ArrowRight, Tag, 
+  ShoppingBag, Search, Filter, MapPin, SlidersHorizontal, RefreshCw, Star, ArrowRight, Tag, 
   ShieldCheck, Zap, Home, Briefcase, Globe, X, Megaphone, 
   ChevronRight, Phone, MessageCircle, Sparkles, CheckCircle2,
   Building, Truck, Users, Package, Award, ArrowUpDown, Store,
@@ -103,8 +103,16 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   const routeParams = useParams<{ category?: string; state?: string }>();
   const wishlist = useWishlist();
   const [activeTab, setActiveTab] = useState<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B'>(initialType);
-  const [items, setItems] = useState<UnifiedItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<UnifiedItem[]>(() => {
+    try {
+      const cached = localStorage.getItem(`sb_marketplace_cache_${initialType}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(() => items.length === 0);
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>(() => routeParams.category ? decodeURIComponent(routeParams.category) : '');
   const [selectedLocation, setSelectedLocation] = useState<string>(() => routeParams.state ? decodeURIComponent(routeParams.state) : '');
@@ -136,6 +144,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   const [isVisualSearching, setIsVisualSearching] = useState(false);
   const [visualSearchResults, setVisualSearchResults] = useState<any | null>(null);
 
+  const activeFilterCount = (selectedCategory ? 1 : 0) + (selectedLocation ? 1 : 0) + (selectedPriceBucket ? 1 : 0) + (verifiedOnly ? 1 : 0) + (dealsOnly ? 1 : 0);
+
   const fetchItems = async (forceRefresh = false) => {
     const bucket = PRICE_BUCKETS.find(b => b.id === selectedPriceBucket);
     const minPrice = bucket?.min || '';
@@ -150,7 +160,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       return;
     }
 
-    if (!cached) {
+    if (!cached && items.length === 0) {
       setIsLoading(true);
     }
 
@@ -168,10 +178,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           sort_by: sortBy
         }
       });
-      setItems(response.data);
-      marketplaceClientCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
-    } catch (err) {
-      if (!cached) toast.error('Failed to load marketplace');
+      if (Array.isArray(response.data)) {
+        setItems(response.data);
+        marketplaceClientCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
+        if (!searchQuery && !selectedCategory && !selectedLocation && !selectedPriceBucket) {
+          try {
+            localStorage.setItem(`sb_marketplace_cache_${activeTab}`, JSON.stringify(response.data));
+          } catch {}
+        }
+      }
+    } catch (err: any) {
+      console.warn('Marketplace fetch error:', err);
+      if (items.length === 0) {
+        toast.error('Could not load listings. Tap "Refresh Marketplace" to retry.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -179,6 +199,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
   useEffect(() => {
     setSelectedCategory('');
+    try {
+      const cached = localStorage.getItem(`sb_marketplace_cache_${activeTab}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItems(parsed);
+        }
+      }
+    } catch {}
     fetchItems();
   }, [activeTab]);
 
@@ -515,19 +544,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         </div>
       </div>
 
-      {/* ── 3. Subcategories Pills Bar for ACTIVE Tab ── */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-2 px-2">
+      {/* ── 3. Streamlined Discovery & Filter Control Bar ── */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-3 sm:p-4 shadow-sm space-y-3">
+        {/* Top Control Strip: Subcategories Chips (Horizontally Scrollable) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-1">
           {PILLAR_SUBCATEGORIES[activeTab].map(cat => {
             const isSelected = selectedCategory === cat.value;
             return (
               <button
                 key={cat.value}
                 onClick={() => setSelectedCategory(cat.value)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
                   isSelected
-                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                    ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                    : 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <span>{cat.icon}</span>
@@ -537,112 +567,97 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           })}
         </div>
 
-        {/* ── 4. Multi-Faceted Nigerian Discovery Filter Bar ── */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-3 shadow-sm space-y-3">
-          
-          {/* Nigerian Commercial Trade Hubs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 mr-1 flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-indigo-600" /> Hub:
-            </span>
-            {NIGERIAN_GEO_HUBS.map(hub => {
-              const isSelected = selectedLocation === hub.id;
-              return (
-                <button
-                  key={hub.id}
-                  onClick={() => setSelectedLocation(hub.id)}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border cursor-pointer ${
-                    isSelected
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
-                      : 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  {hub.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Price Buckets & Verified Toggle & Sorter */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-            
-            {/* Price Buckets */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 mr-1 flex items-center gap-1">
-                <Tag className="w-3 h-3 text-emerald-600" /> Price:
-              </span>
-              {PRICE_BUCKETS.map(bucket => {
-                const isSelected = selectedPriceBucket === bucket.id;
-                return (
-                  <button
-                    key={bucket.id}
-                    onClick={() => setSelectedPriceBucket(bucket.id)}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap transition-all border cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-600 border-emerald-600 text-white'
-                        : 'bg-slate-50 border-slate-200/60 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    {bucket.label}
-                  </button>
-                );
-              })}
+        {/* Bottom Control Strip: State Selector + Quick Toggles + Filter Drawer Trigger + Sorter */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+          {/* Left: Commercial Hub & State Dropdown Selector + Quick Chips */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-600 pointer-events-none" />
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 rounded-xl pl-8 pr-7 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none transition-colors"
+                title="Filter by Nigerian State or Commercial Trade Hub"
+              >
+                {NIGERIAN_GEO_HUBS.map(hub => (
+                  <option key={hub.id} value={hub.id}>{hub.label}</option>
+                ))}
+              </select>
+              <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 rotate-90 pointer-events-none" />
             </div>
 
-            {/* Right Controls: Verified MSME Only + Sorter */}
-            <div className="flex items-center gap-3 ml-auto">
-              {/* Flash Deals Toggle */}
-              <button
-                type="button"
-                onClick={() => setDealsOnly(v => !v)}
-                className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold border cursor-pointer transition-all ${
-                  dealsOnly ? 'bg-rose-600 text-white border-rose-600' : 'bg-rose-50/70 text-rose-700 border-rose-200'
-                }`}
-              >
-                🔥 Flash Deals
-              </button>
+            {/* Quick Chips: Flash Deals */}
+            <button
+              type="button"
+              onClick={() => setDealsOnly(v => !v)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border cursor-pointer transition-all ${
+                dealsOnly ? 'bg-rose-600 text-white border-rose-600 shadow-sm' : 'bg-rose-50/70 text-rose-700 border-rose-200 hover:bg-rose-100/70'
+              }`}
+            >
+              🔥 Flash Deals
+            </button>
 
-              {/* Saved / Wishlist Toggle */}
-              <button
-                type="button"
-                onClick={() => setSavedOnly(v => !v)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-extrabold border cursor-pointer transition-all ${
-                  savedOnly ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-slate-700 border-slate-200'
-                }`}
-              >
-                <Heart className={`w-3 h-3 ${savedOnly ? 'fill-white' : 'text-pink-600'}`} />
-                <span>Saved ({wishlist.ids.length})</span>
-              </button>
+            {/* Quick Chips: Verified MSMEs */}
+            <button
+              type="button"
+              onClick={() => setVerifiedOnly(v => !v)}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-extrabold border cursor-pointer transition-all ${
+                verifiedOnly ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-emerald-50/70 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Verified MSMEs</span>
+            </button>
 
-              {/* Verified Toggle */}
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-700 bg-emerald-50/60 border border-emerald-200/70 px-2.5 py-1 rounded-xl">
-                <input
-                  type="checkbox"
-                  checked={verifiedOnly}
-                  onChange={(e) => setVerifiedOnly(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
-                />
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-[11px]">Verified MSMEs Only</span>
-              </label>
-
-              {/* Sorter Selector */}
-              <div className="flex items-center gap-1 text-xs">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
-                >
-                  <option value="boosted">⚡ Featured & Boosted</option>
-                  <option value="price_low">💵 Price: Low to High</option>
-                  <option value="price_high">💎 Price: High to Low</option>
-                  <option value="newest">✨ Newest Listed</option>
-                </select>
-              </div>
-            </div>
-
+            {/* Quick Chips: Saved Wishlist */}
+            <button
+              type="button"
+              onClick={() => setSavedOnly(v => !v)}
+              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-extrabold border cursor-pointer transition-all ${
+                savedOnly ? 'bg-pink-600 text-white border-pink-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${savedOnly ? 'fill-white' : 'text-pink-600'}`} />
+              <span>Saved ({wishlist.ids.length})</span>
+            </button>
           </div>
 
+          {/* Right: Deep Filter Drawer Trigger + Sorter Dropdown */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Filter Drawer Button */}
+            <button
+              type="button"
+              onClick={() => setShowFilterDrawer(true)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                activeFilterCount > 0 
+                  ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
+              <span>More Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center ml-0.5">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Sorter Selector */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 rounded-xl pl-3 pr-7 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none transition-colors"
+              >
+                <option value="boosted">⚡ Featured</option>
+                <option value="price_low">💵 Price: Low to High</option>
+                <option value="price_high">💎 Price: High to Low</option>
+                <option value="newest">✨ Newest</option>
+              </select>
+              <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 rotate-90 pointer-events-none" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -891,7 +906,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     )}
                   </div>
 
-                  {/* 1-Tap Quick Action Buttons on Card */}
+                  {/* Modern, High-Converting 1-Tap Action Bar */}
                   <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-1.5">
                     {item.product_type === 'PHYSICAL' ? (
                       <button
@@ -903,59 +918,62 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                             navigate(getProductDeepLink(item));
                           }
                         }}
-                        className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white text-xs font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
-                        <ShoppingBag className="w-3.5 h-3.5" /> {isPublicMode || !onAddToCart ? 'Buy Now' : 'Buy / Bag'}
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>{onAddToCart && !isPublicMode ? 'Add to Cart' : 'Buy Now'}</span>
                       </button>
                     ) : item.product_type === 'B2B' ? (
                       <button
                         onClick={() => setRfqItem(item)}
-                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all shadow-sm shadow-amber-600/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
-                        <Package className="w-3.5 h-3.5" /> Request Quote
+                        <Package className="w-3.5 h-3.5" />
+                        <span>Wholesale RFQ</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => navigate(getProductDeepLink(item))}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all shadow-sm shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                       >
-                        <span>📋</span> Book / View
+                        <span>{item.product_type === 'PROPERTY' ? '🏡 Inquire' : '💼 Book Service'}</span>
                       </button>
                     )}
 
-                    {/* Open Dedicated Product Page */}
-                    <button
-                      onClick={() => navigate(getProductDeepLink(item))}
-                      className="w-9 h-9 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                      title="Open Product Page & Seller Store"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
-                    </button>
-
-                    {/* Direct WhatsApp Quick Chat */}
+                    {/* Instant Direct WhatsApp Order & Chat */}
                     <button
                       onClick={() => {
                         const rawNum = item.whatsapp_number || '2349064556107';
                         const cleanNum = rawNum.replace(/\D/g, '');
                         const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
                         const text = encodeURIComponent(
-                          `Hello ${item.brand_name || 'Vendor'}! I saw your listing "${item.name}" (₦${Number(item.price).toLocaleString()}) on the SmartBiz Nigerian Market Square and would like to make an inquiry.`
+                          `Hello ${item.brand_name || 'Vendor'}! I saw your listing "${item.name}" (₦${Number(item.price).toLocaleString()}) on the SmartBiz Nigerian Market Square and would like to order / make an inquiry.`
                         );
                         window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
                       }}
-                      className="w-9 h-9 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                      title="Chat directly with vendor on WhatsApp"
+                      className="px-2.5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-800 text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0"
+                      title="Instant WhatsApp Order & Chat"
                     >
-                      <MessageCircle className="w-4 h-4 text-emerald-600" />
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="hidden sm:inline text-[11px]">WhatsApp</span>
+                    </button>
+
+                    {/* Open Dedicated Product Page & Store */}
+                    <button
+                      onClick={() => navigate(getProductDeepLink(item))}
+                      className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer shrink-0"
+                      title="Open Product Page & Seller Store"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </button>
 
                     {/* Share Button */}
                     <button
                       onClick={() => handleShareListing(item)}
-                      className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer shrink-0"
                       title="Copy Product Link & Share to WhatsApp Status"
                     >
-                      <Share2 className="w-3.5 h-3.5 text-slate-600" />
+                      <Share2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -964,30 +982,58 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           })}
         </AnimatePresence>
 
-        {/* Empty State */}
+        {/* Loading Skeleton Placeholders */}
+        {isLoading && items.length === 0 && (
+          <div className="col-span-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-3 border border-slate-200/80 space-y-3 animate-pulse shadow-sm">
+                <div className="aspect-[4/3] rounded-xl bg-slate-200" />
+                <div className="h-3 bg-slate-200 rounded w-2/3" />
+                <div className="h-4 bg-slate-200 rounded w-4/5" />
+                <div className="h-4 bg-slate-200 rounded w-1/3" />
+                <div className="h-9 bg-slate-200 rounded-xl w-full" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty State with One-Click Refresh */}
         {items.length === 0 && !isLoading && (
-          <div className="col-span-full py-20 text-center space-y-4 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 p-8">
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-md text-2xl">
-               🇳🇬
+          <div className="col-span-full py-16 text-center space-y-4 bg-white rounded-3xl border border-slate-200/80 p-8 shadow-sm">
+            <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm text-2xl font-bold">
+              🛍️
             </div>
             <div className="space-y-1">
-              <h3 className="text-lg font-extrabold text-slate-800">No Listings Found</h3>
-              <p className="text-slate-400 max-w-md mx-auto text-xs leading-relaxed">
-                No listings match your current filters. Clear your location, budget, or category to discover other products across Nigeria.
+              <h3 className="text-lg font-black text-slate-800">No Listings Found</h3>
+              <p className="text-slate-500 max-w-md mx-auto text-xs leading-relaxed">
+                {searchQuery || selectedCategory || selectedLocation || selectedPriceBucket || verifiedOnly || dealsOnly
+                  ? "No listings match your active filters. Try clearing your filters to discover verified Nigerian products across all 36 states."
+                  : "Checking for active listings across Nigeria... Tap Refresh below to reload."}
               </p>
             </div>
-            <button
-              onClick={() => {
-                setSelectedCategory('');
-                setSelectedLocation('');
-                setSelectedPriceBucket('');
-                setVerifiedOnly(false);
-                setSearchQuery('');
-              }}
-              className="text-xs font-extrabold text-indigo-600 underline cursor-pointer"
-            >
-              Clear All Filters
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => fetchItems(true)}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-2 shadow-sm transition-all cursor-pointer active:scale-95"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh Marketplace
+              </button>
+              {(searchQuery || selectedCategory || selectedLocation || selectedPriceBucket || verifiedOnly || dealsOnly) && (
+                <button
+                  onClick={() => {
+                    setSelectedCategory('');
+                    setSelectedLocation('');
+                    setSelectedPriceBucket('');
+                    setVerifiedOnly(false);
+                    setDealsOnly(false);
+                    setSearchQuery('');
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1286,6 +1332,139 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           setSelectedItem(item);
         }}
       />
+
+      {/* ── Slide-over / Modal for Deep Filters ── */}
+      <AnimatePresence>
+        {showFilterDrawer && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowFilterDrawer(false)}
+              className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 space-y-5 z-10 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-5 h-5 text-emerald-600" />
+                  <h3 className="text-base font-extrabold text-slate-900">Filter Marketplace</h3>
+                </div>
+                <button 
+                  onClick={() => setShowFilterDrawer(false)} 
+                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Price Range Buckets */}
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-emerald-600" /> Price Range
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PRICE_BUCKETS.map(bucket => {
+                    const isSelected = selectedPriceBucket === bucket.id;
+                    return (
+                      <button
+                        key={bucket.id}
+                        type="button"
+                        onClick={() => setSelectedPriceBucket(bucket.id)}
+                        className={`text-xs font-bold px-3 py-2 rounded-xl transition-all border text-left cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {bucket.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Commercial Trade Hub / Location */}
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-indigo-600" /> State or Commercial Hub
+                </label>
+                <select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  {NIGERIAN_GEO_HUBS.map(hub => (
+                    <option key={hub.id} value={hub.id}>{hub.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Verification & Flash Deals Toggles */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <p className="text-xs font-black text-slate-900">Verified MSMEs Only</p>
+                      <p className="text-[10px] text-slate-500">Show businesses with verified identity & CAC details</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={verifiedOnly}
+                    onChange={(e) => setVerifiedOnly(e.target.checked)}
+                    className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🔥</span>
+                    <div>
+                      <p className="text-xs font-black text-slate-900">Flash Deals Only</p>
+                      <p className="text-[10px] text-slate-500">Listings with active limited-time discounts</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={dealsOnly}
+                    onChange={(e) => setDealsOnly(e.target.checked)}
+                    className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              {/* Actions: Clear & Done */}
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPriceBucket('');
+                    setSelectedLocation('');
+                    setVerifiedOnly(false);
+                    setDealsOnly(false);
+                    setSelectedCategory('');
+                  }}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Reset All Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterDrawer(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold shadow-sm transition-colors cursor-pointer"
+                >
+                  Apply & View Results
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── 10. Cutting-Edge AI Feature: Visual Search by Photo Modal ── */}
       {showVisualSearchModal && (

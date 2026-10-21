@@ -1,10 +1,13 @@
 import axios from 'axios';
 
 // Base URL comes from the Vercel environment variable VITE_API_URL
-// which must be set to: https://api.smartbizcoach.com.ng
+// which defaults to: https://api.smartbizcoach.com.ng
 let BASE_URL = import.meta.env.VITE_API_URL || 'https://api.smartbizcoach.com.ng';
 // Normalize trailing slashes and strip redundant /api suffix
 BASE_URL = BASE_URL.replace(/\/api\/?$/, '');
+
+// Direct Render production fallback for bulletproof global availability & ISP DNS resilience
+const FALLBACK_API_ORIGIN = 'https://smartbiz-coach.onrender.com';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/`,
@@ -23,6 +26,7 @@ const isCacheableGet = (url?: string): boolean => {
   if (!url) return false;
   return (
     url.includes('marketplace/products') ||
+    url.includes('marketplace/global') ||
     url.includes('marketplace/daily-sales') ||
     url.includes('marketplace/daily-expenses') ||
     url.includes('marketplace/daily-summary') ||
@@ -55,10 +59,16 @@ api.interceptors.request.use(
       }
     }
 
-    // For lightweight cacheable GET requests (non-AI), use a 12s timeout if none was specified
-    // so offline fallback triggers quickly without affecting any AI POST/GET endpoints.
     const method = (config.method || 'get').toLowerCase();
-    if (method === 'get' && isCacheableGet(config.url) && (!config.timeout || config.timeout === 180000)) {
+    const url = config.url || '';
+
+    // Allow Render cold-starts up to 35 seconds for public marketplace listings
+    if (method === 'get' && url.includes('marketplace/global')) {
+      if (!config.timeout || config.timeout === 180000) {
+        config.timeout = 35000;
+      }
+    } else if (method === 'get' && isCacheableGet(url) && (!config.timeout || config.timeout === 180000)) {
+      // For lightweight fast POS/dashboard routes, 12s allows quick offline fallback
       config.timeout = 12000;
     }
 
@@ -67,7 +77,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Cache successful GET responses & provide automatic offline/timeout GET fallback
+// Cache successful GET responses & provide automatic offline/timeout GET fallback + Render failover
 api.interceptors.response.use(
   (response) => {
     const method = (response.config.method || 'get').toLowerCase();
@@ -84,10 +94,26 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     const config = error?.config;
     const method = (config?.method || '').toLowerCase();
     const url = config?.url || '';
+
+    // Automated Failover: If custom subdomain API (api.smartbizcoach.com.ng) encounters DNS failure,
+    // connection drop, or network error, immediately retry against the direct Render origin.
+    if (
+      config &&
+      !config._hasFailedOver &&
+      (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED' || !error.response)
+    ) {
+      config._hasFailedOver = true;
+      config.baseURL = `${FALLBACK_API_ORIGIN}/api/`;
+      try {
+        return await axios(config);
+      } catch (fallbackError) {
+        // Continue to offline cache fallback
+      }
+    }
 
     // If a cacheable GET request failed due to network offline or timeout (no HTTP status response),
     // serve the last known good cached response so the platform stays fast and functional offline.

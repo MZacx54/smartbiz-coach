@@ -157,6 +157,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'https://smartbizcoach.com.ng',
     'https://www.smartbizcoach.com.ng',
+    'https://market.smartbizcoach.com.ng',
     'https://api.smartbizcoach.com.ng',
     'http://localhost:5173',
     'http://localhost:3000',
@@ -183,7 +184,7 @@ CORS_ALLOW_HEADERS = [
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000,https://*.railway.app,https://*.onrender.com,https://smartbiz-coach.onrender.com,https://smartbizcoach.com.ng,https://www.smartbizcoach.com.ng,https://api.smartbizcoach.com.ng').split(',')
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000,https://*.railway.app,https://*.onrender.com,https://smartbiz-coach.onrender.com,https://smartbizcoach.com.ng,https://www.smartbizcoach.com.ng,https://market.smartbizcoach.com.ng,https://api.smartbizcoach.com.ng').split(',')
     if origin.strip()
 ]
 
