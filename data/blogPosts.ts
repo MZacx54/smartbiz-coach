@@ -788,10 +788,11 @@ export const BLOG_POSTS: BlogPost[] = [
                 paragraphs: [
                     'Access to affordable capital is the lifeblood of business expansion. With commercial bank lending rates hovering between 28% and 36%, taking standard commercial bank loans to buy raw materials or equipment is commercial suicide for most small businesses.',
                     'Fortunately, concessionary intervention capital exists. Active funds currently disbursing across Nigeria include:',
-                    '1. The Bank of Industry (BOI) MSME Growth Fund: Concessionary single-digit loans (9%–12% per annum) for equipment acquisition and working capital.',
-                    '2. SMEDAN Matching Fund Program: Partnering with commercial and microfinance banks to offer low-interest matching facilities for registered businesses.',
-                    '3. Presidential Palliative Grant & Loan Scheme: Single-digit facilities for nano-enterprises and manufacturing SMEs nationwide.',
-                    '4. Development Bank of Nigeria (DBN) On-Lending Facilities: Long-tenor wholesale funding disbursed through participating financial institutions.'
+                    '1. The Bank of Industry (BOI) MSME Growth & Industrial Mandate: Concessionary single-digit facilities (9%–12% p.a.) for equipment acquisition and manufacturing.',
+                    '2. Development Bank of Nigeria (DBN) Wholesale On-Lending: Multi-billion Naira long-tenor facilities disbursed through participating commercial and microfinance banks.',
+                    '3. SMEDAN Matching Fund & Federal MSME Expansion Fund: Low-interest matching capital for formal nano and micro enterprises across all 36 States and the FCT.',
+                    '4. Tier-1 Microfinance & Commercial Bank Cashflow Credit: IFRS-9 compliant unsecured working capital underwritten by verified daily POS/cashbook turnover.',
+                    '5. International Impact Donors & Foundations: Equity-free catalytic grants from the Tony Elumelu Foundation (TEF), AfDB, and USAID targeting youth and women-led enterprises.'
                 ]
             },
             {
@@ -819,7 +820,8 @@ export const BLOG_POSTS: BlogPost[] = [
                 list: [
                     'Institutional Executive Summary: Articulating your business model, value proposition, and fund utilization breakdown.',
                     '5-Year Financial Forecasting: Complete with realistic revenue ramps, COGS, EBITDA, net operating profit, and cumulative cash reserves.',
-                    'Break-Even & Sensitivity Analysis: Demonstrating to loan officers that your business remains solvent even during severe inflationary shocks.',
+                    'Monte Carlo 1,000-Path Stress-Test: Simulating 90-day cashflow trajectories under varying inflation and revenue shocks to prove repayment solvency to credit committees.',
+                    'Break-Even & Sensitivity Analysis: Demonstrating to loan officers that your business maintains DSCR ≥ 1.30x even during macro currency devaluations.',
                     'CapEx and Working Capital Schedule: Itemized asset procurement budgets ready for equipment loan disbursements.',
                     'Institutional PDF Export: Clean, professionally styled PDF formatting accepted by commercial banks across Nigeria.'
                 ]
@@ -1035,7 +1037,10 @@ export const BLOG_POSTS: BlogPost[] = [
                 paragraphs: [
                     'Many modern AI startups build features by sending customer queries to expensive proprietary cloud APIs (charging $0.03 to $0.10 per call). For a Nigerian small business, such cost structures inevitably translate into monthly subscription paywalls that informal retailers cannot sustain.',
                     'SmartBiz Coach solved this dilemma through engineering elegance: we built our core data science engine directly on Python\'s battle-tested Scikit-Learn and NumPy libraries running serverlessly on our backend infrastructure. Because standard machine learning models execute deterministic mathematical linear algebra without external GPU token meters, the operational cost is near-zero.',
-                    'This enables us to offer the entire Data Science Hub—including FICO scoring, Ridge regression, and Isolation Forest fraud audits—completely free to every verified merchant.'
+                    'This enables us to offer the entire Data Science Hub—including FICO scoring, Ridge regression, and Isolation Forest fraud audits—completely free to every verified merchant.',
+                    'Crucially, SmartBiz Coach bridges the gap between complex algorithms and busy market merchants through the new AI Lens Selector:',
+                    '• 🏪 Merchant Money Actions (Plain English): Translates mathematics into immediate shop moves: products finishing in 2–3 days with a 1-click "WhatsApp Supplier to Reorder" button, generator fuel burn alerts (e.g. 18.5% of petty cash), and current pre-qualified credit limits (up to ₦3.5M).',
+                    '• 🔬 Institutional Data Science View: Provides bank risk committees and auditors with deep Scikit-Learn kernels, Ridge regression weights, and Isolation Forest anomaly matrices.'
                 ],
                 list: [
                     'FICO-Equivalent 300–850 Credit Risk Engine: Evaluates 5 weighted pillars: Turnover Consistency (35%), Debt Recovery Velocity (25%), Profit Margin Health (20%), Inventory Turnover (10%), and Legal Compliance/CAC Status (10%).',
@@ -1108,6 +1113,118 @@ export const getBlogPostBySlug = (slug: string): BlogPost | undefined => {
 
 export const getRelatedPosts = (slug: string): BlogPost[] => {
     const current = getBlogPostBySlug(slug);
-    if (!current) return [];
-    return BLOG_POSTS.filter((p) => current.relatedSlugs.includes(p.slug));
-};
+    if (!current) return [    {
+        id: 'post-10',
+        slug: 'stop-fake-bank-alerts-petty-cash-fuel-leakage',
+        title: 'The Nigerian Retail Defense Playbook: Stopping Fake Bank Alert Scams, Generator Fuel Bleed, and Internal Till Leakages',
+        seoTitle: 'Stop Fake Bank Alerts & Generator Fuel Leakage Nigeria | SmartBiz Coach',
+        metaDescription: 'A battle-tested operational guide for Nigerian shop owners: verify real bank transfers, log generator petrol expenses, and lock POS checkouts with apprentice PINs.',
+        excerpt: 'Counterfeit bank SMS alerts, attendant price manipulation, and unrecorded generator fueling quietly consume up to 30% of a Nigerian retailer's working capital. Here is the operational defense guide to securing your till, verifying electronic alerts, and calculating true take-home profit.',
+        category: 'Retail Operations',
+        tags: ['Retail Operations', 'Fake Alert Defense', 'Petty Cash Logger', 'Generator Fuel Expense', 'Apprentice Shift Mode', 'POS Reconciliation', 'Till Integrity'],
+        author: {
+            name: 'Meshach Zachariah',
+            role: 'Founder & Head of Product, SmartBiz Coach',
+            avatar: '/author-meshach.png'
+        },
+        publishedAt: '2026-10-23',
+        updatedAt: '2026-10-23',
+        readTime: '7 min read',
+        bannerImage: 'https://images.unsplash.com/photo-1556742049-0a67c5574f73?auto=format&fit=crop&w=1200&q=80',
+        imageCaption: 'Nigerian supermarket cashier performing digital shift reconciliation and verifying electronic customer payment.',
+        summaryTldr: [
+            'Over 30% of Nigerian retail working capital is lost to counterfeit SMS alerts, attendant till leakage, and unrecorded generator fueling overheads.',
+            'Fraudsters exploit busy checkout counters using fake SMS generator apps and cloned banking receipts to walk away with valuable merchandise.',
+            'SmartBiz Coach Fake Transfer Fraud Shield establishes a mandatory counter verification checklist: cashiers must verify terminal slips or official bank app push notices before releasing goods.',
+            'The Petty Cash & Fuel Logger separates generator fuel (petrol/diesel) and logistics from owner personal drawings to calculate true net margin.',
+            'The AI POS & Bank Alert Reconciler allows owners to paste raw SMS/POS credit alerts to automatically catch unrecorded sales in the Day-Book.'
+        ],
+        statutoryCitations: [
+            {
+                title: 'Cybercrimes (Prohibition, Prevention, Etc.) Act 2015',
+                section: 'Sections 14 & 33: Electronic Fraud, Counterfeit Financial Messages & Identity Misrepresentation',
+                body: 'Criminalizes the intentional presentation or transmission of counterfeit electronic transaction confirmations and bank credit notices to obtain commercial property.'
+            },
+            {
+                title: 'CBN Guidelines on Electronic Payment Systems in Nigeria',
+                section: 'Section 4.1: Merchant Electronic Settlement Verification Standards',
+                body: 'Requires merchants and commercial retail operators to validate transactional value on accredited acquiring gateways or official issuer push notices prior to title transfer.'
+            }
+        ],
+        contentSections: [
+            {
+                id: 'the-triad-of-retail-leakage',
+                heading: '1. The Triad of Silent Retail Bleed: Fake Alerts, Attendant Theft, and Generator Fuel',
+                paragraphs: [
+                    'Every retailer in Lagos, Kano, Onitsha, or Abuja operates under intense margin pressure. High inflation and fluctuating wholesale prices make every kobo count. Yet, three silent leaks continually bleed store capital:',
+                    '1. The Counterfeit SMS Alert Scam: Scammers walk into boutiques, electronics stores, or supermarkets, purchase high-value goods, and trigger a fake SMS alert that mimics a real bank credit notification.',
+                    '2. The Apprentice "Oga Out" Markup: Attendants quote arbitrary prices to walk-in buyers, collect cash, record a lower figure in the paper ledger, and pocket the difference.',
+                    '3. The Unmeasured Generator Blackhole: Shop generators run 8 to 12 hours daily. Fuel is purchased haphazardly from petty cash without logging, meaning the owner believes they made ₦80,000 profit when ₦45,000 went straight into petrol and oil servicing.'
+                ]
+            },
+            {
+                id: 'fake-alert-counter-protocol',
+                heading: '2. The Counterfeit SMS Defense: The 3-Step Release Protocol',
+                paragraphs: [
+                    'Counterfeit bank alert applications allow bad actors to input the merchant's account number, phone number, and a fake transaction reference to generate an authentic-looking SMS or screenshot on their phone in seconds.',
+                    'To protect your store, train counter attendants on this non-negotiable rule: Never release goods based on the customer's screen.'
+                ],
+                list: [
+                    'Step 1: Check Your Own Terminal or App: Only release goods once the credit reflects on your own POS terminal printout, your official bank app notification, or your verified merchant USSD balance.',
+                    'Step 2: Inspect the Transaction Reference: Genuine bank transfer credits include a standard 10–16 digit NIBSS instant payment (NIP) session ID. Fake alerts often use random short numbers.',
+                    'Step 3: Log Disputed Transactions: If a customer insists money left their account but it has not reflected, record their full name, phone number, and transaction reference in the SmartBiz Dispute Log before agreeing to hold the items for clearance.'
+                ]
+            },
+            {
+                id: 'petty-cash-and-fuel-logger',
+                heading: '3. Separating Fuel Overhead from True Profit with the Petty Cash Logger',
+                paragraphs: [
+                    'Fuel is the single largest operational expense for Nigerian MSMEs. When fuel is bought using random cash taken from the till without logging, bookkeeping falls apart.',
+                    'The SmartBiz Coach Petty Cash Logger introduces designated expense categories:',
+                    '• Generator Fuel (Petrol/Diesel): Tracks liters purchased and cost per liter.',
+                    '• Logistics & Interstate Waybills: Records delivery expenses per order.',
+                    '• Oga Personal Drawings: Transparently isolates money taken for home or lunch from legitimate store expenses.',
+                    'At the end of the day, our engine subtracts all petty cash expenses from gross counter checkout revenue, revealing your true, unvarnished net operating profit.'
+                ],
+                callout: {
+                    type: 'tip',
+                    title: 'The AI POS Alert Reconciler',
+                    text: 'At close of business, copy your raw bank or POS credit alerts (Moniepoint, OPay, GTBank, Zenith) and paste them into the POS Reconciler in the Money Insights hub. The AI automatically scans for any alert not logged in the cashbook, catching attendant omissions instantly.'
+                }
+            },
+            {
+                id: 'apprentice-pin-mode',
+                heading: '4. Locking the Register: 4-Digit Apprentice PIN Security',
+                paragraphs: [
+                    'You cannot be in your store 14 hours a day, 7 days a week. With SmartBiz Coach Apprentice Shift Lock, you don't have to be.',
+                    'Engage Apprentice Mode with your 4-digit supervisor PIN before handing the phone to your cashier. Attendants can scan barcodes with the camera and checkout customers across Cash, Transfer, and Debt, but cannot see profit margins, alter past entries, or erase transactions.',
+                    'Closing time takes 60 seconds: tap "Close Shift", enter your PIN, and review the automatic cash reconciliation summary.'
+                ]
+            }
+        ],
+        faqs: [
+            {
+                q: 'How does the POS Alert Reconciler work if my cashiers use a physical Moniepoint or OPay terminal?',
+                a: 'Simply select your end-of-day SMS credit alerts on your phone, copy the text, and paste it into the SmartBiz POS Reconciler. The algorithm parses all credit amounts and cross-references them against day-book entries to highlight missing sales in seconds.'
+            },
+            {
+                q: 'Can my apprentice view how much profit I made on each sale?',
+                a: 'No. In Apprentice Shift Mode, wholesale cost prices and gross/net profit margins are completely hidden. Attendants only see retail selling prices and product quantities.'
+            },
+            {
+                q: 'Is the Petty Cash and Fuel Logger free to use?',
+                a: 'Yes! The Daily Day-Book, Petty Cash & Fuel Logger, Apprentice Shift Mode, and POS Alert Reconciler are 100% free with zero credit deductions.'
+            }
+        ],
+        relatedSlugs: ['stop-apprentice-theft-cash-leakage-nigerian-retail', 'machine-learning-credit-scoring-nigerian-msme', 'nigerian-msme-digital-playbook-market-square'],
+        primaryCta: {
+            title: 'Lock Down Your Shop Till & Stop Cash Leakages',
+            subtitle: 'Activate the Phone Camera POS, Apprentice Shift Lock, and Petty Cash Fuel Logger in under 60 seconds.',
+            buttonText: 'Open Daily Day-Book & Cashbook →',
+            actionUrl: '/dashboard/cashbook',
+            type: 'underwrite'
+        }
+    }
+];
+
+export const getBlogPostBySlug

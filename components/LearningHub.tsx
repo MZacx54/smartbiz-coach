@@ -19,7 +19,7 @@ export interface Lesson {
   id: string;
   title: string;
   subtitle: string;
-  category: 'PAYOUTS' | 'COMPLIANCE' | 'STOREFRONT' | 'BRANDING' | 'FUNDING' | 'OPS';
+  category: 'PAYOUTS' | 'COMPLIANCE' | 'STOREFRONT' | 'BRANDING' | 'FUNDING' | 'OPS' | 'DATA_SCIENCE';
   description: string;
   duration: string;
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
@@ -44,6 +44,7 @@ const CATEGORIES = [
   { id: 'OPS', label: 'Daily Till & Cashbook', icon: '📊' },
   { id: 'BRANDING', label: 'Brand & AI Studio', icon: '✨' },
   { id: 'FUNDING', label: 'Grants & Loans', icon: '💰' },
+  { id: 'DATA_SCIENCE', label: 'AI Intelligence & Security', icon: '🧠' },
 ];
 
 const LESSONS: Lesson[] = [
@@ -331,6 +332,146 @@ const LESSONS: Lesson[] = [
       'When you register an account, your wallet is automatically credited with 50 Free Welcome BizCredits. These can be used immediately for generating AI Logos, BOI Business Plans, and tailored marketing copy.',
       'You can also earn +5 BizCredits whenever you share a product link from your Storefront or the Market Square to WhatsApp, Facebook, Twitter, or LinkedIn. Additional packs can be topped up via Paystack starting at just ₦500.'
     ]
+  },
+  {
+    id: 'smartscore_underwriting',
+    title: 'SmartScore™ Underwriting & Merchant Money Actions',
+    subtitle: 'Qualify for BOI, DBN & bank credit with verified cashflow metrics',
+    category: 'DATA_SCIENCE',
+    description: 'Master your SmartScore™ (300–850), toggle between the Plain English Owner Action View and Institutional ML models, protect inventory from stockouts with 1-click WhatsApp restock, and download SHA-256 certified bank dossiers.',
+    duration: '6 mins read',
+    difficulty: 'Intermediate',
+    icon: '🧠',
+    color: 'from-indigo-900 via-slate-900 to-indigo-950',
+    targetView: AppView.ANALYTICS,
+    actionText: 'Open Money Insights & AI OS',
+    takeaways: [
+      'SmartScore™ measures cashflow velocity, sales consistency, debt recovery rate, and till integrity on a 300–850 scale.',
+      'Switch to "Merchant Money Actions" to see plain English stockout alerts, generator fuel burn percentages, and loan limits without confusing math.',
+      'Download a tamper-evident SHA-256 PDF credit assessment directly accepted by Bank of Industry (BOI), DBN, SMEDAN, and commercial banks.'
+    ],
+    content: [
+      'Traditional commercial banks reject over 95% of Nigerian MSME loan applications because paper cashbooks and mental accounting lack verifiable proof of turnover. SmartBiz Coach solves this with SmartScore™ Alternative Underwriting.',
+      'When you navigate to Money Insights (/dashboard/analytics), use the top AI Lens Selector to switch between "🏪 Merchant Money Actions" (designed for busy shop owners) and "🔬 Institutional ML" (designed for bank loan officers).',
+      'The Merchant Money Action view flags products finishing in 2–3 days with a 1-click "WhatsApp Supplier to Reorder" button, warns you if generator fuel exceeds 18% of operating expenses, and computes exactly how much working capital credit (up to ₦3.5M+) your business qualifies for.',
+      'Tap "Download Certified MSME Credit Underwriting Report" to export a cryptographic SHA-256 PDF dossier formatted for pre-underwriting appraisal by BOI, DBN, SMEDAN, and Tier-1 Microfinance Banks.'
+    ],
+    quickQuiz: {
+      question: 'What is the primary benefit of the "Merchant Money Actions" view in the AI Analytics hub?',
+      options: [
+        'It erases old debtors from your cashbook',
+        'It translates complex ML algorithms into clear Naira figures, stockout warnings, and 1-click supplier restocking',
+        'It resets your phone password',
+        'It increases the price of delivery across Nigeria'
+      ],
+      correctIndex: 1,
+      explanation: 'The Merchant Money Actions view converts complex data science metrics into immediate daily shop actions: what to restock today, till security, and eligible loan amounts.'
+    }
+  },
+  {
+    id: 'apprentice_shift_lock',
+    title: 'Anti-Theft Apprentice Shift Mode & Fuel Logging',
+    subtitle: 'Protect your counter cash, profit margins, and daily generator expenses',
+    category: 'OPS',
+    description: 'Lock sensitive profit margins behind a 4-digit supervisor PIN, allow counter attendants to record sales in Blind Mode, track daily generator petrol/diesel burn, and audit shift cash in till.',
+    duration: '5 mins read',
+    difficulty: 'Beginner',
+    icon: '🛡️',
+    color: 'from-blue-700 via-indigo-900 to-slate-900',
+    targetView: AppView.CASHBOOK,
+    actionText: 'Configure Day-Book & Till',
+    takeaways: [
+      '4-Digit Supervisor PIN locks wholesale cost prices, profit margins, and deletion rights while letting attendants log sales.',
+      'Petty Cash & Fuel Logger separates generator fuel (petrol/diesel) and logistics from owner personal drawings to reflect true daily take-home profit.',
+      'At the end of every shift, compare physical drawer cash with the Day-Book reconciliation summary to catch unrecorded cash leaks immediately.'
+    ],
+    content: [
+      'Attendant embezzlement and unrecorded cash draws are among the leading causes of retail store insolvency in Nigerian markets. SmartBiz Coach provides a built-in defense: Anti-Theft Apprentice Shift Mode.',
+      'From the Daily Day-Book (/dashboard/cashbook), activate Apprentice Mode by setting a 4-digit Supervisor PIN. In this mode, counter attendants can record customer checkouts and generate receipts, but they cannot backdate transactions, alter historical prices, view your wholesale supplier costs, or see net business margins.',
+      'Use the Petty Cash & Fuel Logger to record daily generator fueling (petrol/diesel) and transport waybills. By separating business overhead from "Oga personal drawings", you protect your working capital from silent depletion.',
+      'At closing time, enter your supervisor PIN to view the Shift Reconciliation Report. If physical cash in the till does not match recorded receipts, you can immediately identify the discrepancy before staff leave for the day.'
+    ],
+    quickQuiz: {
+      question: 'What happens when Apprentice Shift Lock is enabled on the Daily Day-Book?',
+      options: [
+        'The app prevents anyone from recording customer sales',
+        'Attendants can log customer sales, but wholesale costs, margins, and deletion tools are locked behind the owner PIN',
+        'The app automatically charges an extra 10% fee on all sales',
+        'Customers cannot pay with cash'
+      ],
+      correctIndex: 1,
+      explanation: 'Apprentice mode allows attendants to register sales while preventing unauthorized tampering, margin viewing, or backdated deletions.'
+    }
+  },
+  {
+    id: 'b2b_market_square',
+    title: 'National Market Square & B2B Wholesale Distribution',
+    subtitle: 'Expand beyond your physical market into nationwide 36-state trade',
+    category: 'STOREFRONT',
+    description: 'List products on the unified multi-vendor Market Square (market.smartbizcoach.com.ng), select between the 4 Trade Pillars, manage state-by-state waybills, and receive direct Paystack bank payouts.',
+    duration: '6 mins read',
+    difficulty: 'Intermediate',
+    icon: '🏪',
+    color: 'from-emerald-700 via-teal-900 to-slate-900',
+    targetView: AppView.MARKETPLACE,
+    actionText: 'Visit National Market Square',
+    takeaways: [
+      '4 Dedicated Trade Pillars: Retail Shop, Professional Services, Real Estate, and B2B Wholesale with Minimum Order Quantities (MOQ).',
+      'Direct Paystack Split-Settlement pays customer orders directly into your verified Nigerian bank account with 0% platform fee.',
+      'Integrated state-by-state waybill delivery matrix and live package tracking (/track/{code}) protect buyers and sellers during inter-state commerce.'
+    ],
+    content: [
+      'Relying solely on foot traffic in your local market limits your monthly sales potential. The SmartBiz National Market Square (market.smartbizcoach.com.ng) gives your verified inventory instant visibility across all 36 States and the FCT.',
+      'When listing products, categorize them under one of the 4 Master Pillars: 🛍️ Retail Shop, 💼 Professional Services, 🏢 Real Estate, or ⚡ B2B Wholesale. For wholesale trade, specify your Minimum Order Quantity (MOQ) and bulk carton discounts.',
+      'Configure your state-by-state waybill delivery rates so buyers in Abuja, Kano, Port Harcourt, or Ibadan automatically see exact transport costs at checkout.',
+      'All payments are processed securely via Paystack Subaccounts, with funds deposited straight into your Nigerian bank account with zero platform commission deductions.'
+    ],
+    quickQuiz: {
+      question: 'How are customer payments disbursed to sellers on the SmartBiz National Market Square?',
+      options: [
+        'SmartBiz withholds all funds for 60 days before manual approval',
+        'Customer payments settle directly into the seller\'s verified Nigerian bank account via automated Paystack subaccounts with 0% platform take',
+        'Only in foreign gift cards',
+        'Sellers must physically visit Abuja to withdraw money'
+      ],
+      correctIndex: 1,
+      explanation: 'SmartBiz Coach uses automated Paystack Subaccounts to settle payments directly into your linked Nigerian bank account with 0% platform deductions.'
+    }
+  },
+  {
+    id: 'fake_alert_reconciliation',
+    title: 'Fake Transfer Fraud Shield & POS Alert Reconciler',
+    subtitle: 'Protect your counter from fake SMS credit alerts & reconcile bank terminals',
+    category: 'DATA_SCIENCE',
+    description: 'Deploy the step-by-step fake bank alert checklist, and use the AI POS & Bank Alert Reconciliation engine to match credit alerts against your physical cashbook to catch unrecorded sales.',
+    duration: '5 mins read',
+    difficulty: 'Beginner',
+    icon: '🔒',
+    color: 'from-rose-800 via-red-950 to-slate-900',
+    targetView: AppView.ANALYTICS,
+    actionText: 'Open Alert Reconciler',
+    takeaways: [
+      'Never release goods based solely on a customer\'s SMS alert screenshot; always confirm via bank app push notification, USSD balance, or verified credit alert.',
+      'Copy and paste raw SMS/POS transaction notifications into the POS Reconciler to spot missing entries and unrecorded revenue in your cashbook.',
+      'Maintains a clean financial paper trail required for insurance claims and police fraud reports.'
+    ],
+    content: [
+      'Counterfeit bank SMS alerts and fabricated screenshot apps are among the most prevalent scam tactics targeting Nigerian retailers. SmartBiz Coach provides active defense protocols to protect your shop.',
+      'Train counter staff to never release high-value merchandise based on a customer\'s phone screen. Genuine bank transfers must be confirmed through your own bank app push notification, your POS terminal printout, or your USSD balance inquiry.',
+      'At the end of the trading day, open the POS & Bank Alert Reconciliation tool under Money Insights (/dashboard/analytics). Paste your raw Moniepoint, OPay, PalmPay, or commercial bank SMS notifications directly into the scanner.',
+      'The engine automatically parses transaction amounts and cross-references them against your Daily Day-Book. If an attendant collected a transfer payment without logging the sale in the till, the system highlights the missing amount instantly, preventing cash leaks.'
+    ],
+    quickQuiz: {
+      question: 'Why should shop attendants never release goods based solely on a customer\'s phone screenshot showing a "successful transfer"?',
+      options: [
+        'Counterfeit SMS and screenshot generator apps easily fake bank alerts without funds ever reaching your account',
+        'Screenshots take up too much phone memory',
+        'Banks only send alerts via postal mail',
+        'It is illegal to look at customer phones'
+      ],
+      correctIndex: 0,
+      explanation: 'Fraudulent apps can generate convincing fake bank transfer screens. Attendants must always verify receipts on their own terminal, bank app push notice, or verified SMS before releasing goods.'
+    }
   }
 ];
 
