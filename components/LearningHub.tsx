@@ -343,7 +343,7 @@ const LESSONS: Lesson[] = [
     difficulty: 'Intermediate',
     icon: '🧠',
     color: 'from-indigo-900 via-slate-900 to-indigo-950',
-    targetView: AppView.ANALYTICS,
+    targetView: AppView.DATA_SCIENCE_HUB,
     actionText: 'Open Money Insights & AI OS',
     takeaways: [
       'SmartScore™ measures cashflow velocity, sales consistency, debt recovery rate, and till integrity on a 300–850 scale.',
@@ -378,7 +378,7 @@ const LESSONS: Lesson[] = [
     difficulty: 'Beginner',
     icon: '🛡️',
     color: 'from-blue-700 via-indigo-900 to-slate-900',
-    targetView: AppView.CASHBOOK,
+    targetView: AppView.DAILY_CASHBOOK,
     actionText: 'Configure Day-Book & Till',
     takeaways: [
       '4-Digit Supervisor PIN locks wholesale cost prices, profit margins, and deletion rights while letting attendants log sales.',
@@ -448,7 +448,7 @@ const LESSONS: Lesson[] = [
     difficulty: 'Beginner',
     icon: '🔒',
     color: 'from-rose-800 via-red-950 to-slate-900',
-    targetView: AppView.ANALYTICS,
+    targetView: AppView.DATA_SCIENCE_HUB,
     actionText: 'Open Alert Reconciler',
     takeaways: [
       'Never release goods based solely on a customer\'s SMS alert screenshot; always confirm via bank app push notification, USSD balance, or verified credit alert.',
