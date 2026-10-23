@@ -1103,7 +1103,8 @@ export const BLOG_POSTS: BlogPost[] = [
             buttonText: 'Open Data Science Hub →',
             actionUrl: '/analytics',
             type: 'underwrite'
-        },
+        }
+    },
     {
         id: 'post-10',
         slug: 'stop-fake-bank-alerts-petty-cash-fuel-leakage',
@@ -1157,8 +1158,8 @@ export const BLOG_POSTS: BlogPost[] = [
                 id: 'fake-alert-counter-protocol',
                 heading: '2. The Counterfeit SMS Defense: The 3-Step Release Protocol',
                 paragraphs: [
-                    'Counterfeit bank alert applications allow bad actors to input the merchant's account number, phone number, and a fake transaction reference to generate an authentic-looking SMS or screenshot on their phone in seconds.',
-                    'To protect your store, train counter attendants on this non-negotiable rule: Never release goods based on the customer's screen.'
+                    'Counterfeit bank alert applications allow bad actors to input the merchant\'s account number, phone number, and a fake transaction reference to generate an authentic-looking SMS or screenshot on their phone in seconds.',
+                    'To protect your store, train counter attendants on this non-negotiable rule: Never release goods based on the customer\'s screen.'
                 ],
                 list: [
                     'Step 1: Check Your Own Terminal or App: Only release goods once the credit reflects on your own POS terminal printout, your official bank app notification, or your verified merchant USSD balance.',
@@ -1187,7 +1188,7 @@ export const BLOG_POSTS: BlogPost[] = [
                 id: 'apprentice-pin-mode',
                 heading: '4. Locking the Register: 4-Digit Apprentice PIN Security',
                 paragraphs: [
-                    'You cannot be in your store 14 hours a day, 7 days a week. With SmartBiz Coach Apprentice Shift Lock, you don't have to be.',
+                    'You cannot be in your store 14 hours a day, 7 days a week. With SmartBiz Coach Apprentice Shift Lock, you don\'t have to be.',
                     'Engage Apprentice Mode with your 4-digit supervisor PIN before handing the phone to your cashier. Attendants can scan barcodes with the camera and checkout customers across Cash, Transfer, and Debt, but cannot see profit margins, alter past entries, or erase transactions.',
                     'Closing time takes 60 seconds: tap "Close Shift", enter your PIN, and review the automatic cash reconciliation summary.'
                 ]
