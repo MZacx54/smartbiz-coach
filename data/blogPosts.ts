@@ -1103,23 +1103,14 @@ export const BLOG_POSTS: BlogPost[] = [
             buttonText: 'Open Data Science Hub →',
             actionUrl: '/analytics',
             type: 'underwrite'
-        }
-    }
-];
-
-export const getBlogPostBySlug = (slug: string): BlogPost | undefined => {
-    return BLOG_POSTS.find((p) => p.slug === slug);
-};
-
-export const getRelatedPosts = (slug: string): BlogPost[] => {
-    const current = getBlogPostBySlug(slug);
-    if (!current) return [    {
+        },
+    {
         id: 'post-10',
         slug: 'stop-fake-bank-alerts-petty-cash-fuel-leakage',
         title: 'The Nigerian Retail Defense Playbook: Stopping Fake Bank Alert Scams, Generator Fuel Bleed, and Internal Till Leakages',
         seoTitle: 'Stop Fake Bank Alerts & Generator Fuel Leakage Nigeria | SmartBiz Coach',
         metaDescription: 'A battle-tested operational guide for Nigerian shop owners: verify real bank transfers, log generator petrol expenses, and lock POS checkouts with apprentice PINs.',
-        excerpt: 'Counterfeit bank SMS alerts, attendant price manipulation, and unrecorded generator fueling quietly consume up to 30% of a Nigerian retailer's working capital. Here is the operational defense guide to securing your till, verifying electronic alerts, and calculating true take-home profit.',
+        excerpt: "Counterfeit bank SMS alerts, attendant price manipulation, and unrecorded generator fueling quietly consume up to 30% of a Nigerian retailer's working capital. Here is the operational defense guide to securing your till, verifying electronic alerts, and calculating true take-home profit.",
         category: 'Retail Operations',
         tags: ['Retail Operations', 'Fake Alert Defense', 'Petty Cash Logger', 'Generator Fuel Expense', 'Apprentice Shift Mode', 'POS Reconciliation', 'Till Integrity'],
         author: {
@@ -1227,4 +1218,12 @@ export const getRelatedPosts = (slug: string): BlogPost[] => {
     }
 ];
 
-export const getBlogPostBySlug
+export const getBlogPostBySlug = (slug: string): BlogPost | undefined => {
+    return BLOG_POSTS.find((p) => p.slug === slug);
+};
+
+export const getRelatedPosts = (slug: string): BlogPost[] => {
+    const current = getBlogPostBySlug(slug);
+    if (!current) return [];
+    return BLOG_POSTS.filter((p) => current.relatedSlugs.includes(p.slug));
+};
