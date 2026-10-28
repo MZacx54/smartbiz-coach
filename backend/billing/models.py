@@ -55,3 +55,33 @@ class DailyFreeUsage(models.Model):
     def __str__(self):
         return f"{self.user.username if self.user else 'User'} - {self.feature}: {self.count} (Last used: {self.last_used})"
 
+
+class AIUsageLog(models.Model):
+    """
+    Phase 0 Guardrail: Tracks Gemini Flash/Flash-Lite API token consumption and estimated USD cost
+    per month across the platform and per merchant to enforce monthly spending limits.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ai_usage_logs',
+    )
+    feature = models.CharField(max_length=100, default='general')
+    model_name = models.CharField(max_length=100, default='gemini-flash-lite-latest')
+    prompt_tokens = models.IntegerField(default=0)
+    completion_tokens = models.IntegerField(default=0)
+    estimated_cost_usd = models.DecimalField(max_digits=10, decimal_places=6, default=0)
+    cached = models.BooleanField(default=False)
+    month_key = models.CharField(max_length=7, db_index=True)  # Format: 'YYYY-MM'
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['month_key', 'cached']),
+            models.Index(fields=['user', 'month_key']),
+        ]
+
+    def __str__(self):
+        return f"[{self.month_key}] {self.model_name} ({self.feature}) - ${self.estimated_cost_usd}"

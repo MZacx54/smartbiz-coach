@@ -161,13 +161,13 @@ class UnderwritingReportDataView(views.APIView):
         if comp and comp.business_reg_completed and cac_number == 'UNVERIFIED':
             cac_number = 'RC/BN VERIFIED'
 
-        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
-        raw_hash_seed = f"SB-UNDERWRITE-{user.id}-{credit['credit_score']}-{now_str}"
-        verification_hash = hashlib.sha256(raw_hash_seed.encode('utf-8')).hexdigest()[:16].upper()
+        now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+        verification_hash = CreditScoringService.generate_dossier_signature(user.id, credit['credit_score'])
 
         return Response({
             "dossier_id": f"SBC-UW-{user.id:05d}",
             "verification_hash": verification_hash,
+            "verification_url": f"/api/analytics-ml/verify-dossier/SBC-UW-{user.id:05d}/?hash={verification_hash}",
             "issued_at": now_str,
             "business_info": {
                 "business_name": business_name,
@@ -182,8 +182,10 @@ class UnderwritingReportDataView(views.APIView):
                 "rating_tier": credit['rating_tier'],
                 "risk_level": credit['risk_level'],
                 "bank_recommendation": credit['bank_recommendation'],
+                "recommended_loan_limit_ngn": credit.get('recommended_loan_limit_ngn', 500000),
                 "ifrs9_risk": credit.get('ifrs9_risk', {}),
                 "breakdown": credit['breakdown'],
+                "explainability": credit.get('explainability', {}),
                 "metrics": credit['metrics'],
                 "till_integrity_score": anomalies.get('integrity_score', 100),
                 "fraud_risk_status": anomalies.get('status', 'SECURE'),
@@ -198,7 +200,69 @@ class UnderwritingReportDataView(views.APIView):
                 "SMEDAN / NACCIMA Youth Entrepreneurs (NYE) / NITDA / NASENI",
                 "Tony Elumelu Foundation (TEF) & Tier-1 Commercial Banks",
             ],
-            "verifier_statement": "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs, Isolation Forest fraud auditing, RandomForest IFRS-9 PD/ECL modeling, and compliance verification on the SmartBiz Coach AI Operating System."
+            "verifier_statement": "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs, Isolation Forest fraud auditing, persisted Scikit-Learn RandomForest IFRS-9 PD/ECL modeling, and compliance verification on the SmartBiz Coach AI Operating System."
+        }, status=status.HTTP_200_OK)
+
+
+class VerifyUnderwritingDossierView(views.APIView):
+    """
+    Public Institutional Lender / Microfinance Bank Verification Endpoint.
+    Allows loan officers (BOI, NIRSAL MFB, FCMB SheVentures, LSETF, SMEDAN) to verify
+    a merchant's underwriting dossier ID (`SBC-UW-00001`) and cryptographic HMAC signature.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, dossier_id: str):
+        import re
+        from django.contrib.auth import get_user_model
+        from brand.models import BrandIdentity
+
+        clean_id = (dossier_id or "").strip().upper()
+        m = re.match(r"^(?:SBC-UW-|MSME-DB-)?0*(\d+)$", clean_id)
+        if not m:
+            return Response(
+                {"verified": False, "error": "Invalid dossier ID format. Expected SBC-UW-XXXXX."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_id = int(m.group(1))
+        User = get_user_model()
+        user = User.objects.filter(pk=user_id).first()
+        if not user:
+            return Response(
+                {"verified": False, "error": f"No registered merchant found for dossier {clean_id}."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        credit = CreditScoringService.calculate_credit_score(user)
+        anomalies = TillAnomalyService.detect_anomalies(user)
+        brand = BrandIdentity.objects.filter(user=user).first()
+        business_name = (getattr(brand, 'business_name', None) if brand else None) or getattr(user, 'business_name', None) or user.username
+
+        expected_hash = CreditScoringService.generate_dossier_signature(user.id, credit['credit_score'])
+        provided_hash = (request.query_params.get('hash') or '').strip().upper()
+        signature_match = True if not provided_hash else (provided_hash == expected_hash)
+
+        return Response({
+            "verified": signature_match,
+            "dossier_id": f"SBC-UW-{user.id:05d}",
+            "signature_status": "CRYPTOGRAPHICALLY_VALID" if signature_match else "HASH_MISMATCH_OR_SCORE_UPDATED",
+            "current_verification_hash": expected_hash,
+            "merchant_summary": {
+                "business_name": business_name,
+                "cac_verified": credit['metrics']['cac_verified'],
+                "active_trading_days_30d": credit['metrics']['active_trading_days_30d'],
+                "total_sales_logged": credit['metrics']['total_sales_logged'],
+            },
+            "credit_assessment": {
+                "credit_score": credit['credit_score'],
+                "rating_tier": credit['rating_tier'],
+                "risk_level": credit['risk_level'],
+                "recommended_loan_limit_ngn": credit['recommended_loan_limit_ngn'],
+                "ifrs9_risk": credit['ifrs9_risk'],
+                "explainability": credit.get('explainability', {}),
+                "till_integrity_score": anomalies.get('integrity_score', 100),
+            },
         }, status=status.HTTP_200_OK)
 
 

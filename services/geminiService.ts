@@ -306,3 +306,38 @@ export const recoverAbandonedCart = async (orderAmount: number, customerName?: s
     });
     return response.data;
 };
+
+
+// ─── Phase 0 Guardrails: AI Monthly Spend Status, Lender Verification & WhatsApp Cloud API ───
+
+export const getAIBudgetStatus = async () => {
+    const response = await api.get('/api/billing/ai-budget-status/');
+    return response.data;
+};
+
+export const verifyUnderwritingDossier = async (dossierId: string, hash?: string) => {
+    const query = hash ? `?hash=${encodeURIComponent(hash)}` : '';
+    const response = await api.get(`/api/analytics-ml/verify-dossier/${encodeURIComponent(dossierId)}/${query}`);
+    return response.data;
+};
+
+export const getWhatsAppCloudStatus = async () => {
+    const response = await api.get('/api/marketplace/whatsapp/status/');
+    return response.data;
+};
+
+export const sendWhatsAppCloudMessage = async (toPhone: string, message: string) => {
+    const response = await api.post('/api/marketplace/whatsapp/send/', {
+        to_phone: toPhone,
+        message
+    });
+    return response.data;
+};
+
+export const simulateWhatsAppLedgerCommand = async (text: string, fromPhone?: string) => {
+    const response = await api.post('/api/marketplace/whatsapp/webhook/', {
+        from: fromPhone || '',
+        text
+    });
+    return response.data;
+};

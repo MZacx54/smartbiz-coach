@@ -8,7 +8,8 @@ from .views import (
     PaystackConfigView, 
     AdminTransactionsView,
     PaystackWebhookView,
-    RewardShareView
+    RewardShareView,
+    AIBudgetStatusView,
 )
 
 urlpatterns = [
@@ -21,4 +22,5 @@ urlpatterns = [
     path('reward-share/', RewardShareView.as_view(), name='reward-share'),
     path('config/', PaystackConfigView.as_view(), name='billing-config'),
     path('admin/transactions/', AdminTransactionsView.as_view(), name='admin-transactions'),
+    path('ai-budget-status/', AIBudgetStatusView.as_view(), name='ai-budget-status'),
 ]

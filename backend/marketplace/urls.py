@@ -24,6 +24,7 @@ from .views import (
     DailySummaryView,
     DailyTrendsView,
     DailyAIInsightsView,
+    DailyAIAskView,
     VoicePOSIngestView,
     VoicePOSConfirmView,
     PaperReceiptOCRView,
@@ -52,6 +53,11 @@ from .payout_views import (
     ResolveBankView,
     SetupPayoutView,
     GetVendorPayoutDetailsView
+)
+from .whatsapp_cloud import (
+    WhatsAppConfigStatusView,
+    WhatsAppWebhookView,
+    WhatsAppOutboundView,
 )
 
 urlpatterns = [
@@ -83,6 +89,7 @@ urlpatterns = [
     path('daily-summary/', DailySummaryView.as_view(), name='daily_summary'),
     path('daily-trends/', DailyTrendsView.as_view(), name='daily_trends'),
     path('daily-ai-insights/', DailyAIInsightsView.as_view(), name='daily_ai_insights'),
+    path('daily-ai-ask/', DailyAIAskView.as_view(), name='daily_ai_ask'),
     path('voice-pos-ingest/', VoicePOSIngestView.as_view(), name='voice_pos_ingest'),
     path('voice-pos-confirm/', VoicePOSConfirmView.as_view(), name='voice_pos_confirm'),
     path('receipt-ocr/', PaperReceiptOCRView.as_view(), name='receipt_ocr'),
@@ -111,4 +118,8 @@ urlpatterns = [
     path('sitemap-market.xml', MarketSitemapView.as_view(), name='market_sitemap'),
     path('listing-assist/', ListingAssistView.as_view(), name='listing_assist'),
     path('promo-assist/', WhatsAppPromoAssistView.as_view(), name='promo_assist'),
+    # WhatsApp Business Cloud API & Conversational Ledger Webhook
+    path('whatsapp/status/', WhatsAppConfigStatusView.as_view(), name='whatsapp_cloud_status'),
+    path('whatsapp/webhook/', WhatsAppWebhookView.as_view(), name='whatsapp_cloud_webhook'),
+    path('whatsapp/send/', WhatsAppOutboundView.as_view(), name='whatsapp_cloud_send'),
 ]

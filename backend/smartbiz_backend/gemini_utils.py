@@ -4,12 +4,145 @@ import urllib.request
 import urllib.error
 import time
 import hashlib
+from datetime import datetime
 
-# Google Gemini active production endpoints (Low latency & high quota)
+# Google Gemini active production endpoints (Low latency & high quota — Flash / Flash-Lite tier only)
 DEFAULT_TEXT_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 DEFAULT_FAST_MODEL = os.getenv("GEMINI_FAST_MODEL", "gemini-flash-lite-latest")
 DEFAULT_FALLBACK_MODEL = "gemini-3.5-flash-lite"
 DEFAULT_VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-flash-lite-latest")
+
+# Monthly Gemini Spending Limit Guardrails (Phase 0)
+DEFAULT_MONTHLY_BUDGET_USD = 25.00
+DEFAULT_USER_MONTHLY_BUDGET_USD = 2.50
+
+# In-memory fallback ledger if DB table is not yet migrated during boot
+_IN_MEMORY_MONTHLY_SPEND = {}
+
+# Token cost rates per 1,000,000 tokens (USD) for Flash / Flash-Lite models
+MODEL_PRICING_PER_1M = {
+    "gemini-flash-lite-latest": {"input": 0.075, "output": 0.30},
+    "gemini-3.5-flash-lite": {"input": 0.075, "output": 0.30},
+    "gemini-flash-latest": {"input": 0.10, "output": 0.40},
+    "gemini-3.5-flash": {"input": 0.10, "output": 0.40},
+}
+
+
+def get_current_month_key() -> str:
+    return datetime.utcnow().strftime("%Y-%m")
+
+
+def get_monthly_budget_limits():
+    try:
+        platform_limit = float(os.getenv("GEMINI_MONTHLY_BUDGET_USD", str(DEFAULT_MONTHLY_BUDGET_USD)))
+    except (ValueError, TypeError):
+        platform_limit = DEFAULT_MONTHLY_BUDGET_USD
+    try:
+        user_limit = float(os.getenv("GEMINI_USER_MONTHLY_BUDGET_USD", str(DEFAULT_USER_MONTHLY_BUDGET_USD)))
+    except (ValueError, TypeError):
+        user_limit = DEFAULT_USER_MONTHLY_BUDGET_USD
+    return max(0.0, platform_limit), max(0.0, user_limit)
+
+
+def estimate_cost_usd(model_name: str, prompt_tokens: int, completion_tokens: int, cached: bool = False) -> float:
+    if cached:
+        return 0.0
+    rates = MODEL_PRICING_PER_1M.get(model_name, {"input": 0.075, "output": 0.30})
+    cost = (max(0, prompt_tokens) / 1_000_000.0) * rates["input"] + (max(0, completion_tokens) / 1_000_000.0) * rates["output"]
+    return round(cost, 6)
+
+
+def record_ai_usage(model_name: str, prompt_tokens: int, completion_tokens: int, cached: bool = False, feature: str = "general", user=None) -> float:
+    month_key = get_current_month_key()
+    cost_usd = estimate_cost_usd(model_name, prompt_tokens, completion_tokens, cached=cached)
+
+    # Update in-memory accumulator
+    bucket = _IN_MEMORY_MONTHLY_SPEND.setdefault(month_key, {"spend_usd": 0.0, "calls": 0, "cached_calls": 0})
+    bucket["spend_usd"] = round(bucket["spend_usd"] + cost_usd, 6)
+    bucket["calls"] += 1
+    if cached:
+        bucket["cached_calls"] += 1
+
+    # Persist to database AIUsageLog
+    try:
+        from billing.models import AIUsageLog
+        AIUsageLog.objects.create(
+            user=user if (user and getattr(user, "is_authenticated", False)) else None,
+            feature=str(feature or "general")[:100],
+            model_name=str(model_name or DEFAULT_TEXT_MODEL)[:100],
+            prompt_tokens=max(0, int(prompt_tokens)),
+            completion_tokens=max(0, int(completion_tokens)),
+            estimated_cost_usd=cost_usd,
+            cached=bool(cached),
+            month_key=month_key,
+        )
+    except Exception:
+        pass
+
+    return cost_usd
+
+
+def get_monthly_ai_spend_summary(user=None) -> dict:
+    month_key = get_current_month_key()
+    platform_budget_usd, user_budget_usd = get_monthly_budget_limits()
+
+    platform_spend = 0.0
+    total_calls = 0
+    cached_calls = 0
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+    user_spend = 0.0
+
+    try:
+        from django.db.models import Sum, Count, Q
+        from billing.models import AIUsageLog
+
+        qs = AIUsageLog.objects.filter(month_key=month_key)
+        agg = qs.aggregate(
+            spend=Sum("estimated_cost_usd"),
+            p_tokens=Sum("prompt_tokens"),
+            c_tokens=Sum("completion_tokens"),
+            total=Count("id"),
+            cached_cnt=Count("id", filter=Q(cached=True)),
+        )
+        platform_spend = float(agg.get("spend") or 0.0)
+        total_calls = int(agg.get("total") or 0)
+        cached_calls = int(agg.get("cached_cnt") or 0)
+        total_prompt_tokens = int(agg.get("p_tokens") or 0)
+        total_completion_tokens = int(agg.get("c_tokens") or 0)
+
+        if user and getattr(user, "is_authenticated", False):
+            u_agg = qs.filter(user=user).aggregate(u_spend=Sum("estimated_cost_usd"))
+            user_spend = float(u_agg.get("u_spend") or 0.0)
+    except Exception:
+        mem = _IN_MEMORY_MONTHLY_SPEND.get(month_key, {})
+        platform_spend = float(mem.get("spend_usd", 0.0))
+        total_calls = int(mem.get("calls", 0))
+        cached_calls = int(mem.get("cached_calls", 0))
+
+    remaining_usd = max(0.0, round(platform_budget_usd - platform_spend, 4))
+    usage_pct = round(min(100.0, (platform_spend / platform_budget_usd) * 100.0), 2) if platform_budget_usd > 0 else 0.0
+    cache_hit_rate = round((cached_calls / total_calls) * 100.0, 1) if total_calls > 0 else 0.0
+    is_exceeded = platform_spend >= platform_budget_usd or (
+        user is not None and getattr(user, "is_authenticated", False) and user_spend >= user_budget_usd
+    )
+
+    return {
+        "month_key": month_key,
+        "models_policy": "Gemini Flash & Flash-Lite Only (Pro models disabled)",
+        "platform_spend_usd": round(platform_spend, 4),
+        "platform_budget_usd": round(platform_budget_usd, 2),
+        "platform_budget_remaining_usd": remaining_usd,
+        "platform_usage_pct": usage_pct,
+        "user_spend_usd": round(user_spend, 4),
+        "user_budget_usd": round(user_budget_usd, 2),
+        "is_budget_exceeded": is_exceeded,
+        "total_calls_this_month": total_calls,
+        "cached_calls_this_month": cached_calls,
+        "cache_hit_rate_pct": cache_hit_rate,
+        "total_prompt_tokens": total_prompt_tokens,
+        "total_completion_tokens": total_completion_tokens,
+    }
 
 # In-memory prompt cache for free-tier optimization
 PROMPT_CACHE = {}
@@ -79,10 +212,32 @@ class GeminiUnavailableError(Exception):
     """Raised in strict mode when Gemini could not produce a real answer (never a canned fallback)."""
 
 
-def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7, strict=False, model_cascade=None, timeout=25):
+class GeminiBudgetExceededError(GeminiUnavailableError):
+    """Raised when the monthly Gemini API spending limit has been reached."""
+
+
+def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7, strict=False, model_cascade=None, timeout=25, user=None, feature="general"):
+    # 0. Monthly Spend Guardrail Check (Phase 0)
+    spend_summary = get_monthly_ai_spend_summary(user=user)
+    if spend_summary.get("is_budget_exceeded"):
+        budget_msg = (
+            f"Monthly Gemini AI budget ceiling reached "
+            f"(${spend_summary['platform_spend_usd']:.2f} / ${spend_summary['platform_budget_usd']:.2f} for {spend_summary['month_key']})."
+        )
+        print(f"[AI Budget Guardrail] {budget_msg}")
+        if strict:
+            raise GeminiBudgetExceededError(budget_msg)
+        if response_format and response_format.get("type") == "json_object":
+            return get_dynamic_json_fallback(messages)
+        return get_dynamic_string_fallback(messages)
+
     keys = get_gemini_api_keys()
     if not keys:
-        raise Exception("Configuration Error: GEMINI_API_KEY not found in environment.")
+        if strict:
+            raise GeminiUnavailableError("Configuration Error: GEMINI_API_KEY not found in environment.")
+        if response_format and response_format.get("type") == "json_object":
+            return get_dynamic_json_fallback(messages)
+        return get_dynamic_string_fallback(messages)
 
     # 1. In-memory cache lookup (Bypass cache for dynamic generation prompts)
     cache_key = get_cache_key(messages, model, response_format, system_instruction)
@@ -92,6 +247,14 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     if not is_dynamic and cache_key in PROMPT_CACHE:
         timestamp, cached_response = PROMPT_CACHE[cache_key]
         if now - timestamp < CACHE_TTL:
+            record_ai_usage(
+                model_name=model,
+                prompt_tokens=max(1, len(msg_str) // 4),
+                completion_tokens=max(1, len(str(cached_response)) // 4),
+                cached=True,
+                feature=feature,
+                user=user,
+            )
             print("Returning cached Gemini response!")
             return cached_response
 
@@ -206,6 +369,19 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                     candidate = result['candidates'][0]
                     text_response = candidate['content']['parts'][0]['text']
                     
+                    # Extract token counts from Gemini usageMetadata (or estimate from payload length)
+                    usage_meta = result.get('usageMetadata') or {}
+                    prompt_tokens = int(usage_meta.get('promptTokenCount') or max(1, len(msg_str) // 4))
+                    completion_tokens = int(usage_meta.get('candidatesTokenCount') or max(1, len(str(text_response)) // 4))
+                    record_ai_usage(
+                        model_name=active_model,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        cached=False,
+                        feature=feature,
+                        user=user,
+                    )
+
                     # Update global index to working key for round-robin load balancing
                     global KEY_INDEX
                     KEY_INDEX = (KEY_INDEX + attempt) % len(keys)

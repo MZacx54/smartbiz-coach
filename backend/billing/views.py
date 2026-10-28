@@ -418,3 +418,16 @@ class PaystackWebhookView(APIView):
 
     def post(self, request):
         return Response({"status": "received"}, status=status.HTTP_200_OK)
+
+
+class AIBudgetStatusView(APIView):
+    """
+    Phase 0 Guardrail Endpoint: Returns current monthly Gemini Flash/Flash-Lite token usage,
+    estimated USD spend, remaining monthly budget, and cache hit efficiency.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from smartbiz_backend.gemini_utils import get_monthly_ai_spend_summary
+        summary = get_monthly_ai_spend_summary(user=request.user)
+        return Response(summary, status=status.HTTP_200_OK)

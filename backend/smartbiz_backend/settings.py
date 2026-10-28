@@ -93,21 +93,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'smartbiz_backend.wsgi.application'
 
 
-# Database
+# Database (Supabase PostgreSQL / PgBouncer on Render + SQLite local fallback)
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(default='sqlite:///db.sqlite3', conn_max_age=600)
+    'default': dj_database_url.config(
+        default='sqlite:///db.sqlite3',
+        conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        conn_health_checks=True,
+    )
 }
 
-# Supabase / PgBouncer pooler compatibility (Disable server-side cursors & set connection options)
+# Supabase / PgBouncer transaction pooler compatibility:
+# 1. Disable server-side cursors so pooled connections on port 6543 never fail.
+# 2. Strip 'pgbouncer' query param from OPTIONS if present in DATABASE_URL (?pgbouncer=true)
+#    because psycopg2 rejects 'pgbouncer' as an unknown libpq DSN option.
 DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
-if 'OPTIONS' not in DATABASES['default']:
+if 'OPTIONS' not in DATABASES['default'] or not isinstance(DATABASES['default']['OPTIONS'], dict):
     DATABASES['default']['OPTIONS'] = {}
+DATABASES['default']['OPTIONS'].pop('pgbouncer', None)
 if 'sqlite' not in DATABASES['default'].get('ENGINE', ''):
     DATABASES['default']['OPTIONS']['connect_timeout'] = 10
-
-
 
 
 # Password validation
@@ -151,7 +157,7 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS/CSRF Settings
+# CORS/CSRF Settings (Aligned for Vercel Frontend + Render Backend + Custom Domains)
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
@@ -184,7 +190,10 @@ CORS_ALLOW_HEADERS = [
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://localhost:3000,https://*.railway.app,https://*.onrender.com,https://smartbiz-coach.onrender.com,https://smartbizcoach.com.ng,https://www.smartbizcoach.com.ng,https://market.smartbizcoach.com.ng,https://api.smartbizcoach.com.ng').split(',')
+    for origin in os.getenv(
+        'CSRF_TRUSTED_ORIGINS',
+        'http://localhost:5173,http://localhost:3000,https://*.vercel.app,https://*.railway.app,https://*.onrender.com,https://smartbiz-coach.onrender.com,https://smartbizcoach.com.ng,https://www.smartbizcoach.com.ng,https://market.smartbizcoach.com.ng,https://api.smartbizcoach.com.ng'
+    ).split(',')
     if origin.strip()
 ]
 
@@ -255,9 +264,8 @@ else:
 
 
 if not DEBUG:
-    # NOTE: Do NOT set SECURE_SSL_REDIRECT = True on Railway.
-    # Railway's edge proxy already terminates SSL and forwards HTTP internally.
-    # Setting this causes an infinite redirect loop → 502 Bad Gateway.
+    # NOTE: Do NOT set SECURE_SSL_REDIRECT = True on Render/Railway.
+    # Edge proxy already terminates SSL and forwards HTTP internally.
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -276,6 +284,16 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
 if not GEMINI_API_KEY:
     print("WARNING: No GEMINI_API_KEY set. AI features will not work.")
 
+# Monthly Gemini Spending Ceiling (Flash / Flash-Lite models)
+GEMINI_MONTHLY_BUDGET_USD = float(os.getenv('GEMINI_MONTHLY_BUDGET_USD', '25.00'))
+GEMINI_USER_MONTHLY_BUDGET_USD = float(os.getenv('GEMINI_USER_MONTHLY_BUDGET_USD', '2.50'))
+
+# Meta WhatsApp Business Cloud API Configuration (auto-activates when credentials are provided)
+WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN', '').strip()
+WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '').strip()
+WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN', 'smartbiz_whatsapp_verify_2026').strip()
+WHATSAPP_BUSINESS_ACCOUNT_ID = os.getenv('WHATSAPP_BUSINESS_ACCOUNT_ID', '').strip()
+
 if not os.environ.get('SECRET_KEY') or 'django-insecure' in os.environ.get('SECRET_KEY', ''):
     print("WARNING: Using insecure SECRET_KEY")
 
@@ -287,17 +305,6 @@ PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY') or os.getenv('VITE_PAYSTA
 SQUAD_SECRET_KEY = os.getenv('SQUAD_SECRET_KEY')
 
 # ─── Email Configuration (Brevo / Sendinblue SMTP) ───────────────────────────
-# Provider: Brevo (https://app.brevo.com → SMTP & API)
-# Set these in Railway env vars:
-#   EMAIL_HOST          = smtp-relay.brevo.com
-#   EMAIL_PORT          = 587
-#   EMAIL_HOST_USER     = aa3358001@smtp-brevo.com   (your Brevo SMTP login)
-#   EMAIL_HOST_PASSWORD = <your Brevo SMTP key>      (the key ending in YoqCCw)
-#   DEFAULT_FROM_EMAIL  = noreply@smartbizcoach.com.ng  (a verified Brevo sender)
-#
-# ⚠  Brevo blocks SMTP keys by IP by default.
-#    Go to Brevo → Settings → SMTP & API → Authorized IPs and add Railway's IP,
-#    OR set the SMTP key to "Allow all IPs" in the Brevo dashboard.
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp-relay.brevo.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
@@ -345,14 +352,14 @@ REST_FRAMEWORK = {
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 
 # ─── Sentry Error Tracking ────────────────────────────────────────────────────
-SENTRY_DSN = os.getenv('SENTRY_DSN', '')  # Set SENTRY_DSN in Railway env vars
+SENTRY_DSN = os.getenv('SENTRY_DSN', '')
 if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[DjangoIntegration()],
-        traces_sample_rate=0.1,   # 10% of requests for performance tracing
-        send_default_pii=False,   # Don't send personal data to Sentry
+        traces_sample_rate=0.1,
+        send_default_pii=False,
         environment="production" if not DEBUG else "development",
     )
