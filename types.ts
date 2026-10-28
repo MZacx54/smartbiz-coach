@@ -77,6 +77,8 @@ export interface BusinessPlan {
   operationalPlan: string;
   swotAnalysis: string;
   riskMitigation: string;
+  underwritingSummary?: string;
+  promoterDeclaration?: string;
 }
 
 export interface Grant {

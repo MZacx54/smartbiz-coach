@@ -51,19 +51,65 @@ CRITICAL QUALITY STANDARDS:
 1. Every section MUST be exhaustive, multi-paragraph, deeply analytical, and formatted with structured numerical sub-headings (e.g. 1.1, 1.2, 1.3).
 2. Do NOT write brief summaries. Provide rich, detailed explanations, Nigerian market statistics, realistic monetary figures in Nigerian Naira (₦ / NGN), and concrete operational procedures.
 3. Incorporate real Nigerian operating dynamics: inflation shielding, FX buffer strategies, solar/inverter power continuity, WhatsApp community social commerce, and CAC/TIN regulatory compliance.
+4. For all tables, strictly output valid standard Markdown tables with pipes and hyphens (| Column 1 | Column 2 | ... |). Never mix bullet points into table headers.
 
 Return a valid JSON object matching this structure EXACTLY:
-{{
-    "executiveSummary": "Comprehensive Executive Summary containing:\\n1.1 Enterprise Overview & Problem Statement\\n1.2 The Innovation & Unique Value Proposition (UVP)\\n1.3 Target Market & Demographic Potential\\n1.4 Revenue Model & Commercial Engine\\n1.5 Capital Requirement & Fund Allocation\\n1.6 3-Year Strategic Growth & Financial Summary",
-    "marketAnalysis": "Exhaustive Market Analysis containing:\\n2.1 Nigerian Industry Overview & Growth Drivers\\n2.2 Target Customer Personas & Demand Patterns (B2C & B2B)\\n2.3 Market Sizing in Naira (TAM, SAM, SOM estimates)\\n2.4 Competitive Advantage & Competitor Comparison Matrix\\n2.5 Barriers to Entry & Strategic Defensive Moats",
-    "marketingStrategy": "Actionable Marketing & Sales Strategy containing:\\n3.1 Omnichannel Customer Acquisition (WhatsApp Community Commerce, TikTok/Instagram Reels, Micro-influencers, Local B2B)\\n3.2 CAC vs. LTV Economics & Pricing Strategy\\n3.3 Sales Pipeline & Daily Conversion SOPs\\n3.4 Customer Retention, Loyalty Loops & Referral Incentives",
-    "operationalPlan": "Complete Operational & Execution Plan containing:\\n4.1 Daily Operating Workflow & Standard Operating Procedures (SOPs)\\n4.2 Supply Chain Resilience & Direct Wholesale Sourcing (FX Hedging)\\n4.3 Logistics, Dispatch Delivery & Interstate Waybill Partnerships\\n4.4 Power & Infrastructure Resilience (Solar Inverter + Hybrid Fuel Setup for 100% Uptime)\\n4.5 Technology Stack & Automated Digital Operations\\n4.6 Staffing Plan, Key Roles & Governance",
-    "financialProjection": "Detailed 3-Year Financial Model (All figures in NGN) containing:\\n5.1 Startup Capital Expenditure (CAPEX) & Initial Working Capital Table\\n5.2 3-Year Projected Income Statement (Year 1, Year 2, Year 3: Revenue, COGS, Gross Profit, OPEX, EBITDA, Net Profit)\\n5.3 Monthly Cash Flow & Working Capital Runway (Year 1 Month-by-Month)\\n5.4 Break-Even Analysis & Margin Sensitivities\\n5.5 Return on Investment (ROI) & Payback Horizon for Grant Providers & Investors",
-    "swotAnalysis": "Comprehensive 4-Quadrant SWOT Matrix containing:\\n6.1 In-Depth Strengths (Internal Core Competencies)\\n6.2 Weaknesses & Internal Mitigation Measures\\n6.3 Market Opportunities & Growth Vectors\\n6.4 External Macroeconomic Threats & Defensive Strategy\\n6.5 Strategic Action Matrix (Markdown Table)",
-    "riskMitigation": "Robust Risk Mitigation & Institutional Compliance containing:\\n7.1 Inflation & Currency Devaluation Shielding Protocol\\n7.2 Regulatory & Tax Compliance Roadmap (CAC, TIN, FIRS, State IRS)\\n7.3 Supply Disruption & Critical Inventory Buffer Strategy\\n7.4 Business Continuity & Emergency Protocols\\n7.5 Grant & Institutional Funding Alignment (iDICE, BOI, LSETF, TEF readiness)"
-}}
+{{{{
+    "executiveSummary": "Comprehensive Executive Summary containing:
+1.1 Enterprise Overview & Problem Statement
+1.2 The Innovation & Unique Value Proposition (UVP)
+1.3 Target Market & Demographic Potential
+1.4 Revenue Model & Commercial Engine
+1.5 Capital Requirement & Fund Allocation
+1.6 3-Year Strategic Growth & Financial Summary",
+    "marketAnalysis": "Exhaustive Market Analysis containing:
+2.1 Nigerian Industry Overview & Growth Drivers
+2.2 Target Customer Personas & Demand Patterns (B2C & B2B)
+2.3 Market Sizing in Naira (TAM, SAM, SOM estimates)
+2.4 Competitive Advantage & Competitor Comparison Matrix
+2.5 Barriers to Entry & Strategic Defensive Moats",
+    "marketingStrategy": "Actionable Marketing & Sales Strategy containing:
+3.1 Omnichannel Customer Acquisition (WhatsApp Community Commerce, TikTok/Instagram Reels, Micro-influencers, Local B2B)
+3.2 CAC vs. LTV Economics & Pricing Strategy
+3.3 Sales Pipeline & Daily Conversion SOPs
+3.4 Customer Retention, Loyalty Loops & Referral Incentives",
+    "operationalPlan": "Complete Operational & Execution Plan containing:
+4.1 Daily Operating Workflow & Standard Operating Procedures (SOPs)
+4.2 Supply Chain Resilience & Direct Wholesale Sourcing (FX Hedging)
+4.3 Logistics, Dispatch Delivery & Interstate Waybill Partnerships
+4.4 Power & Infrastructure Resilience (Solar Inverter + Hybrid Fuel Setup for 100% Uptime)
+4.5 Technology Stack & Automated Digital Operations
+4.6 Staffing Plan, Key Roles & Governance",
+    "financialProjection": "Detailed 3-Year Financial Model (All figures in NGN) containing:
+5.1 Startup Capital Expenditure (CAPEX) & Initial Working Capital Table (Markdown table with Item | Allocation (NGN) | Percentage | Strategic Purpose)
+5.2 3-Year Projected Income Statement Table (Markdown table with Metric | Year 1 (NGN) | Year 2 (NGN) | Year 3 (NGN) | 3-Yr CAGR)
+5.3 12-Month Projected Cashflow Trajectory Table (Markdown table with Month | Inflow (NGN) | Outflow (NGN) | Net Cashflow (NGN) | Cumulative Cash (NGN))
+5.4 Key Credit, Solvency & Investment Ratios Table (Markdown table with Credit Metric | Benchmark | Year 1 Projection | Year 2 Projection | Underwriting Assessment)
+5.5 Break-Even Analysis & Capital Payback Horizon for Grant Providers & Lenders",
+    "swotAnalysis": "Comprehensive 4-Quadrant SWOT Matrix containing:
+6.1 In-Depth Strengths (Internal Core Competencies)
+6.2 Weaknesses & Internal Mitigation Measures
+6.3 Market Opportunities & Growth Vectors
+6.4 External Macroeconomic Threats & Defensive Strategy
+6.5 Strategic Action Matrix (Markdown Table with Strategy Type | Strategic Initiative | Execution Horizon | Expected Business Impact)",
+    "riskMitigation": "Robust Risk Mitigation & Institutional Compliance containing:
+7.1 Inflation & Currency Devaluation Shielding Protocol
+7.2 Regulatory & Tax Compliance Roadmap (CAC, TIN, FIRS, State IRS, CITA Section 23)
+7.3 Supply Disruption & Critical Inventory Buffer Strategy
+7.4 Business Continuity & Emergency Protocols
+7.5 Grant & Institutional Funding Alignment (iDICE, BOI, LSETF, TEF readiness)",
+    "underwritingSummary": "Institutional Debt Underwriting & Credit Readiness containing:
+8.1 Proposed Facility Structure & Terms Table (Markdown table with Facility Parameter | Proposed Term | Underwriting Justification)
+8.2 Debt Service Coverage Ratio (DSCR) Stress Test Table (Markdown table with Scenario | Projected EBITDA | Annual Debt Service | DSCR Ratio | Underwriter Status)
+8.3 Collateral, Stock Hypothecation & Promoter Security Structure
+8.4 Socio-Economic Multiplier & Direct Employment Generation (Direct/Indirect jobs created)",
+    "promoterDeclaration": "Promoter Statutory Attestation & Execution containing:
+9.1 Statutory Declaration of Veracity and Solvency under CAMA 2020
+9.2 Legal & Tax Compliance Attestation (CITA Section 23 Small Business Exemption, JTB/FIRS TIN, SMEDAN SUIN)
+9.3 Corporate Seal & Execution Sign-Off Block"
+}}}}
 
-CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NEVER use unescaped double quotes (\"). If you need quotes inside the text, use single quotes (') instead.
+CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NEVER use unescaped double quotes ("). If you need quotes inside the text, use single quotes (') instead.
 """
         
         try:
@@ -75,10 +121,12 @@ CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NE
                     'executiveSummary': plan.get('executiveSummary') or plan.get('executive_summary') or plan.get('ExecutiveSummary') or "",
                     'marketAnalysis': plan.get('marketAnalysis') or plan.get('market_analysis') or plan.get('MarketAnalysis') or "",
                     'marketingStrategy': plan.get('marketingStrategy') or plan.get('marketing_strategy') or plan.get('MarketingStrategy') or "",
-                    'financialProjection': plan.get('financialProjection') or plan.get('financial_projection') or plan.get('FinancialProjection') or plan.get('financialProjections') or "",
                     'operationalPlan': plan.get('operationalPlan') or plan.get('operational_plan') or plan.get('OperationalPlan') or "",
+                    'financialProjection': plan.get('financialProjection') or plan.get('financial_projection') or plan.get('FinancialProjection') or plan.get('financialProjections') or "",
                     'swotAnalysis': plan.get('swotAnalysis') or plan.get('swot_analysis') or plan.get('SwotAnalysis') or "",
-                    'riskMitigation': plan.get('riskMitigation') or plan.get('risk_mitigation') or plan.get('RiskMitigation') or ""
+                    'riskMitigation': plan.get('riskMitigation') or plan.get('risk_mitigation') or plan.get('RiskMitigation') or "",
+                    'underwritingSummary': plan.get('underwritingSummary') or plan.get('underwriting_summary') or plan.get('UnderwritingSummary') or "",
+                    'promoterDeclaration': plan.get('promoterDeclaration') or plan.get('promoter_declaration') or plan.get('PromoterDeclaration') or ""
                 }
                 if len(normalized_plan['executiveSummary']) > 150 and len(normalized_plan['marketAnalysis']) > 150:
                     return Response(normalized_plan)
@@ -117,9 +165,9 @@ To scale operations, expand inventory reserves, and solidify market leadership, 
 
 1.6 3-YEAR STRATEGIC GROWTH & FINANCIAL SUMMARY
 Over the next 36 months, {name} is projected to achieve:
-- Year 1 Gross Revenue: ₦18,500,000 (Net Margin: 28%)
-- Year 2 Gross Revenue: ₦42,000,000 (Net Margin: 33%)
-- Year 3 Gross Revenue: ₦85,000,000 (Net Margin: 36%)
+- Year 1 Gross Revenue: ₦18,500,000 (Net Margin: 27.0%)
+- Year 2 Gross Revenue: ₦42,000,000 (Net Margin: 32.5%)
+- Year 3 Gross Revenue: ₦85,000,000 (Net Margin: 28.5% post-CIT)
 - Break-even milestone achieved by Month 4 of operations, with full capital payback anticipated within 14 months.""",
 
             "marketAnalysis": f"""2.1 NIGERIAN SECTOR OVERVIEW & MACRO DYNAMICS
@@ -202,41 +250,64 @@ Operated by an agile team of {employees}:
             "financialProjection": f"""5.1 STARTUP CAPITAL EXPENDITURE (CAPEX) & WORKING CAPITAL
 Total Capital Base: {capital}
 
-| Expenditure Item | Allocation (₦) | Percentage | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Initial Inventory Stocking** | ₦2,250,000 | 45% | Direct wholesale inventory procurement from Tier-1 suppliers |
-| **Logistics & Packaging Setup** | ₦600,000 | 12% | Branded packaging, thermal barcode printers, weighing scales |
-| **Solar Inverter & Power System** | ₦650,000 | 13% | 3.5kVA Solar Inverter + Lithium Battery for 24/7 uptime |
-| **Marketing & Launch Campaigns** | ₦750,000 | 15% | Meta ads, TikTok influencer activations, launch promotions |
-| **CAC Registration & Compliance** | ₦250,000 | 5% | CAC incorporation, TIN, corporate account setup |
-| **Contingency Operating Reserve** | ₦500,000 | 10% | Emergency cash runway & working capital buffer |
-| **TOTAL INITIAL DEPLOYMENT** | **₦5,000,000** | **100%** | **Comprehensive Launch & Growth Capitalization** |
+| Expenditure Item | Category | Allocation (₦) | % Total | Strategic Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Initial Inventory Stocking** | Working Capital | ₦2,250,000 | 45.0% | Direct wholesale procurement from Tier-1 suppliers at volume discounts |
+| **Logistics & Packaging Setup** | Fixed Asset | ₦600,000 | 12.0% | Commercial packaging, thermal dispatch barcode printers, precision scales |
+| **Solar Power Continuity System** | Infrastructure | ₦650,000 | 13.0% | 3.5kVA Pure Sine Wave Inverter + Lithium Battery for 24/7 power uptime |
+| **Omnichannel Customer Acquisition** | Marketing | ₦750,000 | 15.0% | Meta ads, TikTok/Reels creator activations, local B2B commercial campaigns |
+| **Regulatory & Tax Compliance** | Statutory | ₦250,000 | 5.0% | CAC incorporation, TIN, SMEDAN SUIN, corporate banking setup |
+| **Contingency Operating Reserve** | Cash Buffer | ₦500,000 | 10.0% | 90-day operational buffer against inflation and supplier lead-time shocks |
+| **TOTAL INITIAL CAPITAL ALLOCATION** | **All Categories** | **₦5,000,000** | **100.0%** | **Comprehensive Launch & Growth Capitalization** |
 
 5.2 3-YEAR PROJECTED INCOME STATEMENT (NGN)
-- **Year 1**:
-  - Gross Revenue: ₦18,500,000
-  - Cost of Goods Sold (COGS - 55%): (₦10,175,000)
-  - **Gross Profit (45%)**: ₦8,325,000
-  - Operating Expenses (Rent, Logistics, Power, Staff, Ads): (₦3,145,000)
-  - **Net Profit Before Tax (28%)**: **₦5,180,000**
-- **Year 2**:
-  - Gross Revenue: ₦42,000,000
-  - Cost of Goods Sold (COGS - 52%): (₦21,840,000)
-  - **Gross Profit (48%)**: ₦20,160,000
-  - Operating Expenses: (₦6,300,000)
-  - **Net Profit Before Tax (33%)**: **₦13,860,000**
-- **Year 3**:
-  - Gross Revenue: ₦85,000,000
-  - Cost of Goods Sold (COGS - 50%): (₦42,500,000)
-  - **Gross Profit (50%)**: ₦42,500,000
-  - Operating Expenses: (₦11,900,000)
-  - **Net Profit Before Tax (36%)**: **₦30,600,000**
 
-5.3 MONTHLY CASH FLOW & BREAK-EVEN DYNAMICS
-- Average Monthly Operating Expenses: ~₦260,000 – ₦350,000 in Year 1.
-- Monthly Break-Even Sales Volume: ₦680,000 gross revenue.
-- Projected Break-Even Month: Achieved by Month 4 of commercial operations.
-- Full Capital Payback Period: Estimated at 14 months, providing an outstanding Internal Rate of Return (IRR) exceeding 65%.""",
+| Financial Metric | Year 1 (₦) | Year 2 (₦) | Year 3 (₦) | 3-Year CAGR / Growth Driver |
+| :--- | :--- | :--- | :--- | :--- |
+| **Gross Operating Revenue** | ₦18,500,000 | ₦42,000,000 | ₦85,000,000 | +114% CAGR via customer retention & B2B expansion |
+| **Cost of Goods Sold (COGS)** | (₦10,175,000) | (₦21,840,000) | (₦42,500,000) | Wholesale volume price locks reducing COGS to 50% |
+| **Gross Operating Profit** | **₦8,325,000** | **₦20,160,000** | **₦42,500,000** | **Gross Margin expands from 45.0% to 50.0%** |
+| Operating Overheads (Logistics, Rent) | (₦1,850,000) | (₦3,780,000) | (₦7,140,000) | Shared infrastructure & route optimization |
+| Staff Compensation & Personnel | (₦840,000) | (₦1,680,000) | (₦3,360,000) | Performance-linked incentive model |
+| Marketing & Customer Acquisition | (₦455,000) | (₦840,000) | (₦1,400,000) | LTV/CAC ratio exceeds 50:1 |
+| Total Operating Expenses (OPEX) | (₦3,145,000) | (₦6,300,000) | (₦11,900,000) | Scalable digital operating model |
+| **Operating EBITDA** | **₦5,180,000** | **₦13,860,000** | **₦30,600,000** | **EBITDA Margin: 28.0% -> 36.0%** |
+| Depreciation & Amortization | (₦180,000) | (₦220,000) | (₦260,000) | Straight-line asset depreciation |
+| **Net Operating Profit Before Tax** | **₦5,000,000** | **₦13,640,000** | **₦30,340,000** | **Robust Cashflow for Debt Service** |
+| Corporate Income Tax (CIT) | ₦0 | ₦0 | (₦6,068,000) | **0% CIT under CITA Section 23 (Turnover < ₦25M)** |
+| **Net Retained Earnings** | **₦5,000,000** | **₦13,640,000** | **₦24,272,000** | **Net Profit Margin: 27.0% -> 28.5%** |
+
+*Note: In accordance with Section 23 of the Companies Income Tax Act (CITA), small enterprises with annual turnover below ₦25,000,000 are subject to 0% Corporate Income Tax.*
+
+5.3 12-MONTH PROJECTED CASHFLOW TRAJECTORY (YEAR 1)
+
+| Month / Operating Period | Cash Inflow (₦) | Cash Outflow (₦) | Net Monthly Cashflow (₦) | Cumulative Cash Balance (₦) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Month 01 (Launch)** | ₦750,000 | ₦1,250,000 | (₦500,000) | ₦4,500,000 |
+| **Month 02** | ₦980,000 | ₦1,120,000 | (₦140,000) | ₦4,360,000 |
+| **Month 03** | ₦1,250,000 | ₦1,180,000 | ₦70,000 | ₦4,430,000 |
+| **Month 04 (Breakeven)** | ₦1,420,000 | ₦1,210,000 | ₦210,000 | ₦4,640,000 |
+| **Month 05** | ₦1,550,000 | ₦1,240,000 | ₦310,000 | ₦4,950,000 |
+| **Month 06** | ₦1,680,000 | ₦1,260,000 | ₦420,000 | ₦5,370,000 |
+| **Month 07** | ₦1,750,000 | ₦1,290,000 | ₦460,000 | ₦5,830,000 |
+| **Month 08** | ₦1,820,000 | ₦1,310,000 | ₦510,000 | ₦6,340,000 |
+| **Month 09** | ₦1,890,000 | ₦1,330,000 | ₦560,000 | ₦6,900,000 |
+| **Month 10** | ₦1,960,000 | ₦1,350,000 | ₦610,000 | ₦7,510,000 |
+| **Month 11** | ₦2,100,000 | ₦1,380,000 | ₦720,000 | ₦8,230,000 |
+| **Month 12** | ₦2,350,000 | ₦1,400,000 | ₦950,000 | ₦9,180,000 |
+| **FULL YEAR 1 TOTAL** | **₦18,500,000** | **₦15,320,000** | **₦3,180,000** | **₦9,180,000 Ending Cash** |
+
+5.4 KEY CREDIT, SOLVENCY & FINANCIAL METRICS
+
+| Financial & Solvency Metric | Institutional Benchmark | Year 1 Performance | Year 2 Performance | Underwriter Appraisal |
+| :--- | :--- | :--- | :--- | :--- |
+| **Debt Service Coverage Ratio (DSCR)** | Minimum >= 1.30x | **1.85x** | **2.65x** | **EXCELLENT (Low Default Risk)** |
+| **Gross Profit Margin** | Minimum >= 35.0% | **45.0%** | **48.0%** | **STRONG (Superior Pricing Power)** |
+| **Operating EBITDA Margin** | Minimum >= 15.0% | **28.0%** | **33.0%** | **HIGH OPERATIONAL EFFICIENCY** |
+| **Net Profit Margin** | Minimum >= 12.0% | **27.0%** | **32.5%** | **SUSTAINABLE PROFITABILITY** |
+| **Commercial Break-Even Point** | <= 6 Months | **Month 4 (₦680,000/mo)** | Surpassed | **FAST CASH GENERATION** |
+| **Capital Payback Horizon** | <= 24 Months | **14 Months** | Fully Recovered | **FAVORABLE CAPITAL VELOCITY** |
+| **Current Ratio (Liquidity)** | Minimum >= 1.50x | **2.85x** | **3.40x** | **ROBUST SHORT-TERM SOLVENCY** |""",
 
             "swotAnalysis": f"""6.1 IN-DEPTH SWOT STRATEGIC ANALYSIS FOR {name}
 
@@ -264,12 +335,12 @@ Total Capital Base: {capital}
 
 6.2 STRATEGIC SWOT ACTION MATRIX
 
-| Strategy Type | Action Plan |
-| :--- | :--- |
-| **SO (Strengths + Opportunities)** | Leverage lean digital operations to bid aggressively on lucrative corporate wholesale contracts and apply for low-interest BOI expansion loans. |
-| **ST (Strengths + Threats)** | Deploy dynamic cost-plus pricing algorithms with a 10–15% inflation cushion to preserve gross margins against sudden supplier price spikes. |
-| **WO (Weaknesses + Opportunities)** | Use grant funding to secure volume-discounted container inventory and establish dedicated dispatch courier partnerships. |
-| **WT (Weaknesses + Threats)** | Implement strict 100% upfront payment policies on customized orders to eliminate bad debts and maintain healthy operating cash flow. |""",
+| Strategy Type | Strategic Initiative | Execution Horizon | Expected Business Impact |
+| :--- | :--- | :--- | :--- |
+| **SO (Strengths + Opportunities)** | Deploy lean digital sales engine to bid on corporate contracts & apply for single-digit BOI asset funding | Months 1 - 6 | Scale institutional revenues by 150% with low capital cost |
+| **ST (Strengths + Threats)** | Deploy dynamic cost-plus pricing algorithms with a 10–15% floating inflation hedge buffer | Continuous | Insulate gross margin above 45% despite supplier shocks |
+| **WO (Weaknesses + Opportunities)** | Channel institutional expansion capital into volume manufacturer orders & dedicated dispatch partners | Months 3 - 9 | Eliminate delivery bottlenecks and unlock bulk discounts |
+| **WT (Weaknesses + Threats)** | Implement strict 100% advance digital settlement on custom orders & active debtor recovery nudges | Immediate | Preserve operating cashflow and restrict receivables < 5% |""",
 
             "riskMitigation": f"""7.1 MACROECONOMIC INFLATION & FX SHIELDING PROTOCOL
 - Dynamic Cost-Plus Pricing Buffer: Adjusting retail and wholesale price lists dynamically with a 10–15% floating margin buffer to absorb sudden supplier increases without eroding profitability.
@@ -291,7 +362,62 @@ Total Capital Base: {capital}
 - **Bank of Industry (BOI) Micro-Enterprise Fund**: Eligible for single-digit concessionary asset financing.
 - **iDICE (Investment in Digital and Creative Enterprises)**: Positioned for tech-enabled digital commerce scaling.
 - **LSETF (Lagos State Employment Trust Fund)**: Tailored for local job creation and micro-expansion capital.
-- **Tony Elumelu Foundation (TEF)**: Structured to meet all seed grant application and mentorship criteria."""
+- **Tony Elumelu Foundation (TEF)**: Structured to meet all seed grant application and mentorship criteria.""",
+
+            "underwritingSummary": f"""8.1 PROPOSED CREDIT FACILITY STRUCTURE & DEBT TERMS
+
+| Facility Parameter | Recommended Specification | Institutional Underwriter Justification |
+| :--- | :--- | :--- |
+| **Credit Facility Type** | Term Loan / Equipment Asset Financing & Working Capital Line | Matched to high-velocity stock procurement and power continuity infrastructure |
+| **Target Principal Amount** | {capital} | Structured to scale enterprise capacity and secure volume manufacturer discounts |
+| **Tenor / Amortization** | 24 - 36 Months | Optimizes cash retention while ensuring predictable monthly principal clearance |
+| **Interest Benchmark** | Concessionary 9.0% - 12.0% p.a. (BOI / DBN Intervention Rate) | Complies with Central Bank of Nigeria (CBN) MSME development funding terms |
+| **Principal Moratorium** | 3 - 6 Months Grace Period | Allows enterprise to complete procurement and achieve operational breakeven |
+| **Repayment Source** | Daily Digital Operating Cashflow via Corporate Bank Account | Monitored through verified digital sales ledger and POS reconciliation |
+
+8.2 DEBT SERVICE COVERAGE RATIO (DSCR) STRESS TEST
+
+| Underwriting Scenario | Annual EBITDA (₦) | Annual Debt Service (₦) | DSCR Coverage | Risk Classification |
+| :--- | :--- | :--- | :--- | :--- |
+| **Base Case Projection** | ₦5,180,000 | ₦1,920,000 | **2.70x** | **Tier-1 Prime (Extremely Safe)** |
+| **Moderate Downside (-15% Rev)** | ₦4,050,000 | ₦1,920,000 | **2.11x** | **Comfortably Above 1.30x Threshold** |
+| **Severe Downside (-30% Rev)** | ₦2,820,000 | ₦1,920,000 | **1.47x** | **Fully Solvent (Zero Default Risk)** |
+
+8.3 COLLATERAL, SECURITY & DEBENTURE STRUCTURE
+- **Primary Debenture**: Fixed charge over funded operational equipment (solar inverter infrastructure, dispatch assets) and floating charge over unencumbered inventory.
+- **Stock Hypothecation**: Formal pledge of trade inventory maintained at a minimum 150% coverage ratio relative to outstanding principal balance.
+- **Promoter Personal Guarantee**: Irrevocable joint and several personal guarantee executed by the Managing Director / Principal Promoter.
+- **Key-Man Insurance**: Credit life insurance policy assigned to the financing institution for the duration of the debt facility.
+
+8.4 SOCIO-ECONOMIC MULTIPLIER & EMPLOYMENT GENERATION
+- Direct Sustainable Jobs Created: 4 full-time operational and customer fulfillment roles within 12 months.
+- Indirect Jobs Supported: An estimated 12 auxiliary roles across third-party dispatch logistics, artisanal packaging, and wholesale transport.
+- Youth & Gender Inclusion: Priority hiring framework targeting youth operators and female commerce specialists in {location}.
+- Tax Contribution: Enhancing domestic value addition and formalizing retail transaction records into the national tax net.""",
+
+            "promoterDeclaration": f"""9.1 STATUTORY DECLARATION OF SOLVENCY & VERACITY
+I/We, the undersigned Principal Promoter(s) and Authorized Executive(s) of {name}, do hereby solemnly declare, under oath and in pursuant to the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Oaths Act of the Federal Republic of Nigeria, that:
+1. All statements, projections, figures, and representations contained in this Strategic Business Plan and Financial Model are true, complete, and accurate to the best of our knowledge and professional belief.
+2. The financial forecasts have been prepared on reasonable, prudent, and conservative commercial assumptions reflecting contemporary Nigerian economic parameters.
+3. The enterprise is not currently subject to any winding-up petition, unsatisfied court judgment, or distress warrant, and holds no undisclosed liabilities.
+4. Proceeds from any approved credit facility or grant intervention will be deployed strictly for the authorized operational objectives set forth herein.
+
+9.2 STATUTORY COMPLIANCE ACKNOWLEDGEMENT
+- **Corporate Affairs Commission (CAC)**: Registered business enterprise operating in full compliance with CAMA 2020 statutory filing mandates.
+- **Tax Identification Number (TIN)**: Enrolled in the Joint Tax Board (JTB) / FIRS national database; compliant with Section 23 of CITA (0% CIT threshold for small businesses with turnover < ₦25,000,000).
+- **SMEDAN SUIN Verification**: Duly indexed under the National MSME Database maintained by the Small and Medium Enterprises Development Agency of Nigeria.
+- **Financial Institutions Act (BOFI Act)**: Fully aligned with Central Bank of Nigeria anti-money laundering (AML/CFT) and Know-Your-Customer (KYC) standards.
+
+9.3 CORPORATE EXECUTION & ATTESTATION SEAL
+Executed on this _____ day of __________________, 2026 for and on behalf of {name}:
+
+____________________________________________          ____________________________________________
+MANAGING DIRECTOR / PRINCIPAL PROMOTER                 SECRETARY / LEGAL ADVISER / CO-DIRECTOR
+Name: ______________________________________          Name: ______________________________________
+National ID / NIN: _________________________          National ID / NIN: _________________________
+Date: ______________________________________          Date: ______________________________________
+
+[ AFFIX OFFICIAL CORPORATE STAMP / NOTARIAL SEAL HERE ]"""
         }
         return Response(fallback_plan)
 
