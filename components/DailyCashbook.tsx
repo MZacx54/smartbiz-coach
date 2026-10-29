@@ -5,7 +5,8 @@ import {
   Send, Share2, Download, Printer, RefreshCw, ShoppingCart, 
   FileText, ShieldCheck, Sparkles, Filter, X, Lock, Unlock, Key,
   Wifi, WifiOff, Cloud, Edit2, Bot, Zap, TrendingUp, Check, Camera,
-  Mic, Receipt
+  Mic, Receipt, Search, Package, Volume2, Copy, HelpCircle, Layers,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DailySale, DailyExpense, DailySummary, DailyAIInsights, Product } from '../types';
@@ -137,6 +138,30 @@ export const DailyCashbook: React.FC = () => {
   const [pinError, setPinError] = useState('');
   const [isSubmittingPin, setIsSubmittingPin] = useState(false);
   const [showPasswordText, setShowPasswordText] = useState(false);
+
+  // Daily Operations Filters & Stock Ledger Controls
+  const [timeHorizon, setTimeHorizon] = useState<'TODAY' | 'YESTERDAY' | 'WEEK' | 'MONTH' | 'CUSTOM'>('TODAY');
+  const [customStartDate, setCustomStartDate] = useState(localDateStr());
+  const [customEndDate, setCustomEndDate] = useState(localDateStr());
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState<'ALL' | 'CASH' | 'TRANSFER' | 'CREDIT'>('ALL');
+  const [filterProductType, setFilterProductType] = useState<'ALL' | 'PHYSICAL' | 'DIGITAL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'NEWEST' | 'HIGHEST_AMOUNT' | 'LOWEST_AMOUNT' | 'QTY_DESC' | 'A_Z'>('NEWEST');
+  const [showStockBreakdown, setShowStockBreakdown] = useState(false);
+
+  // Ask AI About Daily Sales state
+  const [showAIAskModal, setShowAIAskModal] = useState(false);
+  const [aiAskQuestion, setAiAskQuestion] = useState('');
+  const [isAIAsking, setIsAIAsking] = useState(false);
+  const [aiAskResult, setAiAskResult] = useState<{
+    question: string;
+    answer: string;
+    period_label?: string;
+    metrics?: any;
+    top_products?: any[];
+    debtors?: any[];
+  } | null>(null);
+  const [isSpeakingAnswer, setIsSpeakingAnswer] = useState(false);
 
   useEffect(() => {
     const handleModeChanged = (e: any) => {
@@ -331,7 +356,10 @@ export const DailyCashbook: React.FC = () => {
           snapshotSales.map(async (s) => {
             const tempId = String(s.id);
             const { id, ...payload } = s;
-            const res = await api.post('/api/marketplace/daily-sales/', payload, { timeout: 7000 });
+            const res = await api.post('/api/marketplace/daily-sales/', {
+              ...payload,
+              offline_id: tempId
+            }, { timeout: 8000 });
             syncedSaleIds.add(tempId);
             if (res?.data) {
               syncedSaleMap.set(tempId, res.data);
@@ -363,7 +391,10 @@ export const DailyCashbook: React.FC = () => {
           snapshotExpenses.map(async (e) => {
             const tempId = String(e.id);
             const { id, ...payload } = e;
-            const res = await api.post('/api/marketplace/daily-expenses/', payload, { timeout: 7000 });
+            const res = await api.post('/api/marketplace/daily-expenses/', {
+              ...payload,
+              offline_id: tempId
+            }, { timeout: 8000 });
             syncedExpenseIds.add(tempId);
             if (res?.data) {
               syncedExpenseMap.set(tempId, res.data);
@@ -497,24 +528,88 @@ export const DailyCashbook: React.FC = () => {
     }
   };
 
-  // Merge helper: combines unsynced offline items for a date with cloud/cached items
+  // Merge helper: combines unsynced offline items for a date with cloud/cached items with zero duplication
   const buildMergedRecordsForDate = (
     dateStr: string,
     cloudSales: DailySale[],
     cloudExpenses: DailyExpense[]
   ) => {
-    const offlineSalesForDate = getOfflineSales().filter((s: any) => !s.date || s.date === dateStr);
-    const offlineExpensesForDate = getOfflineExpenses().filter((e: any) => !e.date || e.date === dateStr);
+    const allOfflineSales = getOfflineSales();
+    const allOfflineExpenses = getOfflineExpenses();
+
+    // 1. Identify and purge offline sales that already exist in cloud (by offline_id tag or matching content)
+    const syncedOfflineSaleIds = new Set<string>();
+    for (const off of allOfflineSales) {
+      const offId = String(off.id);
+      const isAlreadyInCloud = cloudSales.some((cs: any) => {
+        if (cs.notes && (cs.notes.includes(`[offline_id:${offId}]`) || cs.notes.includes(offId))) return true;
+        const nameMatch = cs.item_name && off.item_name && cs.item_name.trim().toLowerCase() === off.item_name.trim().toLowerCase();
+        const amtMatch = Math.abs(parseFloat(String(cs.total_amount || 0)) - parseFloat(String(off.total_amount || 0))) < 0.01;
+        const pmMatch = cs.payment_method === off.payment_method;
+        return nameMatch && amtMatch && pmMatch;
+      });
+      if (isAlreadyInCloud) {
+        syncedOfflineSaleIds.add(offId);
+      }
+    }
+
+    if (syncedOfflineSaleIds.size > 0) {
+      const remainingOfflineSales = allOfflineSales.filter(s => !syncedOfflineSaleIds.has(String(s.id)));
+      localStorage.setItem('sb_offline_sales', JSON.stringify(remainingOfflineSales));
+    }
+
+    // 2. Identify and purge offline expenses that already exist in cloud
+    const syncedOfflineExpIds = new Set<string>();
+    for (const off of allOfflineExpenses) {
+      const offId = String(off.id);
+      const isAlreadyInCloud = cloudExpenses.some((ce: any) => {
+        if (ce.notes && (ce.notes.includes(`[offline_id:${offId}]`) || ce.notes.includes(offId))) return true;
+        const titleMatch = ce.title && off.title && ce.title.trim().toLowerCase() === off.title.trim().toLowerCase();
+        const amtMatch = Math.abs(parseFloat(String(ce.amount || 0)) - parseFloat(String(off.amount || 0))) < 0.01;
+        const catMatch = ce.category === off.category;
+        return titleMatch && amtMatch && catMatch;
+      });
+      if (isAlreadyInCloud) {
+        syncedOfflineExpIds.add(offId);
+      }
+    }
+
+    if (syncedOfflineExpIds.size > 0) {
+      const remainingOfflineExpenses = allOfflineExpenses.filter(e => !syncedOfflineExpIds.has(String(e.id)));
+      localStorage.setItem('sb_offline_expenses', JSON.stringify(remainingOfflineExpenses));
+    }
+
+    const currentOfflineSales = getOfflineSales().filter((s: any) => !s.date || s.date === dateStr);
+    const currentOfflineExpenses = getOfflineExpenses().filter((e: any) => !e.date || e.date === dateStr);
 
     const cloudSaleIds = new Set(cloudSales.map((s) => String(s.id)));
-    const unSyncedSales = offlineSalesForDate.filter((s) => !cloudSaleIds.has(String(s.id)));
+    const unSyncedSales = currentOfflineSales.filter((s) => !cloudSaleIds.has(String(s.id)) && !syncedOfflineSaleIds.has(String(s.id)));
 
     const cloudExpIds = new Set(cloudExpenses.map((e) => String(e.id)));
-    const unSyncedExpenses = offlineExpensesForDate.filter((e) => !cloudExpIds.has(String(e.id)));
+    const unSyncedExpenses = currentOfflineExpenses.filter((e) => !cloudExpIds.has(String(e.id)) && !syncedOfflineExpIds.has(String(e.id)));
+
+    // Final strict deduplication pass to ensure zero double-counting
+    const seenSaleKeys = new Set<string>();
+    const deduplicatedSales: DailySale[] = [];
+    for (const s of [...unSyncedSales, ...cloudSales]) {
+      const idKey = `id-${s.id}`;
+      if (seenSaleKeys.has(idKey)) continue;
+      seenSaleKeys.add(idKey);
+      deduplicatedSales.push(s);
+    }
+
+    const seenExpKeys = new Set<string>();
+    const deduplicatedExpenses: DailyExpense[] = [];
+    for (const e of [...unSyncedExpenses, ...cloudExpenses]) {
+      const idKey = `id-${e.id}`;
+      if (seenExpKeys.has(idKey)) continue;
+      seenExpKeys.add(idKey);
+      deduplicatedExpenses.push(e);
+    }
 
     return {
-      mergedSales: [...unSyncedSales, ...cloudSales],
-      mergedExpenses: [...unSyncedExpenses, ...cloudExpenses],
+      mergedSales: deduplicatedSales,
+      mergedExpenses: deduplicatedExpenses,
     };
   };
 
@@ -549,9 +644,14 @@ export const DailyCashbook: React.FC = () => {
     }
 
     try {
+      let queryParam = `date=${selectedDate}`;
+      if (timeHorizon === 'WEEK') queryParam = 'days=7';
+      else if (timeHorizon === 'MONTH') queryParam = 'days=30';
+      else if (timeHorizon === 'CUSTOM') queryParam = `date_from=${customStartDate}&date_to=${customEndDate}`;
+
       const [salesRes, expensesRes, summaryRes] = await Promise.allSettled([
-        api.get(`/api/marketplace/daily-sales/?date=${selectedDate}`, { timeout: 8000 }),
-        api.get(`/api/marketplace/daily-expenses/?date=${selectedDate}`, { timeout: 8000 }),
+        api.get(`/api/marketplace/daily-sales/?${queryParam}`, { timeout: 8000 }),
+        api.get(`/api/marketplace/daily-expenses/?${queryParam}`, { timeout: 8000 }),
         api.get(`/api/marketplace/daily-summary/?date=${selectedDate}`, { timeout: 8000 })
       ]);
 
@@ -594,13 +694,229 @@ export const DailyCashbook: React.FC = () => {
 
   useEffect(() => {
     fetchDailyData();
-  }, [selectedDate]);
+  }, [selectedDate, timeHorizon, customStartDate, customEndDate]);
+
+  // Filtered & Sorted Sales
+  const filteredSales = React.useMemo(() => {
+    let result = [...sales];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(s =>
+        (s.item_name && s.item_name.toLowerCase().includes(q)) ||
+        (s.customer_name && s.customer_name.toLowerCase().includes(q)) ||
+        (s.notes && s.notes.toLowerCase().includes(q))
+      );
+    }
+
+    if (filterPaymentMethod !== 'ALL') {
+      result = result.filter(s => s.payment_method === filterPaymentMethod);
+    }
+
+    if (filterProductType !== 'ALL') {
+      result = result.filter(s => {
+        const prod = inventoryProducts.find(p => p.id === s.product || p.name.toLowerCase() === s.item_name.toLowerCase());
+        const pType = prod?.product_type || 'PHYSICAL';
+        return pType === filterProductType;
+      });
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      if (sortBy === 'NEWEST') {
+        return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
+      }
+      if (sortBy === 'HIGHEST_AMOUNT') {
+        return parseFloat(String(b.total_amount || 0)) - parseFloat(String(a.total_amount || 0));
+      }
+      if (sortBy === 'LOWEST_AMOUNT') {
+        return parseFloat(String(a.total_amount || 0)) - parseFloat(String(b.total_amount || 0));
+      }
+      if (sortBy === 'QTY_DESC') {
+        return (b.quantity || 1) - (a.quantity || 1);
+      }
+      if (sortBy === 'A_Z') {
+        return (a.item_name || '').localeCompare(b.item_name || '');
+      }
+      return 0;
+    });
+
+    return result;
+  }, [sales, searchQuery, filterPaymentMethod, filterProductType, sortBy, inventoryProducts]);
+
+  // Daily Stock Sales Summary Ledger (Grouped by product to show what was sold, revenue, profit, remaining inventory)
+  const stockSalesSummary = React.useMemo(() => {
+    const summaryMap: Record<string, {
+      name: string;
+      productId: number | null;
+      quantitySold: number;
+      totalRevenue: number;
+      estimatedProfit: number;
+      stockRemaining: number | null;
+      productType: string;
+      category: string;
+    }> = {};
+
+    filteredSales.forEach(s => {
+      const key = (s.item_name || '').trim().toLowerCase();
+      if (!key) return;
+      const linkedProd = inventoryProducts.find(p => p.id === s.product || p.name.toLowerCase() === key);
+      const qty = s.quantity || 1;
+      const rev = parseFloat(String(s.total_amount || 0));
+      const unitCost = parseFloat(String(s.cost_price || (linkedProd as any)?.cost_price || 0));
+      const cost = unitCost * qty;
+      const profit = Math.max(0, rev - cost);
+
+      if (!summaryMap[key]) {
+        summaryMap[key] = {
+          name: s.item_name.trim(),
+          productId: linkedProd ? (linkedProd.id as number) : null,
+          quantitySold: 0,
+          totalRevenue: 0,
+          estimatedProfit: 0,
+          stockRemaining: linkedProd && linkedProd.product_type === 'PHYSICAL' ? (linkedProd.stock_count ?? null) : null,
+          productType: linkedProd?.product_type || 'PHYSICAL',
+          category: (linkedProd as any)?.category?.name || 'General'
+        };
+      }
+      summaryMap[key].quantitySold += qty;
+      summaryMap[key].totalRevenue += rev;
+      summaryMap[key].estimatedProfit += profit;
+    });
+
+    const list = Object.values(summaryMap).sort((a, b) => b.totalRevenue - a.totalRevenue);
+    const totalUnits = list.reduce((sum, item) => sum + item.quantitySold, 0);
+    const totalRev = list.reduce((sum, item) => sum + item.totalRevenue, 0);
+    const totalProfit = list.reduce((sum, item) => sum + item.estimatedProfit, 0);
+
+    return { list, totalUnits, totalRev, totalProfit };
+  }, [filteredSales, inventoryProducts]);
+
+  // Interactive AI Question Assistant (Cloud Gemini with Instant 0ms Offline Fallback)
+  const handleAskAI = async (overrideQuestion?: string) => {
+    const q = (overrideQuestion || aiAskQuestion).trim();
+    if (!q) {
+      toast.error('Please enter a question for SmartBiz AI');
+      return;
+    }
+
+    setIsAIAsking(true);
+    setAiAskQuestion(q);
+
+    let scopeParam = 'today';
+    if (timeHorizon === 'YESTERDAY') scopeParam = 'yesterday';
+    else if (timeHorizon === 'WEEK') scopeParam = 'week';
+    else if (timeHorizon === 'MONTH') scopeParam = 'month';
+    else if (timeHorizon === 'CUSTOM') scopeParam = 'custom';
+
+    const payload = {
+      question: q,
+      scope: scopeParam,
+      date: selectedDate,
+      date_from: timeHorizon === 'CUSTOM' ? customStartDate : undefined,
+      date_to: timeHorizon === 'CUSTOM' ? customEndDate : undefined,
+      days: timeHorizon === 'WEEK' ? 7 : timeHorizon === 'MONTH' ? 30 : undefined
+    };
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        const res = await api.post('/api/marketplace/daily-ai-ask/', payload, { timeout: 12000 });
+        if (res.data && res.data.answer) {
+          setAiAskResult(res.data);
+          setIsAIAsking(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend AI ask unavailable or offline, running local client intelligence:', err);
+    }
+
+    // 0ms Zero-fail Local Client Intelligence if offline or timeout
+    const totalRev = sales.reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
+    const cashSales = sales.filter(s => s.payment_method === 'CASH').reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
+    const transferSales = sales.filter(s => s.payment_method === 'TRANSFER').reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
+    const creditSales = sales.filter(s => s.payment_method === 'CREDIT').reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
+    const totalExp = expenses.reduce((sum, e) => sum + parseFloat(String(e.amount || 0)), 0);
+    const cashExp = expenses.filter(e => e.payment_method === 'CASH').reduce((sum, e) => sum + parseFloat(String(e.amount || 0)), 0);
+    const netCash = cashSales - cashExp;
+
+    const topItem = stockSalesSummary.list[0];
+    const qLower = q.toLowerCase();
+    let localAnswer = "";
+
+    if (qLower.includes('top') || qLower.includes('best') || qLower.includes('most') || qLower.includes('highest')) {
+      if (topItem) {
+        localAnswer = `🏆 **Top Performing Item (${selectedDate}):**\n\n• **${topItem.name}** was your #1 seller generating **${formatNgn(topItem.totalRevenue)}** across **${topItem.quantitySold} units sold**.\n• Estimated gross profit: **${formatNgn(topItem.estimatedProfit)}**.\n• Remaining stock in shop: **${topItem.stockRemaining !== null ? topItem.stockRemaining + ' units' : 'Not tracked'}**.`;
+      } else {
+        localAnswer = `No sales recorded for this date yet. Record a quick sale to see your top performing items.`;
+      }
+    } else if (qLower.includes('cash') || qLower.includes('transfer') || qLower.includes('bank') || qLower.includes('till')) {
+      localAnswer = `💵 **Cash & Bank Transfer Breakdown (${selectedDate}):**\n\n• **Physical Cash in Till:** **${formatNgn(cashSales)}**\n• **Bank Transfer / POS:** **${formatNgn(transferSales)}**\n• **Customer Credit / Debt:** **${formatNgn(creditSales)}**\n• **Net Till Cash:** **${formatNgn(netCash)}** (after paying ${formatNgn(cashExp)} cash expenses).`;
+    } else if (qLower.includes('debt') || qLower.includes('owe') || qLower.includes('credit')) {
+      const debtors = sales.filter(s => s.payment_method === 'CREDIT');
+      if (debtors.length > 0) {
+        const lines = debtors.map(d => `• **${d.customer_name || 'Customer'}**: ${formatNgn(parseFloat(String(d.total_amount)))} (${d.item_name})`).join('\n');
+        localAnswer = `📒 **Customer Debts Logged (${selectedDate}):**\n\nTotal credit given: **${formatNgn(creditSales)}** across ${debtors.length} transaction(s).\n\n${lines}\n\n👉 *Tip: Open Gbege Book to send automated Paystack payment links via WhatsApp.*`;
+      } else {
+        localAnswer = `🎉 **Zero customer debts logged for this date!** All ${sales.length} transactions were paid via Cash or Bank Transfer.`;
+      }
+    } else if (qLower.includes('profit') || qLower.includes('gain') || qLower.includes('margin')) {
+      localAnswer = `📈 **Profit Summary (${selectedDate}):**\n\n• **Total Sales Revenue:** **${formatNgn(totalRev)}**\n• **Estimated Gross Margin:** **${formatNgn(stockSalesSummary.totalProfit)}**\n• **Operating Expenses:** **${formatNgn(totalExp)}**\n• **Net Operating Profit:** **${formatNgn(stockSalesSummary.totalProfit - totalExp)}**`;
+    } else if (qLower.includes('stock') || qLower.includes('low') || qLower.includes('inventory')) {
+      const lowStockItems = stockSalesSummary.list.filter(i => i.stockRemaining !== null && i.stockRemaining <= 5);
+      if (lowStockItems.length > 0) {
+        const lines = lowStockItems.map(i => `• ⚠️ **${i.name}**: Only **${i.stockRemaining} units left**! (${i.quantitySold} sold today)`).join('\n');
+        localAnswer = `📦 **Low Stock Alert (${selectedDate}):**\n\n${lines}\n\nReorder these items to avoid stockouts tomorrow.`;
+      } else {
+        localAnswer = `📦 **Inventory Status:** All ${stockSalesSummary.list.length} items sold today have healthy stock levels in your catalog.`;
+      }
+    } else {
+      localAnswer = `📊 **Daily Operations Overview (${selectedDate}):**\n\n• **Total Revenue:** ${formatNgn(totalRev)} (${sales.length} sales)\n• **Estimated Profit:** ${formatNgn(stockSalesSummary.totalProfit - totalExp)}\n• **Cash in Till:** ${formatNgn(netCash)}\n• **Bank Transfers:** ${formatNgn(transferSales)}\n• **Top Seller:** ${topItem ? `${topItem.name} (${formatNgn(topItem.totalRevenue)})` : 'None'}`;
+    }
+
+    setAiAskResult({
+      question: q,
+      answer: localAnswer,
+      period_label: selectedDate,
+      metrics: {
+        total_revenue: totalRev,
+        sales_count: sales.length,
+        cash_sales: cashSales,
+        transfer_sales: transferSales,
+        credit_sales: creditSales,
+        net_cash_in_till: netCash
+      },
+      top_products: stockSalesSummary.list
+    });
+    setIsAIAsking(false);
+  };
+
+  const speakAIAnswer = (text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      toast.error('Voice playback is not supported on this browser.');
+      return;
+    }
+    if (isSpeakingAnswer) {
+      window.speechSynthesis.cancel();
+      setIsSpeakingAnswer(false);
+      return;
+    }
+    const cleanText = text.replace(/[*_#•`]/g, '').trim();
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setIsSpeakingAnswer(false);
+    utterance.onerror = () => setIsSpeakingAnswer(false);
+    setIsSpeakingAnswer(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   // One-tap repeat sale for fast movers (cash, qty 1) — Instant 0ms Save-First + Undo
   const quickSell = async (name: string, price: number, productId?: number | null) => {
     const linked = productId ? inventoryProducts.find(p => p.id === productId) : undefined;
     const tempId = `offline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const payload = {
+      offline_id: tempId,
       product: productId || null,
       item_name: name,
       quantity: 1,
@@ -610,7 +926,7 @@ export const DailyCashbook: React.FC = () => {
       payment_method: 'CASH' as const,
       customer_name: '',
       is_debt: false,
-      notes: 'Quick sale',
+      notes: `Quick sale [offline_id:${tempId}]`,
       date: selectedDate
     };
 
@@ -743,7 +1059,9 @@ export const DailyCashbook: React.FC = () => {
     }
 
     const tempId = `offline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const taggedSaleNotes = saleNotes ? `${saleNotes} [offline_id:${tempId}]` : `[offline_id:${tempId}]`;
     const payload = {
+      offline_id: tempId,
       product: selectedProduct ? selectedProduct.id : null,
       item_name: saleItemName,
       quantity: qtyNum,
@@ -755,7 +1073,7 @@ export const DailyCashbook: React.FC = () => {
       customer_phone: saleCustomerPhone,
       is_debt: salePaymentMethod === 'CREDIT',
       debt_due_date: salePaymentMethod === 'CREDIT' ? (saleDueDate || null) : null,
-      notes: saleNotes,
+      notes: taggedSaleNotes,
       date: selectedDate
     };
 
@@ -847,12 +1165,14 @@ export const DailyCashbook: React.FC = () => {
     }
 
     const tempId = `offline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const taggedExpenseNotes = expenseNotes ? `${expenseNotes} [offline_id:${tempId}]` : `[offline_id:${tempId}]`;
     const payload = {
+      offline_id: tempId,
       title: expenseTitle,
       category: expenseCategory,
       amount: amountNum.toFixed(2),
       payment_method: expensePaymentMethod,
-      notes: expenseNotes,
+      notes: taggedExpenseNotes,
       date: selectedDate
     };
 
@@ -1693,6 +2013,15 @@ export const DailyCashbook: React.FC = () => {
             <span>{isShiftMode ? '🔒 AI Operations Brief' : 'AI Operations Brief'}</span>
             <span className="bg-purple-100 text-purple-700 text-[9px] font-black px-1.5 py-0.5 rounded-full">New</span>
           </button>
+
+          <button
+            onClick={() => setShowAIAskModal(true)}
+            className="px-4 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md hover:from-purple-700 hover:to-indigo-700 active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span>Ask AI About Sales</span>
+            <span className="bg-white/20 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">New</span>
+          </button>
         </div>
 
         {activeTab === 'REPORT' && (
@@ -1745,26 +2074,297 @@ export const DailyCashbook: React.FC = () => {
               </div>
             );
           })()}
-          {sales.length === 0 ? (
+          {/* Operations & Stock Filters Bar */}
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 shadow-sm space-y-3">
+            {/* Row 1: Time Horizon Tabs */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'TODAY', label: 'Today', icon: '📅' },
+                  { id: 'YESTERDAY', label: 'Yesterday', icon: '⏮️' },
+                  { id: 'WEEK', label: 'This Week (7D)', icon: '📊' },
+                  { id: 'MONTH', label: 'This Month (30D)', icon: '📈' },
+                  { id: 'CUSTOM', label: 'Custom Date', icon: '🗓️' },
+                ].map((th) => (
+                  <button
+                    key={th.id}
+                    onClick={() => {
+                      const nextTh = th.id as any;
+                      setTimeHorizon(nextTh);
+                      if (nextTh === 'TODAY') {
+                        setSelectedDate(localDateStr());
+                      } else if (nextTh === 'YESTERDAY') {
+                        setSelectedDate(localDateStr(new Date(Date.now() - 86400000)));
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      timeHorizon === th.id
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span>{th.icon}</span>
+                    <span>{th.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Ask AI button shortcut */}
+              <button
+                onClick={() => setShowAIAskModal(true)}
+                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              >
+                <Bot className="w-3.5 h-3.5 text-purple-600" />
+                <span>Ask AI About Sales</span>
+              </button>
+            </div>
+
+            {/* Custom Date Pickers (if CUSTOM selected) */}
+            {timeHorizon === 'CUSTOM' && (
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+                <span className="font-bold text-slate-600">From:</span>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
+                />
+                <span className="font-bold text-slate-600">To:</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
+                />
+                <button
+                  onClick={() => fetchDailyData()}
+                  className="px-3 py-1.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 cursor-pointer text-xs"
+                >
+                  Apply Range
+                </button>
+              </div>
+            )}
+
+            {/* Row 2: Live Search & Granular Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1">
+              {/* Search input */}
+              <div className="sm:col-span-5 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search item, customer, or notes..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Payment Method Filter */}
+              <div className="sm:col-span-3">
+                <select
+                  value={filterPaymentMethod}
+                  onChange={(e) => setFilterPaymentMethod(e.target.value as any)}
+                  className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  <option value="ALL">All Payments ({sales.length})</option>
+                  <option value="CASH">💵 Cash in Till</option>
+                  <option value="TRANSFER">🏦 Bank Transfer / POS</option>
+                  <option value="CREDIT">📒 Customer Credit / Debt</option>
+                </select>
+              </div>
+
+              {/* Product Type Filter */}
+              <div className="sm:col-span-2">
+                <select
+                  value={filterProductType}
+                  onChange={(e) => setFilterProductType(e.target.value as any)}
+                  className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  <option value="ALL">All Products</option>
+                  <option value="PHYSICAL">📦 Physical Stock</option>
+                  <option value="DIGITAL">⚡ Digital / Services</option>
+                </select>
+              </div>
+
+              {/* Sort By Filter */}
+              <div className="sm:col-span-2">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                >
+                  <option value="NEWEST">⏱️ Newest First</option>
+                  <option value="HIGHEST_AMOUNT">💰 Highest ₦</option>
+                  <option value="LOWEST_AMOUNT">📉 Lowest ₦</option>
+                  <option value="QTY_DESC">📦 Most Units Sold</option>
+                  <option value="A_Z">🔤 A to Z</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Toggle Button for Daily Stock & Sales Summary Ledger */}
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+              <button
+                onClick={() => setShowStockBreakdown(prev => !prev)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  showStockBreakdown
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>
+                  {showStockBreakdown ? 'Hide Stock Sales Summary' : `📊 View Stock & Sales Ledger (${stockSalesSummary.list.length} items · ${stockSalesSummary.totalUnits} units)`}
+                </span>
+                {showStockBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              <div className="text-[11px] font-bold text-slate-500">
+                Showing <strong className="text-slate-800">{filteredSales.length}</strong> of {sales.length} transactions
+                {searchQuery || filterPaymentMethod !== 'ALL' || filterProductType !== 'ALL' ? (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setFilterPaymentMethod('ALL');
+                      setFilterProductType('ALL');
+                      setSortBy('NEWEST');
+                    }}
+                    className="ml-2 text-rose-600 hover:underline font-extrabold cursor-pointer"
+                  >
+                    Reset filters
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Daily Stock & Sales Summary Table / Card Grid */}
+            {showStockBreakdown && (
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-3 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-emerald-600" /> Stock Sold & Store Inventory
+                  </h4>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Total: {formatNgn(stockSalesSummary.totalRev)}
+                  </span>
+                </div>
+
+                {stockSalesSummary.list.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic py-2">No items match your active filter.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold text-[10px] uppercase">
+                          <th className="py-2.5 px-3">Product / Item</th>
+                          <th className="py-2.5 px-3">Category</th>
+                          <th className="py-2.5 px-3 text-center">Units Sold</th>
+                          <th className="py-2.5 px-3 text-right">Revenue (₦)</th>
+                          <th className="py-2.5 px-3 text-right">Est. Profit</th>
+                          <th className="py-2.5 px-3 text-center">Stock Remaining</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {stockSalesSummary.list.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/60 transition-all">
+                            <td className="py-2.5 px-3 font-extrabold text-slate-900">
+                              {item.name}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-500 text-[11px]">
+                              {item.category}
+                            </td>
+                            <td className="py-2.5 px-3 text-center font-black text-slate-800">
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 font-mono">
+                                {item.quantitySold}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-black text-emerald-700 font-mono">
+                              {formatNgn(item.totalRevenue)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right font-bold text-purple-700 font-mono">
+                              {isShiftMode ? '🔒' : formatNgn(item.estimatedProfit)}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              {item.stockRemaining !== null ? (
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                  item.stockRemaining <= 0
+                                    ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                    : item.stockRemaining <= 5
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                }`}>
+                                  {item.stockRemaining <= 0 ? 'Out of Stock' : `${item.stockRemaining} left`}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[10px]">Non-tracked</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-slate-100/80 font-black text-slate-900 text-xs border-t border-slate-200">
+                          <td className="py-2.5 px-3">Total ({stockSalesSummary.list.length} items)</td>
+                          <td className="py-2.5 px-3"></td>
+                          <td className="py-2.5 px-3 text-center font-mono">{stockSalesSummary.totalUnits}</td>
+                          <td className="py-2.5 px-3 text-right text-emerald-800 font-mono">{formatNgn(stockSalesSummary.totalRev)}</td>
+                          <td className="py-2.5 px-3 text-right text-purple-800 font-mono">{isShiftMode ? '🔒' : formatNgn(stockSalesSummary.totalProfit)}</td>
+                          <td className="py-2.5 px-3 text-center text-[10px] text-slate-500">Live Inventory</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {filteredSales.length === 0 ? (
             <div className="bg-white rounded-3xl p-12 text-center border border-slate-100 shadow-sm">
               <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto text-2xl mb-4">
                 🛒
               </div>
-              <h3 className="text-base font-bold text-slate-800">No sales recorded for this date yet</h3>
+              <h3 className="text-base font-bold text-slate-800">
+                {sales.length === 0 ? 'No sales recorded for this date yet' : 'No sales match your current search or filters'}
+              </h3>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                Tap the green button to record your first sale or service. It takes only 5 seconds!
+                {sales.length === 0
+                  ? 'Tap the green button to record your first sale or service. It takes only 5 seconds!'
+                  : 'Try clearing the search query or changing your payment method and product type filters.'}
               </p>
-              <button
-                onClick={() => setShowSaleModal(true)}
-                className="mt-5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
-              >
-                + Record Quick Sale
-              </button>
+              {sales.length === 0 ? (
+                <button
+                  onClick={() => setShowSaleModal(true)}
+                  className="mt-5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  + Record Quick Sale
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterPaymentMethod('ALL');
+                    setFilterProductType('ALL');
+                    setSortBy('NEWEST');
+                  }}
+                  className="mt-5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  Clear Filters & Show All
+                </button>
+              )}
             </div>
           ) : (
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="divide-y divide-slate-100">
-                {sales.map((sale) => (
+                {filteredSales.map((sale) => (
                   <div key={sale.id} className="p-4 sm:p-5 flex items-center justify-between hover:bg-slate-50/60 transition-all">
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black ${
@@ -3569,6 +4169,180 @@ export const DailyCashbook: React.FC = () => {
                       >
                         📦 Restock Inventory & Log
                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* MODAL: ASK SMARTBIZ AI ABOUT SALES */}
+      {showAIAskModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-[32px] max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 border border-purple-100">
+            <div className="flex justify-between items-start mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-lg shadow-purple-200">
+                  <Bot className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    SmartBiz AI Copilot
+                    <span className="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-0.5 rounded-full">Day-Book Sales</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Ask any question about your daily sales, debtors, stock, or cashflow
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (isSpeakingAnswer && typeof window !== 'undefined' && window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                    setIsSpeakingAnswer(false);
+                  }
+                  setShowAIAskModal(false);
+                }}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Current Context Pill */}
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="text-slate-600">
+                Active Analysis Period: <strong className="text-slate-900 font-extrabold">{timeHorizon === 'TODAY' ? `Today (${selectedDate})` : timeHorizon === 'YESTERDAY' ? 'Yesterday' : timeHorizon === 'WEEK' ? 'Last 7 Days' : timeHorizon === 'MONTH' ? 'Last 30 Days' : `${customStartDate} to ${customEndDate}`}</strong>
+              </span>
+              <span className="text-emerald-700 font-black bg-emerald-100/70 px-2.5 py-0.5 rounded-full text-[11px]">
+                {filteredSales.length} sale{filteredSales.length === 1 ? '' : 's'} loaded
+              </span>
+            </div>
+
+            {/* 1-Tap Quick Question Chips */}
+            <div className="mb-4">
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">⚡ Quick questions (tap to ask):</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: '🏆 Top seller & revenue?', q: 'What is my top selling product today and how much revenue did it generate?' },
+                  { label: '💵 Cash in till vs Bank transfer?', q: 'How much money did I make in Cash compared to Bank Transfer today?' },
+                  { label: '📈 Total profit & margins?', q: 'What is my total estimated gross profit and net margin today?' },
+                  { label: '📒 Who owes me today?', q: 'Which customers bought on credit today and how much do they owe me?' },
+                  { label: '📦 Which stock is running low?', q: 'Based on sales today, which products are running low on stock?' },
+                  { label: '💸 What were my shop expenses?', q: 'How much did I spend on generator fuel and shop expenses today?' },
+                  { label: '🔄 Compare today vs yesterday', q: 'How do my sales today compare with yesterday?' },
+                ].map((chip) => (
+                  <button
+                    key={chip.label}
+                    onClick={() => handleAskAI(chip.q)}
+                    disabled={isAIAsking}
+                    className="text-xs px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 font-bold transition-all text-left disabled:opacity-50 cursor-pointer active:scale-95"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Question Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAskAI();
+              }}
+              className="space-y-3 mb-5"
+            >
+              <div className="relative">
+                <input
+                  type="text"
+                  value={aiAskQuestion}
+                  onChange={(e) => setAiAskQuestion(e.target.value)}
+                  placeholder="e.g., How much profit did I make from bread and drinks today?"
+                  disabled={isAIAsking}
+                  className="w-full pl-4 pr-24 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
+                />
+                <button
+                  type="submit"
+                  disabled={isAIAsking || !aiAskQuestion.trim()}
+                  className="absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs flex items-center gap-1.5 shadow transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isAIAsking ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Ask AI</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* AI Fit Answer Display */}
+            {aiAskResult && (
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50/70 via-indigo-50/40 to-white border border-purple-200 space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center justify-between pb-2 border-b border-purple-100">
+                  <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-purple-600" /> SmartBiz Verified Answer
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => speakAIAnswer(aiAskResult.answer)}
+                      title={isSpeakingAnswer ? "Stop speaking" : "Listen to answer"}
+                      className={`p-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        isSpeakingAnswer ? 'bg-purple-600 text-white animate-pulse' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                      }`}
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span className="text-[10px]">{isSpeakingAnswer ? 'Stop' : 'Listen'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard?.writeText(aiAskResult.answer);
+                        toast.success('Answer copied to clipboard!');
+                      }}
+                      title="Copy Answer"
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const text = `📊 *SmartBiz Day-Book AI Answer*\n\n*Q:* ${aiAskResult.question}\n\n${aiAskResult.answer}\n\n_Answered via SmartBiz Coach OS_`;
+                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                      }}
+                      title="Send Answer to WhatsApp"
+                      className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>📲</span>
+                      <span className="text-[10px]">Share</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-xs sm:text-sm text-slate-800 leading-relaxed whitespace-pre-line font-medium">
+                  {aiAskResult.answer}
+                </div>
+
+                {/* Quick metrics banner if available */}
+                {aiAskResult.metrics && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-purple-100/70 text-[11px]">
+                    <div className="bg-white/80 p-2 rounded-xl border border-purple-100">
+                      <p className="text-slate-400 font-bold text-[10px]">Revenue</p>
+                      <p className="font-black text-slate-900">{formatNgn(aiAskResult.metrics.total_revenue || 0)}</p>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded-xl border border-purple-100">
+                      <p className="text-slate-400 font-bold text-[10px]">Cash in Till</p>
+                      <p className="font-black text-emerald-700">{formatNgn(aiAskResult.metrics.cash_sales || 0)}</p>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded-xl border border-purple-100">
+                      <p className="text-slate-400 font-bold text-[10px]">Bank / POS</p>
+                      <p className="font-black text-blue-700">{formatNgn(aiAskResult.metrics.transfer_sales || 0)}</p>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded-xl border border-purple-100">
+                      <p className="text-slate-400 font-bold text-[10px]">Est. Profit</p>
+                      <p className="font-black text-purple-700">{formatNgn(aiAskResult.metrics.gross_profit || 0)}</p>
                     </div>
                   </div>
                 )}

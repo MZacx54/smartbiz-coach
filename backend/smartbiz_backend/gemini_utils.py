@@ -341,11 +341,15 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     backoff_delay = 1.5
 
     # Target model cascade: try active high-throughput models and avoid dead models
-    dead_models = {"gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-1.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"}
+    dead_models = {
+        "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.7-flash",
+        "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite",
+        "gemini-2.5-flash", "gemini-2.5-flash-lite",
+    }
     if model_cascade:
-        model_cascade = [m for m in dict.fromkeys(model_cascade) if m and m not in dead_models] or ["gemini-flash-lite-latest"]
+        model_cascade = [m for m in dict.fromkeys(model_cascade) if m and m not in dead_models] or ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
     elif not model_cascade:
-        preferred_models = [model, DEFAULT_TEXT_MODEL, DEFAULT_FALLBACK_MODEL, "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
+        preferred_models = [model, DEFAULT_TEXT_MODEL, DEFAULT_FALLBACK_MODEL, "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
         model_cascade = [m for m in dict.fromkeys(preferred_models) if m and m not in dead_models]
         if not model_cascade:
             model_cascade = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
@@ -860,6 +864,11 @@ def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_typ
         print(f"Gemini text generation error: {e}")
         return f"Error: {str(e)}"
 
+
+# Alias for backward compatibility across views
+generate_text = generate_text_content
+
+
 # Placeholder proxy to prevent import errors
 def get_model(model_name=None):
     return None
@@ -869,8 +878,8 @@ def get_model(model_name=None):
 # Voice-grade helpers (Flash tier, strict: never return canned/fake data)
 # ---------------------------------------------------------------------------
 # Full Flash model first (much better at Hausa/Yoruba/Igbo than Flash-Lite); lite only as last resort.
-VOICE_MODEL = os.getenv("GEMINI_VOICE_MODEL", "gemini-flash-latest")
-VOICE_MODEL_CASCADE = [VOICE_MODEL, "gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"]
+VOICE_MODEL = os.getenv("GEMINI_VOICE_MODEL", "gemini-3.5-flash")
+VOICE_MODEL_CASCADE = [VOICE_MODEL, "gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
 
 
 def _inline_audio_part(audio_base64, mime_type):

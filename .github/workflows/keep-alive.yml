@@ -1,4 +1,4 @@
-﻿name: Keep Database & API Alive
+name: Keep Database & API Alive
 
 on:
   schedule:
@@ -13,7 +13,16 @@ jobs:
     steps:
       - name: Ping API & Supabase Database
         run: |
-          echo "Pinging SmartBiz Coach Health Endpoint to keep Supabase DB active..."
-          curl -f --retry 3 --retry-delay 10 --retry-all-errors --max-time 60 https://api.smartbizcoach.com.ng/health/ || \
-          curl -f --retry 3 --retry-delay 10 --retry-all-errors --max-time 60 https://smartbiz-coach.onrender.com/health/
-          echo "Database health check succeeded. Supabase activity registered successfully."
+          echo "Sending warm-up wake signal to SmartBiz Coach API & Render container..."
+          curl -s -o /dev/null --max-time 45 https://api.smartbizcoach.com.ng/health/ || true
+          curl -s -o /dev/null --max-time 45 https://smartbiz-coach.onrender.com/health/ || true
+          sleep 10
+          echo "Verifying SmartBiz Coach Health Endpoint to keep Supabase DB active..."
+          STATUS=$(curl -s -o /tmp/health.json -w "%{http_code}" --retry 5 --retry-delay 15 --retry-all-errors --max-time 90 https://api.smartbizcoach.com.ng/health/ || echo "000")
+          if [ "$STATUS" != "200" ]; then
+            echo "Primary domain returned $STATUS, checking fallback Render URL..."
+            STATUS=$(curl -s -o /tmp/health.json -w "%{http_code}" --retry 5 --retry-delay 15 --retry-all-errors --max-time 90 https://smartbiz-coach.onrender.com/health/ || echo "000")
+          fi
+          echo "Health endpoint HTTP status: $STATUS"
+          cat /tmp/health.json 2>/dev/null || true
+          echo "Keep-alive ping sequence completed."

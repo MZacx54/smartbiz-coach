@@ -1141,10 +1141,10 @@ Otherwise return ONLY the message content text.
 
         suggestion = gemini_utils.generate_text_content(prompt)
         
-        # If response was an error string, retry with fast model
+        # If response was an error string, retry with fast fallback model
         if isinstance(suggestion, str) and suggestion.startswith("Error:"):
             try:
-                suggestion = gemini_utils.make_gemini_request(prompt, model="gemini-2.0-flash")
+                suggestion = gemini_utils.make_gemini_request(prompt, model=gemini_utils.DEFAULT_FALLBACK_MODEL)
             except Exception:
                 pass
 

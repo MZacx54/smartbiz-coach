@@ -659,20 +659,119 @@ class DailySaleListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         from .models import DailySale
+        from django.db.models import Q
+        from django.utils import timezone
         import datetime
+
         qs = DailySale.objects.filter(user=self.request.user)
-        date_str = self.request.query_params.get('date')
+        params = self.request.query_params
+
+        # 1. Flexible Date / Period Filters
+        date_str = params.get('date')
+        date_from = params.get('date_from')
+        date_to = params.get('date_to')
+        days_str = params.get('days')
+
         if date_str:
             try:
                 target_date = datetime.date.fromisoformat(date_str)
                 qs = qs.filter(created_at__date=target_date)
             except ValueError:
                 pass
-        return qs
+        elif date_from or date_to:
+            if date_from:
+                try:
+                    df = datetime.date.fromisoformat(date_from)
+                    qs = qs.filter(created_at__date__gte=df)
+                except ValueError:
+                    pass
+            if date_to:
+                try:
+                    dt = datetime.date.fromisoformat(date_to)
+                    qs = qs.filter(created_at__date__lte=dt)
+                except ValueError:
+                    pass
+        elif days_str:
+            try:
+                d = int(days_str)
+                start_d = timezone.localdate() - datetime.timedelta(days=max(0, d - 1))
+                qs = qs.filter(created_at__date__gte=start_d)
+            except ValueError:
+                pass
+
+        # 2. Payment Method Filter (CASH, TRANSFER, CREDIT)
+        pm = params.get('payment_method')
+        if pm and pm.upper() != 'ALL':
+            qs = qs.filter(payment_method=pm.upper())
+
+        # 3. Product Type or Specific Product Filter
+        prod_id = params.get('product')
+        if prod_id:
+            qs = qs.filter(product_id=prod_id)
+        prod_type = params.get('product_type')
+        if prod_type and prod_type.upper() in ['PHYSICAL', 'DIGITAL']:
+            qs = qs.filter(product__product_type=prod_type.upper())
+
+        # 4. Search Filter
+        search_query = params.get('search')
+        if search_query:
+            sq = search_query.strip()
+            qs = qs.filter(
+                Q(item_name__icontains=sq) |
+                Q(customer_name__icontains=sq) |
+                Q(notes__icontains=sq)
+            )
+
+        return qs.order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        from .models import DailySale
+        from django.utils import timezone
+        import datetime
+
+        # IDEMPOTENCY GUARD 1: Exact offline ID match in notes
+        offline_id = request.data.get('offline_id')
+        if offline_id:
+            tag = f"[offline_id:{offline_id}]"
+            existing = DailySale.objects.filter(user=request.user, notes__contains=tag).first()
+            if existing:
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # IDEMPOTENCY GUARD 2: Weak-network retry deduplication
+        # If identical item, amount, quantity, payment method was saved by this user within 90 seconds
+        item_name = str(request.data.get('item_name') or '').strip()
+        total_amount = request.data.get('total_amount')
+        quantity = request.data.get('quantity') or 1
+        payment_method = request.data.get('payment_method') or 'CASH'
+
+        if item_name and total_amount is not None:
+            cutoff = timezone.now() - datetime.timedelta(seconds=90)
+            recent_dup = DailySale.objects.filter(
+                user=request.user,
+                item_name__iexact=item_name,
+                total_amount=total_amount,
+                quantity=quantity,
+                payment_method=payment_method,
+                created_at__gte=cutoff
+            ).first()
+            if recent_dup:
+                serializer = self.get_serializer(recent_dup)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         from .models import Product
-        sale = serializer.save(user=self.request.user)
+        offline_id = self.request.data.get('offline_id')
+        notes_input = self.request.data.get('notes') or ''
+        if offline_id and f"[offline_id:{offline_id}]" not in notes_input:
+            tag = f"[offline_id:{offline_id}]"
+            final_notes = f"{notes_input.strip()} {tag}".strip()
+            sale = serializer.save(user=self.request.user, notes=final_notes)
+        else:
+            sale = serializer.save(user=self.request.user)
+
         _apply_entry_date(sale, self.request.data.get('date'))
 
         update_fields = []
@@ -715,19 +814,109 @@ class DailyExpenseListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         from .models import DailyExpense
+        from django.db.models import Q
+        from django.utils import timezone
         import datetime
+
         qs = DailyExpense.objects.filter(user=self.request.user)
-        date_str = self.request.query_params.get('date')
+        params = self.request.query_params
+
+        date_str = params.get('date')
+        date_from = params.get('date_from')
+        date_to = params.get('date_to')
+        days_str = params.get('days')
+
         if date_str:
             try:
                 target_date = datetime.date.fromisoformat(date_str)
                 qs = qs.filter(created_at__date=target_date)
             except ValueError:
                 pass
-        return qs
+        elif date_from or date_to:
+            if date_from:
+                try:
+                    df = datetime.date.fromisoformat(date_from)
+                    qs = qs.filter(created_at__date__gte=df)
+                except ValueError:
+                    pass
+            if date_to:
+                try:
+                    dt = datetime.date.fromisoformat(date_to)
+                    qs = qs.filter(created_at__date__lte=dt)
+                except ValueError:
+                    pass
+        elif days_str:
+            try:
+                d = int(days_str)
+                start_d = timezone.localdate() - datetime.timedelta(days=max(0, d - 1))
+                qs = qs.filter(created_at__date__gte=start_d)
+            except ValueError:
+                pass
+
+        cat = params.get('category')
+        if cat and cat.upper() != 'ALL':
+            qs = qs.filter(category=cat.upper())
+
+        pm = params.get('payment_method')
+        if pm and pm.upper() != 'ALL':
+            qs = qs.filter(payment_method=pm.upper())
+
+        search_query = params.get('search')
+        if search_query:
+            sq = search_query.strip()
+            qs = qs.filter(
+                Q(title__icontains=sq) |
+                Q(notes__icontains=sq)
+            )
+
+        return qs.order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        from .models import DailyExpense
+        from django.utils import timezone
+        import datetime
+
+        # IDEMPOTENCY GUARD 1: Exact offline ID match in notes
+        offline_id = request.data.get('offline_id')
+        if offline_id:
+            tag = f"[offline_id:{offline_id}]"
+            existing = DailyExpense.objects.filter(user=request.user, notes__contains=tag).first()
+            if existing:
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # IDEMPOTENCY GUARD 2: Weak-network retry deduplication
+        title = str(request.data.get('title') or '').strip()
+        amount = request.data.get('amount')
+        category = request.data.get('category') or 'OTHER'
+        payment_method = request.data.get('payment_method') or 'CASH'
+
+        if title and amount is not None:
+            cutoff = timezone.now() - datetime.timedelta(seconds=90)
+            recent_dup = DailyExpense.objects.filter(
+                user=request.user,
+                title__iexact=title,
+                amount=amount,
+                category=category,
+                payment_method=payment_method,
+                created_at__gte=cutoff
+            ).first()
+            if recent_dup:
+                serializer = self.get_serializer(recent_dup)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        expense = serializer.save(user=self.request.user)
+        offline_id = self.request.data.get('offline_id')
+        notes_input = self.request.data.get('notes') or ''
+        if offline_id and f"[offline_id:{offline_id}]" not in notes_input:
+            tag = f"[offline_id:{offline_id}]"
+            final_notes = f"{notes_input.strip()} {tag}".strip()
+            expense = serializer.save(user=self.request.user, notes=final_notes)
+        else:
+            expense = serializer.save(user=self.request.user)
+
         _apply_entry_date(expense, self.request.data.get('date'))
 
 
@@ -1096,6 +1285,321 @@ Return ONLY valid JSON.
                 for rec in recommended_features
             ],
             "whatsappBriefText": whatsapp_text
+        })
+
+
+class DailyAIAskView(views.APIView):
+    """
+    Interactive Day-Book AI Intelligence Assistant.
+    Allows merchants to ask natural-language questions about their daily/weekly sales,
+    stock movements, profit margins, cash vs transfers, debtors, and expenses.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from django.db.models import Sum, Count
+        from django.utils import timezone
+        import datetime
+        from smartbiz_backend import gemini_utils
+        from .models import DailySale, DailyExpense, Product
+
+        question = str(request.data.get('question') or '').strip()
+        if not question:
+            return Response({"error": "Please provide a question about your sales."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Determine Date Range
+        scope = request.data.get('scope', 'today').lower()
+        date_str = request.data.get('date')
+        date_from = request.data.get('date_from')
+        date_to = request.data.get('date_to')
+        days = request.data.get('days')
+
+        today = timezone.localdate()
+        period_label = "Today"
+
+        sales_qs = DailySale.objects.filter(user=request.user)
+        expenses_qs = DailyExpense.objects.filter(user=request.user)
+
+        if scope == 'yesterday':
+            target_date = today - datetime.timedelta(days=1)
+            sales_qs = sales_qs.filter(created_at__date=target_date)
+            expenses_qs = expenses_qs.filter(created_at__date=target_date)
+            period_label = f"Yesterday ({target_date.strftime('%a, %d %b %Y')})"
+        elif scope == 'week' or str(days) == '7':
+            start_d = today - datetime.timedelta(days=6)
+            sales_qs = sales_qs.filter(created_at__date__gte=start_d)
+            expenses_qs = expenses_qs.filter(created_at__date__gte=start_d)
+            period_label = f"Last 7 Days ({start_d.strftime('%d %b')} - {today.strftime('%d %b %Y')})"
+        elif scope == 'month' or str(days) == '30':
+            start_d = today - datetime.timedelta(days=29)
+            sales_qs = sales_qs.filter(created_at__date__gte=start_d)
+            expenses_qs = expenses_qs.filter(created_at__date__gte=start_d)
+            period_label = f"Last 30 Days ({start_d.strftime('%d %b')} - {today.strftime('%d %b %Y')})"
+        elif date_from or date_to:
+            if date_from:
+                try:
+                    df = datetime.date.fromisoformat(date_from)
+                    sales_qs = sales_qs.filter(created_at__date__gte=df)
+                    expenses_qs = expenses_qs.filter(created_at__date__gte=df)
+                except ValueError:
+                    pass
+            if date_to:
+                try:
+                    dt = datetime.date.fromisoformat(date_to)
+                    sales_qs = sales_qs.filter(created_at__date__lte=dt)
+                    expenses_qs = expenses_qs.filter(created_at__date__lte=dt)
+                except ValueError:
+                    pass
+            period_label = f"Period ({date_from or 'Start'} to {date_to or 'Now'})"
+        elif date_str:
+            try:
+                target_date = datetime.date.fromisoformat(date_str)
+                sales_qs = sales_qs.filter(created_at__date=target_date)
+                expenses_qs = expenses_qs.filter(created_at__date=target_date)
+                period_label = target_date.strftime('%A, %d %B %Y')
+            except ValueError:
+                target_date = today
+                sales_qs = sales_qs.filter(created_at__date=target_date)
+                expenses_qs = expenses_qs.filter(created_at__date=target_date)
+                period_label = f"Today ({today.strftime('%a, %d %b %Y')})"
+        else:
+            target_date = today
+            sales_qs = sales_qs.filter(created_at__date=target_date)
+            expenses_qs = expenses_qs.filter(created_at__date=target_date)
+            period_label = f"Today ({today.strftime('%a, %d %b %Y')})"
+
+        # 2. Extract Comprehensive Ledger Facts
+        total_revenue = float(sales_qs.aggregate(total=Sum('total_amount'))['total'] or 0.0)
+        cash_sales = float(sales_qs.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.0)
+        transfer_sales = float(sales_qs.filter(payment_method='TRANSFER').aggregate(total=Sum('total_amount'))['total'] or 0.0)
+        credit_sales = float(sales_qs.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0.0)
+        sales_count = sales_qs.count()
+
+        total_expenses = float(expenses_qs.aggregate(total=Sum('amount'))['total'] or 0.0)
+        cash_expenses = float(expenses_qs.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0.0)
+        transfer_expenses = float(expenses_qs.filter(payment_method='TRANSFER').aggregate(total=Sum('amount'))['total'] or 0.0)
+        net_cash_in_till = cash_sales - cash_expenses
+
+        # Itemized Stock Sales Summary
+        # Group sales by normalized item name
+        sales_list = list(sales_qs.select_related('product'))
+        item_map = {}
+        for s in sales_list:
+            key = s.item_name.strip()
+            if key not in item_map:
+                prod = s.product
+                item_map[key] = {
+                    'name': key,
+                    'quantity_sold': 0,
+                    'revenue': 0.0,
+                    'cost': 0.0,
+                    'profit': 0.0,
+                    'stock_remaining': prod.stock_count if (prod and prod.product_type == 'PHYSICAL') else None,
+                    'product_type': prod.product_type if prod else 'PHYSICAL',
+                    'category': (prod.category.name if (prod and getattr(prod, 'category', None)) else 'General')
+                }
+            qty = s.quantity or 1
+            tot = float(s.total_amount or 0.0)
+            cost = float(s.cost_price or 0.0) * qty
+            item_map[key]['quantity_sold'] += qty
+            item_map[key]['revenue'] += tot
+            item_map[key]['cost'] += cost
+            item_map[key]['profit'] += max(0.0, tot - cost)
+
+        sorted_by_revenue = sorted(item_map.values(), key=lambda x: x['revenue'], reverse=True)
+        sorted_by_qty = sorted(item_map.values(), key=lambda x: x['quantity_sold'], reverse=True)
+        sorted_by_profit = sorted(item_map.values(), key=lambda x: x['profit'], reverse=True)
+
+        top_by_revenue = sorted_by_revenue[0] if sorted_by_revenue else None
+        top_by_qty = sorted_by_qty[0] if sorted_by_qty else None
+        top_by_profit = sorted_by_profit[0] if sorted_by_profit else None
+
+        cogs = sum(x['cost'] for x in item_map.values())
+        gross_profit = max(0.0, total_revenue - cogs)
+        net_profit = gross_profit - total_expenses
+        margin_pct = round((gross_profit / total_revenue * 100), 1) if total_revenue > 0 else 0.0
+
+        # Debtors
+        debtors = []
+        for s in sales_list:
+            if s.payment_method == 'CREDIT':
+                debtors.append({
+                    'customer': s.customer_name or 'Walk-in Customer',
+                    'item': s.item_name,
+                    'amount': float(s.total_amount or 0.0),
+                    'phone': s.customer_phone or '',
+                    'due_date': str(s.debt_due_date or '')
+                })
+
+        # Expenses list
+        expenses_list = list(expenses_qs)
+        expense_breakdown = {}
+        for e in expenses_list:
+            cat = e.get_category_display()
+            expense_breakdown[cat] = expense_breakdown.get(cat, 0.0) + float(e.amount or 0.0)
+
+        biz_name = getattr(request.user, 'business_name', '') or request.user.username
+
+        # Build prompt for Gemini
+        products_summary_str = "\n".join([
+            f"- {p['name']}: {p['quantity_sold']} units sold, Revenue: ₦{p['revenue']:,.2f}, Profit: ₦{p['profit']:,.2f}, Remaining Stock: {p['stock_remaining'] if p['stock_remaining'] is not None else 'N/A'}"
+            for p in sorted_by_revenue[:15]
+        ]) or "No items sold."
+
+        debtors_summary_str = "\n".join([
+            f"- {d['customer']}: ₦{d['amount']:,.2f} for {d['item']}"
+            for d in debtors[:10]
+        ]) or "No credit sales / zero debtors."
+
+        expenses_summary_str = "\n".join([
+            f"- {k}: ₦{v:,.2f}"
+            for k, v in expense_breakdown.items()
+        ]) or "No expenses logged."
+
+        prompt = f"""You are the intelligent Day-Book AI Copilot & Retail Accountant for '{biz_name}', a Nigerian MSME.
+A merchant has asked a specific question about their daily operations and sales records.
+
+PERIOD: {period_label}
+VERIFIED GROUND-TRUTH FINANCIAL & STOCK DATA:
+• Total Revenue: ₦{total_revenue:,.2f} across {sales_count} sales transactions
+• Cash in Till: ₦{cash_sales:,.2f}
+• Bank Transfer / POS: ₦{transfer_sales:,.2f}
+• Customer Credit / Debt: ₦{credit_sales:,.2f}
+• Estimated Cost of Goods (COGS): ₦{cogs:,.2f}
+• Gross Profit: ₦{gross_profit:,.2f} (Margin: {margin_pct}%)
+• Total Petty Cash / Expenses: ₦{total_expenses:,.2f}
+  - Cash paid from till: ₦{cash_expenses:,.2f}
+  - Transfer paid: ₦{transfer_expenses:,.2f}
+• Net Physical Cash in Till: ₦{net_cash_in_till:,.2f}
+• Net Trading Profit: ₦{net_profit:,.2f}
+
+STOCK & PRODUCTS SOLD:
+{products_summary_str}
+
+DEBTORS:
+{debtors_summary_str}
+
+EXPENSES:
+{expenses_summary_str}
+
+MERCHANT'S QUESTION:
+"{question}"
+
+GUIDELINES:
+1. Answer the merchant's question DIRECTLY, accurately, and politely in crisp, natural Nigerian business English.
+2. Quote exact figures with the Nigerian Naira symbol (₦) and exact quantities from the ledger.
+3. Keep the answer concise (2-4 bullet points or short paragraphs), well formatted with bolding and emojis.
+4. If they ask about a product, stock, debtor, payment method, or profit, give the exact numbers immediately.
+5. If relevant, end with one practical tip to improve tomorrow's cashflow or stock control.
+"""
+
+        ai_answer = ""
+        try:
+            ai_answer = gemini_utils.generate_text_content(prompt)
+        except Exception as e:
+            print(f"Daily AI Ask exception: {e}")
+
+        # Deterministic Intelligent Fallback if Gemini fails or is offline
+        if not ai_answer or len(ai_answer.strip()) < 10 or ai_answer.strip().startswith("Error:"):
+            q_lower = question.lower()
+            if any(k in q_lower for k in ['top', 'best', 'most', 'highest sale', 'bestseller']):
+                if top_by_revenue:
+                    ai_answer = (
+                        f"🏆 **Top Selling Item ({period_label}):**\n\n"
+                        f"• **By Revenue:** **{top_by_revenue['name']}** generated **₦{top_by_revenue['revenue']:,.2f}** ({top_by_revenue['quantity_sold']} units sold).\n"
+                        f"• **Estimated Profit:** **₦{top_by_revenue['profit']:,.2f}**.\n"
+                    )
+                    if top_by_qty and top_by_qty['name'] != top_by_revenue['name']:
+                        ai_answer += f"• **By Volume:** **{top_by_qty['name']}** had the highest units sold (**{top_by_qty['quantity_sold']} units**, ₦{top_by_qty['revenue']:,.2f}).\n"
+                    if top_by_revenue['stock_remaining'] is not None:
+                        ai_answer += f"• **Remaining Stock:** {top_by_revenue['stock_remaining']} units left in your store."
+                else:
+                    ai_answer = f"No sales have been logged for {period_label} yet."
+
+            elif any(k in q_lower for k in ['cash', 'transfer', 'pos', 'bank', 'payment', 'method']):
+                ai_answer = (
+                    f"💳 **Payment Breakdown ({period_label}):**\n\n"
+                    f"• 💵 **Cash in Till:** **₦{cash_sales:,.2f}** ({(cash_sales/total_revenue*100):.1f}% of sales)\n"
+                    f"• 🏦 **Bank Transfer / POS:** **₦{transfer_sales:,.2f}** ({(transfer_sales/total_revenue*100):.1f}% of sales)\n"
+                    f"• 📒 **Credit / Debt:** **₦{credit_sales:,.2f}**\n"
+                    f"• 💼 **Net Cash Remaining in Till:** **₦{net_cash_in_till:,.2f}** after paying ₦{cash_expenses:,.2f} petty cash."
+                ) if total_revenue > 0 else f"No payments recorded for {period_label}."
+
+            elif any(k in q_lower for k in ['profit', 'gain', 'margin', 'make', 'earning']):
+                ai_answer = (
+                    f"📈 **Profit Analysis ({period_label}):**\n\n"
+                    f"• **Total Revenue:** **₦{total_revenue:,.2f}**\n"
+                    f"• **Cost of Goods Sold (COGS):** ₦{cogs:,.2f}\n"
+                    f"• **Gross Profit:** **₦{gross_profit:,.2f}** ({margin_pct}% margin)\n"
+                    f"• **Operating Expenses:** ₦{total_expenses:,.2f}\n"
+                    f"• **Net Take-Home Profit:** **₦{net_profit:,.2f}**\n"
+                )
+                if top_by_profit:
+                    ai_answer += f"\n💡 Most profitable item was **{top_by_profit['name']}** making **₦{top_by_profit['profit']:,.2f}** profit."
+
+            elif any(k in q_lower for k in ['debt', 'owe', 'credit', 'customer']):
+                if debtors:
+                    debtor_lines = "\n".join([f"• **{d['customer']}**: ₦{d['amount']:,.2f} ({d['item']})" for d in debtors[:5]])
+                    ai_answer = (
+                        f"📒 **Debtors ({period_label}):**\n\n"
+                        f"Total unpaid credit given: **₦{credit_sales:,.2f}** across {len(debtors)} transaction(s).\n\n"
+                        f"{debtor_lines}\n\n"
+                        f"👉 *Recommendation:* Send a polite WhatsApp payment reminder with your account number."
+                    )
+                else:
+                    ai_answer = f"🎉 Great news! There are **zero credit sales / debtors** for {period_label}. All sales were settled via Cash or Transfer."
+
+            elif any(k in q_lower for k in ['stock', 'inventory', 'left', 'remain', 'low']):
+                low_stock = [x for x in sorted_by_revenue if x['stock_remaining'] is not None and x['stock_remaining'] <= 5]
+                if low_stock:
+                    low_lines = "\n".join([f"• ⚠️ **{x['name']}**: Only **{x['stock_remaining']} units** remaining!" for x in low_stock[:5]])
+                    ai_answer = f"📦 **Inventory Movement & Low Stock Alert ({period_label}):**\n\n{low_lines}\n\nConsider reordering from your supplier before morning trade."
+                elif sorted_by_revenue:
+                    stock_lines = "\n".join([f"• **{x['name']}**: {x['quantity_sold']} sold today, {x['stock_remaining'] if x['stock_remaining'] is not None else 'N/A'} left in stock" for x in sorted_by_revenue[:5]])
+                    ai_answer = f"📦 **Stock Records ({period_label}):**\n\n{stock_lines}"
+                else:
+                    ai_answer = f"No stock movement logged for {period_label}."
+
+            elif any(k in q_lower for k in ['expense', 'spend', 'petty', 'fuel', 'generator', 'cost']):
+                if expenses_list:
+                    exp_lines = "\n".join([f"• **{k}**: ₦{v:,.2f}" for k, v in expense_breakdown.items()])
+                    ai_answer = (
+                        f"💸 **Expenses Recorded ({period_label}):**\n\n"
+                        f"Total Operating Outflow: **₦{total_expenses:,.2f}**\n\n"
+                        f"{exp_lines}\n\n"
+                        f"• 💵 Cash paid from till: ₦{cash_expenses:,.2f}\n"
+                        f"• 🏦 Bank transfer paid: ₦{transfer_expenses:,.2f}"
+                    )
+                else:
+                    ai_answer = f"No expenses logged for {period_label}."
+
+            else:
+                ai_answer = (
+                    f"📊 **Daily Operations Summary ({period_label}):**\n\n"
+                    f"• **Revenue:** ₦{total_revenue:,.2f} ({sales_count} sales)\n"
+                    f"• **Net Profit:** ₦{net_profit:,.2f} ({margin_pct}% gross margin)\n"
+                    f"• **Cash in Till:** ₦{net_cash_in_till:,.2f} (Cash sales ₦{cash_sales:,.2f} minus expenses ₦{cash_expenses:,.2f})\n"
+                    f"• **Bank Transfers:** ₦{transfer_sales:,.2f}\n"
+                    f"• **Top Product:** {top_by_revenue['name'] if top_by_revenue else 'None'} (₦{top_by_revenue['revenue']:,.2f} sold)\n"
+                )
+
+        return Response({
+            "question": question,
+            "period_label": period_label,
+            "answer": ai_answer,
+            "metrics": {
+                "total_revenue": total_revenue,
+                "sales_count": sales_count,
+                "cash_sales": cash_sales,
+                "transfer_sales": transfer_sales,
+                "credit_sales": credit_sales,
+                "gross_profit": gross_profit,
+                "total_expenses": total_expenses,
+                "net_profit": net_profit,
+                "net_cash_in_till": net_cash_in_till
+            },
+            "top_products": sorted_by_revenue[:10],
+            "debtors": debtors[:10]
         })
 
 
