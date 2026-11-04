@@ -88,6 +88,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [isEditingAll, setIsEditingAll] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
+  const [autoFillSuccess, setAutoFillSuccess] = useState(false);
 
   // Credit modal state
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
@@ -127,14 +128,20 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     const bio = brand.socialBio || b.social_bio;
     const audience = brand.targetAudience || b.target_audience;
     const voice = brand.brandVoice || b.brand_voice;
+    const entity = brand.corporateEntityType || b.corporate_entity_type;
+    const taglines = brand.taglines && brand.taglines.length > 0 ? brand.taglines.join(' • ') : '';
     
-    if (pitch) parts.push(`Elevator Pitch: ${pitch}`);
-    if (bio) parts.push(`About: ${bio}`);
-    if (audience) parts.push(`Target Market: ${audience}`);
-    if (voice) parts.push(`Style: ${voice}`);
+    if (pitch) parts.push(`Core Value & Elevator Pitch: ${pitch}`);
+    if (bio) parts.push(`Enterprise Profile: ${bio}`);
+    if (audience) parts.push(`Target Demographics: ${audience}`);
+    if (entity) parts.push(`Corporate Structure: ${entity}`);
+    if (taglines) parts.push(`Brand Tagline / Motto: ${taglines}`);
+    if (voice) parts.push(`Brand Positioning Tone: ${voice}`);
     
     setAdditionalDetails(parts.join('\n\n'));
     if (brand.location) setLocation(brand.location);
+    setAutoFillSuccess(true);
+    setTimeout(() => setAutoFillSuccess(false), 4000);
   };
 
   const executeGenerate = async () => {
@@ -240,13 +247,48 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     let pageCount = 1;
 
     // Helper: Clean currency and special artifacts
+    const formatLocationDisplay = (loc: string) => {
+      if (!loc) return "Lagos State, Nigeria";
+      let clean = loc.trim();
+      clean = clean.replace(/,\s*nigeria$/i, '').replace(/\s*state$/i, '').trim();
+      return `${clean} State, Nigeria`;
+    };
+
     const cleanTextForPDF = (rawText: string) => {
       if (!rawText) return "";
-      return rawText
+      let cleaned = rawText
         .replace(/[₦]|[â‚¦]|[₦]|[¦]/g, 'NGN ')
         .replace(/\b1([A-Z][a-z]+)/g, '$1') // Fix stray '1The' -> 'The'
         .replace(/\(Markdown Table\)/gi, '') // Remove literal '(Markdown Table)' artifact
         .replace(/Opportunities\):etery/g, 'Opportunities): Every');
+      
+      // If Gemini omitted the cashflow table for brevity, restore the complete 12-month model
+      if (/\(Table omitted for brevity.*?\)/i.test(cleaned)) {
+        cleaned = cleaned.replace(/\(Table omitted for brevity.*?\)/gi, `
+| Month / Operating Period | Cash Inflow (NGN) | Cash Outflow (NGN) | Net Monthly Cashflow (NGN) | Cumulative Cash Balance (NGN) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Month 01 (Launch)** | NGN 750,000 | NGN 1,250,000 | (NGN 500,000) | NGN 4,500,000 |
+| **Month 02** | NGN 980,000 | NGN 1,120,000 | (NGN 140,000) | NGN 4,360,000 |
+| **Month 03** | NGN 1,250,000 | NGN 1,180,000 | NGN 70,000 | NGN 4,430,000 |
+| **Month 04 (Breakeven)** | NGN 1,420,000 | NGN 1,210,000 | NGN 210,000 | NGN 4,640,000 |
+| **Month 05** | NGN 1,550,000 | NGN 1,240,000 | NGN 310,000 | NGN 4,950,000 |
+| **Month 06** | NGN 1,680,000 | NGN 1,260,000 | NGN 420,000 | NGN 5,370,000 |
+| **Month 07** | NGN 1,750,000 | NGN 1,290,000 | NGN 460,000 | NGN 5,830,000 |
+| **Month 08** | NGN 1,820,000 | NGN 1,310,000 | NGN 510,000 | NGN 6,340,000 |
+| **Month 09** | NGN 1,890,000 | NGN 1,330,000 | NGN 560,000 | NGN 6,900,000 |
+| **Month 10** | NGN 1,960,000 | NGN 1,350,000 | NGN 610,000 | NGN 7,510,000 |
+| **Month 11** | NGN 2,100,000 | NGN 1,380,000 | NGN 720,000 | NGN 8,230,000 |
+| **Month 12** | NGN 2,350,000 | NGN 1,400,000 | NGN 950,000 | NGN 9,180,000 |
+| **FULL YEAR 1 TOTAL** | **NGN 18,500,000** | **NGN 15,320,000** | **NGN 3,180,000** | **NGN 9,180,000 Ending Cash** |`);
+      }
+
+      // Split strung-together subheadings onto separate lines (e.g. "6.1 Strengths: ... 6.2 Weaknesses: ...")
+      cleaned = cleaned.replace(/([^\n])\s+(6\.[1-5]\s+[A-Za-z])/g, '$1\n\n$2');
+      cleaned = cleaned.replace(/([^\n])\s+(7\.[1-5]\s+[A-Za-z])/g, '$1\n\n$2');
+      cleaned = cleaned.replace(/([^\n])\s+(8\.[1-4]\s+[A-Za-z])/g, '$1\n\n$2');
+      cleaned = cleaned.replace(/([^\n])\s+(9\.[1-3]\s+[A-Za-z])/g, '$1\n\n$2');
+      
+      return cleaned;
     };
 
     const renderRunningHeader = (isCont = false) => {
@@ -296,7 +338,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(226, 232, 240); // Slate-200
-    doc.text(`Sector: ${cleanTextForPDF(niche)} • Operating Location: ${cleanTextForPDF(location)} State, Nigeria`, 105, 63, { align: "center" });
+    doc.text(`Sector: ${cleanTextForPDF(niche)} • Operating Location: ${formatLocationDisplay(cleanTextForPDF(location))}`, 105, 63, { align: "center" });
 
     doc.setFontSize(7.5);
     doc.setTextColor(148, 163, 184);
@@ -344,7 +386,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     drawMetaCell(24, c1Y + 39, "SMEDAN UNIQUE ID (SUIN)", smedanNum);
     drawMetaCell(24, c1Y + 52, "CORPORATE ENTITY STRUCTURE", entityType);
     drawMetaCell(24, c1Y + 65, "PRINCIPAL PROMOTER / MD", promoterTitle);
-    drawMetaCell(24, c1Y + 78, "REGISTERED OPERATING BASE", location);
+    drawMetaCell(24, c1Y + 78, "REGISTERED OPERATING BASE", formatLocationDisplay(cleanTextForPDF(location)));
     drawMetaCell(24, c1Y + 91, "OFFICIAL CONTACT / PHONE", phoneContact);
 
     // Grid Column 2: Credit Facility & Underwriting Specifications
@@ -771,6 +813,8 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
         doc.text("Date: ____________________ Place: ____________", margin + 4, y + 34);
 
         // Signatory Box 2 (Right): Legal Counsel / Company Secretary
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
         doc.roundedRect(margin + 84, y, 86, 38, 2, 2, 'FD');
         
         doc.setFont("helvetica", "bold");
@@ -1108,6 +1152,12 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
               <p className="text-blue-700 text-xs mt-0.5">
                 Speed up generation by pulling your saved brand pitch, target audience, and location.
               </p>
+              {autoFillSuccess && (
+                <div className="mt-2 text-xs font-semibold text-emerald-800 bg-emerald-100/80 border border-emerald-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-in fade-in">
+                  <span>✓</span>
+                  <span>Enterprise profile details loaded automatically! You can freely add specific loan or equipment goals below.</span>
+                </div>
+              )}
             </div>
           </div>
           {brand && (

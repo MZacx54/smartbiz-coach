@@ -52,6 +52,14 @@ CRITICAL QUALITY STANDARDS:
 2. Do NOT write brief summaries. Provide rich, detailed explanations, Nigerian market statistics, realistic monetary figures in Nigerian Naira (₦ / NGN), and concrete operational procedures.
 3. Incorporate real Nigerian operating dynamics: inflation shielding, FX buffer strategies, solar/inverter power continuity, WhatsApp community social commerce, and CAC/TIN regulatory compliance.
 4. For all tables, strictly output valid standard Markdown tables with pipes and hyphens (| Column 1 | Column 2 | ... |). Never mix bullet points into table headers.
+5. STRICT ANTI-BREVITY DIRECTIVE: NEVER write phrases like '(Table omitted for brevity)' or '(Omitted for brevity)' and NEVER summarize tables into short bullet notes. You MUST write out:
+   - All rows of Section 5.1 (CAPEX Table)
+   - All rows of Section 5.2 (3-Year Income Statement Table)
+   - The COMPLETE 12-Month Projected Cashflow Trajectory table in Section 5.3 containing all 12 rows (Month 01 to Month 12) plus the Full Year 1 Total row!
+   - All rows of Section 5.4 (Key Credit Ratios Table)
+   - In Section 6 (SWOT), write comprehensive, multi-sentence analytical paragraphs for 6.1 (Strengths), 6.2 (Weaknesses), 6.3 (Opportunities), and 6.4 (Threats) on separate lines, followed by the complete 6.5 Strategic Action Matrix table.
+   - In Section 8, write the full 8.1 Proposed Facility Table and 8.2 DSCR Stress Test Table.
+   - In Section 9, write out the complete formal legal declaration text under CAMA 2020.
 
 Return a valid JSON object matching this structure EXACTLY:
 {{{{
@@ -128,6 +136,20 @@ CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NE
                     'underwritingSummary': plan.get('underwritingSummary') or plan.get('underwriting_summary') or plan.get('UnderwritingSummary') or "",
                     'promoterDeclaration': plan.get('promoterDeclaration') or plan.get('promoter_declaration') or plan.get('PromoterDeclaration') or ""
                 }
+                # Anti-brevity safeguards: augment with rich pre-computed bank-grade models if LLM truncated tables
+                fin = normalized_plan.get('financialProjection', '')
+                if 'omitted for brevity' in fin.lower() or 'month 12' not in fin.lower() or fin.count('|') < 10:
+                    normalized_plan['financialProjection'] = fallback_plan['financialProjection']
+                
+                if len(normalized_plan.get('underwritingSummary', '')) < 250 or '|' not in normalized_plan.get('underwritingSummary', ''):
+                    normalized_plan['underwritingSummary'] = fallback_plan['underwritingSummary']
+                    
+                if len(normalized_plan.get('promoterDeclaration', '')) < 250:
+                    normalized_plan['promoterDeclaration'] = fallback_plan['promoterDeclaration']
+                    
+                if len(normalized_plan.get('riskMitigation', '')) < 200:
+                    normalized_plan['riskMitigation'] = fallback_plan['riskMitigation']
+
                 if len(normalized_plan['executiveSummary']) > 150 and len(normalized_plan['marketAnalysis']) > 150:
                     return Response(normalized_plan)
         except Exception as e:
