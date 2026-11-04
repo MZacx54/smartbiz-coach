@@ -43,6 +43,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   // Password Recovery State
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [agreedToNdpr, setAgreedToNdpr] = useState(false);
 
 
 
@@ -56,6 +57,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         toast.success("Welcome back!");
         onLogin(response.user);
       } else if (authMode === 'register') {
+        if (!agreedToNdpr) {
+          toast.error("Please agree to the NDPR Privacy Policy and Terms of Service to register.");
+          setIsLoading(false);
+          return;
+        }
         const response = await authService.register({
           username: email,
           email,
@@ -64,8 +70,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           business_name: businessName,
           phone,
           location,
-          currency,
-          has_onboarded: true
+          currency
         });
 
         toast.success("Account created successfully!");
@@ -78,11 +83,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         }
       } else if (authMode === 'forgot_password') {
         const response = await authService.forgotPassword(email);
-        let alertMessage = "A 6-digit recovery code has been sent to your email.";
-        if (response.debug_code) {
-          setCode(response.debug_code);
-          alertMessage += ` (Code: ${response.debug_code})`;
-        }
+        // Security: Never display debug OTP codes in the UI.
+        const alertMessage = "A 6-digit recovery code has been sent to your email.";
         toast.success(alertMessage, { duration: 6000 });
         setAuthMode('reset_password_code');
         setIsLoading(false);
@@ -340,6 +342,22 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   </div>
                 </div>
               </>
+            )}
+
+            {authMode === 'register' && (
+              <div className="flex items-start gap-2.5 pt-1 text-left">
+                <input
+                  type="checkbox"
+                  id="ndpr_consent"
+                  checked={agreedToNdpr}
+                  onChange={(e) => setAgreedToNdpr(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-green-600 rounded border-slate-300 focus:ring-green-500 cursor-pointer"
+                  required
+                />
+                <label htmlFor="ndpr_consent" className="text-xs text-slate-600 leading-tight select-none cursor-pointer">
+                  I accept the <a href="/terms" target="_blank" className="text-green-600 underline font-bold">Terms of Service</a> and confirm lawful <a href="/privacy" target="_blank" className="text-green-600 underline font-bold">NDPR Data Processing</a>.
+                </label>
+              </div>
             )}
 
             {/* Buttons Group */}

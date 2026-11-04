@@ -73,7 +73,9 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     setIsGovApproved(true);
     localStorage.setItem('sb_gov_charter_approved', 'true');
     if (localBrandData) {
-      onSave({ ...localBrandData, isGovernanceApproved: true });
+      const updated = { ...localBrandData, isGovernanceApproved: true, policies: { ...(localBrandData.policies || {}), is_governance_approved: true } };
+      setLocalBrandData(updated);
+      onSave(updated);
     }
     toast.success("✅ Corporate Governance Charter formally approved & certified for BOI and Bank review!", { icon: '🏛️', duration: 4000 });
   };

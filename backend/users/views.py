@@ -101,7 +101,11 @@ class LoginView(views.APIView):
             return Response({'token': token.key, 'user': UserSerializer(user).data})
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
-class ProfileView(generics.RetrieveUpdateAPIView):
+class ProfileView(generics.RetrieveUpdateDestroyAPIView):
+    def perform_destroy(self, instance):
+        # NDPR Compliance (Right to Erasure): Permanently purge user profile
+        print(f"NDPR Right to Erasure executed for user {instance.email}")
+        instance.delete()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -334,9 +338,9 @@ class ForgotPasswordView(views.APIView):
         email_thread.start()
 
         res_data = {'message': 'A 6-digit verification code has been sent to your email address.'}
+        # Security: Never expose OTP in API response. Log to server console only.
         if getattr(settings, 'DEBUG', False):
-            res_data['debug_code'] = code
-            print(f"DEBUG: Password reset code for {email} is {code}")
+            print(f"DEBUG (server log only): Password reset code for {email} is {code}")
 
         return Response(res_data, status=status.HTTP_200_OK)
 
@@ -936,3 +940,343 @@ class SecurityLockView(views.APIView):
         return Response({'error': 'Invalid security action.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+
+import csv
+import io
+import secrets
+from django.utils.text import slugify
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from .models import Cohort, CohortMembership
+
+class BulkOnboardingView(views.APIView):
+    """
+    Institutional Bulk Onboarding Endpoint (NACCIMA / SMEDAN / Chambers of Commerce).
+    Accepts CSV upload or JSON payload of MSMEs, provisions accounts, initializes
+    brand & catalog profiles, assigns cohort memberships, and returns an activation summary.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def post(self, request, *args, **kwargs):
+        # Require staff/admin privileges or Pro plan
+        if not (request.user.is_staff or request.user.is_superuser or getattr(request.user, 'plan', '') == 'Pro'):
+            return Response(
+                {'error': 'Administrative or institutional partner access required for bulk onboarding.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        cohort_slug = request.data.get('cohort_slug') or request.data.get('cohort_id')
+        cohort_name = request.data.get('cohort_name', 'NACCIMA MSME Cohort')
+        default_state = request.data.get('state', 'Lagos')
+        default_chapter = request.data.get('chapter', 'General Chamber')
+
+        # Get or create the cohort
+        if cohort_slug:
+            cohort, _ = Cohort.objects.get_or_create(
+                slug=slugify(str(cohort_slug)),
+                defaults={
+                    'name': cohort_name,
+                    'cohort_type': 'NACCIMA',
+                    'organization': 'NACCIMA',
+                    'state': default_state
+                }
+            )
+        else:
+            cohort, _ = Cohort.objects.get_or_create(
+                slug=slugify(cohort_name),
+                defaults={
+                    'name': cohort_name,
+                    'cohort_type': 'NACCIMA',
+                    'organization': 'NACCIMA',
+                    'state': default_state
+                }
+            )
+
+        members_data = []
+
+        # 1. Parse CSV file if uploaded
+        if 'file' in request.FILES:
+            csv_file = request.FILES['file']
+            try:
+                decoded_file = csv_file.read().decode('utf-8-sig', errors='ignore')
+                io_string = io.StringIO(decoded_file)
+                reader = csv.DictReader(io_string)
+                for row in reader:
+                    # Normalize common header variations
+                    normalized = {
+                        'email': (row.get('email') or row.get('Email') or row.get('EMAIL') or '').strip(),
+                        'name': (row.get('name') or row.get('Name') or row.get('full_name') or row.get('Owner Name') or '').strip(),
+                        'business_name': (row.get('business_name') or row.get('Business Name') or row.get('Company') or '').strip(),
+                        'phone': (row.get('phone') or row.get('Phone') or row.get('WhatsApp') or row.get('phone_number') or '').strip(),
+                        'state': (row.get('state') or row.get('State') or default_state).strip(),
+                        'chapter': (row.get('chapter') or row.get('Chapter') or default_chapter).strip(),
+                        'sector': (row.get('sector') or row.get('Sector') or row.get('Industry') or 'Retail & Commerce').strip(),
+                    }
+                    if normalized['email']:
+                        members_data.append(normalized)
+            except Exception as e:
+                return Response({'error': f'Failed to parse CSV file: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Or parse JSON members array
+        elif 'members' in request.data:
+            raw_members = request.data.get('members')
+            if isinstance(raw_members, list):
+                for item in raw_members:
+                    if isinstance(item, dict) and item.get('email'):
+                        members_data.append({
+                            'email': str(item.get('email')).strip(),
+                            'name': str(item.get('name', '')).strip(),
+                            'business_name': str(item.get('business_name', '')).strip(),
+                            'phone': str(item.get('phone', '')).strip(),
+                            'state': str(item.get('state', default_state)).strip(),
+                            'chapter': str(item.get('chapter', default_chapter)).strip(),
+                            'sector': str(item.get('sector', 'Retail & Commerce')).strip(),
+                        })
+
+        if not members_data:
+            return Response(
+                {'error': 'No valid member records found. Provide a CSV file or a "members" list with email addresses.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        created_users = []
+        existing_users = []
+        errors = []
+
+        from brand.models import BrandIdentity
+        from marketplace.models import VendorVerification
+        from billing.models import CreditLedger
+
+        for entry in members_data:
+            email = entry['email'].lower()
+            b_name = entry['business_name'] or entry['name'] or email.split('@')[0]
+            owner_name = entry['name'] or b_name
+            phone = entry['phone']
+            state_val = entry['state']
+            chapter_val = entry['chapter']
+            sector_val = entry['sector']
+
+            try:
+                user = User.objects.filter(email__iexact=email).first()
+                if user:
+                    # User already exists - ensure cohort membership
+                    membership, _ = CohortMembership.objects.get_or_create(
+                        cohort=cohort,
+                        user=user,
+                        defaults={'chapter': chapter_val, 'sector': sector_val}
+                    )
+                    existing_users.append({
+                        'email': user.email,
+                        'business_name': user.business_name,
+                        'status': 'ALREADY_EXISTS_LINKED_TO_COHORT'
+                    })
+                else:
+                    # Create new user with secure temporary password
+                    temp_pass = f"SBZ-{secrets.token_hex(4).upper()}#"
+                    user = User.objects.create_user(
+                        username=email,
+                        email=email,
+                        password=temp_pass,
+                        first_name=owner_name,
+                        business_name=b_name,
+                        phone=phone,
+                        location=state_val,
+                        credits=100,  # Elevated 100 BizCredits for NACCIMA members
+                        has_onboarded=False  # Allow them to complete customized onboarding wizard
+                    )
+
+                    # Ledger allocation
+                    try:
+                        CreditLedger.objects.create(
+                            user=user,
+                            amount=100,
+                            activity=f"NACCIMA Cohort Welcome Allocation ({cohort.name})"
+                        )
+                    except Exception:
+                        pass
+
+                    # Brand and Vendor profile initialization
+                    try:
+                        BrandIdentity.objects.get_or_create(
+                            user=user,
+                            defaults={
+                                'business_name': b_name,
+                                'location': state_val,
+                                'niche': sector_val,
+                            }
+                        )
+                        VendorVerification.objects.get_or_create(
+                            user=user,
+                            defaults={
+                                'business_name': b_name,
+                                'business_type': sector_val,
+                                'whatsapp_number': phone or '2348000000000'
+                            }
+                        )
+                    except Exception:
+                        pass
+
+                    # Create Cohort Membership
+                    CohortMembership.objects.create(
+                        cohort=cohort,
+                        user=user,
+                        chapter=chapter_val,
+                        sector=sector_val,
+                        is_activated=False
+                    )
+
+                    # Send welcome email asynchronously
+                    try:
+                        from smartbiz_backend.email_utils import send_welcome_email
+                        send_welcome_email(user)
+                    except Exception as email_err:
+                        print(f"Notice: Bulk onboarding welcome email error for {email}: {email_err}")
+
+                    created_users.append({
+                        'id': user.id,
+                        'email': user.email,
+                        'owner_name': owner_name,
+                        'business_name': b_name,
+                        'temp_password': temp_pass,
+                        'chapter': chapter_val,
+                        'sector': sector_val,
+                        'phone': phone,
+                        'status': 'PROVISIONED'
+                    })
+
+            except Exception as item_err:
+                errors.append({'email': email, 'error': str(item_err)})
+
+        return Response({
+            'success': True,
+            'cohort': {
+                'id': cohort.id,
+                'name': cohort.name,
+                'slug': cohort.slug,
+                'total_members': cohort.members.count()
+            },
+            'summary': {
+                'total_processed': len(members_data),
+                'newly_provisioned': len(created_users),
+                'already_existing': len(existing_users),
+                'errors_count': len(errors)
+            },
+            'provisioned_members': created_users,
+            'existing_members': existing_users,
+            'errors': errors
+        }, status=status.HTTP_201_CREATED)
+
+
+class CohortDashboardView(views.APIView):
+    """
+    Returns aggregated metrics and cohort roster for NACCIMA chapter administrators.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        slug = request.query_params.get('cohort')
+        if slug:
+            cohorts = Cohort.objects.filter(slug=slug)
+        else:
+            cohorts = Cohort.objects.filter(is_active=True)
+
+        if not cohorts.exists():
+            return Response({'error': 'No active cohorts found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        cohort = cohorts.first()
+        memberships = CohortMembership.objects.filter(cohort=cohort).select_related('user')
+
+        total_members = memberships.count()
+        activated_members = memberships.filter(is_activated=True).count()
+        activation_rate = round((activated_members / total_members * 100), 1) if total_members > 0 else 0.0
+
+        # Chapter breakdown
+        chapters_data = {}
+        for m in memberships:
+            ch = m.chapter or 'Main Chapter'
+            if ch not in chapters_data:
+                chapters_data[ch] = {'count': 0, 'activated': 0}
+            chapters_data[ch]['count'] += 1
+            if m.is_activated:
+                chapters_data[ch]['activated'] += 1
+
+        chapter_summary = [
+            {
+                'chapter': k,
+                'total': v['count'],
+                'activated': v['activated'],
+                'activation_pct': round((v['activated'] / v['count'] * 100), 1) if v['count'] > 0 else 0.0
+            }
+            for k, v in chapters_data.items()
+        ]
+
+        roster = [
+            {
+                'id': m.user.id,
+                'business_name': m.user.business_name or m.user.username,
+                'owner_name': m.user.first_name,
+                'email': m.user.email,
+                'phone': m.user.phone,
+                'chapter': m.chapter,
+                'sector': m.sector,
+                'is_activated': m.is_activated,
+                'credits': m.user.credits,
+                'joined_at': m.joined_at.strftime('%Y-%m-%d')
+            }
+            for m in memberships[:100]
+        ]
+
+        return Response({
+            'cohort_name': cohort.name,
+            'cohort_slug': cohort.slug,
+            'organization': cohort.organization,
+            'state': cohort.state,
+            'total_msmes': total_members,
+            'activated_msmes': activated_members,
+            'activation_rate_pct': activation_rate,
+            'chapter_breakdown': chapter_summary,
+            'members_sample': roster
+        })
+
+
+from .models import BlogPost
+from .serializers import BlogPostSerializer
+
+class BlogPostListView(generics.ListCreateAPIView):
+    """
+    Public listing of published blog posts with optional category filtering.
+    Staff users can also create posts via POST.
+    """
+    serializer_class = BlogPostSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+
+    def get_queryset(self):
+        qs = BlogPost.objects.filter(is_published=True)
+        category = self.request.query_params.get('category')
+        if category and category.lower() != 'all':
+            qs = qs.filter(category__iexact=category)
+        return qs.order_by('-published_at')
+
+
+class BlogPostDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Retrieve single blog post by slug or id.
+    Staff can update/delete.
+    """
+    serializer_class = BlogPostSerializer
+    lookup_field = 'slug'
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]
+        return [permissions.IsAdminUser()]
+
+    def get_queryset(self):
+        if self.request.user and self.request.user.is_staff:
+            return BlogPost.objects.all()
+        return BlogPost.objects.filter(is_published=True)

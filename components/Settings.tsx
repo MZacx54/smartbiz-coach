@@ -5,6 +5,7 @@ import { billingService, TransactionData, CreditLedgerData, AdminDashboardData }
 import { authService, securityLockService } from '../services/authService';
 import { marketingService } from '../services/marketingService';
 import { toast } from 'react-hot-toast';
+import api from '../services/api';
 
 import { useLocation } from 'react-router-dom';
 
@@ -1457,6 +1458,32 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                   className="flex-shrink-0 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 border-0 cursor-pointer"
                 >
                   Wipe All Data
+                </button>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-red-100/40 p-4 rounded-2xl border border-red-200">
+                <div>
+                  <p className="text-xs font-bold text-red-900">Permanent Account Erasure (NDPR Right to Erasure)</p>
+                  <p className="text-[10px] text-red-700 mt-0.5">Permanently delete your profile, vendor verification, cloud ledger, and all personal data under the Nigeria Data Protection Act.</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const conf = prompt("?? PERMANENT ACCOUNT ERASURE (NDPR RIGHT TO ERASURE)\n\nThis will permanently delete your account, business profile, POS ledger, and all cloud records.\n\nType DELETE to confirm permanent erasure:");
+                    if (conf !== "DELETE") { toast("Account erasure cancelled."); return; }
+                    try {
+                      toast.loading("Purging your account and records...");
+                      await api.delete("/api/users/profile/");
+                      localStorage.clear();
+                      toast.dismiss();
+                      toast.success("Your account and personal data have been permanently erased per NDPR requirements.");
+                      if (onLogout) { onLogout(); } else { window.location.href = "/"; }
+                    } catch (err: any) {
+                      toast.dismiss();
+                      toast.error(err?.response?.data?.error || "Failed to erase account. Please contact support.");
+                    }
+                  }}
+                  className="flex-shrink-0 bg-red-700 hover:bg-red-800 text-white px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 border-0 cursor-pointer"
+                >
+                  Delete Account Forever
                 </button>
               </div>
             </div>

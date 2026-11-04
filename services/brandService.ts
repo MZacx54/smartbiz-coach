@@ -19,6 +19,7 @@ export const mapDbToBrand = (dbBrand: any): BrandIdentity => {
         logoPrompt: dbBrand.logoPrompt || dbBrand.logo_prompt || '',
         logoUrl: dbBrand.logoUrl || dbBrand.logo_url || '',
         policies: dbBrand.policies || { payment: '', delivery: '', refund: '' },
+        isGovernanceApproved: Boolean(dbBrand.is_governance_approved || dbBrand.policies?.is_governance_approved),
         trustBadgeText: dbBrand.trustBadgeText || dbBrand.trust_badge_text || '',
         whatsappContent: dbBrand.whatsappContent || dbBrand.whatsapp_content || {
             stickerIdeas: [],
@@ -66,7 +67,10 @@ export const mapBrandToDb = (brand: BrandIdentity): any => {
         target_audience: brand.targetAudience,
         logo_prompt: brand.logoPrompt,
         logo_url: brand.logoUrl,
-        policies: brand.policies,
+        policies: {
+            ...(brand.policies || {}),
+            is_governance_approved: Boolean(brand.isGovernanceApproved || (brand.policies as any)?.is_governance_approved)
+        },
         trust_badge_text: brand.trustBadgeText,
         whatsapp_content: brand.whatsappContent,
         packaging: brand.packaging,

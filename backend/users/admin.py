@@ -64,3 +64,37 @@ class PartnershipInquiryAdmin(admin.ModelAdmin):
         }),
     )
 
+
+from .models import Cohort, CohortMembership
+
+class CohortMembershipInline(admin.TabularInline):
+    model = CohortMembership
+    extra = 1
+    raw_id_fields = ['user']
+    readonly_fields = ['joined_at']
+
+@admin.register(Cohort)
+class CohortAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'cohort_type', 'organization', 'state', 'member_count', 'is_active', 'created_at']
+    list_filter = ['cohort_type', 'state', 'is_active', 'created_at']
+    search_fields = ['name', 'organization', 'state', 'contact_name', 'contact_email']
+    prepopulated_fields = {'slug': ('name',)}
+    inlines = [CohortMembershipInline]
+
+@admin.register(CohortMembership)
+class CohortMembershipAdmin(admin.ModelAdmin):
+    list_display = ['id', 'cohort', 'user', 'chapter', 'sector', 'is_activated', 'joined_at']
+    list_filter = ['cohort', 'is_activated', 'sector', 'joined_at']
+    search_fields = ['cohort__name', 'user__username', 'user__email', 'chapter']
+    raw_id_fields = ['user']
+
+from .models import BlogPost
+
+@admin.register(BlogPost)
+class BlogPostAdmin(admin.ModelAdmin):
+    list_display = ['id', 'title', 'category', 'author_name', 'read_time', 'is_published', 'published_at']
+    list_filter = ['is_published', 'category', 'published_at']
+    search_fields = ['title', 'excerpt', 'content', 'author_name']
+    prepopulated_fields = {'slug': ('title',)}
+    list_editable = ['is_published']
+    readonly_fields = ['created_at', 'updated_at']

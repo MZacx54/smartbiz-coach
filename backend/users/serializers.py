@@ -66,3 +66,14 @@ class AgentHireRequestSerializer(serializers.ModelSerializer):
         fields = ['id', 'business_name', 'business_type', 'phone_number', 'registration_type', 'amount_paid', 'payment_reference', 'payment_status', 'status', 'created_at']
         read_only_fields = ['status', 'created_at']
 
+
+from .models import BlogPost
+
+class BlogPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BlogPost
+        fields = [
+            'id', 'title', 'slug', 'category', 'excerpt', 'content',
+            'author_name', 'read_time', 'tags', 'cover_image_url',
+            'is_published', 'published_at', 'created_at'
+        ]

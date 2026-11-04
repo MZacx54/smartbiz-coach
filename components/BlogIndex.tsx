@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     Search, 
@@ -32,9 +32,41 @@ const BlogIndex: React.FC = () => {
     const [cohortSize, setCohortSize] = useState<string>('500 - 2,000 MSMEs');
 
     const categories = ['All', 'Data Science & AI', 'Partnerships & NGOs', 'Tax & Compliance', 'Growth & Grants', 'Retail Operations'];
+    const [allPosts, setAllPosts] = useState<BlogPost[]>(BLOG_POSTS);
+    useEffect(() => {
+        api.get("/api/users/blog/")
+            .then(res => {
+                if (Array.isArray(res.data) && res.data.length > 0) {
+                    const serverPosts: BlogPost[] = res.data.map((p: any) => ({
+                        id: String(p.id),
+                        slug: p.slug,
+                        title: p.title,
+                        seoTitle: p.title,
+                        metaDescription: p.excerpt || p.title,
+                        excerpt: p.excerpt || "",
+                        category: (p.category || "Growth & Grants") as any,
+                        tags: Array.isArray(p.tags) ? p.tags : [],
+                        author: { name: p.author_name || "SmartBiz Insights Team", role: "Editorial Director", avatar: "/meshach-zachariah.png" },
+                        publishedAt: (p.published_at || "").slice(0, 10),
+                        updatedAt: (p.updated_at || p.published_at || "").slice(0, 10),
+                        readTime: p.read_time || "5 min read",
+                        bannerImage: p.cover_image_url || "/meshach-zachariah.png",
+                        imageCaption: p.title,
+                        summaryTldr: ["Direct MSME Advisory", "Verified Policy Insight", "Institutional Readiness"],
+                        contentSections: [{ id: 'sec-1', heading: p.title, paragraphs: [p.content || p.excerpt || ""] }],
+                        faqs: [],
+                        relatedSlugs: [],
+                        primaryCta: { title: "Ready to modernize?", subtitle: "Start free today.", buttonText: "Open Account", buttonLink: "/register" }
+                    } as unknown as BlogPost));
+                    const existingSlugs = new Set(serverPosts.map(p => p.slug));
+                    setAllPosts([...serverPosts, ...BLOG_POSTS.filter(b => !existingSlugs.has(b.slug))]);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     const filteredPosts = useMemo(() => {
-        return BLOG_POSTS.filter((post) => {
+        return allPosts.filter((post) => {
             const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
             const query = searchQuery.toLowerCase().trim();
             const matchesSearch = !query || 
@@ -45,7 +77,7 @@ const BlogIndex: React.FC = () => {
         });
     }, [selectedCategory, searchQuery]);
 
-    const featuredPost = BLOG_POSTS[0];
+    const featuredPost = allPosts[0] || BLOG_POSTS[0];
 
     const handleCohortSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -288,7 +320,7 @@ const BlogIndex: React.FC = () => {
                                             <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Key Institutional Takeaways:
                                         </div>
                                         <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
-                                            {featuredPost.summaryTldr.slice(0, 3).map((item, idx) => (
+                                            {(featuredPost.summaryTldr || []).slice(0, 3).map((item: string, idx: number) => (
                                                 <li key={idx} className="line-clamp-1">{item}</li>
                                             ))}
                                         </ul>

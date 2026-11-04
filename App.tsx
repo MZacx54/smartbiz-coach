@@ -7,6 +7,8 @@ import SEO from "./components/SEO";
 // Layout & Core
 import DashboardLayout from "./components/DashboardLayout";
 const LandingPage = lazy(() => import("./components/LandingPage"));
+const PricingPage = lazy(() => import("./components/PricingPage"));
+import CookieConsent from "./components/CookieConsent";
 
 // Lazy loaded core components
 const Dashboard = lazy(() => import("./components/Dashboard"));
@@ -143,7 +145,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/content')) setCurrentView(AppView.CONTENT_GENERATOR);
     else if (path.includes('/dashboard/invoices')) setCurrentView(AppView.INVOICE_GENERATOR);
     else if (path.includes('/dashboard/cashbook')) setCurrentView(AppView.DAILY_CASHBOOK);
-    else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.INVENTORY);
+    else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.PRODUCT_MANAGER);
     else if (path.includes('/dashboard/debtor')) setCurrentView(AppView.DEBTOR_BOOK);
     else if (path.includes('/dashboard/marketplace')) setCurrentView(AppView.MARKETPLACE);
     else if (path.includes('/dashboard/cart')) setCurrentView(AppView.CART);
@@ -158,7 +160,6 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/order-gen')) setCurrentView(AppView.ORDER_GENERATOR);
     else if (path.includes('/dashboard/orders')) setCurrentView(AppView.ORDER_INBOX);
     else if (path.includes('/dashboard/store-preview')) setCurrentView(AppView.STOREFRONT);
-    else if (path.includes('/dashboard/inventory')) setCurrentView(AppView.PRODUCT_MANAGER);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
     else if (path.includes('/dashboard/marketing')) setCurrentView(AppView.MARKETING_AGENT);
@@ -537,13 +538,11 @@ const App: React.FC = () => {
 
       const result = await billingService.verifyPayment(reference, amount);
 
-      // If there are items in the cart, this is a product order
+      // Cart orders are already created with buyer info by Cart.tsx before this callback fires.
+      // Here we just clear the cart and show confirmation.
       if (cartItems.length > 0) {
-        await api.post('/api/marketplace/orders/create/', {
-          items: cartItems,
-          reference: reference,
-          total_amount: amount
-        });
+        toast.success("Order placed! Check your Order Inbox for details.");
+        setCartItems([]);
         toast.success("Order placed successfully!");
         setCartItems([]);
       } else {
@@ -714,6 +713,11 @@ const App: React.FC = () => {
         <Route path="/cac-checklist" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
             <StaticPage pageType="cac" />
+          </Suspense>
+        } />
+        <Route path="/pricing" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-white"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PricingPage currentUser={user} onTopUpSuccess={handleUpdateCredits} />
           </Suspense>
         } />
         <Route path="/blog" element={
@@ -888,6 +892,7 @@ const App: React.FC = () => {
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <CookieConsent />
     </HelmetProvider>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import BulkOnboardModal from './BulkOnboardModal';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
@@ -331,6 +332,7 @@ export const PartnerPortal: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [approvedIds, setApprovedIds] = useState<string[]>([]);
   const [partnerProgram, setPartnerProgram] = useState<string>('ALL');
+  const [showBulkOnboardModal, setShowBulkOnboardModal] = useState<boolean>(false);
 
   // Upgrade 5: Interactive Monte Carlo Loan & Grant Underwriting Simulator state
   const [selectedSimMsmeId, setSelectedSimMsmeId] = useState<string>('');

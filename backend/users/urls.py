@@ -3,7 +3,8 @@ from .views import (
      RegisterView, LoginView, ProfileView, UserStatsView, UserActionsView,
      ForgotPasswordView, ResetPasswordView, ComplianceStatusView, AgentHireRequestView,
      SetupAdminView, VerifyCACLiveView, EmailDiagnosticTestView, PartnershipInquiryView,
-     SecurityLockView
+     SecurityLockView, BulkOnboardingView, CohortDashboardView,
+     BlogPostListView, BlogPostDetailView
 )
 
 urlpatterns = [
@@ -21,6 +22,8 @@ urlpatterns = [
     path('setup-admin/', SetupAdminView.as_view(), name='setup-admin'),
     path('test-email/', EmailDiagnosticTestView.as_view(), name='test-email'),
     path('partnership-inquiry/', PartnershipInquiryView.as_view(), name='partnership-inquiry'),
+    path('bulk-onboard/', BulkOnboardingView.as_view(), name='bulk-onboard'),
+    path('cohort-dashboard/', CohortDashboardView.as_view(), name='cohort-dashboard'),
+    path('blog/', BlogPostListView.as_view(), name='blog-list'),
+    path('blog/<slug:slug>/', BlogPostDetailView.as_view(), name='blog-detail'),
 ]
-
-

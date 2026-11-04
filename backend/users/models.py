@@ -113,3 +113,87 @@ class PartnershipInquiry(models.Model):
         return f"{self.organization} ({self.name}) - {self.partnership_type} [{self.status}]"
 
 
+
+
+class Cohort(models.Model):
+    """
+    Represents an institutional cohort (e.g. NACCIMA, SMEDAN, NGO) that
+    groups multiple users together for bulk onboarding and progress tracking.
+    """
+    COHORT_TYPE_CHOICES = [
+        ('NACCIMA', 'NACCIMA Chamber'),
+        ('SMEDAN', 'SMEDAN Programme'),
+        ('NGO', 'NGO / Development Partner'),
+        ('BANK', 'Bank / MFI Lending Programme'),
+        ('GOV', 'Government Agency'),
+        ('COOPERATIVE', 'Market Association / Cooperative'),
+        ('OTHER', 'Other'),
+    ]
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True, max_length=100)
+    cohort_type = models.CharField(max_length=50, choices=COHORT_TYPE_CHOICES, default='NACCIMA')
+    organization = models.CharField(max_length=255, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=50, blank=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Cohort / Institution'
+        verbose_name_plural = 'Cohorts / Institutions'
+        ordering = ['-created_at']
+
+    def member_count(self):
+        return self.members.count()
+
+    def __str__(self):
+        return f"{self.name} ({self.cohort_type}) - {self.state}"
+
+
+class CohortMembership(models.Model):
+    """Links a User to a Cohort with optional chapter/state tagging."""
+    cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cohort_memberships')
+    chapter = models.CharField(max_length=100, blank=True, help_text="e.g. NACCIMA Lagos Chapter")
+    sector = models.CharField(max_length=100, blank=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    is_activated = models.BooleanField(default=False)  # True when user logs in for the first time
+
+    class Meta:
+        unique_together = ('cohort', 'user')
+        ordering = ['-joined_at']
+
+    def __str__(self):
+        return f"{self.user.username} in {self.cohort.name}"
+
+
+class BlogPost(models.Model):
+    """
+    Dynamic CMS Blog Post model allowing content teams to publish articles,
+    policy briefings, and MSME guides directly via Django Admin.
+    """
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True, max_length=150)
+    category = models.CharField(max_length=100, default='General')
+    excerpt = models.TextField(blank=True)
+    content = models.TextField(help_text="Markdown or rich text article body")
+    author_name = models.CharField(max_length=100, default='SmartBiz Insights Team')
+    read_time = models.CharField(max_length=50, default='5 min read')
+    tags = models.JSONField(default=list, blank=True)
+    cover_image_url = models.TextField(blank=True, default='')
+    is_published = models.BooleanField(default=True)
+    published_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Blog Post & Advisory'
+        verbose_name_plural = 'Blog Posts & Advisories'
+        ordering = ['-published_at']
+
+    def __str__(self):
+        return self.title
