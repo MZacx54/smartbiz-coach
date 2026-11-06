@@ -114,6 +114,26 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   const [isLoading, setIsLoading] = useState(() => items.length === 0);
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [localCartCount, setLocalCartCount] = useState<number>(0);
+
+  useEffect(() => {
+    const syncCart = () => {
+      try {
+        const saved = localStorage.getItem('smartbiz_cart');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setLocalCartCount(Array.isArray(parsed) ? parsed.reduce((sum: number, it: any) => sum + (it.quantity || 1), 0) : 0);
+        } else {
+          setLocalCartCount(0);
+        }
+      } catch {
+        setLocalCartCount(0);
+      }
+    };
+    syncCart();
+    window.addEventListener('storage', syncCart);
+    return () => window.removeEventListener('storage', syncCart);
+  }, []);
   const [selectedCategory, setSelectedCategory] = useState<string>(() => routeParams.category ? decodeURIComponent(routeParams.category) : '');
   const [selectedLocation, setSelectedLocation] = useState<string>(() => routeParams.state ? decodeURIComponent(routeParams.state) : '');
   const [selectedPriceBucket, setSelectedPriceBucket] = useState<string>('');
@@ -913,7 +933,21 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                         onClick={() => {
                           if (onAddToCart && !isPublicMode) {
                             onAddToCart(item);
-                            toast.success(`Added "${item.name}" to cart!`);
+                            setLocalCartCount(prev => prev + 1);
+                            toast.success((t) => (
+                              <div className="flex items-center justify-between gap-3 w-full">
+                                <span className="text-xs font-bold">Added "{item.name.substring(0, 20)}" to cart!</span>
+                                <button
+                                  onClick={() => {
+                                    toast.dismiss(t.id);
+                                    navigate('/dashboard/cart');
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
+                                >
+                                  View Cart →
+                                </button>
+                              </div>
+                            ), { duration: 4000 });
                           } else {
                             navigate(getProductDeepLink(item));
                           }
@@ -1260,8 +1294,24 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                         {selectedItem.product_type === 'PHYSICAL' ? (
                           <button 
                             onClick={() => {
-                              onAddToCart && onAddToCart(selectedItem);
-                              toast.success(`Added "${selectedItem.name}" to bag!`);
+                              if (onAddToCart) {
+                                onAddToCart(selectedItem);
+                                setLocalCartCount(prev => prev + 1);
+                                toast.success((t) => (
+                                  <div className="flex items-center justify-between gap-3 w-full">
+                                    <span className="text-xs font-bold">Added to shopping bag!</span>
+                                    <button
+                                      onClick={() => {
+                                        toast.dismiss(t.id);
+                                        navigate('/dashboard/cart');
+                                      }}
+                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
+                                    >
+                                      View Cart →
+                                    </button>
+                                  </div>
+                                ), { duration: 4000 });
+                              }
                               setSelectedItem(null);
                             }}
                             className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"

@@ -38,6 +38,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
     const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [showAllTools, setShowAllTools] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
 
     // Unified, cloud-synced Apprentice / Cashier Mode via shared hook
@@ -136,6 +137,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     };
 
     const businessName = user.businessName || user.business_name || 'My Business';
+    const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+    const cartCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
     const initial = businessName.charAt(0).toUpperCase();
     const quickItems = QUICK_ADD.filter((q) => role === 'OWNER' || q.attendant);
     const isAdmin = isAdminOrPartnerUser(user);
@@ -278,6 +281,31 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <span>{lang === 'pcm' ? 'Pidgin' : 'EN'}</span>
                     </button>
                     <div className="hidden lg:block"><PWAInstallButton variant="nav" label="📲 Install" /></div>
+                    {/* Shopping Cart Header Button with Live Badge */}
+                    {cartItems.length > 0 && !isCashierMode && (
+                        <button
+                            onClick={() => go(AppView.CART)}
+                            className="relative flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 w-9 h-9 sm:w-10 sm:h-10 rounded-full text-emerald-800 transition-all cursor-pointer active:scale-95 shadow-sm"
+                            title={t('Shopping Cart', 'Shopping Cart')}
+                            aria-label="Shopping Cart"
+                        >
+                            <span className="text-base sm:text-lg">🛍️</span>
+                            <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                                {cartCount}
+                            </span>
+                        </button>
+                    )}
+                    {/* Direct Settings 1-Tap Header Button */}
+                    {!isCashierMode && (
+                        <button
+                            onClick={() => go(AppView.SETTINGS)}
+                            className="flex items-center justify-center bg-slate-100 hover:bg-slate-200 border border-slate-200 w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 transition-all cursor-pointer active:scale-95"
+                            title={t('Settings & Security', 'Settings & Security')}
+                            aria-label="Settings"
+                        >
+                            <span className="text-base sm:text-lg">⚙️</span>
+                        </button>
+                    )}
                     {!isCashierMode && (
                         <button
                             onClick={() => go(AppView.SETTINGS, 'tab=billing')}
@@ -341,7 +369,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
             {/* Section chips: how mobile users reach every page in the current section */}
             {activeSectionData && activeSectionData.children.length > 1 && (
-                <div className="md:hidden flex gap-2 overflow-x-auto px-3 pb-2 no-scrollbar">
+                <div className="md:hidden flex gap-2 overflow-x-auto px-3 pb-2 no-scrollbar items-center">
+                    <button
+                        onClick={() => setShowAllTools(true)}
+                        className="shrink-0 px-3 min-h-[36px] rounded-full text-xs font-black bg-slate-900 text-emerald-400 flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-sm active:scale-95"
+                    >
+                        <span>☰</span>
+                        <span>{t('All Tools', 'All Tools')}</span>
+                    </button>
                     {activeSectionData.children.map((c) => {
                         const isActive = matchNav(location.pathname).leaf?.route === c.route;
                         const cLabel = lang === 'pcm' ? c.labelPcm || c.label : c.label;
@@ -396,10 +431,214 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </button>
                 </div>
                 <Tab id="money" />
-                <Tab id="stock" />
-                {!isCashierMode && <Tab id="grow" />}
+                <button
+                    onClick={() => setShowAllTools(true)}
+                    className={`flex-1 flex flex-col items-center justify-center min-h-[56px] rounded-xl cursor-pointer ${
+                        showAllTools || activeSectionId === 'stock' || activeSectionId === 'grow' || currentView === AppView.SETTINGS
+                            ? 'text-emerald-400 font-black'
+                            : 'text-slate-400 font-semibold'
+                    }`}
+                >
+                    <div className="relative">
+                        <span className="text-xl leading-none">☰</span>
+                        {cartItems.length > 0 && (
+                            <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center">
+                                {cartCount}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-[11px] mt-1">{t('More', 'More')}</span>
+                </button>
             </div>
         </nav>
+    );
+
+    /* ---------------- Tool Categories for All Tools Drawer ---------------- */
+    interface ToolItem {
+        label: string;
+        icon: string;
+        view: AppView;
+        params?: string;
+        hide?: boolean;
+    }
+
+    interface ToolCategory {
+        title: string;
+        icon: string;
+        hide?: boolean;
+        items: ToolItem[];
+    }
+
+    const toolCategories: ToolCategory[] = [
+        {
+            title: t('Selling & Invoicing', 'Selling & Invoicing'),
+            icon: '⚡',
+            items: [
+                { label: 'Day-Book (Sales & Expenses)', icon: '⚡', view: AppView.DAILY_CASHBOOK },
+                { label: 'Invoices & Receipts', icon: '🧾', view: AppView.INVOICE_GENERATOR },
+                { label: 'Online Storefront', icon: '🔗', view: AppView.STOREFRONT },
+                { label: 'Online Orders Inbox', icon: '📦', view: AppView.ORDER_INBOX },
+                { label: 'Order Slips Generator', icon: '📋', view: AppView.ORDER_GENERATOR },
+                { label: 'Customer Leads Inbox', icon: '📬', view: AppView.LEAD_MANAGER },
+            ]
+        },
+        {
+            title: t('Money & Financing', 'Money & Financing'),
+            icon: '💰',
+            items: [
+                { label: 'Debtors (Gbege Book)', icon: '📒', view: AppView.DEBTOR_BOOK },
+                { label: 'Find Grants & Low-Interest Loans', icon: '💰', view: AppView.GRANT_MATCHER },
+                { label: 'Bank Business Plan Generator', icon: '📈', view: AppView.BUSINESS_PLAN },
+                { label: 'Pricing & Margin Helper', icon: '🏷️', view: AppView.PRICING_ASSISTANT },
+                { label: 'Financial Insights & Analytics', icon: '📊', view: AppView.DATA_SCIENCE_HUB },
+            ]
+        },
+        {
+            title: t('Stock & Procurement', 'Stock & Procurement'),
+            icon: '📦',
+            items: [
+                { label: 'Shop Inventory Tracker', icon: '📦', view: AppView.PRODUCT_MANAGER },
+                { label: 'National Market Square', icon: '🏛️', view: AppView.MARKETPLACE },
+                { label: 'Wholesale B2B Hub', icon: '🤝', view: AppView.HUB },
+            ]
+        },
+        {
+            title: t('Growth & AI Studio', 'Growth & AI Studio'),
+            icon: '🚀',
+            hide: isCashierMode,
+            items: [
+                { label: 'AI Creative Studio & Brand Suite', icon: '🤖', view: AppView.BRAND_BUILDER },
+                { label: 'Digital Growth Roadmap', icon: '🗺️', view: AppView.DIGITAL_ROADMAP },
+                { label: 'Learning Hub Masterclasses', icon: '🎓', view: AppView.LEARNING_HUB },
+                { label: 'CAC & Tax Compliance Guide', icon: '⚖️', view: AppView.COMPLIANCE },
+            ]
+        },
+        {
+            title: t('Account, Security & Settings', 'Account & Settings'),
+            icon: '⚙️',
+            items: [
+                { label: t('Settings & Security', 'Settings & Security'), icon: '⚙️', view: AppView.SETTINGS },
+                { label: t('Buy AI Credits & Billing', 'Buy AI Credits'), icon: '⚡', view: AppView.SETTINGS, params: 'tab=billing', hide: isCashierMode },
+                { label: t('WhatsApp Live Support', 'WhatsApp Live Support'), icon: '🎧', view: AppView.WHATSAPP_SUPPORT },
+                { label: t('Partner & Admin Terminal', 'Partner Portal'), icon: '🏛️', view: AppView.PARTNER_PORTAL, hide: isCashierMode || !isAdmin },
+            ]
+        }
+    ];
+
+    /* ---------------- All Tools & Settings Mobile Drawer ---------------- */
+    const AllToolsSheet = showAllTools && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowAllTools(false)}>
+            <div
+                className="bg-white w-full max-w-lg rounded-t-[32px] p-5 pb-8 max-h-[85vh] overflow-y-auto shadow-2xl animate-in slide-in-from-bottom duration-300"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10 pt-1">
+                    <div>
+                        <h3 className="text-base font-extrabold text-slate-900 font-heading">
+                            {t('All Business Tools & Apps', 'All Business Tools & Apps')}
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                            {businessName} • {isCashierMode ? t('Staff Session', 'Apprentice Mode') : t('Owner Session', 'Owner Mode')}
+                        </p>
+                    </div>
+                    <button 
+                        onClick={() => setShowAllTools(false)} 
+                        className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-sm cursor-pointer" 
+                        aria-label="Close"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {/* Primary Quick Access Grid */}
+                <div className="grid grid-cols-2 gap-2.5 mb-4">
+                    <button
+                        onClick={() => { setShowAllTools(false); go(AppView.SETTINGS); }}
+                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white text-left shadow-md active:scale-95 cursor-pointer border border-slate-700/50"
+                    >
+                        <span className="text-2xl p-2 rounded-xl bg-white/10">⚙️</span>
+                        <div className="min-w-0">
+                            <p className="text-xs font-black text-white leading-tight">{t('Settings', 'Settings')}</p>
+                            <p className="text-[10px] text-slate-300 truncate mt-0.5">{t('Security, PIN & Shop', 'Password & Shop')}</p>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => { setShowAllTools(false); go(AppView.SETTINGS, 'tab=billing'); }}
+                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-left shadow-sm active:scale-95 cursor-pointer"
+                    >
+                        <span className="text-2xl p-2 rounded-xl bg-amber-500/20 text-amber-900">⚡</span>
+                        <div className="min-w-0">
+                            <p className="text-xs font-black text-amber-950 leading-tight">{userStats.bizCredits} Credits</p>
+                            <p className="text-[10px] text-amber-700 truncate mt-0.5">{t('Top up AI Balance', 'Buy AI Credit')}</p>
+                        </div>
+                    </button>
+                </div>
+
+                {/* Shopping Cart Alert Banner inside Drawer if Cart has Items */}
+                {cartItems.length > 0 && !isCashierMode && (
+                    <button
+                        onClick={() => { setShowAllTools(false); go(AppView.CART); }}
+                        className="w-full mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between shadow-lg shadow-emerald-700/20 active:scale-95 cursor-pointer"
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">🛍️</span>
+                            <div className="text-left">
+                                <p className="text-xs font-extrabold">{cartCount} items in Shopping Cart</p>
+                                <p className="text-[11px] text-emerald-100 font-semibold">₦{cartTotal.toLocaleString()} total</p>
+                            </div>
+                        </div>
+                        <span className="px-3 py-1.5 bg-white text-emerald-800 rounded-xl text-xs font-black shadow-sm">
+                            View & Pay →
+                        </span>
+                    </button>
+                )}
+
+                {/* Categorized Apps & Tools List */}
+                <div className="space-y-4">
+                    {toolCategories.filter(cat => !cat.hide).map(cat => (
+                        <div key={cat.title} className="bg-slate-50/80 rounded-2xl p-3 border border-slate-100">
+                            <div className="flex items-center gap-2 mb-2 px-1">
+                                <span className="text-base">{cat.icon}</span>
+                                <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">{cat.title}</h4>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {cat.items.filter(item => !item.hide).map(item => (
+                                    <button
+                                        key={item.label}
+                                        onClick={() => { setShowAllTools(false); go(item.view, item.params); }}
+                                        className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white hover:bg-emerald-50 border border-slate-100 text-left transition-all active:scale-95 cursor-pointer min-w-0"
+                                    >
+                                        <span className="text-lg shrink-0">{item.icon}</span>
+                                        <span className="text-xs font-bold text-slate-800 truncate leading-snug">{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Support & Logout Options */}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                        onClick={() => { setShowAllTools(false); go(AppView.WHATSAPP_SUPPORT); }}
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                        <span>🎧</span>
+                        <span>{t('Support', 'Help Desk')}</span>
+                    </button>
+                    {onLogout && (
+                        <button
+                            onClick={() => { setShowAllTools(false); onLogout(); }}
+                            className="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                            <span>🚪</span>
+                            <span>{t('Log out', 'Log out')}</span>
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 
     /* ---------------- Quick-add sheet ---------------- */
@@ -495,8 +734,39 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <div className="max-w-5xl mx-auto pb-32 md:pb-8">{children}</div>
                 </main>
             </div>
+            {/* Mobile Floating Sticky Cart Bar */}
+            {cartItems.length > 0 && !isCashierMode && currentView !== AppView.CART && (
+                <div className="md:hidden fixed bottom-[calc(env(safe-area-inset-bottom,0px)+68px)] inset-x-3 z-40 animate-in slide-in-from-bottom duration-300">
+                    <div className="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-3 shadow-2xl shadow-slate-950/60 border border-emerald-500/40 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                                <span className="text-xl">🛍️</span>
+                                <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-slate-900">
+                                    {cartCount}
+                                </span>
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-slate-300 truncate">
+                                    {cartCount} {cartCount === 1 ? 'item' : 'items'} in your cart
+                                </p>
+                                <p className="text-sm font-extrabold text-emerald-400 truncate">
+                                    ₦{cartTotal.toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => go(AppView.CART)}
+                            className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition-all active:scale-95 shrink-0 flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span>Checkout & Pay</span>
+                            <span>→</span>
+                        </button>
+                    </div>
+                </div>
+            )}
             {BottomBar}
             {QuickAddSheet}
+            {AllToolsSheet}
             <LiveSupportWidget credits={userStats.bizCredits} onUpdateCredits={onUpdateCredits} />
             {UnlockModal}
         </div>

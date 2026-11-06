@@ -634,6 +634,15 @@ const App: React.FC = () => {
           }
         />
 
+        {/* Public Cart Route */}
+        <Route path="/cart" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <div className="min-h-screen bg-slate-50 pt-4 px-3 sm:px-6 max-w-4xl mx-auto">
+              <Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => navigate('/marketplace')} />
+            </div>
+          </Suspense>
+        } />
+
         {/* Public National Market Square Routes (Accessible without Login) */}
         <Route path="/market" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
