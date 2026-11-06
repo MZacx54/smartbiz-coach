@@ -1597,7 +1597,7 @@ const LandingPage: React.FC = () => {
                             <ul className="space-y-3">
                                 <li><span onClick={() => navigate('/about')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">About SmartBiz</span></li>
                                 <li><a href="#partnership" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Institutional Partners</a></li>
-                                <li><span onClick={() => navigate('/privacy')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Privacy Policy (NDPR)</span></li>
+                                <li><span onClick={() => navigate('/privacy')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Privacy Policy (NDPA 2023)</span></li>
                                 <li><span onClick={() => navigate('/terms')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Terms of Service</span></li>
                             </ul>
                         </div>
@@ -1607,7 +1607,7 @@ const LandingPage: React.FC = () => {
                         <p>© {new Date().getFullYear()} SmartBiz Coach. All rights reserved. 🇳🇬 Made in Nigeria, for Nigerian MSMEs.</p>
                         <div className="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full">
                             <span className="text-green-400 text-xs">🔒</span>
-                            <span className="text-xs text-slate-400">Secured by Paystack · NDPR Compliant · CITA Section 23/40 0% Tax Verified · Offline PWA</span>
+                            <span className="text-xs text-slate-400">Secured by Paystack · NDPA 2023 &amp; NDPR Compliant · NACCIMA/NYE MOU Ref: SBC/NYE/MOU/2026/V3.1 · CITA 0% Tax Verified · CBN Non-Custodial Gateway</span>
                         </div>
                     </div>
                 </div>

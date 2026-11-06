@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, MapPin, CheckCircle, Shield, FileText, HelpCircle, Award, BookOpen, Send } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, CheckCircle, Shield, FileText, HelpCircle, Award, BookOpen, Send, Lock, Scale, Building, Database, AlertCircle, ExternalLink, Download, Check, Sparkles } from 'lucide-react';
 import SEO from './SEO';
 import api from '../services/api';
 
@@ -48,8 +48,8 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
   const pageMeta = {
     about: { title: "About Us | SmartBiz Coach", desc: "Nigeria's #1 AI Business Operating System empowering MSMEs with daily POS, Snap-to-Studio, Central Market Square, and funding readiness." },
     contact: { title: "Contact Us | SmartBiz Coach", desc: "Get in touch with our team. Phone/WhatsApp: 09064556107, Email: support@smartbizcoach.com.ng" },
-    privacy: { title: "Privacy Policy | SmartBiz Coach", desc: "Learn how we protect your personal and business data safely under NDPR compliance." },
-    terms: { title: "Terms of Service | SmartBiz Coach", desc: "Read our terms of service, fair-use policy, and Paystack credit token billing rules." },
+    privacy: { title: "Privacy Policy & Statutory Data Protection Notice | SmartBiz Coach", desc: "Official data protection notice under NDPA 2023, NDPR, NACCIMA Youth Entrepreneurs Institutional Governance Framework (SBC/NYE/MOU/2026/V3.1), and CBN non-custodial standards." },
+    terms: { title: "Terms of Service & Merchant Operational Agreement | SmartBiz Coach", desc: "Binding terms of service, fair-use lifetime free tools guarantee, BizCredits utility token billing rules, Market Square guidelines, NACCIMA institutional rules, and alternative underwriting disclaimers." },
     help: { title: "Help Center & FAQs | SmartBiz Coach", desc: "Find tutorials, credit costs, fair-use guarantees, and quick answers to how our platform works." },
     grants: { title: "SME Grants & Funding Guide | SmartBiz Coach", desc: "Master guide to qualifying for BOI loans, SMEDAN grants, TEF, and bank financing in Nigeria." },
     cac: { title: "CAC Registration & Compliance Guide | SmartBiz Coach", desc: "The official step-by-step checklist to register your business, get a TIN, SCUML, and Section 23 CITA tax shield." },
@@ -268,77 +268,678 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
             </div>
           )}
 
-          {/* PRIVACY POLICY PAGE */}
+                    {/* PRIVACY POLICY PAGE */}
           {pageType === 'privacy' && (
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center"><Shield className="w-5 h-5" /></div>
-                <h1 className="text-3xl font-extrabold text-slate-900 font-heading">Privacy Policy</h1>
+            <div className="space-y-8">
+              {/* Header Banner */}
+              <div className="border-b border-slate-200 pb-6">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="bg-blue-100 text-blue-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <Shield className="w-3 h-3" /> NDPA 2023 &amp; NDPR Compliant
+                  </span>
+                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <Building className="w-3 h-3" /> NACCIMA/NYE MOU Protocol Ref: SBC/NYE/MOU/2026/V3.1
+                  </span>
+                  <span className="bg-amber-100 text-amber-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <Lock className="w-3 h-3" /> CBN Non-Custodial Gateway
+                  </span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-heading tracking-tight">
+                  Privacy Policy &amp; Statutory Data Protection Notice
+                </h1>
+                <p className="text-slate-500 text-xs mt-2 flex items-center gap-2">
+                  <span>Version 4.2 · Last Legally Ratified &amp; Deployed: November 2026</span>
+                  <span>·</span>
+                  <span>Governing Jurisdiction: Federal Republic of Nigeria</span>
+                </p>
               </div>
-              <p className="text-slate-400 text-xs mb-8">Last Updated: July 2026</p>
 
+              {/* Quick Summary Pill Callout */}
+              <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 border border-blue-200 rounded-2xl p-5 text-slate-700 text-xs leading-relaxed shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm mb-1">
+                      Our Constitutional Commitment to Nigerian MSME Data Sovereignty
+                    </h4>
+                    <p>
+                      SmartBiz Coach Technologies Limited (&ldquo;SmartBiz Coach&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates in strict conformity with the 
+                      <strong> Nigeria Data Protection Act 2023 (NDPA)</strong>, the <strong>Nigeria Data Protection Regulation 2019 (NDPR)</strong>, and directives of the 
+                      <strong> Nigeria Data Protection Commission (NDPC)</strong>. Your sales records, supplier margins, customer contacts, and debtor ledgers 
+                      (&ldquo;Gbege Book&rdquo;) remain your <strong>100% private, sovereign commercial property</strong>. In accordance with Section 8.2 &amp; 15 of the bilateral 
+                      NACCIMA Youth Entrepreneurs (NYE) Memorandum of Understanding (Document Ref: <code className="bg-white/80 px-1 py-0.5 rounded font-mono text-blue-900">SBC/NYE/MOU/2026/V3.1</code>), 
+                      neither chambers, governmental entities, nor financial institutions can inspect your individual counter records without your explicit, affirmative, in-app written consent.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Sections */}
               <div className="space-y-6 text-slate-600 leading-relaxed text-sm">
-                <section>
-                  <h3 className="font-bold text-slate-950 text-base mb-2">1. Information We Collect</h3>
+                
+                {/* Section 1 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">01</span>
+                    <h3>Statutory Framework &amp; Scope of Policy</h3>
+                  </div>
+                  <p className="mb-3">
+                    This Statutory Privacy Policy and Data Protection Notice governs all digital interactions, application programming interfaces (APIs), mobile progressive web apps (PWAs), 
+                    voice counter terminals, and cloud software services provided by SmartBiz Coach Technologies Limited across the Federal Republic of Nigeria and ECOWAS member states.
+                  </p>
                   <p>
-                    We collect details necessary to build your business profiles, including your name, business name, phone number, location, currency choice, and optional brand parameters. This information is saved securely to authorize and customize your business dashboard.
+                    This policy is formulated in direct compliance with:
+                  </p>
+                  <ul className="list-disc list-inside mt-2 space-y-1.5 text-xs text-slate-700 pl-2">
+                    <li><strong>The Nigeria Data Protection Act (NDPA) 2023</strong> enacted by the National Assembly of Nigeria.</li>
+                    <li><strong>The Nigeria Data Protection Regulation (NDPR) 2019</strong> and regulatory issuances by the NDPC.</li>
+                    <li><strong>Central Bank of Nigeria (CBN) Consumer Protection Framework</strong> &amp; Payment Service Provider guidelines.</li>
+                    <li><strong>The Bilateral NACCIMA Youth Entrepreneurs (NYE) Memorandum of Understanding</strong> (Ref: <span className="font-mono text-slate-900">SBC/NYE/MOU/2026/V3.1</span>).</li>
+                    <li>International principles on cross-border data processing, confidentiality, and data minimization.</li>
+                  </ul>
+                </section>
+
+                {/* Section 2 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">02</span>
+                    <h3>Roles of the Parties: Data Controller vs. Data Processor</h3>
+                  </div>
+                  <p className="mb-3">
+                    The NDPA 2023 legally differentiates between the entity that determines the purposes of processing (&ldquo;Data Controller&rdquo;) and the technical operator processing data on instruction (&ldquo;Data Processor&rdquo;):
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wider block mb-1">SmartBiz Coach as Data Controller</span>
+                      <p className="text-xs text-slate-600">
+                        We serve as Data Controller for your user registration identity, phone number, login credentials, business KYC (CAC registration, TIN), billing history, BizCredit balance, 
+                        and technical device telemetry required to administer your platform account and fulfill our service agreement.
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-1">Merchant as Controller / SmartBiz as Processor</span>
+                      <p className="text-xs text-slate-600">
+                        With respect to your counter sales receipts, customer directories, debtor names and contact numbers recorded in the &ldquo;Gbege Book&rdquo;, and apprentice cash-handling logs, 
+                        <strong>you (the Merchant) remain the Data Controller</strong>. SmartBiz Coach processes this operational information strictly as a technical Data Processor following your instruction.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 3 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">03</span>
+                    <h3>Comprehensive Data Inventory: What We Collect</h3>
+                  </div>
+                  <p className="mb-4">
+                    In order to deliver real-time retail accounting, offline PWA synchronization, AI-powered catalog creation, and credit diagnostics, we collect and process the following specific categories of information:
+                  </p>
+                  
+                  <div className="space-y-3 text-xs">
+                    <div className="border-l-2 border-blue-500 pl-3 py-1">
+                      <strong className="text-slate-900">A. Merchant Identity &amp; Corporate Profile:</strong> Full name of business owner or legal representative, registered business trading name, Corporate Affairs Commission (CAC) Registration Number (RC/BN), Tax Identification Number (TIN), physical trading address, state, local government area (LGA), market cluster classification, email address, and WhatsApp/phone numbers.
+                    </div>
+                    <div className="border-l-2 border-emerald-500 pl-3 py-1">
+                      <strong className="text-slate-900">B. Retail Counter &amp; POS Day-Book Telemetry:</strong> Line-item sales timestamps, item barcodes, stock SKU updates, cash register opening/closing balances, petty cash disbursements, generator fuel logistics expenses, cashier shift events, and 4-digit apprentice shift locks.
+                    </div>
+                    <div className="border-l-2 border-amber-500 pl-3 py-1">
+                      <strong className="text-slate-900">C. Customer Debt Recovery (&ldquo;Gbege Book&rdquo;) Records:</strong> Customer customer-facing names, debtor telephone numbers, transaction dates, debt repayment schedules, outstanding receivables, agreed payment milestones, and automated WhatsApp reminder dispatch status.
+                    </div>
+                    <div className="border-l-2 border-purple-500 pl-3 py-1">
+                      <strong className="text-slate-900">D. Voice POS Audio &amp; Speech Telemetry:</strong> Fleeting audio snippets recorded via microphone during hands-free counter sales logging. Audio is securely streamed to Google Gemini APIs strictly for speech-to-structured-text parsing.
+                    </div>
+                    <div className="border-l-2 border-rose-500 pl-3 py-1">
+                      <strong className="text-slate-900">E. Photo Studio Visual Assets:</strong> Raw product photos uploaded by merchants for automated background removal, luxury shadow synthesis, and high-resolution e-commerce catalog rendering.
+                    </div>
+                    <div className="border-l-2 border-indigo-500 pl-3 py-1">
+                      <strong className="text-slate-900">F. Alternative Credit Underwriting Telemetry:</strong> Aggregated cash turnover regularity, till velocity index, debtor turnaround latency, apprentice fraud shield anomaly rate, and algorithmic credit scores (SmartScore™ 300–850).
+                    </div>
+                    <div className="border-l-2 border-slate-500 pl-3 py-1">
+                      <strong className="text-slate-900">G. Technical &amp; Offline PWA State:</strong> IP addresses, browser fingerprint, browser user-agent string, offline IndexedDB synchronization queue states, and diagnostic application logs.
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 4 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">04</span>
+                    <h3>Lawful Bases for Data Processing (NDPA 2023 §25)</h3>
+                  </div>
+                  <p className="mb-3">
+                    Under Section 25 of the Nigeria Data Protection Act 2023, every processing activity carried out by SmartBiz Coach is anchored on an established lawful ground:
+                  </p>
+                  <ul className="space-y-2 text-xs text-slate-700">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                      <span><strong>Contractual Performance:</strong> Necessary to execute our User Agreement, process counter transactions, maintain offline-first sync, generate invoices, and publish basic Central Market Square listings.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                      <span><strong>Legitimate Commercial Interests:</strong> Preventing apprentice cashier theft, safeguarding against fake bank transfer fraud, securing multi-tenant databases, and publishing macro-economic regional performance benchmarks.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                      <span><strong>Legal &amp; Regulatory Obligations:</strong> Compliance with Nigerian corporate registration requirements, Anti-Money Laundering (AML) / Combating Financing of Terrorism (CFT) mandates, and statutory corporate income tax exemptions (CITA Section 23/40).</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                      <span><strong>Explicit, Informed Consent:</strong> Transmitting credit scoring dossiers to partner financial institutions (BOI, DBN, SMEDAN, commercial banks), audio recording for Voice POS parsing, and opt-in marketing newsletters. Consent may be revoked at any time.</span>
+                    </li>
+                  </ul>
+                </section>
+
+                {/* Section 5 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">05</span>
+                    <h3>NACCIMA &amp; Institutional Chamber Governance Framework (MOU Ref: SBC/NYE/MOU/2026/V3.1)</h3>
+                  </div>
+                  <p className="mb-3">
+                    Our platform operates under formal bilateral technical partnership protocols with the Nigerian Association of Chambers of Commerce, Industry, Mines and Agriculture Youth Entrepreneurs 
+                    (&ldquo;NACCIMA / NYE&rdquo;). This bilateral relationship is governed by the executed Memorandum of Understanding (Document Ref: <code className="text-slate-900 font-mono font-bold">SBC/NYE/MOU/2026/V3.1</code>). 
+                    All users, whether onboarded through chamber cohorts or independently, benefit from the following mandatory safeguards:
+                  </p>
+                  
+                  <div className="space-y-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="flex items-start gap-2">
+                      <span className="font-bold text-slate-900 shrink-0">1. Strict Data Segregation:</span>
+                      <p>
+                        In accordance with Clause 8.2 and Clause 15 of the MOU, an individual merchant&rsquo;s sales day-book, profit margins, supplier purchase costs, customer directories, and private debtor records 
+                        are strictly confidential. Chambers, regional secretariats, and cohort coordinators have <strong>zero technical or legal authority to view or inspect</strong> individual business ledgers.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-bold text-slate-900 shrink-0">2. Aggregated Macro Telemetry Only:</span>
+                      <p>
+                        Chamber administrative dashboards and executive impact reports receive strictly aggregated, anonymized, macro-economic telemetry (e.g. &ldquo;1,420 MSMEs digitized in Kano State; ₦480M total macro sales velocity recorded; 65% retail trade sector composition&rdquo;). No individual merchant or consumer identifiers are ever disclosed in these reports.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="font-bold text-slate-900 shrink-0">3. Verification Badges (&ldquo;Verified NYE Member&rdquo;):</span>
+                      <p>
+                        In accordance with Clause 13.2 of the MOU, chamber accreditation badges displayed on marketplace storefronts signify that the merchant is in good standing with their accredited business chamber. 
+                        Badges do not constitute a sovereign financial guarantee, co-signature, or product warranty by NACCIMA or SmartBiz Coach.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 6 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">06</span>
+                    <h3>Financial Institutions, Lenders, BOI, SMEDAN &amp; Alternative Credit Scoring Telemetry</h3>
+                  </div>
+                  <p className="mb-3">
+                    SmartBiz Coach empowers MSMEs that lack formal collateral or audited tax returns through our proprietary <strong>SmartScore™ Alternative Underwriting Engine</strong> (scored 300 to 850). 
+                    To ensure complete transparency and user sovereignty, your data is governed under the following statutory controls:
+                  </p>
+                  
+                  <div className="space-y-3 text-xs">
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                      <span className="font-bold text-blue-900 block mb-1">1. Affirmative 1-Click Explicit Consent Required:</span>
+                      <p className="text-slate-700">
+                        SmartBiz Coach <strong>never automatically transmits</strong> your sales velocity, cash turnover history, or cryptographic audit dossier (<code>PublicAuditReport</code>) to any Commercial Bank, 
+                        Microfinance Bank (MFB), Bank of Industry (BOI), Development Bank of Nigeria (DBN), or the Small and Medium Enterprises Development Agency of Nigeria (SMEDAN). 
+                        Transmission occurs <strong>only when you explicitly click to submit an application or authorize dossier sharing</strong> within the platform.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <span className="font-bold text-amber-900 block mb-1">2. Indicative Diagnostic Tool Disclaimer (MOU Clause 15.5):</span>
+                      <p className="text-slate-700">
+                        SmartScore™ and its generated IFRS-9 staging indicators are diagnostic operational evaluations calculated from your self-recorded counter discipline, till regularity, and debt collection turnaround. 
+                        A high SmartScore™ demonstrates commercial discipline but <strong>does not guarantee loan approval, credit limits, or concessionary interest rates</strong> from any financial institution. 
+                        Lending partners evaluate applications against their independent statutory risk models and prudential guidelines.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <span className="font-bold text-slate-900 block mb-1">3. Automated Decision-Making Safeguards (NDPA 2023 §37):</span>
+                      <p className="text-slate-700">
+                        Under Section 37 of the NDPA 2023, you have the right not to be subjected to decisions based solely on automated processing. You may at any time request human intervention to review 
+                        your SmartScore™ computation, submit clarifying explanations regarding uncharacteristic revenue dips, or dispute anomalous apprentice till entries.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 7 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">07</span>
+                    <h3>Payment Processing &amp; Non-Custodial CBN Regulatory Architecture</h3>
+                  </div>
+                  <p className="mb-3">
+                    SmartBiz Coach is a business software platform, not a bank, deposit-taking institution, or digital wallet escrow provider. Our payment architecture is strictly <strong>non-custodial</strong>:
+                  </p>
+                  <ul className="space-y-2 text-xs text-slate-700">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Automated Split Settlement:</strong> Customer payments made through online Market Square checkout are processed via Central Bank of Nigeria (CBN)-licensed payment switches (primarily <strong>Paystack Payments Limited</strong> and <strong>HabariPay / Squadco</strong>). Sales proceeds settle directly into the merchant&rsquo;s verified Nigerian commercial or microfinance bank account, with the transparent 1.5%–2% gateway/platform technology processing fee settled automatically.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>0% Commission on Direct WhatsApp &amp; Cash Trade:</strong> SmartBiz Coach levies 0% platform cuts on direct peer-to-peer cash, POS counter, or WhatsApp bank transfer orders arranged directly between merchant and buyer.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>PCI-DSS Level 1 Compliance:</strong> We never capture, store, or process full credit/debit card numbers, CVVs, or card PINs on our servers. All financial tokenization is executed directly in Paystack-hosted PCI-DSS Level 1 cryptographic enclaves.</span>
+                    </li>
+                  </ul>
+                </section>
+
+                {/* Section 8 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">08</span>
+                    <h3>Artificial Intelligence, Voice POS &amp; Large Language Model Safeguards</h3>
+                  </div>
+                  <p className="mb-3">
+                    Our platform incorporates state-of-the-art generative machine learning and computer vision to deliver Voice POS counter logging, Photo Studio background removal, and commercial documentation:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-700">
+                    <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl">
+                      <strong className="text-purple-950 block mb-1 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-purple-600" /> Google Gemini API Processing</strong>
+                      Audio captured during Voice POS sales logging is transmitted over TLS 1.3 to Google Gemini API endpoints solely for transient speech-to-text tokenization and semantic order extraction.
+                    </div>
+                    <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl">
+                      <strong className="text-purple-950 block mb-1 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-purple-600" /> Zero Biometric Voice Profiling</strong>
+                      Audio streams are processed transiently in volatile RAM and are <strong>not archived, profiled, or analyzed for biometric speaker verification or emotional detection</strong>.
+                    </div>
+                    <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl">
+                      <strong className="text-purple-950 block mb-1 flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-purple-600" /> Zero Proprietary Model Training</strong>
+                      Your private business transactions, client debt entries, and confidential supplier costs are <strong>never used to train public foundation AI models</strong>.
+                    </div>
+                    <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl">
+                      <strong className="text-purple-950 block mb-1 flex items-center gap-1.5"><Database className="w-3.5 h-3.5 text-purple-600" /> Photo Studio Image Isolation</strong>
+                      Uploaded merchant product photographs are isolated in private, tenant-scoped storage buckets accessible only by your authenticated business credentials.
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 9 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">09</span>
+                    <h3>Cloud Infrastructure, Cryptographic Security &amp; Cross-Border Transfers</h3>
+                  </div>
+                  <p className="mb-3">
+                    SmartBiz Coach deploys high-availability, multi-region enterprise infrastructure to guarantee 99.9% uptime for offline and online retail operations:
+                  </p>
+                  <ul className="space-y-2 text-xs text-slate-700">
+                    <li><strong>Hosting Infrastructure:</strong> Multi-region managed databases via Supabase PostgreSQL (AWS/GCP), containerized application services on Render, and globally distributed static edges on Vercel.</li>
+                    <li><strong>Cryptographic Controls:</strong> All data in transit is encrypted using modern <strong>TLS 1.3</strong> protocols. All database volumes, backups, and user assets are encrypted at rest using industry-standard <strong>AES-256</strong>. Passwords and apprentice till PINs are salted and irreversibly hashed using Argon2 / PBKDF2.</li>
+                    <li><strong>Multi-Tenant Isolation:</strong> Strict Row-Level Security (RLS) policies and tenant isolation keys ensure that no merchant or unauthorized tenant can access another business&rsquo;s sales registers or private books.</li>
+                    <li><strong>Cross-Border Transfer Compliance:</strong> In accordance with Part VI of the NDPA 2023, transfers to global cloud infrastructure providers are conducted under binding contractual clauses and technical safeguards guaranteeing an adequate level of data protection.</li>
+                  </ul>
+                </section>
+
+                {/* Section 10 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">10</span>
+                    <h3>Data Retention, Portability &amp; Guaranteed 60-to-90 Day Exit Transition (MOU Clause 15.4)</h3>
+                  </div>
+                  <p className="mb-3">
+                    We retain your data for the duration of your active subscription to maintain operational continuity, multi-year sales trends, and tax compliance records.
+                  </p>
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-slate-700 leading-relaxed mb-3">
+                    <strong className="text-emerald-950 block mb-1 flex items-center gap-1.5">
+                      <Download className="w-4 h-4 text-emerald-700" /> Guaranteed 60-to-90 Day Data Portability Window
+                    </strong>
+                    In accordance with <strong>Clause 15.4 of the NACCIMA/NYE MOU</strong>, should an account be deactivated, cancelled, or should institutional chamber sponsorship expire, 
+                    every merchant is guaranteed an unhindered <strong>60-to-90 day grace window</strong> to export all historical sales day-books, inventory catalogs, debtor records (&ldquo;Gbege Book&rdquo;), 
+                    customer directories, and tax balance sheets in open, machine-readable formats (<strong>CSV, JSON, and PDF</strong>). 
+                    You will never suffer vendor lock-in or lose access to your commercial records.
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    Following the expiration of this export window, personal operational records are permanently purged or irreversibly de-identified, retaining only minimal aggregate records required by Nigerian tax and accounting legislation.
                   </p>
                 </section>
 
-                <section>
-                  <h3 className="font-bold text-slate-950 text-base mb-2">2. How We Use Your Data</h3>
-                  <p>
-                    We use your brand details strictly to configure AI prompts when generating business plans, social content, and compliance outlines. Your proprietary business data is never sold, leased, or shared with third-party advertising companies.
+                {/* Section 11 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">11</span>
+                    <h3>Your Statutory Rights under NDPA 2023 &amp; NDPR</h3>
+                  </div>
+                  <p className="mb-3">
+                    Under Sections 34 through 40 of the Nigeria Data Protection Act 2023, you enjoy comprehensive, enforceable rights regarding your personal and business data:
                   </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">1. Right of Access &amp; Inspection</strong>
+                      You may inspect and export all your operational data directly through the platform dashboard at any time.
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">2. Right to Rectification</strong>
+                      You may correct inaccurate or obsolete business names, CAC numbers, addresses, and phone numbers via <code className="text-blue-700 font-mono">Settings &gt; Profile</code>.
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">3. Right to Erasure (&ldquo;Right to Be Forgotten&rdquo;)</strong>
+                      You may delete your business profile and all operational records directly inside <code className="text-rose-700 font-mono">Settings &gt; Danger Zone</code> via our self-service erasure endpoint.
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">4. Right to Restrict Processing</strong>
+                      You may restrict dossier sharing with financial institutions or opt out of non-essential marketing notifications with one click.
+                    </div>
+                  </div>
                 </section>
 
-                <section>
-                  <h3 className="font-bold text-slate-950 text-base mb-2">3. Payment & Paystack Integration</h3>
-                  <p>
-                    All payment processing is handled securely via Paystack. We do not store your credit card details, PINs, or bank account credentials on our servers. Paystack complies with all PCI-DSS standards to ensure your transactional safety.
+                {/* Section 12 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">12</span>
+                    <h3>Data Protection Officer (DPO) &amp; Regulatory Recourse</h3>
+                  </div>
+                  <p className="mb-3">
+                    SmartBiz Coach has designated a dedicated Data Protection Officer to supervise all compliance matters. If you have any inquiries, requests for data export, or statutory grievances:
                   </p>
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-blue-600" />
+                      <span><strong>Data Protection Office Email:</strong> <a href="mailto:dpo@smartbizcoach.com.ng" className="text-blue-600 font-bold hover:underline">dpo@smartbizcoach.com.ng</a></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-slate-600" />
+                      <span><strong>Legal &amp; Institutional Registry:</strong> <a href="mailto:legal@smartbizcoach.com.ng" className="text-slate-700 font-bold hover:underline">legal@smartbizcoach.com.ng</a></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-red-600" />
+                      <span><strong>Headquarters:</strong> SmartBiz Coach Technologies Limited, Lagos &amp; Abuja, Federal Republic of Nigeria.</span>
+                    </div>
+                  </div>
+                  <div className="border-t border-slate-200 pt-3 text-xs text-slate-500">
+                    <p>
+                      <strong>Supervisory Authority Recourse:</strong> If you believe your data protection rights have not been adequately redressed, you have the statutory right under the NDPA 2023 to lodge a formal complaint with the 
+                      <strong> Nigeria Data Protection Commission (NDPC)</strong>: Plot 12, P.O.W. Mafemi Crescent, Utako, Abuja, Nigeria. Email: <a href="mailto:complaints@ndpc.gov.ng" className="text-blue-600 hover:underline">complaints@ndpc.gov.ng</a> | Web: <a href="https://ndpc.gov.ng" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">https://ndpc.gov.ng</a>.
+                    </p>
+                  </div>
                 </section>
+
               </div>
             </div>
           )}
 
           {/* TERMS OF SERVICE PAGE */}
           {pageType === 'terms' && (
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-slate-100 text-slate-700 rounded-xl flex items-center justify-center"><FileText className="w-5 h-5" /></div>
-                <h1 className="text-3xl font-extrabold text-slate-900 font-heading">Terms of Service</h1>
+            <div className="space-y-8">
+              {/* Header Banner */}
+              <div className="border-b border-slate-200 pb-6">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="bg-green-100 text-green-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" /> 100% Free Lifetime Tools Guarantee
+                  </span>
+                  <span className="bg-blue-100 text-blue-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <Scale className="w-3 h-3" /> NACCIMA/NYE MOU Integrated Ref: SBC/NYE/MOU/2026/V3.1
+                  </span>
+                  <span className="bg-amber-100 text-amber-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> BizCredits Pay-As-You-Go Billing
+                  </span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-heading tracking-tight">
+                  Terms of Service &amp; Merchant Operational Agreement
+                </h1>
+                <p className="text-slate-500 text-xs mt-2 flex items-center gap-2">
+                  <span>Version 4.2 · Last Legally Ratified &amp; Deployed: November 2026</span>
+                  <span>·</span>
+                  <span>Governing Law: Laws of the Federal Republic of Nigeria</span>
+                </p>
               </div>
-              <p className="text-slate-400 text-xs mb-8">Last Updated: October 2026</p>
 
+              {/* Core Operational Sections */}
               <div className="space-y-6 text-slate-600 leading-relaxed text-sm">
-                <section>
-                  <h3 className="font-bold text-slate-950 text-base mb-2">1. Fair-Use Free Tools Guarantee</h3>
-                  <p>
-                    SmartBiz Coach is committed to Nigerian MSME empowerment. Core daily retail operating tools — including the Phone Camera Barcode & QR Code POS Scanner, 5-Second POS Day-Book, Anti-Theft Apprentice Shift Lock (4-digit PIN), Open Market Offline-First PWA Mode, Generator Fuel & Petty Cash Logger, Fake Transfer Fraud Shield, Gbege Book Debt Ledger, 1-Tap WhatsApp Invoicing, Central MSME Market Square basic storefront listing, and the Section 23 CITA 0% Tax Exemption Memo — cost <strong>0 credits and remain 100% free forever</strong>. Merchants will never be locked out of their counter sales or customer records.
+
+                {/* Section 1 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">01</span>
+                    <h3>Acceptance of Terms &amp; Institutional Governance Integration</h3>
+                  </div>
+                  <p className="mb-3">
+                    By creating an account, accessing our Progressive Web App (PWA), utilizing our offline POS day-book, or participating in the Central MSME Market Square, 
+                    you agree to be legally bound by this Merchant Operational Agreement and all incorporated schedules.
+                  </p>
+                  <p className="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <strong>NACCIMA Youth Entrepreneurs (NYE) Institutional Framework:</strong> If you were onboarded through a NACCIMA state chamber, sectoral trade association, 
+                    or bilateral institutional cohort, your platform usage is additionally governed by the bilateral Memorandum of Understanding (Document Ref: <code className="font-mono text-slate-900">SBC/NYE/MOU/2026/V3.1</code>). 
+                    In the event of any operational conflict, the provisions protecting merchant data sovereignty, free core tools, and 60-to-90 day data portability shall strictly take precedence.
                   </p>
                 </section>
 
-                <section>
-                  <h3 className="font-bold text-slate-950 text-base mb-2">2. Token Purchase & BizCredits Policy</h3>
-                  <p>
-                    Advanced generative compute, commercial studio rendering, and marketplace promotional boosts run on a pay-as-you-go SmartBiz BizCredit model. Credits are purchased in transparent packs (Micro ₦500 / 40 credits, Starter ₦1,500 / 150 credits, Grower ₦3,500 / 400 credits, Vendor Pro ₦7,500 / 1,000 credits, Mogul ₦15,000 / 2,500 credits) via Paystack. Every new registered merchant receives 50 Free Welcome Credits upon sign-up. BizCredits never expire, have zero recurring monthly subscription traps, and are non-refundable once consumed.
+                {/* Section 2 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">02</span>
+                    <h3>Fair-Use Lifetime Free Core Tools Guarantee (0 Credits Forever)</h3>
+                  </div>
+                  <p className="mb-3">
+                    SmartBiz Coach was founded to eliminate the high digital barriers that hold back Nigerian traders and artisans. 
+                    In strict accordance with Clause 4 and Clause 12 of the NACCIMA/NYE MOU, we guarantee that all <strong>Core Daily Retail Operating Utilities cost 0 credits and remain 100% free forever</strong>:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-800">
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>Phone Camera Barcode &amp; QR Code POS Scanner</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>5-Second POS Day-Book Cash &amp; Bank Register</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>Anti-Theft Apprentice Shift Lock (4-Digit PIN)</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>Open Market Offline-First PWA Mode (No Data Needed)</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>Generator Fuel &amp; Petty Cash Expense Logger</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>Fake Transfer Fraud Shield &amp; Alert Ledger</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>&ldquo;Gbege Book&rdquo; Customer Debt &amp; Receivables Ledger</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>1-Tap WhatsApp Invoicing &amp; Digital Receipts</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>Central Market Square Basic Verified Storefront</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>CITA Section 23/40 0% Small Company Tax Memo</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-3">
+                    <strong>Zero Vendor Lock-In Guarantee:</strong> Merchants will never be locked out of their counter sales, daily records, or customer contact books. You own your trade records.
                   </p>
                 </section>
 
-                <section>
-                  <h3 className="font-bold text-slate-950 text-base mb-2">3. Central MSME Market Square Commercial Guidelines</h3>
-                  <p>
-                    The Central Market Square connects verified merchants and buyers across all 36 Nigerian states and the FCT. Merchants agree to list only genuine physical goods, licensed professional services, verified commercial real estate, or legitimate wholesale inventory. Prohibited items, illegal contraband, and deceptive listings will be terminated immediately. Direct WhatsApp buyer routing is provided with 0% platform cuts, but merchants remain solely responsible for order fulfillment and dispute resolution.
+                {/* Section 3 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">03</span>
+                    <h3>BizCredits Digital Utility Token Commercial Policy, Pricing &amp; Billing (MOU Section 4 &amp; 12)</h3>
+                  </div>
+                  <p className="mb-3">
+                    Advanced generative computing, GPU-based commercial image rendering, voice recognition transcription, and automated marketing campaigns operate on a transparent 
+                    <strong> pay-as-you-go SmartBiz BizCredit model</strong>.
+                  </p>
+                  
+                  <div className="space-y-3 text-xs">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">Standard Transparent Token Pricing Packs:</strong>
+                      <p className="text-slate-600">
+                        Packs are purchased in Naira (₦) via Paystack: <strong>Micro</strong> (₦500 / 40 credits), <strong>Starter</strong> (₦1,500 / 150 credits), <strong>Grower</strong> (₦3,500 / 400 credits), 
+                        <strong>Vendor Pro</strong> (₦7,500 / 1,000 credits), and <strong>Mogul</strong> (₦15,000 / 2,500 credits).
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">50 Free Welcome Credits 🎁:</strong>
+                      <p className="text-slate-600">
+                        Every newly registered Nigerian business account is credited with 50 Free Welcome Credits upon onboarding to test generative business plans, debt recovery copywriting, and Photo Studio rendering.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">Token Characteristics &amp; Non-Refundability:</strong>
+                      <p className="text-slate-600">
+                        BizCredits are digital utility consumption tokens powering computational tasks. They are <strong>strictly non-refundable for fiat cash</strong> once credited. 
+                        BizCredits <strong>never expire</strong> while your account remains in active or good standing, and have zero recurring monthly subscription traps. 
+                        In the event of account deactivation, remaining credits remain fully spendable during the guaranteed 60-to-90 day data transition window.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 4 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">04</span>
+                    <h3>Central MSME Market Square Merchant Code of Conduct &amp; Transactional Integrity</h3>
+                  </div>
+                  <p className="mb-3">
+                    The Central Market Square connects verified merchants and buyers across all 36 Nigerian States and the Federal Capital Territory (FCT). All participating merchants agree to the following code of conduct:
+                  </p>
+                  <ul className="space-y-2 text-xs text-slate-700">
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-slate-900 shrink-0">1. Legitimate Trade Only:</span>
+                      <span>Merchants agree to list only authentic physical goods, licensed professional services, verified commercial properties, or verified wholesale inventory.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-slate-900 shrink-0">2. Prohibited Goods &amp; Services:</span>
+                      <span>Listings involving counterfeit brands, unapproved pharmaceuticals, illicit narcotics, firearms, stolen property, ponzi/pyramid schemes, advance-fee fraud, or deceptive representations are strictly prohibited.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-slate-900 shrink-0">3. Zero-Tolerance Fraud Sanctions:</span>
+                      <span>Any merchant engaged in verified fraudulent conduct will face immediate account termination, forfeiture of listings, and immediate reporting to law enforcement authorities (Economic and Financial Crimes Commission - EFCC / Nigeria Police Force).</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="font-bold text-slate-900 shrink-0">4. Order Fulfillment &amp; Direct WhatsApp Routing:</span>
+                      <span>Merchants utilizing direct WhatsApp buyer routing enjoy 0% platform cuts, but remain solely and strictly responsible for product delivery, packaging, inspection, and dispute settlement with their buyers.</span>
+                    </li>
+                  </ul>
+                </section>
+
+                {/* Section 5 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">05</span>
+                    <h3>NACCIMA Youth Entrepreneurs (NYE) Institutional Cohort Rules (MOU Section 6 &amp; 13)</h3>
+                  </div>
+                  <p className="mb-3">
+                    For merchants onboarded under organized chamber cohorts (e.g. NACCIMA Youth Entrepreneurs, state chambers of commerce, women in business networks, or market associations):
+                  </p>
+                  <ul className="space-y-2 text-xs text-slate-700">
+                    <li><strong>Accreditation Badges:</strong> Displaying the &ldquo;Verified NYE Member&rdquo; or &ldquo;Verified Technical Innovator&rdquo; badge requires valid chamber enrollment in good standing. Badges are revocable upon chamber notification of member deregistration.</li>
+                    <li><strong>Chamber Independence:</strong> As codified in Clause 13.3 of the MOU, institutional verification confirms chamber membership and identity verification only. It does not transfer merchant operational liability to NACCIMA, nor does it imply sovereign debt backing.</li>
+                    <li><strong>Cohort Macro Reporting:</strong> You acknowledge that your anonymized, aggregated transaction volume will contribute to regional chamber trade reports and policy advocacy whitepapers.</li>
+                  </ul>
+                </section>
+
+                {/* Section 6 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">06</span>
+                    <h3>Alternative Underwriting, SmartScore™ &amp; Institutional Lending Disclaimers (MOU Clause 15.5)</h3>
+                  </div>
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-slate-700 leading-relaxed mb-3">
+                    <strong className="text-amber-950 block mb-1">Critical Regulatory Notice Regarding Loan Approvals</strong>
+                    In accordance with Clause 15.5 of Document Ref: <code className="font-mono text-amber-900">SBC/NYE/MOU/2026/V3.1</code>, SmartScore™ (300 to 850) and our generated 
+                    cryptographic audit dossiers (<code>PublicAuditReport</code>) are <strong>diagnostic operational indicators</strong> reflecting your recorded cash turnover regularity, 
+                    till integrity, and debtor collection efficiency.
+                  </div>
+                  <p className="text-xs text-slate-600 mb-2">
+                    SmartBiz Coach is an enterprise software provider, not a regulated bank, microfinance institution, or licensed money lender. 
+                    <strong>No score, report, or certificate generated by SmartBiz Coach constitutes a guarantee of loan approval, credit facility, or grant disbursement</strong> by the Bank of Industry (BOI), Development Bank of Nigeria (DBN), Small and Medium Enterprises Development Agency of Nigeria (SMEDAN), or any commercial or microfinance bank.
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    All lending partners evaluate loan applications under their independent statutory underwriting guidelines, collateral requirements, and KYC checks.
                   </p>
                 </section>
 
-                <section>
-                  <h3 className="font-bold text-slate-950 text-base mb-2">4. AI Intelligence & Compliance Disclaimers</h3>
-                  <p>
-                    Our platform utilizes Google Gemini AI to assist you in creating bank-grade business plans, branding assets, debt recovery copy, and compliance reviews. While generated financial models align with Bank of Industry (BOI) standards and statutory frameworks (such as CITA 2020), entrepreneurs should review their formal documents prior to executing binding commercial loan contracts.
+                {/* Section 7 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">07</span>
+                    <h3>Non-Custodial Financial Settlement &amp; CBN Regulatory Alignment</h3>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    All electronic payment transactions executed on SmartBiz Coach are routed through CBN-licensed payment switches and solution service providers (Paystack Payments Limited / Squadco). 
+                    SmartBiz Coach does not hold, pool, or custody client funds. Sales proceeds settle directly into the merchant&rsquo;s verified Nigerian commercial or microfinance bank account via automated gateway split-settlement. 
+                    Merchants are responsible for providing valid NUBAN account details matching their registered business or director identity.
                   </p>
                 </section>
+
+                {/* Section 8 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">08</span>
+                    <h3>Intellectual Property &amp; Merchant Data Ownership</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-700">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">Merchant IP Ownership:</strong>
+                      You retain 100% full, exclusive ownership of your business trademarks, brand names, product catalogs, photography assets, and customer databases. You grant SmartBiz Coach only the limited technical license necessary to host, display, and process these assets for your operations.
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <strong className="text-slate-900 block mb-1">SmartBiz Coach Platform IP:</strong>
+                      SmartBiz Coach Technologies Limited retains all right, title, and interest in and to the platform codebase, algorithmic models, SmartScore™ methodology, user interface designs, and proprietary documentation.
+                    </div>
+                  </div>
+                </section>
+
+                {/* Section 9 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">09</span>
+                    <h3>Limitation of Liability, Service Availability &amp; Offline Resilience</h3>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed mb-2">
+                    SmartBiz Coach provides an offline-first PWA architecture designed to withstand Nigerian network power outages and connectivity disruptions. 
+                    However, the platform is provided on an &ldquo;as-is&rdquo; and &ldquo;as-available&rdquo; basis.
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    To the maximum extent permitted by Nigerian law, SmartBiz Coach Technologies Limited, its directors, employees, and institutional partners shall not be liable for any indirect, incidental, or consequential damages resulting from telecommunications network failures, bank gateway downtime, or unrecorded cash transactions outside the platform. In any event, our aggregate liability shall not exceed the total fees paid by the merchant in the three (3) months preceding the claim.
+                  </p>
+                </section>
+
+                {/* Section 10 */}
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
+                    <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">10</span>
+                    <h3>Dispute Resolution, Governing Law &amp; Nigerian Jurisdiction</h3>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed mb-3">
+                    This Agreement is governed by and construed in accordance with the substantive laws of the <strong>Federal Republic of Nigeria</strong>.
+                  </p>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-2">
+                    <p>
+                      <strong>Mandatory Amicable Negotiation:</strong> Any commercial dispute, controversy, or claim arising out of or in connection with these Terms shall first be submitted to 
+                      <strong> mandatory good-faith amicable negotiation for a period of fourteen (14) calendar days</strong> from written notification to <a href="mailto:legal@smartbizcoach.com.ng" className="text-blue-600 font-bold hover:underline">legal@smartbizcoach.com.ng</a>.
+                    </p>
+                    <p>
+                      <strong>Mediation Clause:</strong> If unresolved through negotiation, the dispute shall be referred to and finally resolved through mediation under the rules of the 
+                      <strong> Lagos Multi-Door Courthouse (LMDC)</strong> or the <strong>Abuja Multi-Door Courthouse</strong> prior to initiating formal litigation in any Nigerian court of competent jurisdiction.
+                    </p>
+                  </div>
+                </section>
+
               </div>
             </div>
           )}
