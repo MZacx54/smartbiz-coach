@@ -31,6 +31,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     }
   }, [routerLocation.pathname]);
 
+  // Cohort & Referral URL State
+  const searchParams = new URLSearchParams(routerLocation.search);
+  const [cohort, setCohort] = useState<string>(searchParams.get('cohort') || '');
+  const [refCode, setRefCode] = useState<string>(searchParams.get('ref') || '');
+
+  useEffect(() => {
+    const params = new URLSearchParams(routerLocation.search);
+    const c = params.get('cohort');
+    const r = params.get('ref');
+    if (c) setCohort(c);
+    if (r) setRefCode(r);
+  }, [routerLocation.search]);
+
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +71,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         onLogin(response.user);
       } else if (authMode === 'register') {
         if (!agreedToNdpr) {
-          toast.error("Please agree to the NDPR Privacy Policy and Terms of Service to register.");
+          toast.error("Please accept the Terms of Service and NDPA 2023 & NDPR Data Processing to register.");
           setIsLoading(false);
           return;
         }
@@ -70,7 +83,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           business_name: businessName,
           phone,
           location,
-          currency
+          currency,
+          cohort,
+          ref: refCode
         });
 
         toast.success("Account created successfully!");
@@ -179,6 +194,32 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {authMode === 'register' && (
               <>
+                {/* Institutional / Chamber Cohort Banner */}
+                {cohort && (
+                  <div className="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-xs shadow-sm">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                      🏛️
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-emerald-950 text-xs">Institutional Chamber Enrollment Active</p>
+                      <p className="text-emerald-700 text-[11px]">
+                        Cohort: <span className="font-mono font-bold uppercase tracking-wide bg-emerald-100/70 px-1.5 py-0.5 rounded text-emerald-900">{cohort.replace(/[-_]/g, ' ')}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Referral Attribution Banner */}
+                {refCode && !cohort && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2.5 text-xs text-blue-900">
+                    <span className="text-sm">🎁</span>
+                    <div>
+                      <p className="font-bold text-blue-950 text-xs">Referral Bonus Active</p>
+                      <p className="text-blue-700 text-[11px]">Referred by: <span className="font-mono font-bold">{refCode}</span> (+50 BizCredits)</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Full Name</label>
@@ -355,7 +396,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   required
                 />
                 <label htmlFor="ndpr_consent" className="text-xs text-slate-600 leading-tight select-none cursor-pointer">
-                  I accept the <a href="/terms" target="_blank" className="text-green-600 underline font-bold">Terms of Service</a> and confirm lawful <a href="/privacy" target="_blank" className="text-green-600 underline font-bold">NDPR Data Processing</a>.
+                  I accept the <a href="/terms" target="_blank" className="text-green-600 underline font-bold">Terms of Service</a> and confirm lawful <a href="/privacy" target="_blank" className="text-green-600 underline font-bold">NDPA 2023 &amp; NDPR Data Processing</a>.
                 </label>
               </div>
             )}

@@ -23,6 +23,21 @@ const TwitterIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
+// Sanitize Nigerian phone numbers into clean international wa.me format (234...)
+const sanitizeWhatsAppNumber = (raw?: string): string => {
+  if (!raw) return '';
+  const clean = String(raw).replace(/\D/g, '');
+  if (clean.startsWith('0') && clean.length === 11) {
+    return '234' + clean.slice(1);
+  } else if (clean.length === 10) {
+    return '234' + clean;
+  }
+  if (clean === '2348000000000' || clean.length < 10) {
+    return '';
+  }
+  return clean;
+};
+
 const PublicStorefront: React.FC = () => {
   const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
 
@@ -454,7 +469,9 @@ const PublicStorefront: React.FC = () => {
 
       setShowCartModal(false);
       setCart([]);
-      window.open(`https://wa.me/${brand.whatsapp || brand.phone || ''}?text=${encodeURIComponent(orderText)}`, '_blank');
+      const merchantWa = sanitizeWhatsAppNumber(brand.whatsapp || brand.phone);
+      const waUrl = merchantWa ? `https://wa.me/${merchantWa}?text=${encodeURIComponent(orderText)}` : `https://wa.me/?text=${encodeURIComponent(orderText)}`;
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -600,7 +617,7 @@ const PublicStorefront: React.FC = () => {
             </div>
             
             <a 
-              href={`https://wa.me/${brand.whatsapp || brand.phone || ''}?text=${encodeURIComponent(`Hi ${brand.businessName}, I saw your store on SmartBiz and I'm interested in your services!`)}`}
+              href={`https://wa.me/${sanitizeWhatsAppNumber(brand.whatsapp || brand.phone)}?text=${encodeURIComponent(`Hi ${brand.businessName}, I saw your store on SmartBiz and I'm interested in your services!`)}`}
               target="_blank"
               rel="noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black tracking-wide shadow-md transition-all active:scale-98"
@@ -1049,7 +1066,7 @@ const PublicStorefront: React.FC = () => {
                 <ShoppingCart className="w-4 h-4" /> Add to Order Cart
               </button>
               <a
-                href={`https://wa.me/${brand?.whatsapp || brand?.phone || ''}?text=${encodeURIComponent(`Hi ${brand?.businessName}, I would like to order: ${selectedDetailProduct.name} (₦${parseFloat(selectedDetailProduct.price).toLocaleString()})`)}`}
+                href={`https://wa.me/${sanitizeWhatsAppNumber(brand?.whatsapp || brand?.phone)}?text=${encodeURIComponent(`Hi ${brand?.businessName}, I would like to order: ${selectedDetailProduct.name} (₦${parseFloat(selectedDetailProduct.price).toLocaleString()})`)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="py-3.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer text-decoration-none"

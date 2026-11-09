@@ -80,6 +80,42 @@ class RegisterView(generics.CreateAPIView):
                 except Exception as ex:
                     print(f"Referral credit notice: {ex}")
 
+            # Handle Cohort / Institutional Enrollment (e.g. NACCIMA, SMEDAN)
+            cohort_code = request.data.get('cohort', '').strip()
+            if cohort_code:
+                try:
+                    import re
+                    from users.models import Cohort, CohortMembership
+                    cohort_obj = (
+                        Cohort.objects.filter(slug__iexact=cohort_code).first() or
+                        Cohort.objects.filter(name__iexact=cohort_code).first() or
+                        Cohort.objects.filter(name__icontains=cohort_code).first()
+                    )
+                    if not cohort_obj:
+                        safe_slug = re.sub(r'[^a-zA-Z0-9_-]', '-', cohort_code.lower()).strip('-')
+                        cohort_name = cohort_code.replace('-', ' ').replace('_', ' ').title()
+                        cohort_type = 'NACCIMA' if 'naccima' in cohort_code.lower() else 'OTHER'
+                        cohort_obj, _ = Cohort.objects.get_or_create(
+                            slug=safe_slug,
+                            defaults={
+                                'name': cohort_name,
+                                'cohort_type': cohort_type,
+                                'state': user.location or 'National',
+                                'description': f"Auto-created institutional cohort for {cohort_name}"
+                            }
+                        )
+                    CohortMembership.objects.get_or_create(
+                        cohort=cohort_obj,
+                        user=user,
+                        defaults={
+                            'chapter': user.location or cohort_obj.state,
+                            'status': 'ACTIVE'
+                        }
+                    )
+                    print(f"Cohort Enrollment: {user.username} enrolled into {cohort_obj.name}")
+                except Exception as ce:
+                    print(f"Cohort enrollment notice: {ce}")
+
             token, _ = Token.objects.get_or_create(user=user)
             return Response({
                 'token': token.key, 
