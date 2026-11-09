@@ -240,41 +240,41 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     ];
 
     const TopBar = (
-        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100">
-            <div className="flex items-center justify-between gap-3 px-3 sm:px-5 h-14 md:h-16">
-                <div className="flex items-center gap-2 md:hidden">
-                    <img src="/favicon.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
-                    <span className="font-extrabold text-slate-900 text-sm font-heading truncate max-w-[130px]">{businessName}</span>
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100 w-full max-w-full overflow-hidden">
+            <div className="flex items-center justify-between gap-1.5 sm:gap-3 px-2.5 sm:px-5 h-14 md:h-16 w-full max-w-full">
+                <div className="flex items-center gap-1.5 sm:gap-2 md:hidden min-w-0 shrink">
+                    <img src="/favicon.png" alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover shrink-0" />
+                    <span className="font-extrabold text-slate-900 text-xs sm:text-sm font-heading truncate max-w-[95px] xs:max-w-[120px] sm:max-w-[150px]">{businessName}</span>
                 </div>
                 <div className="hidden md:block flex-1 max-w-md">
                     <GlobalSearch onResultClick={() => onNavigate(AppView.PRODUCT_MANAGER)} />
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                     {!isOnline && (
-                        <span className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">Offline</span>
+                        <span className="text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-800 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full shrink-0">Offline</span>
                     )}
                     {isCashierMode && (
                         <button
                             onClick={() => setShowUnlockModal(true)}
-                            className="text-[11px] font-bold bg-amber-100 text-amber-800 px-2.5 min-h-[32px] rounded-full cursor-pointer"
+                            className="text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-800 px-2 min-h-[30px] rounded-full cursor-pointer shrink-0"
                         >
-                            🔒 {t('Staff mode', 'Staff')}
+                            🔒 {t('Staff', 'Staff')}
                         </button>
                     )}
-                    {/* 1-tap Market Square Shortcut */}
+                    {/* 1-tap Market Square Shortcut (shown on md+ desktop, reachable via 'More' drawer on mobile) */}
                     <button
                         onClick={() => go(AppView.MARKETPLACE)}
-                        className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 min-h-[36px] rounded-full text-xs font-extrabold text-emerald-800 cursor-pointer"
+                        className="hidden md:inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 min-h-[36px] rounded-full text-xs font-extrabold text-emerald-800 cursor-pointer shrink-0"
                         title="Open National Market Square"
                     >
                         <span>🏪</span>
-                        <span className="hidden sm:inline">{t('Market', 'Market')}</span>
+                        <span>{t('Market', 'Market')}</span>
                     </button>
-                    {/* 1-tap English / Naija Pidgin Toggle */}
+                    {/* 1-tap English / Naija Pidgin Toggle (shown on md+ desktop, switchable inside Profile menu on mobile) */}
                     <button
                         onClick={toggleLang}
-                        className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 min-h-[36px] rounded-full text-xs font-extrabold text-slate-700 cursor-pointer"
+                        className="hidden md:inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 min-h-[36px] rounded-full text-xs font-extrabold text-slate-700 cursor-pointer shrink-0"
                         title="Switch between English and Naija Pidgin"
                     >
                         <span>🇳🇬</span>
@@ -285,12 +285,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     {cartItems.length > 0 && !isCashierMode && (
                         <button
                             onClick={() => go(AppView.CART)}
-                            className="relative flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 w-9 h-9 sm:w-10 sm:h-10 rounded-full text-emerald-800 transition-all cursor-pointer active:scale-95 shadow-sm"
+                            className="relative flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 w-8 h-8 sm:w-9 sm:h-9 rounded-full text-emerald-800 transition-all cursor-pointer active:scale-95 shadow-sm shrink-0"
                             title={t('Shopping Cart', 'Shopping Cart')}
                             aria-label="Shopping Cart"
                         >
-                            <span className="text-base sm:text-lg">🛍️</span>
-                            <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm animate-pulse">
+                            <span className="text-sm sm:text-base">🛍️</span>
+                            <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[8px] sm:text-[9px] font-black w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex items-center justify-center shadow-sm animate-pulse">
                                 {cartCount}
                             </span>
                         </button>
@@ -299,17 +299,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     {!isCashierMode && (
                         <button
                             onClick={() => go(AppView.SETTINGS)}
-                            className="flex items-center justify-center bg-slate-100 hover:bg-slate-200 border border-slate-200 w-9 h-9 sm:w-10 sm:h-10 rounded-full text-slate-700 transition-all cursor-pointer active:scale-95"
+                            className="flex items-center justify-center bg-slate-100 hover:bg-slate-200 border border-slate-200 w-8 h-8 sm:w-9 sm:h-9 rounded-full text-slate-700 transition-all cursor-pointer active:scale-95 shrink-0"
                             title={t('Settings & Security', 'Settings & Security')}
                             aria-label="Settings"
                         >
-                            <span className="text-base sm:text-lg">⚙️</span>
+                            <span className="text-sm sm:text-base">⚙️</span>
                         </button>
                     )}
                     {!isCashierMode && (
                         <button
                             onClick={() => go(AppView.SETTINGS, 'tab=billing')}
-                            className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 sm:px-3 min-h-[36px] rounded-full text-xs sm:text-sm font-bold text-slate-700 cursor-pointer"
+                            className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2 sm:px-2.5 min-h-[32px] sm:min-h-[36px] rounded-full text-[11px] sm:text-xs font-bold text-slate-700 cursor-pointer shrink-0"
                             title="Your AI credits"
                         >
                             ⚡ {userStats.bizCredits}
@@ -321,10 +321,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     >
                         + {t('Quick add', 'Quick add')}
                     </button>
-                    <div className="relative" ref={profileRef}>
+                    <div className="relative shrink-0" ref={profileRef}>
                         <button
                             onClick={() => setShowProfile((v) => !v)}
-                            className="w-10 h-10 rounded-2xl bg-emerald-600 text-white font-black text-sm cursor-pointer"
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-emerald-600 text-white font-black text-xs sm:text-sm cursor-pointer flex items-center justify-center shrink-0 shadow-sm"
                             aria-label="Account menu"
                         >
                             {initial}
@@ -400,32 +400,32 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     /* ---------------- Mobile bottom bar (4 tabs + centre quick-add + Grow) ---------------- */
     const Tab = ({ id }: { id: string }) => {
         const s = sections.find((x) => x.id === id);
-        if (!s) return <div className="flex-1" />;
+        if (!s) return <div className="flex-1 min-w-0" />;
         const active = activeSectionId === id;
         const sLabel = lang === 'pcm' ? s.labelPcm || s.label : s.label;
         return (
             <button
                 onClick={() => go(s.children[0].view)}
-                className={`flex-1 flex flex-col items-center justify-center min-h-[56px] rounded-xl cursor-pointer ${
+                className={`flex-1 min-w-0 flex flex-col items-center justify-center min-h-[52px] sm:min-h-[56px] rounded-xl cursor-pointer px-0.5 ${
                     active ? 'text-emerald-400' : 'text-slate-400'
                 }`}
             >
-                <span className="text-xl leading-none">{s.icon}</span>
-                <span className={`text-[11px] mt-1 ${active ? 'font-black' : 'font-semibold'}`}>{sLabel}</span>
+                <span className="text-lg sm:text-xl leading-none">{s.icon}</span>
+                <span className={`text-[10px] sm:text-[11px] mt-0.5 sm:mt-1 truncate max-w-full ${active ? 'font-black' : 'font-semibold'}`}>{sLabel}</span>
             </button>
         );
     };
 
     const BottomBar = (
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] shadow-2xl">
-            <div className="flex items-center">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-slate-950/95 backdrop-blur-lg border-t border-slate-800 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] shadow-2xl w-full max-w-full overflow-hidden">
+            <div className="flex items-center justify-between w-full max-w-full">
                 <Tab id="home" />
                 <Tab id="sell" />
-                <div className="flex-1 flex justify-center">
+                <div className="flex-1 min-w-0 flex justify-center px-0.5">
                     <button
                         onClick={() => setShowQuickAdd(true)}
                         aria-label="Quick add"
-                        className="-mt-6 w-14 h-14 rounded-full bg-emerald-500 text-white text-3xl font-light shadow-xl shadow-emerald-500/30 border-4 border-slate-950 flex items-center justify-center cursor-pointer active:scale-95"
+                        className="-mt-5 sm:-mt-6 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-emerald-500 text-white text-2xl sm:text-3xl font-light shadow-xl shadow-emerald-500/30 border-4 border-slate-950 flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
                     >
                         +
                     </button>
@@ -433,21 +433,21 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <Tab id="money" />
                 <button
                     onClick={() => setShowAllTools(true)}
-                    className={`flex-1 flex flex-col items-center justify-center min-h-[56px] rounded-xl cursor-pointer ${
+                    className={`flex-1 min-w-0 flex flex-col items-center justify-center min-h-[52px] sm:min-h-[56px] rounded-xl cursor-pointer px-0.5 ${
                         showAllTools || activeSectionId === 'stock' || activeSectionId === 'grow' || currentView === AppView.SETTINGS
                             ? 'text-emerald-400 font-black'
                             : 'text-slate-400 font-semibold'
                     }`}
                 >
                     <div className="relative">
-                        <span className="text-xl leading-none">☰</span>
+                        <span className="text-lg sm:text-xl leading-none">☰</span>
                         {cartItems.length > 0 && (
                             <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[8px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center">
                                 {cartCount}
                             </span>
                         )}
                     </div>
-                    <span className="text-[11px] mt-1">{t('More', 'More')}</span>
+                    <span className="text-[10px] sm:text-[11px] mt-0.5 sm:mt-1 truncate max-w-full">{t('More', 'More')}</span>
                 </button>
             </div>
         </nav>
@@ -726,12 +726,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     );
 
     return (
-        <div className="flex min-h-screen bg-slate-50 overflow-touch selection:bg-emerald-500 selection:text-white">
+        <div className="flex min-h-screen bg-slate-50 overflow-touch selection:bg-emerald-500 selection:text-white w-full max-w-full overflow-x-hidden">
             {Sidebar}
-            <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex-1 min-w-0 flex flex-col w-full max-w-full overflow-x-hidden">
                 {TopBar}
-                <main className="flex-1 p-3 sm:p-5 md:p-8">
-                    <div className="max-w-5xl mx-auto pb-32 md:pb-8">{children}</div>
+                <main className="flex-1 p-3 sm:p-5 md:p-8 w-full max-w-full overflow-x-hidden">
+                    <div className="max-w-5xl mx-auto pb-32 md:pb-8 w-full max-w-full">{children}</div>
                 </main>
             </div>
             {/* Mobile Floating Sticky Cart Bar */}

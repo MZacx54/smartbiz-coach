@@ -221,24 +221,24 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
           >
             ⚡ {t('Record a sale', 'Record Sale Now')}
           </button>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 sm:gap-2">
             {!isStaff && (
               <button
                 onClick={() => onNavigate(AppView.DAILY_CASHBOOK, 'action=expense')}
-                className="flex-1 sm:flex-none min-h-[56px] px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-sm cursor-pointer"
+                className="flex-1 sm:flex-none min-h-[50px] sm:min-h-[56px] px-2 sm:px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-xs sm:text-sm cursor-pointer min-w-0 text-center"
               >
                 💸 {t('Expense', 'Expense')}
               </button>
             )}
             <button
               onClick={() => onNavigate(AppView.PRODUCT_MANAGER, 'action=new')}
-              className="flex-1 sm:flex-none min-h-[56px] px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-sm cursor-pointer"
+              className="flex-1 sm:flex-none min-h-[50px] sm:min-h-[56px] px-2 sm:px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-xs sm:text-sm cursor-pointer min-w-0 text-center"
             >
               📦 {t('Add stock', 'Add stock')}
             </button>
             <button
               onClick={() => onNavigate(AppView.INVOICE_GENERATOR)}
-              className="flex-1 sm:flex-none min-h-[56px] px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-sm cursor-pointer"
+              className="flex-1 sm:flex-none min-h-[50px] sm:min-h-[56px] px-2 sm:px-4 rounded-2xl bg-emerald-800/50 hover:bg-emerald-800/70 text-white font-bold text-xs sm:text-sm cursor-pointer min-w-0 text-center"
             >
               🧾 {t('Invoice', 'Receipt')}
             </button>
