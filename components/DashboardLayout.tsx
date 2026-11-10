@@ -726,12 +726,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     );
 
     return (
-        <div className="flex min-h-screen bg-slate-50 overflow-touch selection:bg-emerald-500 selection:text-white w-full max-w-full overflow-x-hidden">
+        <div className="flex min-h-screen bg-slate-50 selection:bg-emerald-500 selection:text-white w-full">
             {Sidebar}
-            <div className="flex-1 min-w-0 flex flex-col w-full max-w-full overflow-x-hidden">
+            <div className="flex-1 min-w-0 flex flex-col w-full">
                 {TopBar}
-                <main className="flex-1 p-3 sm:p-5 md:p-8 w-full max-w-full overflow-x-hidden">
-                    <div className="max-w-5xl mx-auto pb-32 md:pb-8 w-full max-w-full">{children}</div>
+                <main className="flex-1 p-3 sm:p-5 md:p-8 w-full">
+                    <div className="max-w-5xl mx-auto pb-32 md:pb-8 w-full">{children}</div>
                 </main>
             </div>
             {/* Mobile Floating Sticky Cart Bar */}
