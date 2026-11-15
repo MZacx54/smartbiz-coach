@@ -30,6 +30,7 @@ const InvoiceGenerator = lazy(() => import("./components/InvoiceGenerator"));
 const Marketplace = lazy(() => import("./components/Marketplace"));
 const Cart = lazy(() => import("./components/Cart"));
 const DebtorBook = lazy(() => import("./components/DebtorBook"));
+const PublicDebtorSettlement = lazy(() => import("./components/PublicDebtorSettlement"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard"));
 const SalesAssistant = lazy(() => import("./components/SalesAssistant"));
 const OrderGenerator = lazy(() => import("./components/OrderGenerator"));
@@ -640,6 +641,18 @@ const App: React.FC = () => {
             <div className="min-h-screen bg-slate-50 pt-4 px-3 sm:px-6 max-w-4xl mx-auto">
               <Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => navigate('/marketplace')} />
             </div>
+          </Suspense>
+        } />
+
+        {/* Public Debtor Settlement Portal (Gbege Book 1-Tap Recovery) */}
+        <Route path="/pay-debt/:debtorId" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicDebtorSettlement />
+          </Suspense>
+        } />
+        <Route path="/settle/:debtorId" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <PublicDebtorSettlement />
           </Suspense>
         } />
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   DollarSign, Calendar, Phone, Plus, Trash2, CheckCircle, 
   Clock, AlertTriangle, ArrowRight, RefreshCw, Send, Search, 
-  Eye, Filter, CreditCard, Landmark, BookOpen, AlertCircle, ShoppingBag, X
+  Eye, Filter, CreditCard, Landmark, BookOpen, AlertCircle, ShoppingBag, X,
+  Printer, FileText, Settings as SettingsIcon, Link as LinkIcon, Zap, Share2
 } from 'lucide-react';
 import { Debtor, DebtorPayment, Product, Invoice, SupplierPayable } from '../types';
 import { generateDebtReminder } from '../services/geminiService';
@@ -85,6 +86,128 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   // Reminder Modal State
   const [reminder, setReminder] = useState<{ text: { english: string; pidgin: string }; debtor: Debtor; tone: string } | null>(null);
   const [sendingCloudReminder, setSendingCloudReminder] = useState(false);
+
+  // Gbege Automation & Enterprise Recovery States
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; sent: number; failed: number } | null>(null);
+  const [isBatchSending, setIsBatchSending] = useState(false);
+  const [showAutomationPolicy, setShowAutomationPolicy] = useState(false);
+  const [demandNoticeDebtor, setDemandNoticeDebtor] = useState<Debtor | null>(null);
+  const [copiedLinkDebtorId, setCopiedLinkDebtorId] = useState<string | null>(null);
+
+  // Helper: Retrieve merchant branding & bank details for payment embedding
+  const getMerchantDetails = () => {
+    let merchantName = 'My Business';
+    let merchantPhone = '';
+    let bankName = 'Access Bank PLC';
+    let bankAccount = '';
+    let bankAccountName = '';
+
+    try {
+      const savedUser = localStorage.getItem('sb_user');
+      if (savedUser) {
+        const u = JSON.parse(savedUser);
+        merchantName = u.businessName || u.business_name || u.name || merchantName;
+        merchantPhone = u.phone || '';
+      }
+    } catch {}
+
+    try {
+      const savedBank = localStorage.getItem('sb_bank_payout');
+      if (savedBank) {
+        const b = JSON.parse(savedBank);
+        if (b.account_number) {
+          bankName = b.bank_name || bankName;
+          bankAccount = b.account_number;
+          bankAccountName = b.account_name || merchantName;
+        }
+      }
+    } catch {}
+
+    if (!bankAccount) {
+      try {
+        const savedInvoices = localStorage.getItem('sb_invoices_detailed');
+        if (savedInvoices) {
+          const invList = JSON.parse(savedInvoices);
+          const withBank = invList.find((i: any) => i.bankAccountNumber);
+          if (withBank) {
+            bankName = withBank.bankName || bankName;
+            bankAccount = withBank.bankAccountNumber;
+            bankAccountName = withBank.bankAccountName || merchantName;
+          }
+        }
+      } catch {}
+    }
+
+    return { merchantName, merchantPhone, bankName, bankAccount, bankAccountName };
+  };
+
+  // Helper: Generate universal 1-Tap Paystack settlement URL
+  const buildSettlementUrl = (debtor: Debtor) => {
+    const outstanding = getOutstandingBalance(debtor);
+    const m = getMerchantDetails();
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://smartbizcoach.com.ng';
+    const params = new URLSearchParams({
+      n: debtor.name,
+      a: String(debtor.amount),
+      b: String(outstanding),
+      i: debtor.itemsBought || 'Credit Purchase',
+      d: debtor.dueDate || '',
+      m: m.merchantName,
+      p: m.merchantPhone,
+      bn: m.bankName,
+      ba: m.bankAccount,
+      ban: m.bankAccountName
+    });
+    return `${origin}/pay-debt/${debtor.id}?${params.toString()}`;
+  };
+
+  // Helper: Build tailored multi-stage WhatsApp reminder copy with embedded online link and bank details
+  const buildReminderCopy = (
+    debtor: Debtor,
+    tone: 'POLITE' | 'FIRM' | 'STRICT' | 'NATIVE_PIDGIN' | 'DISCOUNT_INCENTIVE',
+    lang: 'english' | 'pidgin' = 'english'
+  ) => {
+    const outstanding = getOutstandingBalance(debtor);
+    const m = getMerchantDetails();
+    const payUrl = buildSettlementUrl(debtor);
+    const daysOverdue = debtor.dueDate ? Math.max(0, Math.floor((Date.now() - new Date(debtor.dueDate).getTime()) / 86400000)) : 0;
+
+    const bankBlock = m.bankAccount
+      ? `\n\n🏦 *Direct Bank Transfer:*\n• Bank: ${m.bankName}\n• Account: ${m.bankAccount}\n• Name: ${m.bankAccountName}`
+      : '';
+    const payBlock = `\n\n💳 *Pay Online Instantly (Card / USSD / Transfer):*\n👉 ${payUrl}`;
+
+    if (lang === 'pidgin' || tone === 'NATIVE_PIDGIN') {
+      let body = '';
+      if (tone === 'DISCOUNT_INCENTIVE') {
+        const discounted = Math.round(outstanding * 0.95);
+        body = `How far ${debtor.name} 🎁! Quick promo offer from ${m.merchantName}: If you clear your *₦${outstanding.toLocaleString()}* balance for *${debtor.itemsBought}* today, pay only *₦${discounted.toLocaleString()}* (5% discount)!`;
+      } else if (tone === 'STRICT') {
+        body = `⚠️ *GBEGE FINAL NOTICE*\nHow far ${debtor.name}, your *₦${outstanding.toLocaleString()}* balance for *${debtor.itemsBought}* don pass time by ${daysOverdue} days. Abeg clear am today make we no freeze credit for your name.`;
+      } else if (tone === 'FIRM') {
+        body = `Good day ${debtor.name}, na important reminder from ${m.merchantName} on top your *₦${outstanding.toLocaleString()}* balance for *${debtor.itemsBought}*. E don pass due date. Kindly balance up today.`;
+      } else {
+        body = `How far ${debtor.name} 👋! Na gentle reminder from ${m.merchantName} on top your *₦${outstanding.toLocaleString()}* balance for *${debtor.itemsBought}*. Make you help us do the transfer make we balance our record. Thank you! 🙏`;
+      }
+      return `${body}${payBlock}${bankBlock}\n\n_Reply with your screenshot or receipt once you pay!_`;
+    }
+
+    // English Version
+    let body = '';
+    if (tone === 'DISCOUNT_INCENTIVE') {
+      const discounted = Math.round(outstanding * 0.95);
+      body = `Hello ${debtor.name} 🎁! Special early-settlement incentive from ${m.merchantName}: Settle your outstanding balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}* within 24 hours and pay only *₦${discounted.toLocaleString()}* (5% early waiver)!`;
+    } else if (tone === 'STRICT') {
+      body = `⚠️ *FORMAL DEMAND & DEFAULT NOTICE*\nDear ${debtor.name}, your account balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}* with ${m.merchantName} is now ${daysOverdue > 0 ? `${daysOverdue} days overdue` : 'past due'}. Settle immediately to avoid formal credit reporting and suspension of credit privileges.`;
+    } else if (tone === 'FIRM') {
+      body = `Dear ${debtor.name}, this is a firm follow-up regarding your overdue balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}* with ${m.merchantName}. Kindly complete this settlement today.`;
+    } else {
+      body = `Hello ${debtor.name} 👋, warm greetings from ${m.merchantName}! This is a polite reminder regarding your outstanding balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}*. We appreciate your valued patronage.`;
+    }
+
+    return `${body}${payBlock}${bankBlock}\n\n_Please reply with your transfer receipt or confirmation after payment._`;
+  };
 
   const handleSendCloudWAReminder = async () => {
     if (!reminder) return;
@@ -476,11 +599,14 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
         return d;
       }));
 
+      const autoEn = buildReminderCopy(debtor, targetTone, 'english');
+      const autoPcm = buildReminderCopy(debtor, targetTone, 'pidgin');
+
       if (typeof result === 'string') {
         setReminder({ 
           text: { 
-            english: result, 
-            pidgin: `Good day ${debtor.name}, hope work dey go well. Na gentle reminder on top the ₦${balance.toLocaleString()} balance. Abeg kindly help us do the transfer make we update your record. Thank you!` 
+            english: `${result}\n\n${buildSettlementUrl(debtor) ? `💳 Pay Online: ${buildSettlementUrl(debtor)}` : ''}`, 
+            pidgin: autoPcm
           }, 
           debtor,
           tone: targetTone
@@ -488,17 +614,17 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       } else if (result?.english || result?.pidgin) {
         setReminder({ 
           text: { 
-            english: result.english || `Hello ${debtor.name}, trust you are doing well. This is a gentle reminder regarding your outstanding balance of ₦${balance.toLocaleString()}. Kindly arrange for the settlement at your convenience. Thank you!`, 
-            pidgin: result.pidgin || `Good day ${debtor.name}, na quick reminder on top the ₦${balance.toLocaleString()} balance. Abeg help us do the transfer make we update your record. Thank you!` 
+            english: `${result.english || autoEn}\n\n💳 Pay Online: ${buildSettlementUrl(debtor)}`, 
+            pidgin: `${result.pidgin || autoPcm}\n\n💳 Pay Online: ${buildSettlementUrl(debtor)}` 
           }, 
           debtor,
           tone: targetTone
         });
-      } else if (result?.message) {
+      } else {
         setReminder({ 
           text: { 
-            english: result.message, 
-            pidgin: `Good day ${debtor.name}, na gentle reminder on top the ₦${balance.toLocaleString()} balance. Abeg kindly do the transfer make we update your record. Thank you!` 
+            english: autoEn, 
+            pidgin: autoPcm
           }, 
           debtor,
           tone: targetTone
@@ -628,22 +754,42 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
 
       {primaryMode === 'RECEIVABLES' ? (
         <>
-          <div className="flex justify-end gap-2.5">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {overdueDebtorsList.length > 0 && (
+              <button
+                onClick={() => setShowBatchModal(true)}
+                className="flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-500 text-white px-4 py-3 rounded-2xl text-xs font-black shadow-md shadow-rose-600/20 active:scale-95 transition-all cursor-pointer border-0 animate-pulse"
+                title="1-Click Auto-Pilot Batch Recovery for all overdue accounts"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Nudge All Overdue ({overdueDebtorsList.length})</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowAutomationPolicy(true)}
+              className="flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-3 rounded-2xl text-xs font-extrabold transition-all cursor-pointer border-0"
+              title="Configure automated escalation schedules and debt policy"
+            >
+              <SettingsIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Auto-Pilot</span> Rules
+            </button>
+
             <button
               onClick={handleSyncUnpaidInvoices}
               disabled={isSyncing}
-              className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 px-5 py-3 rounded-2xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+              className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 px-4 py-3 rounded-2xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Syncing...' : 'Sync Invoices'}
+              <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Sync Invoices'}</span>
             </button>
             
             <button
               onClick={() => setShowForm(!showForm)}
-              className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-2xl text-xs font-black shadow-lg shadow-red-600/10 active:scale-95 transition-all border-0 cursor-pointer"
+              className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-2xl text-xs font-black shadow-lg shadow-emerald-600/15 active:scale-95 transition-all border-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              {showForm ? 'Cancel' : 'Record New Debt'}
+              <span>{showForm ? 'Cancel' : 'Record New Debt'}</span>
             </button>
           </div>
 
@@ -944,17 +1090,20 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
 
           const handleInstantWhatsAppEscalation = () => {
             const tone = getDebtorTone(debtor.id);
-            let waText = '';
-            if (tone === 'STRICT' || mlRiskLevel === 'HIGH') {
-              waText = `⚠️ *FINAL CREDIT NOTICE*\nHello ${debtor.name}, your account balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}* is now ${daysOverdue > 0 ? `${daysOverdue} days overdue` : 'past due'}. Kindly settle this balance today via bank transfer to avoid suspension of credit privileges. Thank you.`;
-            } else if (tone === 'NATIVE_PIDGIN') {
-              waText = `How far ${debtor.name} 👋! Abeg na small reminder for the *₦${outstanding.toLocaleString()}* balance on top *${debtor.itemsBought}*. Make you help us run the transfer today make we balance our book. God bless your hustle! 🙏`;
-            } else if (tone === 'DISCOUNT_INCENTIVE') {
-              const discounted = Math.round(outstanding * 0.95);
-              waText = `Hello ${debtor.name} 🎁! Special early-settlement offer: Clear your *₦${outstanding.toLocaleString()}* balance for *${debtor.itemsBought}* within 24 hours and enjoy a *5% waiver* (Pay only *₦${discounted.toLocaleString()}*)! Reply with your receipt once sent. 🙏`;
-            } else {
-              waText = `Hello ${debtor.name} 👋, warm greetings! This is a polite reminder regarding your balance of *₦${outstanding.toLocaleString()}* for *${debtor.itemsBought}*. Kindly let us know when we can expect settlement today. Thank you for your patronage! 🙏`;
-            }
+            const waText = buildReminderCopy(debtor, tone, tone === 'NATIVE_PIDGIN' ? 'pidgin' : 'english');
+
+            // Log nudge count
+            setDebtors(prev => prev.map(d => {
+              if (d.id === debtor.id) {
+                return {
+                  ...d,
+                  remindersSentCount: (d.remindersSentCount || 0) + 1,
+                  lastReminderSent: Date.now()
+                };
+              }
+              return d;
+            }));
+
             const cleanPhone = (debtor.phone || '').replace(/\D/g, '');
             const intlPhone = cleanPhone.startsWith('0') && cleanPhone.length === 11 ? '234' + cleanPhone.slice(1) : cleanPhone;
             const url = intlPhone.length >= 10
@@ -1053,25 +1202,51 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                         </button>
                       </div>
                       
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         <button 
                           type="button"
                           onClick={() => {
                             setPaymentModalDebtor(debtor);
                             setPaymentAmount(String(outstanding));
                           }}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-xl transition-all border-0"
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider py-2.5 px-2 rounded-xl transition-all border-0 cursor-pointer active:scale-95"
                         >
                           Record Payment
                         </button>
                         
                         <button 
                           type="button"
+                          onClick={() => {
+                            const url = buildSettlementUrl(debtor);
+                            navigator.clipboard?.writeText(url);
+                            setCopiedLinkDebtorId(debtor.id);
+                            toast.success("1-Tap Paystack settlement link copied!");
+                            setTimeout(() => setCopiedLinkDebtorId(null), 2500);
+                          }}
+                          className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 p-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                          title="Copy 1-Tap Paystack settlement link"
+                        >
+                          <LinkIcon size={12} />
+                          <span>{copiedLinkDebtorId === debtor.id ? 'Copied!' : 'Pay Link'}</span>
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={() => setDemandNoticeDebtor(debtor)}
+                          className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 p-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                          title="Generate Official Demand Notice & Statement of Account (PDF)"
+                        >
+                          <FileText size={12} />
+                          <span>Notice</span>
+                        </button>
+
+                        <button 
+                          type="button"
                           onClick={() => setExpandedDebtorId(expandedDebtorId === debtor.id ? null : debtor.id)}
-                          className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 p-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1"
+                          className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 p-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <Eye size={12} />
-                          {expandedDebtorId === debtor.id ? 'Hide Ledger' : 'View Ledger'}
+                          <span>{expandedDebtorId === debtor.id ? 'Hide' : 'Ledger'}</span>
                         </button>
                       </div>
                     </div>
@@ -1561,6 +1736,312 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
               )}
               
               <ShareActions text={reminder.text[activeTab]} url="" title="Debt Reminder" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1. Batch Overdue Auto-Pilot Recovery Modal */}
+      {showBatchModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg">
+                  ⚡
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Auto-Pilot Batch Recovery</h3>
+                  <p className="text-xs text-slate-500">Dispatch customized recovery nudges with 1-Tap payment links to all overdue accounts.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBatchModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Overdue Summary Card */}
+            <div className="bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-200/60 rounded-2xl p-4 flex justify-between items-center">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700">Total Capital in Default</p>
+                <p className="text-2xl font-black text-rose-600">₦{totalOverdue.toLocaleString()}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Accounts Overdue</p>
+                <p className="text-xl font-extrabold text-slate-800">{overdueDebtorsList.length} Defaulters</p>
+              </div>
+            </div>
+
+            {/* Debtor Overdue List Preview */}
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {overdueDebtorsList.map((d) => {
+                const bal = getOutstandingBalance(d);
+                const days = d.dueDate ? Math.max(0, Math.floor((Date.now() - new Date(d.dueDate).getTime()) / 86400000)) : 0;
+                return (
+                  <div key={d.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center text-xs">
+                    <div>
+                      <p className="font-extrabold text-slate-800">{d.name}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {d.phone || 'No phone'} · <span className="text-rose-600 font-bold">{days} days overdue</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono font-bold text-slate-800">₦{bal.toLocaleString()}</p>
+                      <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-black">
+                        {getDebtorTone(d.id)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Execution Actions */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={async () => {
+                  const eligible = overdueDebtorsList.filter(d => d.phone);
+                  if (eligible.length === 0) {
+                    toast.error("No debtors have a phone number recorded.");
+                    return;
+                  }
+                  setIsBatchSending(true);
+                  let sent = 0;
+                  let failed = 0;
+                  setBatchProgress({ current: 0, total: eligible.length, sent: 0, failed: 0 });
+
+                  for (let i = 0; i < eligible.length; i++) {
+                    const deb = eligible[i];
+                    try {
+                      const msg = buildReminderCopy(deb, getDebtorTone(deb.id), 'english');
+                      await marketingService.sendWhatsAppCloudMessage({
+                        phone: deb.phone,
+                        message: msg
+                      });
+                      sent++;
+                      // Update nudge count
+                      setDebtors(prev => prev.map(item => item.id === deb.id ? {
+                        ...item,
+                        remindersSentCount: (item.remindersSentCount || 0) + 1,
+                        lastReminderSent: Date.now()
+                      } : item));
+                    } catch (e) {
+                      failed++;
+                    }
+                    setBatchProgress({ current: i + 1, total: eligible.length, sent, failed });
+                  }
+
+                  setIsBatchSending(false);
+                  toast.success(`Batch finished! Sent ${sent} recovery messages.`);
+                }}
+                disabled={isBatchSending}
+                className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Zap className="w-4 h-4" />
+                <span>{isBatchSending ? `Dispatching... (${batchProgress?.current}/${batchProgress?.total})` : 'Auto-Send All via WhatsApp API'}</span>
+              </button>
+
+              <p className="text-[10px] text-center text-slate-400">
+                Each message includes an encrypted 1-Tap Paystack checkout link and your verified bank transfer details.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Gbege Automation Rules & Escalation Policy Modal */}
+      {showAutomationPolicy && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+                  ⚙️
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Debt Recovery Policy & Automation</h3>
+                  <p className="text-xs text-slate-500">Standardized Bank of Industry & MSME progressive debt collection workflow.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAutomationPolicy(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 4-Stage Progressive Timeline */}
+            <div className="space-y-3">
+              <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400">Automated Escalation Schedule</h4>
+              <div className="space-y-2 text-xs">
+                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 flex gap-3 items-center">
+                  <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">1</span>
+                  <div>
+                    <p className="font-extrabold text-slate-800">T-3 Days: Courtesy Pre-Due Date Nudge</p>
+                    <p className="text-[10px] text-slate-500">Polite reminder sent 3 days before credit maturity with statement breakdown.</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 flex gap-3 items-center">
+                  <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center shrink-0">2</span>
+                  <div>
+                    <p className="font-extrabold text-slate-800">Due Date (Day 0): Settlement Request + 1-Tap Pay Link</p>
+                    <p className="text-[10px] text-slate-500">Friendly prompt attaching instant online Paystack checkout & bank details.</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 flex gap-3 items-center">
+                  <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 font-black text-xs flex items-center justify-center shrink-0">3</span>
+                  <div>
+                    <p className="font-extrabold text-slate-800">T+3 Days Overdue: Firm Account Warning</p>
+                    <p className="text-[10px] text-slate-500">Professional follow-up citing pending credit ledger status.</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/70 rounded-2xl p-3 flex gap-3 items-center">
+                  <span className="w-8 h-8 rounded-xl bg-rose-100 text-rose-800 font-black text-xs flex items-center justify-center shrink-0">4</span>
+                  <div>
+                    <p className="font-extrabold text-slate-800">T+7 Days Overdue: Strict Final Notice / 5% Early Waiver Offer</p>
+                    <p className="text-[10px] text-slate-500">Automatic suspension of trade credit & formal legal demand notice generation.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Collection Bank Account */}
+            <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 text-xs space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Configured Settlement Bank Account</p>
+              <p className="font-extrabold text-slate-800">
+                {getMerchantDetails().bankName} · {getMerchantDetails().bankAccount || 'Not configured in Settings'}
+              </p>
+              <p className="text-[11px] text-slate-500">Name: {getMerchantDetails().bankAccountName || getMerchantDetails().merchantName}</p>
+            </div>
+
+            <button
+              onClick={() => setShowAutomationPolicy(false)}
+              className="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer"
+            >
+              Close & Apply Policy
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Formal Legal Demand Notice & Statement of Account Modal */}
+      {demandNoticeDebtor && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
+            {/* Action Bar */}
+            <div className="flex justify-between items-center border-b border-slate-200 pb-4 no-print">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-500">Official Demand Notice Dossier</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Printer size={13} /> Print / Save PDF
+                </button>
+                <button
+                  onClick={() => setDemandNoticeDebtor(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Letterhead Document */}
+            <div id="demand-notice-printable" className="space-y-6 text-slate-800 font-sans p-2">
+              {/* Header */}
+              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
+                <div>
+                  <h2 className="text-xl font-black text-slate-950 uppercase tracking-tight">{getMerchantDetails().merchantName}</h2>
+                  <p className="text-xs text-slate-500 font-medium">Commercial Trade Credit & Accounts Receivable</p>
+                  <p className="text-[11px] text-slate-500">Official Partner · Bank of Industry MSME Credit Framework</p>
+                </div>
+                <div className="text-right text-xs space-y-0.5">
+                  <p className="font-mono font-bold text-slate-700">REF: SB-DEMAND-{Date.now().toString().slice(-6)}</p>
+                  <p className="text-slate-500">Date: {new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+              </div>
+
+              {/* Recipient */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Notice Served To:</p>
+                <p className="font-extrabold text-sm text-slate-900">{demandNoticeDebtor.name}</p>
+                <p className="text-slate-600">Phone: {demandNoticeDebtor.phone || 'N/A'}</p>
+                {demandNoticeDebtor.dueDate && <p className="text-rose-600 font-bold">Stipulated Credit Due Date: {demandNoticeDebtor.dueDate}</p>}
+              </div>
+
+              {/* Notice Title */}
+              <div className="text-center py-1">
+                <h3 className="text-sm font-black uppercase tracking-wider text-rose-700 underline underline-offset-4">
+                  FORMAL NOTICE OF OUTSTANDING TRADE DEBT & DEMAND FOR IMMEDIATE SETTLEMENT
+                </h3>
+              </div>
+
+              {/* Statement Table */}
+              <table className="w-full text-xs border border-slate-200 rounded-xl overflow-hidden">
+                <thead className="bg-slate-100 text-slate-700 font-black uppercase text-[10px]">
+                  <tr>
+                    <th className="p-3 text-left">Description of Goods / Services</th>
+                    <th className="p-3 text-right">Credit Value</th>
+                    <th className="p-3 text-right">Paid to Date</th>
+                    <th className="p-3 text-right">Net Balance Due</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr>
+                    <td className="p-3 font-medium">{demandNoticeDebtor.itemsBought}</td>
+                    <td className="p-3 text-right font-mono">₦{demandNoticeDebtor.amount.toLocaleString()}</td>
+                    <td className="p-3 text-right font-mono text-emerald-600">
+                      -₦{((demandNoticeDebtor.payments || []).reduce((a, p) => a + p.amount, 0)).toLocaleString()}
+                    </td>
+                    <td className="p-3 text-right font-mono font-black text-rose-600">
+                      ₦{getOutstandingBalance(demandNoticeDebtor).toLocaleString()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Legal Demand Clause */}
+              <div className="text-xs text-slate-600 leading-relaxed bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <p>
+                  <strong>Notice is hereby given</strong> that the net balance of <strong>₦{getOutstandingBalance(demandNoticeDebtor).toLocaleString()}</strong> remains past due and unsettled in our credit registry.
+                </p>
+                <p>
+                  In accordance with commercial trade credit best practices, you are required to liquidate this balance within <strong>seven (7) calendar days</strong> from the date of this document. Continued default may result in forfeiture of credit eligibility and reporting across verified merchant trade networks.
+                </p>
+              </div>
+
+              {/* Settlement Instructions */}
+              <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 text-xs space-y-2">
+                <p className="font-black text-emerald-900 uppercase text-[10px] tracking-wider">Authorized Settlement Channels:</p>
+                <p className="text-emerald-800">
+                  • <strong>Online 1-Tap Portal (Paystack):</strong> {buildSettlementUrl(demandNoticeDebtor)}
+                </p>
+                <p className="text-emerald-800">
+                  • <strong>Direct Bank Transfer:</strong> {getMerchantDetails().bankName} · Acc No: {getMerchantDetails().bankAccount || 'Contact Store'} ({getMerchantDetails().bankAccountName || getMerchantDetails().merchantName})
+                </p>
+              </div>
+
+              {/* Signature Line */}
+              <div className="pt-6 flex justify-between items-end border-t border-slate-200 text-xs">
+                <div>
+                  <div className="w-36 border-b border-slate-800 mb-1" />
+                  <p className="font-extrabold text-slate-900">Authorized Signature & Stamp</p>
+                  <p className="text-[10px] text-slate-500">{getMerchantDetails().merchantName}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-black">
+                    OFFICIAL TRADE DOSSIER
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
