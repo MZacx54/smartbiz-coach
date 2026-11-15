@@ -1932,120 +1932,177 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       )}
 
       {/* 3. Formal Legal Demand Notice & Statement of Account Modal */}
-      {demandNoticeDebtor && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[92vh] overflow-y-auto">
-            {/* Action Bar */}
-            <div className="flex justify-between items-center border-b border-slate-200 pb-4 no-print">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-500">Official Demand Notice Dossier</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                  <Printer size={13} /> Print / Save PDF
-                </button>
-                <button
-                  onClick={() => setDemandNoticeDebtor(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
+      {demandNoticeDebtor && (() => {
+        const totalPaid = (demandNoticeDebtor.payments || []).reduce((a, p) => a + p.amount, 0);
+        const outstandingBal = getOutstandingBalance(demandNoticeDebtor);
+        const isOverdueNow = demandNoticeDebtor.dueDate && new Date(demandNoticeDebtor.dueDate) < new Date();
+        const shortCleanUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://smartbizcoach.com.ng'}/pay-debt/${demandNoticeDebtor.id}`;
+        const fullPaystackUrl = buildSettlementUrl(demandNoticeDebtor);
 
-            {/* Printable Letterhead Document */}
-            <div id="demand-notice-printable" className="space-y-6 text-slate-800 font-sans p-2">
-              {/* Header */}
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4">
-                <div>
-                  <h2 className="text-xl font-black text-slate-950 uppercase tracking-tight">{getMerchantDetails().merchantName}</h2>
-                  <p className="text-xs text-slate-500 font-medium">Commercial Trade Credit & Accounts Receivable</p>
-                  <p className="text-[11px] text-slate-500">Official Partner · Bank of Industry MSME Credit Framework</p>
+        return (
+          <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            {/* Dedicated Print Styles for Single Page A4 output */}
+            <style>{`
+              @media print {
+                body * { visibility: hidden !important; }
+                #demand-notice-printable, #demand-notice-printable * { visibility: visible !important; }
+                #demand-notice-printable {
+                  position: fixed !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  margin: 0 !important;
+                  padding: 12mm 15mm !important;
+                  background: white !important;
+                  z-index: 999999 !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                }
+                .no-print { display: none !important; }
+                @page { size: A4 portrait; margin: 8mm; }
+              }
+            `}</style>
+
+            <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-8 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto overflow-x-hidden">
+              {/* Action Bar */}
+              <div className="flex justify-between items-center border-b border-slate-200 pb-3 no-print">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-700">Official Demand Notice & Statement</span>
                 </div>
-                <div className="text-right text-xs space-y-0.5">
-                  <p className="font-mono font-bold text-slate-700">REF: SB-DEMAND-{Date.now().toString().slice(-6)}</p>
-                  <p className="text-slate-500">Date: {new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => window.print()}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-all"
+                  >
+                    <Printer size={13} /> Print / Save PDF
+                  </button>
+                  <button
+                    onClick={() => setDemandNoticeDebtor(null)}
+                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
 
-              {/* Recipient */}
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Notice Served To:</p>
-                <p className="font-extrabold text-sm text-slate-900">{demandNoticeDebtor.name}</p>
-                <p className="text-slate-600">Phone: {demandNoticeDebtor.phone || 'N/A'}</p>
-                {demandNoticeDebtor.dueDate && <p className="text-rose-600 font-bold">Stipulated Credit Due Date: {demandNoticeDebtor.dueDate}</p>}
-              </div>
-
-              {/* Notice Title */}
-              <div className="text-center py-1">
-                <h3 className="text-sm font-black uppercase tracking-wider text-rose-700 underline underline-offset-4">
-                  FORMAL NOTICE OF OUTSTANDING TRADE DEBT & DEMAND FOR IMMEDIATE SETTLEMENT
-                </h3>
-              </div>
-
-              {/* Statement Table */}
-              <table className="w-full text-xs border border-slate-200 rounded-xl overflow-hidden">
-                <thead className="bg-slate-100 text-slate-700 font-black uppercase text-[10px]">
-                  <tr>
-                    <th className="p-3 text-left">Description of Goods / Services</th>
-                    <th className="p-3 text-right">Credit Value</th>
-                    <th className="p-3 text-right">Paid to Date</th>
-                    <th className="p-3 text-right">Net Balance Due</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr>
-                    <td className="p-3 font-medium">{demandNoticeDebtor.itemsBought}</td>
-                    <td className="p-3 text-right font-mono">₦{demandNoticeDebtor.amount.toLocaleString()}</td>
-                    <td className="p-3 text-right font-mono text-emerald-600">
-                      -₦{((demandNoticeDebtor.payments || []).reduce((a, p) => a + p.amount, 0)).toLocaleString()}
-                    </td>
-                    <td className="p-3 text-right font-mono font-black text-rose-600">
-                      ₦{getOutstandingBalance(demandNoticeDebtor).toLocaleString()}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Legal Demand Clause */}
-              <div className="text-xs text-slate-600 leading-relaxed bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-2">
-                <p>
-                  <strong>Notice is hereby given</strong> that the net balance of <strong>₦{getOutstandingBalance(demandNoticeDebtor).toLocaleString()}</strong> remains past due and unsettled in our credit registry.
-                </p>
-                <p>
-                  In accordance with commercial trade credit best practices, you are required to liquidate this balance within <strong>seven (7) calendar days</strong> from the date of this document. Continued default may result in forfeiture of credit eligibility and reporting across verified merchant trade networks.
-                </p>
-              </div>
-
-              {/* Settlement Instructions */}
-              <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 text-xs space-y-2">
-                <p className="font-black text-emerald-900 uppercase text-[10px] tracking-wider">Authorized Settlement Channels:</p>
-                <p className="text-emerald-800">
-                  • <strong>Online 1-Tap Portal (Paystack):</strong> {buildSettlementUrl(demandNoticeDebtor)}
-                </p>
-                <p className="text-emerald-800">
-                  • <strong>Direct Bank Transfer:</strong> {getMerchantDetails().bankName} · Acc No: {getMerchantDetails().bankAccount || 'Contact Store'} ({getMerchantDetails().bankAccountName || getMerchantDetails().merchantName})
-                </p>
-              </div>
-
-              {/* Signature Line */}
-              <div className="pt-6 flex justify-between items-end border-t border-slate-200 text-xs">
-                <div>
-                  <div className="w-36 border-b border-slate-800 mb-1" />
-                  <p className="font-extrabold text-slate-900">Authorized Signature & Stamp</p>
-                  <p className="text-[10px] text-slate-500">{getMerchantDetails().merchantName}</p>
+              {/* Printable Letterhead Document */}
+              <div id="demand-notice-printable" className="space-y-5 text-slate-800 font-sans p-1 sm:p-2 bg-white">
+                {/* Header */}
+                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-3">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950 uppercase tracking-tight">{getMerchantDetails().merchantName}</h2>
+                    <p className="text-xs text-slate-600 font-medium">Commercial Trade Credit & Accounts Receivable</p>
+                    <p className="text-[11px] text-slate-500">Official Partner · Bank of Industry MSME Credit Framework</p>
+                  </div>
+                  <div className="text-right text-xs space-y-0.5">
+                    <p className="font-mono font-bold text-slate-800">REF: SB-DEMAND-{Date.now().toString().slice(-6)}</p>
+                    <p className="text-slate-500">Date: {new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-black">
-                    OFFICIAL TRADE DOSSIER
-                  </span>
+
+                {/* Recipient */}
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-1">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Notice Served To:</p>
+                  <p className="font-extrabold text-sm text-slate-900">{demandNoticeDebtor.name}</p>
+                  <p className="text-slate-600">Phone: {demandNoticeDebtor.phone || 'N/A'}</p>
+                  {demandNoticeDebtor.dueDate && (
+                    <p className={`font-bold ${isOverdueNow ? 'text-rose-600' : 'text-slate-700'}`}>
+                      Credit Maturity Date: {demandNoticeDebtor.dueDate} {isOverdueNow ? '(OVERDUE)' : '(ACTIVE)'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Notice Title */}
+                <div className="text-center py-0.5">
+                  <h3 className={`text-xs sm:text-sm font-black uppercase tracking-wider underline underline-offset-4 ${isOverdueNow ? 'text-rose-700' : 'text-slate-900'}`}>
+                    {isOverdueNow 
+                      ? 'FORMAL NOTICE OF OVERDUE TRADE DEBT & DEMAND FOR IMMEDIATE SETTLEMENT' 
+                      : 'OFFICIAL STATEMENT OF ACCOUNT & TRADE CREDIT SETTLEMENT NOTICE'}
+                  </h3>
+                </div>
+
+                {/* Statement Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 text-slate-700 font-black uppercase text-[10px]">
+                      <tr>
+                        <th className="p-3 text-left">Description of Goods / Services</th>
+                        <th className="p-3 text-right">Credit Value</th>
+                        <th className="p-3 text-right">Paid to Date</th>
+                        <th className="p-3 text-right">Net Balance Due</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr>
+                        <td className="p-3 font-medium text-slate-800">{demandNoticeDebtor.itemsBought}</td>
+                        <td className="p-3 text-right font-mono font-semibold">₦{demandNoticeDebtor.amount.toLocaleString()}</td>
+                        <td className="p-3 text-right font-mono text-emerald-600 font-semibold">
+                          {totalPaid > 0 ? `-₦${totalPaid.toLocaleString()}` : '₦0'}
+                        </td>
+                        <td className="p-3 text-right font-mono font-black text-rose-600 text-sm">
+                          ₦{outstandingBal.toLocaleString()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Legal Demand Clause */}
+                <div className="text-xs text-slate-600 leading-relaxed bg-slate-50/80 p-4 rounded-2xl border border-slate-200 space-y-1.5">
+                  <p>
+                    <strong>Notice is hereby given</strong> that the net balance of <strong>₦{outstandingBal.toLocaleString()}</strong> is{' '}
+                    {isOverdueNow ? 'overdue and remains unsettled' : 'currently outstanding and due for settlement'}{' '}
+                    in our official accounts receivable registry.
+                  </p>
+                  <p>
+                    In accordance with commercial trade credit practices and Bank of Industry MSME credit compliance frameworks, kindly arrange for full liquidation of this balance{' '}
+                    {isOverdueNow ? 'within seven (7) business days from the date of this notice' : `on or before ${demandNoticeDebtor.dueDate || 'the stipulated due date'}`}. Continued default may lead to suspension of trade credit privileges and formal credit ledger reporting.
+                  </p>
+                </div>
+
+                {/* Settlement Instructions */}
+                <div className="bg-emerald-50/80 rounded-2xl p-4 border border-emerald-200 text-xs space-y-2">
+                  <p className="font-black text-emerald-950 uppercase text-[10px] tracking-wider">Authorized Settlement Channels:</p>
+                  <div className="text-emerald-900 space-y-1">
+                    <p className="break-words">
+                      • <strong>Online 1-Tap Portal (Paystack):</strong>{' '}
+                      <a
+                        href={fullPaystackUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-700 underline font-extrabold hover:text-emerald-900 break-all"
+                      >
+                        Click to pay online via Card/USSD/Transfer
+                      </a>
+                    </p>
+                    <p className="text-[11px] font-mono text-emerald-700 pl-3 break-all">
+                      {shortCleanUrl}
+                    </p>
+                    <p className="pt-1">
+                      • <strong>Direct Bank Transfer:</strong> {getMerchantDetails().bankName} · Acc No: <strong>{getMerchantDetails().bankAccount || 'Contact Store'}</strong> ({getMerchantDetails().bankAccountName || getMerchantDetails().merchantName})
+                    </p>
+                  </div>
+                </div>
+
+                {/* Signature Line */}
+                <div className="pt-4 flex justify-between items-end border-t border-slate-200 text-xs">
+                  <div>
+                    <div className="w-36 border-b border-slate-800 mb-1" />
+                    <p className="font-extrabold text-slate-900">Authorized Signature & Stamp</p>
+                    <p className="text-[10px] text-slate-500">{getMerchantDetails().merchantName}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-black">
+                      OFFICIAL TRADE DOSSIER
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Credit Prompt Modal */}
       <CreditPromptModal
