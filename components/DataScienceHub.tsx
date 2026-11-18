@@ -225,6 +225,25 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
   // Upgrade 6: Plain English Owner Action View vs Institutional Technical View Toggle
   const [viewMode, setViewMode] = useState<'ACTION' | 'TECHNICAL'>('ACTION');
 
+  const hasUnderwritingData = Boolean(
+    creditData &&
+    creditData.risk_level !== 'INSUFFICIENT_DATA' &&
+    creditData.credit_score > 300
+  );
+  const hasCashCliffData = Boolean(
+    cashCliff &&
+    cashCliff.runway_status !== 'NO_DATA' &&
+    cashCliff.runway_days > 0
+  );
+
+  const fallbackEn = hasUnderwritingData && hasCashCliffData && creditData && cashCliff
+    ? `Good day! Your SmartScore is ${creditData.credit_score} out of 850 (${creditData.rating_tier}). Your daily net cash velocity is +₦${Math.round(cashCliff.daily_net_velocity).toLocaleString()} with ${cashCliff.runway_days} days of working capital runway.`
+    : `Good day! Welcome to SmartBiz Coach. Record your first sale or petty cash entry in the Daily Cashbook to activate your live AI credit rating and 14-day cash runway forecast.`;
+
+  const fallbackPidgin = hasUnderwritingData && hasCashCliffData && creditData && cashCliff
+    ? `How far Boss! Na your SmartBiz AI CFO dey give you live market update so. Your SmartScore don reach ${creditData.credit_score} over 850, and your market dey bring net cash of ₦${Math.round(cashCliff.daily_net_velocity).toLocaleString()} every day.`
+    : `How far Boss! Welcome to SmartBiz Coach. Enter your first daily sale or market expense inside Cashbook make AI CFO calculate your live SmartScore and working capital runway.`;
+
   const handleSpeakCFO = (lang: 'EN' | 'PIDGIN') => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       toast.error('Speech synthesis is not supported in this browser.');
@@ -235,8 +254,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
       setSpeakingLang('NONE');
       return;
     }
-    const fallbackEn = `Good day! Your SmartScore is ${creditData?.credit_score || 742} out of 850. Your daily net cash velocity is ${Math.round(cashCliff?.daily_net_velocity || 18500).toLocaleString()} Naira with ${cashCliff?.runway_days || 45} days of working capital runway.`;
-    const fallbackPidgin = `How far Boss! Na your SmartBiz AI CFO dey give you live market update so. Your SmartScore don reach ${creditData?.credit_score || 742} over 850, and your market dey bring net cash of ${Math.round(cashCliff?.daily_net_velocity || 18500).toLocaleString()} Naira every day.`;
+
     const scriptText =
       lang === 'EN'
         ? cfoBriefing?.script_english || fallbackEn
@@ -783,8 +801,8 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           </div>
           <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
             {speakingLang === 'PIDGIN'
-              ? cfoBriefing?.script_pidgin || `How far Boss! Your SmartScore don reach ${creditData?.credit_score || 742} over 850, and your market dey bring net cash of ₦${Math.round(cashCliff?.daily_net_velocity || 18500).toLocaleString()} every day.`
-              : cfoBriefing?.script_english || `Good day! Your algorithmic SmartScore stands at ${creditData?.credit_score || 742}/850 (${creditData?.rating_tier || 'Bankable'}). Daily net cash velocity is +₦${Math.round(cashCliff?.daily_net_velocity || 18500).toLocaleString()}/day with ${cashCliff?.runway_days || 45} days of liquid runway.`}
+              ? cfoBriefing?.script_pidgin || fallbackPidgin
+              : cfoBriefing?.script_english || fallbackEn}
           </p>
         </div>
 
@@ -815,8 +833,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
             onClick={() =>
               openWhatsAppDispatch(
                 `🎙️ *SmartBiz AI CFO Daily Executive Briefing*\n\n${
-                  cfoBriefing?.script_english ||
-                  `SmartScore: ${creditData?.credit_score || 742}/850 • Daily Net Cash Velocity: +₦${Math.round(cashCliff?.daily_net_velocity || 18500).toLocaleString()}/day.`
+                  cfoBriefing?.script_english || fallbackEn
                 }`
               )
             }
@@ -1351,24 +1368,32 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {forecasts.slice(0, 4).map(item => (
-                      <tr key={item.product_id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3.5 px-4 font-bold text-slate-900">{item.name}</td>
-                        <td className="py-3.5 px-4 font-mono font-bold">{item.current_stock} units</td>
-                        <td className="py-3.5 px-4 font-mono text-slate-600">{item.daily_sales_velocity} / day</td>
-                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
-                          {item.days_remaining <= 0 ? 'Out of Stock' : `${item.days_remaining} days (${item.stockout_date})`}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono font-black text-indigo-600">
-                          +{item.suggested_reorder_units} units
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${getUrgencyBadge(item.urgency)}`}>
-                            {item.status.replace(/_/g, ' ')}
-                          </span>
+                    {forecasts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 px-4 text-center">
+                          <p className="text-xs text-slate-500 font-bold">No inventory demand alerts. Add products to activate Ridge stockout forecasting.</p>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      forecasts.slice(0, 4).map(item => (
+                        <tr key={item.product_id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-slate-900">{item.name}</td>
+                          <td className="py-3.5 px-4 font-mono font-bold">{item.current_stock} units</td>
+                          <td className="py-3.5 px-4 font-mono text-slate-600">{item.daily_sales_velocity} / day</td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                            {item.days_remaining <= 0 ? 'Out of Stock' : `${item.days_remaining} days (${item.stockout_date})`}
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-black text-indigo-600">
+                            +{item.suggested_reorder_units} units
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${getUrgencyBadge(item.urgency)}`}>
+                              {item.status.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1802,7 +1827,25 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {forecasts.map(item => (
+                    {forecasts.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 px-4 text-center">
+                          <div className="max-w-md mx-auto text-center space-y-2">
+                            <span className="text-3xl block">📦</span>
+                            <p className="text-sm font-black text-slate-800">No Physical Products Tracked</p>
+                            <p className="text-xs text-slate-500">Add physical items with stock counts in your Shop Inventory Tracker to generate 14-day depletion runway forecasts & automated supplier reorder prompts.</p>
+                            <button
+                              onClick={() => navigate('/dashboard/stock')}
+                              className="mt-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold px-4 py-2 rounded-xl border-0 cursor-pointer transition-all inline-flex items-center gap-1.5"
+                            >
+                              <span>Add Products to Inventory</span>
+                              <span>→</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      forecasts.map(item => (
                       <tr key={item.product_id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 px-4 font-bold text-slate-900">{item.name}</td>
                         <td className="py-3.5 px-4 font-mono">₦{item.unit_price.toLocaleString()}</td>
@@ -1831,7 +1874,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>
@@ -2009,8 +2052,24 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
               </div>
 
               {/* Segments Grid */}
-              <div className="grid md:grid-cols-2 gap-6">
-                {(segmentsData?.segments || []).map((seg, idx) => {
+              {!segmentsData || segmentsData.total_customers === 0 || (segmentsData.segments || []).length === 0 ? (
+                <div className="p-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 text-center space-y-3">
+                  <span className="text-4xl block">👥</span>
+                  <h4 className="text-base font-black text-slate-900">No Customer Purchase History Recorded</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                    K-Means AI automatically segments your buyers into VIP Champions, Steady Loyalists, and At-Risk tiers once you log sales or write invoices with customer names and phone numbers.
+                  </p>
+                  <button
+                    onClick={() => navigate('/dashboard/cashbook')}
+                    className="mt-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl border-0 cursor-pointer transition-all inline-flex items-center gap-1.5"
+                  >
+                    <span>Record Sales in Cashbook</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {(segmentsData?.segments || []).map((seg, idx) => {
                   const borderClass = 
                     seg.color === 'emerald' ? 'border-emerald-200 bg-emerald-50/30' :
                     seg.color === 'amber' ? 'border-amber-200 bg-amber-50/30' :
@@ -2071,6 +2130,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                   );
                 })}
               </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -2105,63 +2165,80 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {(elasticityData?.pricing_recommendations || []).map((item, idx) => (
-                  <div key={idx} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white transition-all space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-slate-900 text-sm">{item.name}</span>
-                          <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                            item.badge_color === 'emerald' ? 'bg-emerald-100 text-emerald-800' :
-                            item.badge_color === 'amber' ? 'bg-amber-100 text-amber-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {item.elasticity_type} (e = {item.elasticity_score})
-                          </span>
+              {!elasticityData || elasticityData.total_evaluated_products === 0 || (elasticityData.pricing_recommendations || []).length === 0 ? (
+                <div className="p-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 text-center space-y-3">
+                  <span className="text-4xl block">🏷️</span>
+                  <h4 className="text-base font-black text-slate-900">No Products Scanned for Elasticity</h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                    SmartBiz Machine Learning models price sensitivity, markup margins, and elasticity once products are created in your inventory catalog.
+                  </p>
+                  <button
+                    onClick={() => navigate('/dashboard/stock')}
+                    className="mt-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl border-0 cursor-pointer transition-all inline-flex items-center gap-1.5"
+                  >
+                    <span>Add Products to Catalog</span>
+                    <span>→</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {(elasticityData?.pricing_recommendations || []).map((item, idx) => (
+                    <div key={idx} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white transition-all space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-900 text-sm">{item.name}</span>
+                            <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                              item.badge_color === 'emerald' ? 'bg-emerald-100 text-emerald-800' :
+                              item.badge_color === 'amber' ? 'bg-amber-100 text-amber-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {item.elasticity_type} (e = {item.elasticity_score})
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 font-medium mt-1">{item.recommendation}</p>
                         </div>
-                        <p className="text-xs text-slate-600 font-medium mt-1">{item.recommendation}</p>
+
+                        <div className="flex items-center gap-4 text-right shrink-0">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-bold uppercase">Current Price</span>
+                            <span className="font-mono font-bold text-slate-600 text-xs">
+                              ₦{item.current_price.toLocaleString()}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-emerald-600 block font-bold uppercase">Optimal AI Price</span>
+                            <span className="font-mono font-black text-slate-900 text-base">
+                              ₦{item.suggested_price.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-4 text-right shrink-0">
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-bold uppercase">Current Price</span>
-                          <span className="font-mono font-bold text-slate-600 text-xs">
-                            ₦{item.current_price.toLocaleString()}
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="text-slate-500 font-medium">
+                            Gross Margin: <strong className="text-slate-800">{item.margin_pct}%</strong>
+                          </span>
+                          <span className="font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                            {item.projected_gain}
                           </span>
                         </div>
-                        <div>
-                          <span className="text-[10px] text-emerald-600 block font-bold uppercase">Optimal AI Price</span>
-                          <span className="font-mono font-black text-slate-900 text-base">
-                            ₦{item.suggested_price.toLocaleString()}
-                          </span>
-                        </div>
+
+                        {item.suggested_price !== item.current_price && (
+                          <button
+                            onClick={() => handleApplyOptimalPrice(item)}
+                            disabled={updatingPriceId === item.product_id}
+                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer border-0 shadow-xs"
+                          >
+                            {updatingPriceId === item.product_id ? 'Updating...' : `⚡ Apply ₦${item.suggested_price.toLocaleString()} to Store`}
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 text-xs">
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-500 font-medium">
-                          Gross Margin: <strong className="text-slate-800">{item.margin_pct}%</strong>
-                        </span>
-                        <span className="font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
-                          {item.projected_gain}
-                        </span>
-                      </div>
-
-                      {item.suggested_price !== item.current_price && (
-                        <button
-                          onClick={() => handleApplyOptimalPrice(item)}
-                          disabled={updatingPriceId === item.product_id}
-                          className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer border-0 shadow-xs"
-                        >
-                          {updatingPriceId === item.product_id ? 'Updating...' : `⚡ Apply ₦${item.suggested_price.toLocaleString()} to Store`}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         )}

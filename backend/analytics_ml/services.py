@@ -1090,19 +1090,34 @@ class AutonomousAgentService:
         }
 
         # 4. Institutional Underwriter Agent (BOI / FCMB SheVentures / SMEDAN)
-        score = credit_data.get("credit_score", 685)
-        underwriter_directive = {
-            "agent_id": "GRANT_UNDERWRITER",
-            "agent_name": "Institutional Credit Underwriter",
-            "icon": "🏛️",
-            "priority": "MEDIUM",
-            "badge_color": "indigo",
-            "headline": f"SmartScore™ {score}/850 • {credit_data.get('rating_tier', 'Bankable')}",
-            "insight": f"{credit_data.get('bank_recommendation', '')} Your SHA-256 audited ledger is ready for one-click submission to BOI, FCMB SheVentures, NIRSAL MFB, and SMEDAN.",
-            "action_type": "DOWNLOAD_DOSSIER",
-            "action_label": "📄 Download Bank Underwriting PDF",
-            "target_route": "/dashboard/grants",
-        }
+        score = credit_data.get("credit_score", 300)
+        is_insufficient = credit_data.get("risk_level") == "INSUFFICIENT_DATA" or score <= 300
+        if is_insufficient:
+            underwriter_directive = {
+                "agent_id": "GRANT_UNDERWRITER",
+                "agent_name": "Institutional Credit Underwriter",
+                "icon": "🏛️",
+                "priority": "LOW",
+                "badge_color": "slate",
+                "headline": "SmartScore™ Unrated • Awaiting Sales Records",
+                "insight": "Record daily sales in your Cashbook to generate your official SmartScore™ and unlock bank pre-qualification with BOI, FCMB SheVentures, and SMEDAN.",
+                "action_type": "NAVIGATE",
+                "action_label": "⚡ Record Daily Sales in Cashbook",
+                "target_route": "/dashboard/cashbook",
+            }
+        else:
+            underwriter_directive = {
+                "agent_id": "GRANT_UNDERWRITER",
+                "agent_name": "Institutional Credit Underwriter",
+                "icon": "🏛️",
+                "priority": "MEDIUM",
+                "badge_color": "indigo",
+                "headline": f"SmartScore™ {score}/850 • {credit_data.get('rating_tier', 'Bankable')}",
+                "insight": f"{credit_data.get('bank_recommendation', '')} Your SHA-256 audited ledger is ready for one-click submission to BOI, FCMB SheVentures, NIRSAL MFB, and SMEDAN.",
+                "action_type": "DOWNLOAD_DOSSIER",
+                "action_label": "📄 Download Bank Underwriting PDF",
+                "target_route": "/dashboard/grants",
+            }
 
         return [debt_directive, restock_directive, cash_directive, underwriter_directive]
 
@@ -1459,17 +1474,50 @@ class AICFOBriefingService:
     @staticmethod
     def generate_daily_briefing(user, credit_data: Dict[str, Any], forecasts: List[Dict[str, Any]], cash_cliff: Dict[str, Any]) -> Dict[str, Any]:
         business_name = getattr(user, 'business_name', None) or user.username or "Boss"
-        score = credit_data.get("credit_score", 710)
+        score = credit_data.get("credit_score", 300)
+        is_insufficient = (
+            credit_data.get("risk_level") == "INSUFFICIENT_DATA"
+            or cash_cliff.get("runway_status") == "NO_DATA"
+            or score <= 300
+        )
+        if is_insufficient:
+            script_english = (
+                f"Good day {business_name}. Welcome to your SmartBiz AI Chief Financial Officer. "
+                "To generate your certified SmartScore and 14-day cash runway forecast, please record your daily transactions "
+                "and petty cash entries in the Cashbook. Once your first sales records are logged, your live underwriting "
+                "rating and working capital metrics will automatically update."
+            )
+            script_pidgin = (
+                f"How far {business_name}! Welcome to your SmartBiz AI CFO. "
+                "Record your first daily sales or shop expenses inside Cashbook make AI calculate your live SmartScore, "
+                "14-day cash runway, and bank loan pre-qualification automatically."
+            )
+            return {
+                "generated_at": timezone.now().strftime("%Y-%m-%d %H:%M"),
+                "business_name": business_name,
+                "script_english": script_english,
+                "script_pidgin": script_pidgin,
+                "headline_metrics": {
+                    "smart_score": 300,
+                    "pd_pct": 0.0,
+                    "dscr": 0.0,
+                    "daily_net_velocity_ngn": 0,
+                    "runway_days": 0,
+                    "top_stockout_item": "None",
+                    "top_stockout_days": 0,
+                },
+            }
+
         tier = credit_data.get("rating_tier", "Bankable")
         ifrs9 = credit_data.get("ifrs9_risk", {})
         pd_pct = ifrs9.get("probability_of_default_pct", 4.5)
         dscr = ifrs9.get("debt_service_coverage_ratio", 1.95)
-        rec_loan = credit_data.get("recommended_loan_limit_ngn", 1500000)
+        rec_loan = credit_data.get("recommended_loan_limit_ngn", 0)
 
-        daily_inflow = float(cash_cliff.get("avg_daily_inflow", 45000) or 45000)
-        daily_outflow = float(cash_cliff.get("avg_daily_outflow", 26000) or 26000)
+        daily_inflow = float(cash_cliff.get("avg_daily_inflow", 0) or 0)
+        daily_outflow = float(cash_cliff.get("avg_daily_outflow", 0) or 0)
         net_velocity = float(cash_cliff.get("daily_net_velocity", daily_inflow - daily_outflow))
-        runway_days = int(cash_cliff.get("runway_days", 45))
+        runway_days = int(cash_cliff.get("runway_days", 0))
         credit_locked = float(cash_cliff.get("credit_locked_30d", 0) or 0)
         fuel_pct = float(cash_cliff.get("fuel_gen_burn_pct", 0) or 0)
 

@@ -134,16 +134,14 @@ const InvoiceGenerator: React.FC = () => {
     let parsed: Invoice[] = saved ? JSON.parse(saved) : [];
 
     if (isTractionMode && parsed.length === 0) {
-      localStorage.setItem('sb_invoices_detailed', JSON.stringify(mockInvoices));
-      // For general business stats compatibility:
-      const summaryStats = mockInvoices.map(inv => ({
-        id: inv.id,
-        clientName: inv.clientName,
-        total: inv.items.reduce((acc, i) => acc + (i.quantity * i.price), 0),
-        date: inv.date
+      // In-memory demo data only — do not pollute real localStorage keys
+      parsed = mockInvoices.map(inv => ({
+        ...inv,
+        note: (inv.note || '') + ' [DEMO DATA]'
       }));
-      localStorage.setItem('sb_invoices', JSON.stringify(summaryStats));
-      parsed = mockInvoices;
+    } else if (!isTractionMode) {
+      // Purge any leaked demo mock invoices from real mode
+      parsed = parsed.filter(inv => inv.id !== 'INV-2024-001' && inv.id !== 'INV-2024-002');
     }
     setInvoices(parsed);
   };

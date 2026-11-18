@@ -503,7 +503,7 @@ def get_dynamic_json_fallback(messages):
     # 1. Social post content creator
     if "caption" in prompt_str or "hashtags" in prompt_str or "carousel" in prompt_str or "social" in prompt_str:
         return json.dumps({
-            "caption": "🚨 STOP SCROLLING! ✨ Upgrade your daily standard with premium verified quality! Are you tired of disappointing delivery and poor materials? We deliver dependable excellence designed for high performance.\n\n💎 100% Guaranteed Authenticity\n⚡ Fast Lagos & Nationwide Door-Step Waybill Dispatch\n🤝 Friendly 24/7 Customer Assistance\n\n📲 Tap the link in our bio or send us a WhatsApp DM right now to secure yours today!",
+            "caption": "🚨 STOP SCROLLING! ✨ Upgrade your daily standard with premium verified quality! Are you tired of disappointing delivery and poor materials? We deliver dependable excellence designed for high performance.\n\n💎 Verified Quality Assured\n⚡ Fast Lagos & Nationwide Door-Step Waybill Dispatch\n🤝 Friendly 24/7 Customer Assistance\n\n📲 Tap the link in our bio or send us a WhatsApp DM right now to secure yours today!",
             "whatsAppStatus": "✨ New Stock Alert!\n• Premium Quality 💎\n• Fast Nationwide Delivery ⚡\n• Limited Quantity 🔥\n\nReply 'ORDER' to get yours now!",
             "hashtags": ["#NigerianBrand", "#LagosBusiness", "#NaijaSME", "#ShopLocalNG", "#VerifiedMerchant", "#NaijaHustle", "#OnlineStoreNG"],
             "callToAction": "Send a WhatsApp DM to place your order now!",

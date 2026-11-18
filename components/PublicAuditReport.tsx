@@ -74,20 +74,31 @@ const PublicAuditReport: React.FC = () => {
   const tinNumber = brand?.tin || 'TIN-9284102-001';
   const niche = brand?.tagline || 'AI-Enabled MSME Commerce & Operations';
 
-  const smartScore = mlData?.credit?.credit_score || 742;
-  const ratingTier = mlData?.credit?.rating_tier || 'GOOD (Bankable Grade B+)';
-  const bankRec = mlData?.credit?.bank_recommendation || 'Pre-Qualified for Up to ₦5,000,000 Working Capital Credit (BOI, FCMB SheVentures, NIRSAL MFB) & SMEDAN Grants.';
-  const tillIntegrity = mlData?.anomalies?.integrity_score || 98;
-  const dailyNetVelocity = mlData?.cash_cliff?.daily_net_velocity ?? 18500;
+  const isTractionMode = typeof window !== 'undefined' && localStorage.getItem('sb_idice_traction_mode') === 'true';
+  const hasRealData = Boolean(
+    mlData?.credit?.metrics?.total_sales_logged &&
+    mlData.credit.metrics.total_sales_logged > 0 &&
+    mlData?.credit?.risk_level !== 'INSUFFICIENT_DATA'
+  );
+
+  const smartScore = hasRealData ? mlData.credit.credit_score : (isTractionMode ? 742 : 300);
+  const ratingTier = hasRealData ? mlData.credit.rating_tier : (isTractionMode ? 'SAMPLE (Demo Traction Mode)' : 'UNRATED (Awaiting Trading Activity)');
+  const bankRec = hasRealData
+    ? (mlData?.credit?.bank_recommendation || 'Standard SME Credit Assessment')
+    : (isTractionMode
+        ? 'SAMPLE EVALUATION: Pre-Qualified for Up to ₦5,000,000 Working Capital Credit (BOI, FCMB SheVentures, NIRSAL MFB) [Demo Data]'
+        : 'Record daily sales and transactions in the Cashbook to unlock official bank credit pre-qualification.');
+  const tillIntegrity = hasRealData ? (mlData?.anomalies?.integrity_score || 100) : (isTractionMode ? 98 : 100);
+  const dailyNetVelocity = hasRealData ? (mlData?.cash_cliff?.daily_net_velocity ?? 0) : (isTractionMode ? 18500 : 0);
 
   const tractionData = {
-    invoiceCount: mlData?.credit?.metrics?.total_sales_logged || 42,
-    totalVolume: mlData?.credit?.metrics?.total_gmv_revenue || 12450000,
-    paidVolume: mlData?.credit?.metrics?.total_gmv_revenue ? Math.round(mlData.credit.metrics.total_gmv_revenue * 0.924) : 11500000,
-    complianceRating: `${tillIntegrity}%`,
-    overallScore: Math.min(99, Math.round((smartScore / 850) * 100)),
-    inventorySkus: mlData?.credit?.metrics?.active_inventory_items || 12,
-    inventoryCostValuation: 8450000,
+    invoiceCount: hasRealData ? (mlData?.credit?.metrics?.total_sales_logged || 0) : (isTractionMode ? 42 : 0),
+    totalVolume: hasRealData ? (mlData?.credit?.metrics?.total_gmv_revenue || 0) : (isTractionMode ? 12450000 : 0),
+    paidVolume: hasRealData ? Math.round((mlData?.credit?.metrics?.total_gmv_revenue || 0) * 0.924) : (isTractionMode ? 11500000 : 0),
+    complianceRating: hasRealData || isTractionMode ? `${tillIntegrity}%` : 'Pending Data',
+    overallScore: hasRealData || isTractionMode ? Math.min(99, Math.round((smartScore / 850) * 100)) : 35,
+    inventorySkus: hasRealData ? (mlData?.credit?.metrics?.active_inventory_items || 0) : (isTractionMode ? 12 : 0),
+    inventoryCostValuation: hasRealData ? (mlData?.credit?.metrics?.inventory_valuation || 0) : (isTractionMode ? 8450000 : 0),
     pilots: [
       { name: 'SMEDAN & NACCIMA Youth Entrepreneurs (NYE)', program: 'MSME Digital Bookkeeping & Grant Readiness Passport' },
       { name: 'NITDA & NASENI Innovation Ecosystem', program: 'Indigenous AI Operating System for Nigerian MSMEs' },
@@ -115,6 +126,27 @@ const PublicAuditReport: React.FC = () => {
     <div className="min-h-screen bg-slate-50/50 p-6 md:p-12 font-sans selection:bg-indigo-100 relative">
       <div className="max-w-4xl mx-auto space-y-8 pb-20">
         
+        {/* Transparency Banner */}
+        {!hasRealData && !isTractionMode && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 text-xs flex items-center justify-between no-print">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">ℹ️</span>
+              <div>
+                <p className="font-extrabold text-sm">Underwriting Profile Initialized (Awaiting Trading Records)</p>
+                <p className="text-amber-700 mt-0.5">
+                  This enterprise profile is registered on SmartBiz Coach. Certified commercial credit scoring and cashflow metrics will activate once daily cashbook transactions or customer invoices are recorded.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isTractionMode && (
+          <div className="bg-amber-500 text-slate-950 font-black px-4 py-2.5 rounded-2xl text-xs flex items-center justify-between no-print">
+            <span>⚠️ DEMO DATA DOSSIER: Generated for demonstration purposes only. Figures do not represent audited banking history.</span>
+          </div>
+        )}
+
         {/* Top Header Section */}
         <div className="flex flex-wrap justify-between items-center gap-3 no-print">
           <Link to="/dashboard" className="text-xs font-black text-indigo-600 uppercase tracking-[0.2em] no-underline flex items-center gap-1.5">

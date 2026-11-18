@@ -729,6 +729,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="flex min-h-screen bg-slate-50 selection:bg-emerald-500 selection:text-white w-full">
             {Sidebar}
             <div className="flex-1 min-w-0 flex flex-col w-full">
+                {tractionMode && (
+                    <div className="bg-amber-500 text-slate-950 px-3 sm:px-4 py-2 text-xs font-black flex flex-wrap items-center justify-between gap-2 border-b border-amber-600 z-50">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm shrink-0">⚠️</span>
+                            <span className="truncate sm:whitespace-normal">
+                                DEMO / TRACTION MODE ACTIVE: Displaying sample demonstration data. Real operational metrics will resume when demo mode is turned off.
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => {
+                                localStorage.removeItem('sb_idice_traction_mode');
+                                localStorage.removeItem('sb_health_score_data');
+                                toast.success("Traction Demo Mode disabled. Resuming live data.");
+                                window.location.reload();
+                            }}
+                            className="bg-slate-950 hover:bg-slate-900 text-white px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0 cursor-pointer border-0"
+                        >
+                            Disable Demo Mode ✕
+                        </button>
+                    </div>
+                )}
                 {TopBar}
                 <main className="flex-1 p-3 sm:p-5 md:p-8 w-full">
                     <div className="max-w-5xl mx-auto pb-32 md:pb-8 w-full">{children}</div>

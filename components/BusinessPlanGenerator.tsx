@@ -490,7 +490,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    const noticeText = "This Strategic Business Plan dossier has been compiled using standardized financial appraisal methodologies aligned with the Bank of Industry (BOI), Development Bank of Nigeria (DBN), Small and Medium Enterprises Development Agency of Nigeria (SMEDAN), and Section 23 of the Companies Income Tax Act (CITA Cap C21 LFN 2004 as amended - 0% Corporate Income Tax for qualifying small businesses with gross turnover below NGN 25,000,000). All projections, unit economics, and debt service coverage metrics are formulated in accordance with Central Bank of Nigeria (CBN) MSME Credit Evaluation standards.";
+    const noticeText = "This Strategic Business Plan dossier has been compiled using standardized financial appraisal methodologies aligned with the Bank of Industry (BOI), Development Bank of Nigeria (DBN), Small and Medium Enterprises Development Agency of Nigeria (SMEDAN), and Nigeria Tax Act 2025/2026 small business relief provisions (0% Corporate Income Tax for qualifying small enterprises with gross annual turnover up to NGN 100,000,000). All projections, unit economics, and debt service coverage metrics are formulated in accordance with Central Bank of Nigeria (CBN) MSME Credit Evaluation standards.";
     const splitNotice = doc.splitTextToSize(noticeText, contentWidth - 12);
     doc.text(splitNotice, margin + 7, 213);
 

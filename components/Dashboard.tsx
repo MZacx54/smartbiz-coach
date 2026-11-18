@@ -155,10 +155,11 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
               { title: "Consolidate debt list", impact: "Improves cash liquidity by 15%", tool: "Gbege Book Reminders", priority: "HIGH" }
             ],
             strengths: ["Highly active customer invoice flow", "Compliant with CAC regulations", "Solid gross profit margins"],
-            weaknesses: ["Shortage of low stock alert items", "3 outstanding unresolved customer invoices"]
+            weaknesses: ["Shortage of low stock alert items", "3 outstanding unresolved customer invoices"],
+            is_demo: true
           };
           setHealthScore(mockScore);
-          localStorage.setItem('sb_health_score_data', JSON.stringify(mockScore));
+          // Isolated to in-memory state: Do NOT persist mockScore to localStorage so real accounts remain unpolluted
         }
       } else {
         try {
@@ -413,7 +414,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Catalog Valuation</span>
               <span className="text-xs">📦</span>
             </div>
-            <h3 className="text-lg font-black text-slate-800 mt-2 font-heading">₦{(ecosystemStats?.ecosystem_value || stockValue).toLocaleString()}</h3>
+            <h3 className="text-lg font-black text-slate-800 mt-2 font-heading">₦{(stockValue || 0).toLocaleString()}</h3>
           </div>
           <p className="text-[9px] text-amber-500 font-bold mt-2">Manage stock →</p>
         </div>
@@ -428,9 +429,13 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Lead Conversion</span>
               <span className="text-xs">📈</span>
             </div>
-            <h3 className="text-lg font-black text-slate-800 mt-2 font-heading">{ecosystemStats?.conversion_rate || 78}%</h3>
+            <h3 className="text-lg font-black text-slate-800 mt-2 font-heading">
+              {(ecosystemStats?.total_leads && ecosystemStats.total_leads > 0) ? `${ecosystemStats.conversion_rate || 0}%` : '0%'}
+            </h3>
           </div>
-          <p className="text-[9px] text-emerald-600 font-bold mt-2">{ecosystemStats?.won_leads || 0} deals won today →</p>
+          <p className="text-[9px] text-emerald-600 font-bold mt-2">
+            {(ecosystemStats?.total_leads && ecosystemStats.total_leads > 0) ? `${ecosystemStats.won_leads || 0} deals won today →` : 'No leads logged yet →'}
+          </p>
         </div>
 
         {/* Active Support */}
@@ -464,11 +469,22 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
             </div>
             <div className="flex flex-wrap items-baseline gap-3 pt-1">
               <h3 className="text-lg sm:text-xl font-black font-heading text-white">
-                SmartScore™: <span className="text-emerald-400 font-mono">{mlPulse?.credit?.credit_score || 715}</span>
-                <span className="text-xs text-slate-400 font-mono"> / 850</span>
+                SmartScore™:{' '}
+                <span className="text-emerald-400 font-mono">
+                  {mlPulse?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlPulse?.credit?.credit_score
+                    ? 'Unrated'
+                    : mlPulse.credit.credit_score}
+                </span>
+                <span className="text-xs text-slate-400 font-mono">
+                  {mlPulse?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlPulse?.credit?.credit_score
+                    ? ' (Awaiting sales)'
+                    : ' / 850'}
+                </span>
               </h3>
               <span className="text-xs font-extrabold text-indigo-300">
-                • {mlPulse?.credit?.rating_tier || 'GOOD (Bankable Grade B+)'}
+                • {mlPulse?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlPulse?.credit?.rating_tier
+                    ? 'Stage 0 • Log daily sales to generate score'
+                    : mlPulse.credit.rating_tier}
               </span>
             </div>
             <p className="text-[11px] text-slate-300 max-w-2xl leading-relaxed">

@@ -1801,17 +1801,26 @@ export const DailyCashbook: React.FC = () => {
           <div className="flex flex-wrap items-center gap-4">
             <div className="bg-emerald-500/15 border border-emerald-400/30 rounded-2xl px-4 py-2.5 text-center shrink-0">
               <span className="text-[9px] font-black uppercase tracking-widest text-emerald-300 block">SmartScore™</span>
-              <span className="text-xl font-black font-mono text-emerald-400">{mlOverview?.credit?.credit_score || 715}</span>
-              <span className="text-[10px] text-slate-400 font-mono"> /850</span>
+              <span className="text-xl font-black font-mono text-emerald-400">
+                {mlOverview?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlOverview?.credit?.credit_score ? 'Unrated' : mlOverview.credit.credit_score}
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {mlOverview?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlOverview?.credit?.credit_score ? ' (New)' : ' /850'}
+              </span>
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-black text-white">
-                  14-Day Cash Runway: <span className="text-emerald-400">{mlOverview?.cash_cliff?.runway_days || 90}+ Days Safe</span>
+                  14-Day Cash Runway:{' '}
+                  <span className="text-emerald-400">
+                    {mlOverview?.cash_cliff?.runway_days ? `${mlOverview.cash_cliff.runway_days} Days Safe` : 'Awaiting 1st Entry'}
+                  </span>
                 </span>
-                <span className="text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded-full text-indigo-200">
-                  Gen Fuel Burn: {mlOverview?.cash_cliff?.fuel_gen_burn_pct ?? 18.5}% of Expenses
-                </span>
+                {mlOverview?.cash_cliff?.fuel_gen_burn_pct !== undefined && (
+                  <span className="text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded-full text-indigo-200">
+                    Gen Fuel Burn: {mlOverview.cash_cliff.fuel_gen_burn_pct}% of Expenses
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-slate-300 mt-1 max-w-2xl">
                 {mlOverview?.cash_cliff?.advisory || 'Every sale and petty cash entry logged today updates your real-time Scikit-Learn credit score & 14-day working capital forecast.'}

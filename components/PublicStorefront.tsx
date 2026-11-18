@@ -207,10 +207,40 @@ const PublicStorefront: React.FC = () => {
           }
         };
 
-        const finalBrand = brandData || (isTractionMode || !slug ? mockBrand : null);
+        const defaultUserBrand: BrandIdentity = {
+          businessName: (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('sb_user') || '{}')?.businessName : '') || 'My Storefront',
+          niche: 'Commerce & Services',
+          vibe: 'Modern',
+          socialBio: 'Welcome to our verified storefront! Browse our active listings below or reach out directly via WhatsApp.',
+          colors: { primary: '#0f766e', secondary: '#1e293b', accent: '#f59e0b' },
+          fonts: { primary: 'Inter', secondary: 'Inter' },
+          logoUrl: '',
+          whatsapp: '',
+          phone: '',
+          email: '',
+          location: '',
+          taglines: ['Trusted quality products & services.'],
+          tin: '',
+          cacNumber: '',
+          brandVoice: 'Professional',
+          targetAudience: 'Customers',
+          logoPrompt: '',
+          whatsappGreeting: 'Hello! Welcome to our store.',
+          elevatorPitch: '',
+          trustBadgeText: 'SmartBiz Verified SME',
+          policies: {
+            payment: 'Secure payments supported via Paystack or direct transfer.',
+            delivery: 'Nationwide delivery dispatch available.',
+            refund: 'Contact merchant directly for exchange policies.'
+          },
+          whatsappContent: { stickerIdeas: [], statusTemplates: [], quickReplies: [], broadcastMessages: [] },
+          packaging: { thankYouNote: 'Thank you for your order!', unboxingTip: 'Enjoy your purchase!' }
+        };
+
+        const finalBrand = brandData || (isTractionMode ? mockBrand : (!slug ? defaultUserBrand : null));
         const finalProducts = Array.isArray(productsData) && productsData.length > 0 
           ? productsData 
-          : (isTractionMode || !slug ? [
+          : (isTractionMode ? [
               { id: 101, name: "Premium Ankara Textile - 6 Yards", price: "12500.00", product_type: "PHYSICAL", description: "Premium cotton African print fabric, suitable for all types of traditional outfits.", image_url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff", stock_count: 240 },
               { id: 102, name: "Logistics Dispatch Delivery Run", price: "3500.00", product_type: "SERVICE", description: "Intra-city dispatch logistics delivery within Lagos mainland.", image_url: "", stock_count: 150 },
               { id: 103, name: "Warehouse Storage Unit - 100sqm", price: "250000.00", product_type: "B2B", description: "Secure, dry, and easily accessible warehouse storage unit located in Ikeja.", image_url: "", stock_count: 3 }
