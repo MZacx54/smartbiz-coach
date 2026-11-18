@@ -607,18 +607,26 @@ const PublicStorefront: React.FC = () => {
               )}
             </div>
             <div className="space-y-2 text-xs text-slate-600 font-medium">
-              <div className="flex justify-between">
-                <span>Mon - Fri</span>
-                <span className="font-bold text-slate-800">{brand?.openingHours?.monFri || '8:00 AM - 6:00 PM'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Saturday</span>
-                <span className="font-bold text-slate-800">{brand?.openingHours?.saturday || '9:00 AM - 4:00 PM'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Sunday</span>
-                <span className="font-semibold text-rose-500">{brand?.openingHours?.sunday || 'Closed'}</span>
-              </div>
+              {brand?.openingHours?.monFri ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>Mon - Fri</span>
+                    <span className="font-bold text-slate-800">{brand.openingHours.monFri}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Saturday</span>
+                    <span className="font-bold text-slate-800">{brand.openingHours.saturday || 'Closed'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Sunday</span>
+                    <span className="font-semibold text-rose-500">{brand.openingHours.sunday || 'Closed'}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-slate-400 italic">
+                  Business hours not configured yet. Contact merchant for availability.
+                </p>
+              )}
             </div>
           </div>
 
@@ -664,7 +672,15 @@ const PublicStorefront: React.FC = () => {
         </div>
 
         {/* Right Main Panel: Product Catalog */}
-        <div className="md:col-span-2 space-y-12">
+        <div className="md:col-span-2 space-y-8">
+          {!slug && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-center justify-between text-xs text-amber-900 shadow-sm">
+              <span className="flex items-center gap-2">
+                <span className="text-base">👁️</span>
+                <span><strong>Merchant Preview Mode:</strong> Items labeled <strong className="text-amber-800">🔒 Private</strong> are hidden from public shoppers. Enable &quot;Publish to Web Storefront&quot; in Inventory to make them public.</span>
+              </span>
+            </div>
+          )}
           {['PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B'].map(type => {
             const typeProducts = products.filter(p => p.product_type === type);
             if (typeProducts.length === 0) return null;
@@ -719,6 +735,13 @@ const PublicStorefront: React.FC = () => {
                             >
                               <span>▶️ Watch Video</span>
                             </button>
+                          )}
+
+                          {/* Private Draft Indicator in Merchant Preview */}
+                          {!slug && product.is_public === false && (
+                            <span className="absolute top-3 right-3 bg-slate-900/90 text-amber-300 text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg border border-amber-400/40 flex items-center gap-1 z-20">
+                              🔒 Private Store
+                            </span>
                           )}
 
                           <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md px-3 py-2 rounded-xl shadow-lg flex justify-between items-center z-10">
@@ -792,11 +815,11 @@ const PublicStorefront: React.FC = () => {
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 relative z-10">
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Security</p>
-                  <p className="text-xs text-slate-350 leading-relaxed font-medium">{brand.policies?.payment || 'Multiple secure payment options available.'}</p>
+                  <p className="text-xs text-slate-350 leading-relaxed font-medium">{brand.policies?.payment || 'Payment options arranged directly with merchant upon order confirmation.'}</p>
                 </div>
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dispatch & Delivery</p>
-                  <p className="text-xs text-slate-355 leading-relaxed font-medium">{brand.policies?.delivery || 'Efficient shipping to your doorstep.'}</p>
+                  <p className="text-xs text-slate-355 leading-relaxed font-medium">{brand.policies?.delivery || 'Delivery terms and schedule arranged directly with merchant.'}</p>
                 </div>
              </div>
           </section>

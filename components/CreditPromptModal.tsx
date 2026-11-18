@@ -43,10 +43,61 @@ const CreditPromptModal: React.FC<CreditPromptModalProps> = ({
 
   const hasEnoughCredits = currentCredits >= creditCost;
 
-  // Auto-confirm if user already has enough credits
+  // Clear confirmation modal when user already has sufficient credits
   if (hasEnoughCredits) {
-    onConfirm();
-    return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 relative border border-slate-100 text-center animate-in zoom-in-95 duration-200">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          
+          <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 flex items-center justify-center mx-auto mb-3 text-2xl shadow-sm">
+            ⚡
+          </div>
+          
+          <h3 className="text-lg font-black text-slate-900 font-heading">
+            Confirm Credit Usage
+          </h3>
+          
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed mt-1">
+            Running <strong>{featureLabel}</strong> requires <strong>{creditCost} BizCredits</strong>.
+          </p>
+
+          <div className="my-4 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-500 font-medium">Current Balance:</span>
+            <span className="font-bold text-slate-800">{currentCredits} Credits</span>
+          </div>
+
+          <div className="p-3 bg-indigo-50/60 rounded-2xl border border-indigo-100/60 flex items-center justify-between text-xs mb-5">
+            <span className="text-indigo-700 font-medium">Balance After Action:</span>
+            <span className="font-black text-indigo-900">{currentCredits - creditCost} Credits</span>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                onClose();
+                onConfirm();
+              }}
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl text-xs transition-all active:scale-95 shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Zap className="w-4 h-4 fill-white" />
+              <span>Confirm & Proceed ({creditCost} Credits)</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 text-slate-500 hover:text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handlePaystackTopUp = async () => {

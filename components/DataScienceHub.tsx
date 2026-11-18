@@ -942,21 +942,27 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                       <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
                         🏛️ Loan & Grant Capacity
                       </span>
-                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                        Pre-Qualified
+                      <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full border ${
+                        Boolean((creditData as any)?.has_sufficient_history && (creditData as any)?.recommended_loan_limit_ngn > 0)
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                          : 'bg-slate-700/60 text-slate-300 border-slate-600'
+                      }`}>
+                        {Boolean((creditData as any)?.has_sufficient_history && (creditData as any)?.recommended_loan_limit_ngn > 0) ? 'Pre-Qualified' : 'Evaluating'}
                       </span>
                     </div>
                     <div className="mt-2 text-2xl sm:text-3xl font-black text-white font-mono">
-                      Up to ₦3.5M
+                      {Boolean((creditData as any)?.has_sufficient_history && (creditData as any)?.recommended_loan_limit_ngn > 0)
+                        ? `Up to ₦${((creditData as any).recommended_loan_limit_ngn >= 1000000 ? ((creditData as any).recommended_loan_limit_ngn / 1000000).toFixed(1) + 'M' : (creditData as any).recommended_loan_limit_ngn.toLocaleString())}`
+                        : '₦0 (Evaluating)'}
                     </div>
                     <div className="text-xs font-bold text-indigo-300 mt-1">
                       SmartScore™: <span className="text-emerald-400">{creditData?.credit_score ?? 300}/850</span> ({creditData?.rating_tier || 'Evaluating'})
                     </div>
                     <p className="text-[11px] text-slate-300 mt-2 leading-relaxed">
-                      {creditData?.metrics?.total_sales_logged ? (
+                      {Boolean((creditData as any)?.has_sufficient_history && (creditData as any)?.recommended_loan_limit_ngn > 0) ? (
                         <>Your verified till volume qualifies you for facilities across <strong>BOI, DBN, SMEDAN, and Commercial Banks</strong>.</>
                       ) : (
-                        <>Record daily sales in your Cashbook to generate your official bank pre-qualification rating.</>
+                        <>Record daily sales in your Cashbook across at least 14 active days to generate your official bank pre-qualification rating.</>
                       )}
                     </p>
                   </div>
@@ -1465,7 +1471,13 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                   <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-200/70">
                     <span className="text-[10px] font-black uppercase text-indigo-800 block">Locked in Credit (Gbege)</span>
                     <span className="text-lg font-black text-indigo-700 font-mono mt-1 block">
-                      ₦{Math.round(cashCliff.credit_locked_30d).toLocaleString()}
+                      ₦{Math.round(Math.max(
+                        cashCliff.credit_locked_30d || 0,
+                        (JSON.parse(localStorage.getItem('sb_debtors') || '[]') as any[]).reduce((sum: number, d: any) => {
+                          const paid = (d.payments || []).reduce((pSum: number, p: any) => pSum + (Number(p.amount) || 0), 0);
+                          return sum + Math.max(0, (Number(d.amount) || 0) - paid);
+                        }, 0)
+                      )).toLocaleString()}
                     </span>
                     <span className="text-[10px] text-indigo-800/80">Recoverable working capital</span>
                   </div>
@@ -1653,7 +1665,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                 <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
                   <span className="text-[10px] uppercase font-black text-slate-400 block">Debt Service Coverage (DSCR)</span>
                   <span className="text-2xl font-black text-emerald-400 font-mono mt-1 block">
-                    {(creditData as any)?.ifrs9_risk?.debt_service_coverage_ratio ?? 2.15}x
+                    {(creditData as any)?.has_sufficient_history && (creditData as any)?.ifrs9_risk?.debt_service_coverage_ratio
+                      ? `${(creditData as any).ifrs9_risk.debt_service_coverage_ratio}x`
+                      : 'N/A (Provisional)'}
                   </span>
                   <span className="text-[10px] text-slate-400">BOI Minimum Benchmark: 1.25x</span>
                 </div>
@@ -1661,7 +1675,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                 <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4">
                   <span className="text-[10px] uppercase font-black text-slate-400 block">Safe Credit Limit</span>
                   <span className="text-2xl font-black text-indigo-400 font-mono mt-1 block">
-                    ₦{Math.round((creditData as any)?.recommended_loan_limit_ngn ?? 1500000).toLocaleString()}
+                    {(creditData as any)?.has_sufficient_history && (creditData as any)?.recommended_loan_limit_ngn > 0
+                      ? `₦${Math.round((creditData as any).recommended_loan_limit_ngn).toLocaleString()}`
+                      : '₦0 (Evaluating)'}
                   </span>
                   <span className="text-[10px] text-slate-400">Algorithmic Tranche Cap</span>
                 </div>
@@ -2189,11 +2205,12 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                           <div className="flex items-center gap-2">
                             <span className="font-black text-slate-900 text-sm">{item.name}</span>
                             <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                              item.elasticity_type === 'INSUFFICIENT_DATA' ? 'bg-slate-200 text-slate-700' :
                               item.badge_color === 'emerald' ? 'bg-emerald-100 text-emerald-800' :
                               item.badge_color === 'amber' ? 'bg-amber-100 text-amber-800' :
                               'bg-blue-100 text-blue-800'
                             }`}>
-                              {item.elasticity_type} (e = {item.elasticity_score})
+                              {item.elasticity_type === 'INSUFFICIENT_DATA' ? 'Awaiting Price Variation' : `${item.elasticity_type} (e = ${item.elasticity_score})`}
                             </span>
                           </div>
                           <p className="text-xs text-slate-600 font-medium mt-1">{item.recommendation}</p>

@@ -154,10 +154,10 @@ const LandingPage: React.FC = () => {
         { icon: '🤝', title: 'WhatsApp Negotiation Sandbox', desc: 'Practice closing tough deals with interactive AI customer roleplay across Naija Pidgin, Corporate, and FOMO tones.', color: 'from-amber-500 to-orange-600', pillar: 'Commerce' },
 
         // Pillar 4: Governance, Tax & Capital
-        { icon: '⚖️', title: 'Section 23 CITA Tax Shield', desc: 'Official legal tax exemption memo citing the Companies Income Tax Act (0% tax rate for MSMEs under ₦25M turnover).', color: 'from-emerald-700 to-teal-800', tag: 'Legal Shield', pillar: 'Capital & Law' },
-        { icon: '🏛️', title: 'Accredited CAC Filing Desk', desc: 'Fast-track Done-For-You CAC registration: Business Name (₦27,500), Ltd Co (₦68,000), NGO/Trustee, and SCUML in 3-7 days.', color: 'from-emerald-600 to-teal-700', tag: 'Accredited', pillar: 'Capital & Law' },
+        { icon: '⚖️', title: 'Section 23 CITA Tax Shield', desc: 'Official legal tax exemption memo citing Nigeria Tax Act 2025/2026 & Section 23/40 CITA (0% tax rate for MSMEs under ₦100M turnover, formerly ₦25M).', color: 'from-emerald-700 to-teal-800', tag: 'Legal Shield', pillar: 'Capital & Law' },
+        { icon: '🏛️', title: 'Accredited CAC Filing Desk', desc: 'Fast-track Done-For-You CAC registration: Business Name (₦20,000), Ltd Co (₦65,000), NGO/Trustee, and SCUML in 3-7 days.', color: 'from-emerald-600 to-teal-700', tag: 'Accredited', pillar: 'Capital & Law' },
         { icon: '💰', title: 'Grant & Funding Matcher', desc: 'Automatically scan and match your business with available grants, BOI loans, and international donor programs worth ₦Billions.', color: 'from-emerald-500 to-teal-600', tag: '₦Billions', pillar: 'Capital & Law' },
-        { icon: '📄', title: 'BOI 5-Year Business Plans', desc: 'Generate bank-grade, investor-ready business plans with 5-year cashflow projections, break-even analysis, and official PDF export.', color: 'from-blue-500 to-indigo-600', pillar: 'Capital & Law' },
+        { icon: '📄', title: 'BOI 3-Year Business Plans', desc: 'Generate bank-grade, investor-ready business plans with 3-year cashflow projections, break-even analysis, and official PDF export.', color: 'from-blue-500 to-indigo-600', pillar: 'Capital & Law' },
 
         // Pillar 5: Machine Learning & Institutional Data Science
         { icon: '🧠', title: '300-850 MSME Credit Underwriting', desc: 'Scikit-Learn algorithmic credit risk scorer evaluating real ledger volume, debt recovery speed, and compliance for BOI & bank loans.', color: 'from-indigo-600 to-purple-700', tag: 'Bankable ML', pillar: 'Data Science' },
@@ -190,7 +190,7 @@ const LandingPage: React.FC = () => {
         },
         {
             label: '📸 Snap-to-Studio 2.0',
-            headline: 'Snap on a Bedsheet or Shop Counter ➔ Transform into 4K Luxury Photos',
+            headline: 'Snap on a Bedsheet or Shop Counter ➔ Transform into Studio-Grade HD Photos',
             subheadline: '16 Photorealistic Commercial Studio Backdrops in Seconds',
             body: 'Stop paying ₦50,000+ for commercial photographers. Snap raw photos of your shoes, bags, cosmetics, or packaged food directly on your bed, shop counter, or floor. Our computer-vision engine isolates the product, renders realistic contact shadows and glossy surface reflections, and composites it into 16 luxury commercial scenes with 1-click WhatsApp Status copy.',
             bullets: [
@@ -242,10 +242,10 @@ const LandingPage: React.FC = () => {
             label: '⚖️ Tax Shield & CAC Desk',
             headline: 'Section 23 CITA 0% Tax Exemption Memo & Accredited CAC Filing',
             subheadline: 'Protect Your Business from Illegal Harassment & Formalize for Growth',
-            body: 'Stop getting harassed by rogue local tax agents. Under Section 23 and 40 of the Companies Income Tax Act (CITA), small companies with annual turnover under ₦25,000,000 are legally exempt from company income tax (0% rate). Download your customized formal legal Tax Exemption Shield Memo and access our accredited CAC desk for done-for-you registrations.',
+            body: 'Stop getting harassed by rogue local tax agents. Under the Nigeria Tax Reform Act and Section 23/40 of the Companies Income Tax Act (CITA), small companies with annual turnover under ₦100,000,000 (formerly ₦25,000,000) are legally exempt from company income tax (0% rate). Download your customized formal legal Tax Exemption Shield Memo and access our accredited CAC desk for done-for-you registrations.',
             bullets: [
-                '🛡️ Section 23/40 CITA Official Legal Memo (0% Company Tax under ₦25M turnover)',
-                '🏛️ Accredited CAC Desk: Business Name (₦27,500), Limited Co (₦68,000), NGO/Trustee',
+                '🛡️ Nigeria Tax Act & Section 23/40 CITA Legal Memo (0% Company Tax under ₦100M turnover)',
+                '🏛️ Accredited CAC Desk: Business Name (₦20,000), Limited Co (₦65,000), NGO/Trustee',
                 '📋 SCUML Anti-Money Laundering and NAFDAC compliance checklists',
                 '📑 Annual returns compliance calendar and statutory filing reminders',
                 '⚖️ 100% Free legal exemption memo generator for all registered merchants',
@@ -255,13 +255,13 @@ const LandingPage: React.FC = () => {
         },
         {
             label: '💰 Grants & BOI Business Plans',
-            headline: 'Access ₦Billions in Grants & Generate 5-Year Bankable Proposals',
+            headline: 'Access ₦Billions in Grants & Generate 3-Year Bankable Proposals',
             subheadline: 'Built for BOI, SMEDAN, TEF, DBN, and Bank Loan Approvals',
-            body: 'SmartBiz Coach scans and matches your business against active government and international funding programs. Generate 5-year bank-grade business plans complete with Executive Summary, Market Analysis, 5-Year Cashflow Projections, Break-Even calculations, and CapEx breakdown formatted for official PDF download.',
+            body: 'SmartBiz Coach scans and matches your business against active government and international funding programs. Generate 3-year bank-grade business plans complete with Executive Summary, Market Analysis, 3-Year Cashflow Projections, Break-Even calculations, and CapEx breakdown formatted for official PDF download.',
             bullets: [
                 '💰 Live matching for SMEDAN, BOI MSME Fund, Presidential Palliative, and TEF Grants',
-                '📄 5-Year Bank-Grade Business Plan Generator accepted by commercial banks',
-                '📊 Comprehensive financial modeling: P&L, 5-year cashflow & break-even analysis',
+                '📄 3-Year Bank-Grade Business Plan Generator accepted by commercial banks',
+                '📊 Comprehensive financial modeling: P&L, 3-year cashflow & break-even analysis',
                 '📥 Instant official PDF export formatted to institutional lender standards',
                 '🤝 Direct NGO and development agency cohort onboarding and impact tracking',
             ],
@@ -307,11 +307,11 @@ const LandingPage: React.FC = () => {
     ];
 
     const packs = [
-        { name: 'Micro Pack', price: '₦500', credits: '50 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['50 BizCredits (Never Expire)', '10x Snap-to-Studio 4K Shoots', 'Debt Recovery Workflows', 'Content & Script Posts', '1-Tap Paystack Instant Checkout', 'Standard Merchant Support'] },
-        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 BizCredits', '30x Snap-to-Studio 4K Shoots', '1x AI Brand Identity Kit', '1x Central Market Square 7-Day Boost', 'Pricing & Margin Audits', 'WhatsApp & Priority Email Desk'] },
-        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 BizCredits', '1x BOI Bankable Business Plan (PDF)', '80x Snap-to-Studio Shoots', '4x Market Square 7-Day Boosts', 'Full AI Creative Suite', 'Priority Merchant Support'] },
-        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 BizCredits', '2x Bank-Grade Business Plans', '200x Snap-to-Studio Shoots', '10x Market Square Priority Boosts', 'CAC & Grant Application Support', 'VIP Concierge Desk'] },
-        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Enterprise Dominance', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', '5x Bank-Grade Business Plans', '500x Snap-to-Studio 4K Shoots', '25x Market Square Priority Boosts', 'Multi-Branch & Agency Ready', 'Dedicated 24/7 Account Director'] },
+        { name: 'Micro Pack', price: '₦500', credits: '50 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['50 BizCredits (Never Expire)', '25x Snap-to-Studio HD Shoots', 'Debt Recovery Workflows', 'Content & Script Posts', '1-Tap Paystack Instant Checkout', 'Standard Merchant Support'] },
+        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 BizCredits', '75x Snap-to-Studio HD Shoots', '1x AI Brand Identity Kit', '1x Central Market Square 7-Day Boost', 'Pricing & Margin Audits', 'WhatsApp & Priority Email Desk'] },
+        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 BizCredits', '2x BOI Bankable 3-Year Business Plans', '200x Snap-to-Studio Shoots', '4x Market Square 7-Day Boosts', 'Full AI Creative Suite', 'Priority Merchant Support'] },
+        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 BizCredits', '5x Bank-Grade 3-Year Business Plans', '500x Snap-to-Studio Shoots', '10x Market Square Priority Boosts', 'CAC & Grant Application Support', 'VIP Concierge Desk'] },
+        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Enterprise Dominance', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', '12x Bank-Grade Business Plans', '1,250x Snap-to-Studio HD Shoots', '25x Market Square Priority Boosts', 'Multi-Branch & Agency Ready', 'Dedicated 24/7 Account Director'] },
     ];
 
     // ── THE MSME ZERO-SURPRISE FAIR-USE GUARANTEE MATRIX ──
@@ -333,8 +333,8 @@ const LandingPage: React.FC = () => {
         { feature: 'AI WhatsApp Promo Pack (Status & Broadcast)', cost: '2 BizCredits', type: 'Viral Sales AI', icon: '📣' },
         { feature: 'Voice Note POS Ingestion & Paper Receipt OCR', cost: '2 BizCredits per audio/photo', type: 'Multimodal AI', icon: '🎙️' },
         { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits (~₦500)', type: 'National VIP', icon: '🚀' },
-        { feature: 'Snap-to-Studio 2.0 (4K Commercial Photos)', cost: '5 BizCredits per set', type: 'Advanced AI Compute', icon: '📸' },
-        { feature: 'BOI-Compliant 5-Year Business Plan (PDF)', cost: '200 BizCredits', type: 'Financial Engine', icon: '📄' },
+        { feature: 'Snap-to-Studio 2.0 (Commercial Studio HD Photos)', cost: '2 BizCredits per image', type: 'Advanced AI Compute', icon: '📸' },
+        { feature: 'BOI-Compliant 3-Year Business Plan (PDF)', cost: '200 BizCredits', type: 'Financial Engine', icon: '📄' },
     ];
 
     const faqs = [
@@ -345,9 +345,9 @@ const LandingPage: React.FC = () => {
         { q: 'How does the Anti-Theft Apprentice Shift Mode protect my shop?', a: 'When you activate Apprentice Mode, the cashier/attendant screen is locked behind a 4-digit supervisor PIN. Attendants can rapidly record sales, but they CANNOT edit prices, delete previous sales, backdate transactions, or see your total profit margins. At the end of the shift, the system generates a reconciliation report comparing physical cash to recorded sales.' },
         { q: 'Does the POS Day-Book work when there is no internet / network is down?', a: 'Yes! SmartBiz Coach features an Open Market Offline-First engine specifically engineered for crowded hubs like Alaba International, Balogun, and Computer Village. If your data runs out or cell towers disconnect, you can record sales, scan barcodes, and issue offline receipts. As soon as you are reconnected, all data syncs automatically to the cloud.' },
         { q: 'How does Snap-to-Studio 2.0 work on photos taken on a bedsheet?', a: 'You do not need an expensive camera or backdrop. Simply snap your product on your bedspread, shop counter, or tile floor. Our vision AI removes the background, generates realistic ambient contact shadows and reflections, and composites the item into 16 photorealistic commercial studio environments like Luxury Marble, Sunlight & Shadows, African Raffia, or Warm Oak Cafe Tables.' },
-        { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigerian Companies Income Tax Act (CITA) Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦25,000,000 are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
+        { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigeria Tax Act and CITA Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦100,000,000 (expanded from ₦25,000,000) are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
         { q: 'How do customers pay me through Gbege Book debt reminders and WhatsApp invoices?', a: 'When you send an automated polite WhatsApp reminder or 1-tap invoice, it automatically includes an encrypted Paystack payment link. Your customer can tap the link and pay instantly using their debit card, bank transfer, or USSD. Once paid, the debt or invoice is automatically marked as settled in your ledger with real-time webhook confirmation.' },
-        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new merchant gets 50 Free Welcome Credits upon creating an account. You can use them right away to boost products (a 24-hour spotlight boost is just 10 credits!), generate viral AI WhatsApp promo captions (2 credits), or render 4K studio photos. When you need more compute, credit packs start at just ₦500 for 50 credits (only ₦10 per credit) via Paystack. Credits never expire and all core store management tools stay 100% free forever.' },
+        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new merchant gets 50 Free Welcome Credits upon creating an account. You can use them right away to boost products (a 24-hour spotlight boost is just 10 credits!), generate viral AI WhatsApp promo captions (2 credits), or render studio HD photos. When you need more compute, credit packs start at just ₦500 for 50 credits (only ₦10 per credit) via Paystack. Credits never expire and all core store management tools stay 100% free forever.' },
     ];
 
     const stats = [
@@ -1052,7 +1052,7 @@ const LandingPage: React.FC = () => {
                                                 </div>
                                             ))}
                                             <div className="bg-white text-slate-900 rounded-xl p-2 text-[10px] font-black text-center shadow">
-                                                📄 5-Year Bankable Business Plan Ready for PDF Download
+                                                📄 3-Year Bankable Business Plan Ready for PDF Download
                                             </div>
                                         </div>
                                     )}

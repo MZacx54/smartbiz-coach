@@ -352,7 +352,7 @@ const DigitalRoadmap: React.FC<DigitalRoadmapProps> = ({ onNavigate }) => {
               <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 text-center">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Grant Ready</span>
                 <span className="text-xl font-black text-amber-400 font-mono mt-0.5 block">
-                  {platformStats?.grantReadinessScore ? `${platformStats.grantReadinessScore}%` : `${Math.min(20 + progressPercent * 0.8, 100).toFixed(0)}%`}
+                  {platformStats?.grantReadinessScore !== undefined ? `${platformStats.grantReadinessScore}%` : `${progressPercent}%`}
                 </span>
                 <span className="text-[9px] text-slate-500 font-medium">Underwriting</span>
               </div>

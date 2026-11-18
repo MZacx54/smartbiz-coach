@@ -212,35 +212,44 @@ class CreditScoringService:
         else:
             inventory_points = 30
 
-        # If merchant has zero trading records, return strict unrated baseline
-        if sales_count == 0 and total_revenue == 0 and total_expenses == 0:
+        # Minimum data sufficiency threshold: require at least 10 sales across 7 active days and ₦50K GMV
+        has_sufficient_history = (sales_count >= 10 and active_days >= 7 and total_revenue >= 50000.0)
+
+        if not has_sufficient_history:
+            provisional_score = 300 + compliance_points + min(50, int(cashflow_points * 0.3)) + min(40, int(inventory_points * 0.3))
             return {
-                "credit_score": 300,
+                "credit_score": provisional_score if sales_count > 0 else 300,
                 "max_score": 850,
-                "rating_tier": "UNRATED (No Trading Records)",
+                "rating_tier": "EVALUATING (Early Trading Record)" if sales_count > 0 else "UNRATED (No Trading Records)",
                 "risk_level": "INSUFFICIENT_DATA",
-                "bank_recommendation": "Record daily sales in your Cashbook to generate your official SmartScore™ and unlock bank pre-qualification.",
+                "bank_recommendation": "Record daily sales across at least 14 days in Cashbook to establish verified creditworthiness and unlock bank pre-qualification.",
                 "recommended_loan_limit_ngn": 0,
+                "has_sufficient_history": False,
                 "ifrs9_risk": {
                     "probability_of_default_pct": 0.0,
                     "loss_given_default_pct": 0.0,
                     "expected_credit_loss_ngn": 0.0,
                     "debt_service_coverage_ratio": 0.0,
-                    "ifrs9_stage": "Stage 0 (Awaiting Trading History)",
-                    "ml_risk_engine": "IFRS-9 MSME Baseline Kernel (Awaiting Trading Records)",
+                    "ifrs9_stage": "Stage 0 (Awaiting 14-Day Baseline)",
+                    "ml_risk_engine": "IFRS-9 Underwriting Kernel (Awaiting 10+ Transactions across 7+ Trading Days)",
+                    "disclaimer": "Authoritative default probabilities (PD%) and DSCR require minimum 14 days of cashbook trading history."
                 },
                 "breakdown": {
                     "compliance_points": compliance_points,
-                    "cashflow_points": 0,
-                    "debt_recovery_points": 0,
+                    "cashflow_points": cashflow_points if sales_count > 0 else 0,
+                    "debt_recovery_points": debt_recovery_points if sales_count > 0 else 0,
                     "inventory_points": inventory_points,
                 },
                 "explainability": {
-                    "positive_drivers": [f"+{compliance_points} pts: Registered business profile"] if compliance_points > 0 else [],
-                    "negative_drivers": ["No daily sales or transactions recorded yet in Cashbook"],
+                    "positive_drivers": (
+                        ([f"+{compliance_points} pts: Registered business profile"] if compliance_points > 0 else []) +
+                        ([f"+{cashflow_points} pts: {sales_count} recorded sale(s) (₦{total_revenue:,.0f} GMV)"] if sales_count > 0 else []) +
+                        ([f"+{debt_recovery_points} pts: Disciplined credit ledger with zero overdue debtors"] if unpaid_credit_count == 0 and sales_count > 0 else [])
+                    ) or ["Initial profile established"],
+                    "negative_drivers": [f"Early trading stage ({sales_count} sale(s) logged; minimum 10 sales across 7 active days required for bank underwriting)"],
                     "improvement_actions": [
                         {
-                            "action": "Record daily sales in Cashbook to begin building your credit score",
+                            "action": f"Log {max(1, 10 - sales_count)} more daily cashbook sales across 7 active trading days",
                             "points_gain": 120,
                             "category": "Cashflow",
                         }
@@ -250,11 +259,11 @@ class CreditScoringService:
                 },
                 "metrics": {
                     "cac_verified": bool(is_cac_verified or cac_number),
-                    "total_sales_logged": 0,
-                    "total_gmv_revenue": 0.0,
-                    "total_expenses_logged": 0.0,
+                    "total_sales_logged": sales_count,
+                    "total_gmv_revenue": round(total_revenue, 2),
+                    "total_expenses_logged": round(total_expenses, 2),
                     "active_inventory_items": prod_count,
-                    "active_trading_days_30d": 0,
+                    "active_trading_days_30d": active_days,
                 }
             }
 
@@ -382,6 +391,7 @@ class CreditScoringService:
             "risk_level": risk_level,
             "bank_recommendation": loan_eligibility,
             "recommended_loan_limit_ngn": int(recommended_loan_limit),
+            "has_sufficient_history": True,
             "ifrs9_risk": {
                 "probability_of_default_pct": pd_probability,
                 "loss_given_default_pct": lgd_pct,
@@ -806,44 +816,50 @@ class PriceElasticityService:
             cost_price = float(p.cost_price or (current_price * 0.65))
             margin_pct = round(((current_price - cost_price) / max(1.0, current_price)) * 100, 1) if current_price > 0 else 30.0
 
-            if sales.count() >= 2:
-                prices = [float(s.unit_price) for s in sales if float(s.unit_price or 0) > 0]
-                quantities = [float(s.quantity) for s in sales if (s.quantity or 0) > 0]
+            sales_count = sales.count()
+            prices = [float(s.unit_price) for s in sales if float(s.unit_price or 0) > 0]
+            quantities = [float(s.quantity) for s in sales if (s.quantity or 0) > 0]
+            distinct_prices = set(prices)
+            has_sufficient_variation = (sales_count >= 5 and len(distinct_prices) >= 2)
 
-                if prices and quantities:
-                    p_min, p_max = min(prices), max(prices)
-                    q_min, q_max = min(quantities), max(quantities)
+            if has_sufficient_variation and prices and quantities:
+                p_min, p_max = min(prices), max(prices)
+                q_min, q_max = min(quantities), max(quantities)
 
-                    p_pct = abs((p_max - p_min) / max(1.0, p_min))
-                    q_pct = abs((q_max - q_min) / max(1.0, q_min))
+                p_pct = abs((p_max - p_min) / max(1.0, p_min))
+                q_pct = abs((q_max - q_min) / max(1.0, q_min))
 
-                    ped = round((q_pct / p_pct), 2) if p_pct > 0.01 else 0.45
+                ped = round((q_pct / max(0.01, p_pct)), 2) if p_pct > 0.01 else 1.0
+
+                if ped < 0.8:
+                    elasticity_type = "INELASTIC"
+                    badge_color = "emerald"
+                    suggested_adjustment = 5.0
+                    optimal_price = int(current_price * 1.05)
+                    revenue_impact = f"+₦{int((optimal_price - current_price) * max(5, sales_count)):,} est. monthly gross profit"
+                    recommendation = f"Demonstrated pricing power across varied price points. Consider a moderate price adjustment to ₦{optimal_price:,}."
+                elif ped > 1.2:
+                    elasticity_type = "ELASTIC"
+                    badge_color = "amber"
+                    suggested_adjustment = -5.0
+                    optimal_price = int(current_price * 0.95)
+                    revenue_impact = "+25% higher unit volume expected"
+                    recommendation = "High price sensitivity observed. Package this item as a 'Buy 2' bundle or introduce a 5% promo discount to trigger volume velocity."
                 else:
-                    ped = 0.55
+                    elasticity_type = "BALANCED"
+                    badge_color = "blue"
+                    suggested_adjustment = 0.0
+                    optimal_price = int(current_price)
+                    revenue_impact = "Optimal price equilibrium"
+                    recommendation = f"Current price of ₦{current_price:,.2f} is well-balanced against your customer demand curve."
             else:
-                ped = 0.55 if p.product_type == 'PHYSICAL' else 1.25
-
-            if ped < 0.8:
-                elasticity_type = "INELASTIC"
-                badge_color = "emerald"
-                suggested_adjustment = 8.0
-                optimal_price = int(current_price * 1.08)
-                revenue_impact = f"+₦{int((optimal_price - current_price) * max(5, sales.count())):,} est. monthly gross profit"
-                recommendation = f"Strong pricing power. Customers are insensitive to price. Safely adjust price by +8% to ₦{optimal_price:,} without losing volume."
-            elif ped > 1.2:
-                elasticity_type = "ELASTIC"
-                badge_color = "amber"
-                suggested_adjustment = -5.0
-                optimal_price = int(current_price * 0.95)
-                revenue_impact = "+25% higher unit volume expected"
-                recommendation = "High price sensitivity. Package this item as a 'Buy 2' bundle or introduce a 5% promo discount to trigger volume velocity."
-            else:
-                elasticity_type = "BALANCED"
-                badge_color = "blue"
+                ped = None
+                elasticity_type = "INSUFFICIENT_DATA"
+                badge_color = "slate"
                 suggested_adjustment = 0.0
                 optimal_price = int(current_price)
-                revenue_impact = "Optimal price equilibrium"
-                recommendation = f"Current price of ₦{current_price:,.2f} is well-balanced against your customer demand curve."
+                revenue_impact = "Awaiting price variation data"
+                recommendation = f"Insufficient price variation: At least 5 sales across varying price points are required to statistically measure elasticity ({sales_count} sale(s) logged so far)."
 
             results.append({
                 "product_id": p.id,
@@ -857,7 +873,8 @@ class PriceElasticityService:
                 "suggested_price": optimal_price,
                 "suggested_adjustment_pct": suggested_adjustment,
                 "projected_gain": revenue_impact,
-                "recommendation": recommendation
+                "recommendation": recommendation,
+                "has_sufficient_variation": has_sufficient_variation
             })
 
         return {
@@ -885,7 +902,9 @@ class CashCliffForecastService:
         expenses_30d = list(DailyExpense.objects.filter(user=user, created_at__gte=thirty_days_ago))
 
         total_inflow_30d = sum(float(s.total_amount or 0) for s in sales_30d if s.payment_method != 'CREDIT')
-        credit_locked_30d = sum(float(s.total_amount or 0) for s in sales_30d if s.payment_method == 'CREDIT' and s.is_debt)
+        # All outstanding unsettled debt across the merchant's credit ledger
+        unpaid_credit_sales = DailySale.objects.filter(user=user, payment_method='CREDIT', is_debt=True)
+        credit_locked_30d = sum(float(s.total_amount or 0) for s in unpaid_credit_sales)
         total_outflow_30d = sum(float(e.amount or 0) for e in expenses_30d)
         fuel_gen_outflow_30d = sum(float(e.amount or 0) for e in expenses_30d if e.category == 'FUEL_GEN')
 
@@ -895,7 +914,7 @@ class CashCliffForecastService:
             [e.created_at.date() for e in expenses_30d if e.created_at]
         )))
 
-        has_trading_data = (total_inflow_30d > 0 or total_outflow_30d > 0)
+        has_trading_data = (total_inflow_30d > 0 or total_outflow_30d > 0 or credit_locked_30d > 0)
         if not has_trading_data:
             return {
                 "has_sufficient_data": False,

@@ -185,7 +185,15 @@ class UserStatsView(views.APIView):
 
     def get(self, request):
         user = request.user
-        has_brand = hasattr(user, 'brand_identity')
+        has_brand = False
+        if hasattr(user, 'brand_identity'):
+            b = user.brand_identity
+            has_brand = bool(
+                b.logo_url or 
+                b.logo_prompt or 
+                b.social_bio or 
+                (b.colors and isinstance(b.colors, dict) and b.colors.get('primary'))
+            )
         content_count = user.generated_content.count() if hasattr(user, 'generated_content') else 0
 
         # Check compliance
@@ -224,14 +232,14 @@ class UserStatsView(views.APIView):
 
         total_tasks = 6
         
-        # Readiness score
-        score = 20
+        # Readiness score: calculated from verified completed milestones, avoiding unearned baselines
+        score = 0
+        if user.business_name: score += 10
         if has_cac: score += 25
         if has_brand: score += 20
         if has_products: score += 15
-        if has_sales: score += 10
-        if content_count > 0: score += 10
-        if user.plan == 'Pro': score += 20
+        if has_sales: score += 15
+        if content_count > 0: score += 15
 
         return Response({
             "grantReadinessScore": min(score, 100),
@@ -250,7 +258,15 @@ class UserActionsView(views.APIView):
 
     def get(self, request):
         user = request.user
-        has_brand = hasattr(user, 'brand_identity')
+        has_brand = False
+        if hasattr(user, 'brand_identity'):
+            b = user.brand_identity
+            has_brand = bool(
+                b.logo_url or 
+                b.logo_prompt or 
+                b.social_bio or 
+                (b.colors and isinstance(b.colors, dict) and b.colors.get('primary'))
+            )
         content_count = user.generated_content.count() if hasattr(user, 'generated_content') else 0
         
         has_cac = False

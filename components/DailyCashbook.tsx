@@ -16,14 +16,11 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import VoiceNoteModal from './VoiceNoteModal';
+import { getBusinessDateStr, formatBusinessDate } from '../utils/dateTime';
 
-// Local (device) calendar date as YYYY-MM-DD. toISOString() is UTC and shows the wrong day
-// for Nigerian merchants between 00:00 and 01:00 WAT.
-const localDateStr = (d: Date = new Date()): string => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+// Authoritative West Africa Time (WAT) calendar date as YYYY-MM-DD
+const localDateStr = (d?: Date): string => {
+  return getBusinessDateStr(d);
 };
 
 const EXPENSE_CATEGORY_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -56,8 +53,15 @@ export const DailyCashbook: React.FC = () => {
   const [trends, setTrends] = useState<any | null>(null);
   const [mlOverview, setMlOverview] = useState<any | null>(() => {
     try {
-      const cached = localStorage.getItem('sb_ml_overview_cache');
-      return cached ? JSON.parse(cached) : null;
+      const cachedStr = localStorage.getItem('sb_ml_overview_cache');
+      if (!cachedStr) return null;
+      const cached = JSON.parse(cachedStr);
+      // Discard legacy fabricated test data if score is exactly 715 or if fuel burn is 18.5%
+      if (cached?.credit?.credit_score === 715 || cached?.cash_cliff?.fuel_gen_burn_pct === 18.5) {
+        localStorage.removeItem('sb_ml_overview_cache');
+        return null;
+      }
+      return cached;
     } catch {
       return null;
     }
@@ -1799,15 +1803,22 @@ export const DailyCashbook: React.FC = () => {
       {!isShiftMode && (
         <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-emerald-950 text-white rounded-3xl p-4 sm:p-5 border border-indigo-500/30 shadow-lg flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-emerald-500/15 border border-emerald-400/30 rounded-2xl px-4 py-2.5 text-center shrink-0">
-              <span className="text-[9px] font-black uppercase tracking-widest text-emerald-300 block">SmartScore™</span>
-              <span className="text-xl font-black font-mono text-emerald-400">
-                {mlOverview?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlOverview?.credit?.credit_score ? 'Unrated' : mlOverview.credit.credit_score}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {mlOverview?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlOverview?.credit?.credit_score ? ' (New)' : ' /850'}
-              </span>
-            </div>
+            {mlOverview ? (
+              <div className="bg-emerald-500/15 border border-emerald-400/30 rounded-2xl px-4 py-2.5 text-center shrink-0">
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-300 block">SmartScore™</span>
+                <span className="text-xl font-black font-mono text-emerald-400">
+                  {mlOverview?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlOverview?.credit?.credit_score ? 'Unrated' : mlOverview.credit.credit_score}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {mlOverview?.credit?.risk_level === 'INSUFFICIENT_DATA' || !mlOverview?.credit?.credit_score ? ' (New)' : ' /850'}
+                </span>
+              </div>
+            ) : (
+              <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-center shrink-0 animate-pulse">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">SmartScore™</span>
+                <span className="text-xl font-black font-mono text-slate-300">Evaluating...</span>
+              </div>
+            )}
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-black text-white">
@@ -1816,7 +1827,7 @@ export const DailyCashbook: React.FC = () => {
                     {mlOverview?.cash_cliff?.runway_days ? `${mlOverview.cash_cliff.runway_days} Days Safe` : 'Awaiting 1st Entry'}
                   </span>
                 </span>
-                {mlOverview?.cash_cliff?.fuel_gen_burn_pct !== undefined && (
+                {mlOverview?.cash_cliff?.fuel_gen_burn_pct !== undefined && mlOverview?.cash_cliff?.fuel_gen_burn_pct > 0 && (
                   <span className="text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded-full text-indigo-200">
                     Gen Fuel Burn: {mlOverview.cash_cliff.fuel_gen_burn_pct}% of Expenses
                   </span>

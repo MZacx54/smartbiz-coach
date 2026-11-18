@@ -781,6 +781,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
     const [aspectRatio, setAspectRatio] = useState<AspectRatio>('Square (1:1)');
 
     const [isGenerating, setIsGenerating] = useState(false);
+    const isGeneratingRef = useRef<boolean>(false);
     const [generatedContent, setGeneratedContent] = useState<any>(null);
     const [storyboard, setStoryboard] = useState<any>(null);
     const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
@@ -812,8 +813,23 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         }
     };
 
+    const getTabCreditCost = () => {
+        switch (activeTab) {
+            case 'Post Writer': return 15;
+            case 'Blog Writer': return 15;
+            case 'Weekly Plan': return 15;
+            case 'Partnership Pitch': return 20;
+            case 'Video Script': return 30;
+            case 'Photo Studio': return 10;
+            default: return 15;
+        }
+    };
+
     const executeGeneration = async (deduct: boolean, cost: number) => {
+        if (isGeneratingRef.current || isGenerating) return;
+        isGeneratingRef.current = true;
         setIsGenerating(true);
+        setShowCreditPrompt(false);
         setError(null);
         setGeneratedContent(null);
         setStoryboard(null);
@@ -917,12 +933,15 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             console.error(err);
             setError(err?.response?.data?.error || err.message || "Failed to generate content. Please try again.");
         } finally {
+            isGeneratingRef.current = false;
             setIsGenerating(false);
             setShowCreditPrompt(false);
         }
     };
 
     const handleGenerate = async () => {
+        if (isGenerating || isGeneratingRef.current) return;
+        const targetCost = getTabCreditCost();
         const usage = usageLimiter.checkUsage('content_generator', credits);
         if (!usage.allowed) {
             setDeductOnConfirm(null);
@@ -932,7 +951,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
 
         if (usage.useCredits) {
             setDeductOnConfirm(() => async () => {
-                await executeGeneration(true, usage.cost);
+                await executeGeneration(true, targetCost);
             });
             setShowCreditPrompt(true);
         } else {
@@ -1236,7 +1255,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 </div>
 
                                 <button onClick={handleGenerate} disabled={isGenerating || !postTopic.trim()} className="w-full py-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-500 hover:to-purple-600 disabled:opacity-50 text-white rounded-2xl font-black shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2 text-base mt-4 cursor-pointer active:scale-98">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Post & Captions</span><span>✨</span></>}
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Post & Captions (15 Credits)</span><span>✨</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -1270,7 +1289,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                     </div>
                                 </div>
                                 <button onClick={handleGenerate} disabled={isGenerating || !blogTopic.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Blog Article</span><span>✍️</span></>}
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Blog Article (15 Credits)</span><span>✍️</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -1309,7 +1328,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                     </div>
                                 </div>
                                 <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Pitch Proposal</span><span>🤝</span></>}
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Pitch Proposal (20 Credits)</span><span>🤝</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -1378,7 +1397,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 </div>
 
                                 <button onClick={handleGenerate} disabled={isGenerating || !videoTopic.trim()} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Video Script</span><span>🎬</span></>}
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Video Script (30 Credits)</span><span>🎬</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -1424,7 +1443,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                 </div>
 
                                 <button onClick={handleGenerate} disabled={isGenerating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center justify-center space-x-2 text-base mt-4">
-                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Weekly Plan</span><span>🚀</span></>}
+                                    {isGenerating ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <><span>Generate Weekly Plan (15 Credits)</span><span>🚀</span></>}
                                 </button>
                             </motion.div>
                         )}
@@ -2103,8 +2122,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             {/* Billing limit triggers */}
             <CreditPromptModal
                 isOpen={showCreditPrompt}
-                onClose={() => setShowCreditPrompt(false)}
-                creditCost={activeTab === 'Post Writer' ? 5 : activeTab === 'Blog Writer' ? 15 : activeTab === 'Partnership Pitch' ? 20 : activeTab === 'Video Script' ? 30 : 10}
+                onClose={() => {
+                    setShowCreditPrompt(false);
+                    setDeductOnConfirm(null);
+                }}
+                creditCost={getTabCreditCost()}
                 featureLabel={`Content Studio (${activeTab})`}
                 currentCredits={credits}
                 onConfirm={deductOnConfirm || (() => {})}

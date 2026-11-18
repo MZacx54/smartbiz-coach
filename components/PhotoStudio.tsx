@@ -140,7 +140,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
     const [showBadge, setShowBadge] = useState<boolean>(true);
     const [badgeTitle, setBadgeTitle] = useState<string>('');
     const [badgePrice, setBadgePrice] = useState<string>('');
-    const [badgePromo, setBadgePromo] = useState<string>('VERIFIED QUALITY');
+    const [badgePromo, setBadgePromo] = useState<string>('ORIGINAL');
     const [badgeTheme, setBadgeTheme] = useState<'emerald' | 'gold' | 'ruby' | 'dark' | 'white'>('emerald');
     const [badgeStyle, setBadgeStyle] = useState<'card' | 'pill'>('card');
     const [badgeCoords, setBadgeCoords] = useState<{ x: number; y: number }>({ x: 74, y: 78 });
@@ -189,7 +189,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
         ? `https://wa.me/${cleanWaNumber}?text=${encodeURIComponent(whatsAppOrderMessage)}`
         : `https://wa.me/?text=${encodeURIComponent(whatsAppOrderMessage)}`;
 
-    const effectiveWatermarkLabel = (watermarkText.trim() || `Verified Authentic • ${businessName}`).toUpperCase();
+    const effectiveWatermarkLabel = (watermarkText.trim() || businessName).toUpperCase();
 
     // Instant Demo Sample
     const loadSampleProduct = () => {
@@ -885,8 +885,8 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
             ctx.font = 'bold 24px sans-serif';
             ctx.textAlign = 'center';
             const footerMsg = merchantPhone
-                ? `📲 ORDER ON WHATSAPP: ${merchantPhone} • ${businessName.toUpperCase()} • VERIFIED AUTHENTIC`
-                : `🏪 ${businessName.toUpperCase()} • VERIFIED AUTHENTIC PRODUCT`;
+                ? `📲 ORDER ON WHATSAPP: ${merchantPhone} • ${businessName.toUpperCase()}`
+                : `🏪 ${businessName.toUpperCase()} • PRODUCT SHOWCASE`;
             ctx.fillText(footerMsg, cw / 2, 1155);
 
             const link = document.createElement('a');
@@ -1582,7 +1582,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                                             <>
                                                 <div className="flex items-center justify-between gap-2 mb-1">
                                                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/10 uppercase tracking-wider">
-                                                        {badgePromo || 'VERIFIED'}
+                                                        {badgePromo || 'ORIGINAL'}
                                                     </span>
                                                     <span className="text-[10px] opacity-60 font-mono">⇄ Drag</span>
                                                 </div>
@@ -1925,7 +1925,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                                         type="text"
                                         value={watermarkText}
                                         onChange={(e) => setWatermarkText(e.target.value)}
-                                        placeholder={`Verified Authentic • ${businessName}`}
+                                        placeholder={businessName}
                                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500"
                                     />
                                 </div>

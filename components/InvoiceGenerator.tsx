@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Invoice, InvoiceItem } from '../types';
 import ShareActions from './ShareActions';
 import { ArrowLeft, Plus, Trash2, Download, CheckCircle, FileText, DollarSign, Calendar, Eye, Send, Copy, Check, MessageSquare } from 'lucide-react';
+import { getBusinessDateStr, getBusinessDueDateStr } from '../utils/dateTime';
 import { toast } from 'react-hot-toast';
 
 const mockInvoices: Invoice[] = [
@@ -107,16 +108,18 @@ const InvoiceGenerator: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   // Form State
+  const configuredTerms = (typeof window !== 'undefined' ? localStorage.getItem('sb_invoice_payment_terms') : null) || 'DUE_ON_RECEIPT';
+  const configuredCurrency = (typeof window !== 'undefined' ? localStorage.getItem('sb_invoice_currency') : null) || '₦';
   const [formInvoice, setFormInvoice] = useState<Invoice>({
     id: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
     clientName: '',
     clientPhone: '',
-    date: new Date().toISOString().split('T')[0],
-    dueDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+    date: getBusinessDateStr(),
+    dueDate: configuredTerms === 'DUE_ON_RECEIPT' ? getBusinessDateStr() : getBusinessDueDateStr(15),
     items: [{ id: '1', description: '', quantity: 1, price: 0 }],
     discount: 0,
-    taxRate: 0,
-    currency: '₦',
+    taxRate: 0, // Default to 0% — small businesses are not assumed to have VAT until configured
+    currency: configuredCurrency,
     note: 'Thank you for your patronage!',
     senderAddress: '',
     senderEmail: '',
@@ -126,7 +129,7 @@ const InvoiceGenerator: React.FC = () => {
     bankAccountName: '',
     bankAccountNumber: '',
     paymentStatus: 'DRAFT',
-    paymentTerms: 'NET_15'
+    paymentTerms: configuredTerms as any
   });
 
   const loadInvoices = () => {
@@ -257,27 +260,33 @@ const InvoiceGenerator: React.FC = () => {
   const handleCreateNew = () => {
     const savedUser = JSON.parse(localStorage.getItem('sb_user') || '{}');
     const savedBrand = JSON.parse(localStorage.getItem('sb_brand') || 'null');
+    const savedTerms = localStorage.getItem('sb_invoice_payment_terms') || 'DUE_ON_RECEIPT';
+    const savedCurrency = localStorage.getItem('sb_invoice_currency') || '₦';
+    const bName = savedBrand?.bankName || savedUser?.bankName || '';
+    const bAcc = savedBrand?.accountNumber || savedUser?.accountNumber || '';
     
     setFormInvoice({
       id: `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       clientName: '',
       clientPhone: '',
-      date: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+      date: getBusinessDateStr(),
+      dueDate: savedTerms === 'DUE_ON_RECEIPT' ? getBusinessDateStr() : getBusinessDueDateStr(15),
       items: [{ id: '1', description: '', quantity: 1, price: 0 }],
       discount: 0,
-      taxRate: 7.5, // Standard Nigerian VAT
-      currency: '₦',
-      note: 'Please remit payment to the bank account listed above. Thank you for your business!',
+      taxRate: 0, // Default to 0% — tax applies only if merchant explicitly inputs or confirms VAT
+      currency: savedCurrency,
+      note: (bName || bAcc) 
+        ? 'Please remit payment to the bank account listed above. Thank you for your business!'
+        : 'Thank you for your valued business!',
       senderAddress: savedBrand?.location || savedUser?.location || '',
       senderEmail: savedUser?.email || '',
       senderPhone: savedUser?.phone || '',
       senderTin: savedBrand?.tin || '',
-      bankName: savedBrand?.bankName || savedUser?.bankName || '',
+      bankName: bName,
       bankAccountName: savedBrand?.accountName || savedUser?.businessName || savedUser?.name || '',
-      bankAccountNumber: savedBrand?.accountNumber || savedUser?.accountNumber || '',
+      bankAccountNumber: bAcc,
       paymentStatus: 'DRAFT',
-      paymentTerms: 'NET_15'
+      paymentTerms: savedTerms as any
     });
     setStep('EDIT');
   };
@@ -362,10 +371,9 @@ ${itemsText}
 💰 *TOTAL DUE:* ₦${tot.toLocaleString()}
 ---------------------------------
 
+${(inv.bankName || inv.bankAccountNumber) ? `
 🏦 *BANK PAYMENT DETAILS:*
-• *Bank:* ${inv.bankName || 'Access Bank PLC'}
-• *Account Name:* ${inv.bankAccountName || 'SmartBiz Solutions'}
-• *Account Number:* ${inv.bankAccountNumber || 'N/A'}
+${inv.bankName ? `• *Bank:* ${inv.bankName}\n` : ''}${inv.bankAccountName ? `• *Account Name:* ${inv.bankAccountName}\n` : ''}${inv.bankAccountNumber ? `• *Account Number:* ${inv.bankAccountNumber}\n` : ''}` : ''}
 
 ${inv.note ? `📝 *Note:* ${inv.note}\n` : ''}Thank you for your valued business!
 Generated via SmartBiz Coach`;
@@ -540,12 +548,19 @@ Generated via SmartBiz Coach`;
 
           {/* Financial Totals & Payment Details */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-t border-slate-100 pt-5">
-            <div className="w-full sm:w-1/2 p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 space-y-1">
-              <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Payment Instructions</h4>
-              <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Bank:</span> {selectedInvoice.bankName || 'Access Bank PLC'}</p>
-              <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Account Name:</span> {selectedInvoice.bankAccountName}</p>
-              <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Account Number:</span> {selectedInvoice.bankAccountNumber}</p>
-            </div>
+            {Boolean(selectedInvoice.bankName || selectedInvoice.bankAccountNumber) ? (
+              <div className="w-full sm:w-1/2 p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 space-y-1">
+                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Payment Instructions</h4>
+                {selectedInvoice.bankName && <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Bank:</span> {selectedInvoice.bankName}</p>}
+                {selectedInvoice.bankAccountName && <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Account Name:</span> {selectedInvoice.bankAccountName}</p>}
+                {selectedInvoice.bankAccountNumber && <p className="text-xs text-slate-700"><span className="font-bold text-slate-500">Account Number:</span> {selectedInvoice.bankAccountNumber}</p>}
+              </div>
+            ) : (
+              <div className="w-full sm:w-1/2 p-3.5 bg-slate-50/60 rounded-xl border border-dashed border-slate-200 space-y-1">
+                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Payment Instructions</h4>
+                <p className="text-xs text-slate-500 italic">No bank payout details configured. Add your account in Settings & Preferences.</p>
+              </div>
+            )}
             
             <div className="w-full sm:w-1/3 space-y-1.5">
               <div className="flex justify-between text-xs text-slate-500 font-medium">

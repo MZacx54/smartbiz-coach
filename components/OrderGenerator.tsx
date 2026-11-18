@@ -3,6 +3,7 @@ import { Receipt, Plus, Trash2, Download, Share2, User, Phone, MapPin, Calculato
 import { motion, AnimatePresence } from 'framer-motion';
 import { toPng } from 'html-to-image';
 import { toast } from 'react-hot-toast';
+import { formatBusinessDate } from '../utils/dateTime';
 
 interface OrderItem {
   id: string;
@@ -282,7 +283,7 @@ ${items.map(i => `- ${i.name} (${i.qty}x) @ ₦${i.price.toLocaleString()}`).joi
                   </div>
                   <div className="space-y-1 text-right">
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Date</p>
-                    <p className="text-sm font-bold text-slate-800">{new Date().toLocaleDateString()}</p>
+                    <p className="text-sm font-bold text-slate-800">{formatBusinessDate(new Date())}</p>
                   </div>
                   {address && (
                     <div className="col-span-2 space-y-1 pt-2 border-t border-slate-200/50">

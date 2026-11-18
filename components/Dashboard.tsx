@@ -11,6 +11,7 @@ import api from '../services/api';
 import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
+import { getBusinessDateStr } from '../utils/dateTime';
 
 interface DashboardProps {
   userStats: UserStats;
@@ -170,9 +171,17 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
           }, 0);
           setTotalDebt(unpaid);
 
-          const savedInventory: InventoryItem[] = JSON.parse(localStorage.getItem('sb_inventory') || '[]');
-          const stockVal = savedInventory.reduce((acc, curr) => acc + (Number(curr.price || 0) * (curr.quantity || 0)), 0);
+          const savedProducts: any[] = JSON.parse(localStorage.getItem('sb_cached_products') || localStorage.getItem('sb_inventory') || '[]');
+          const stockVal = savedProducts.reduce((acc, curr) => acc + (Number(curr.price || 0) * (Number(curr.stock_count ?? curr.quantity ?? 0))), 0);
           setStockValue(stockVal);
+
+          // Also asynchronously fetch latest products from API to ensure fresh stock value
+          api.get('/api/marketplace/products/').then(pRes => {
+            if (Array.isArray(pRes.data)) {
+              const liveVal = pRes.data.reduce((acc: number, curr: any) => acc + (Number(curr.price || 0) * (Number(curr.stock_count ?? 0))), 0);
+              setStockValue(liveVal);
+            }
+          }).catch(() => {});
 
           const savedTx: Transaction[] = JSON.parse(localStorage.getItem('sb_transactions') || '[]');
           setRecentTransactions(savedTx.slice(0, 3));
@@ -239,7 +248,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
       if (savedTasks) {
         try {
           const parsed = JSON.parse(savedTasks);
-          const today = new Date().toISOString().split('T')[0];
+          const today = getBusinessDateStr();
           if (parsed.date === today) {
             setCompletedTasks(parsed.tasks || {});
           }
@@ -254,7 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
   const toggleTask = (index: number) => {
     const updated = { ...completedTasks, [index]: !completedTasks[index] };
     setCompletedTasks(updated);
-    const today = new Date().toISOString().split('T')[0];
+    const today = getBusinessDateStr();
     localStorage.setItem('sb_completed_daily_tasks_data', JSON.stringify({
       date: today,
       tasks: updated

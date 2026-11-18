@@ -263,21 +263,33 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
 
   // Load data stats
   useEffect(() => {
-    const debtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
-    const invoices = JSON.parse(localStorage.getItem('sb_invoices_detailed') || '[]');
-    const products = JSON.parse(localStorage.getItem('sb_idice_products') || '[]');
-    const txLogs = JSON.parse(localStorage.getItem('sb_idice_transaction_logs') || '[]');
-    const brand = localStorage.getItem('sb_brand');
-    const contentHistory = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
+    const loadStats = async () => {
+      const debtors = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
+      const invoices = JSON.parse(localStorage.getItem('sb_invoices_detailed') || '[]');
+      let localProducts = JSON.parse(localStorage.getItem('sb_cached_products') || localStorage.getItem('sb_idice_products') || '[]');
+      const txLogs = JSON.parse(localStorage.getItem('sb_idice_transaction_logs') || '[]');
+      const brand = localStorage.getItem('sb_brand');
+      const contentHistory = JSON.parse(localStorage.getItem('sb_content_history') || '[]');
 
-    setDataStats({
-      debtors: debtors.length,
-      invoices: invoices.length,
-      products: products.length,
-      transactionLogs: txLogs.length,
-      brandProfile: !!brand,
-      contentHistory: contentHistory.length,
-    });
+      try {
+        const prodRes = await api.get('/api/marketplace/products/');
+        if (Array.isArray(prodRes.data)) {
+          localProducts = prodRes.data;
+        }
+      } catch {
+        // use local cache
+      }
+
+      setDataStats({
+        debtors: debtors.length,
+        invoices: invoices.length,
+        products: localProducts.length,
+        transactionLogs: txLogs.length,
+        brandProfile: !!brand,
+        contentHistory: contentHistory.length,
+      });
+    };
+    loadStats();
   }, []);
 
   const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -410,28 +422,72 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   };
 
   // Data export/clear handlers
-  const handleExportAllData = () => {
-    const allData = {
-      debtors: JSON.parse(localStorage.getItem('sb_debtors') || '[]'),
-      invoices: JSON.parse(localStorage.getItem('sb_invoices_detailed') || '[]'),
-      products: JSON.parse(localStorage.getItem('sb_idice_products') || '[]'),
-      transactionLogs: JSON.parse(localStorage.getItem('sb_idice_transaction_logs') || '[]'),
-      brand: JSON.parse(localStorage.getItem('sb_brand') || 'null'),
-      contentHistory: JSON.parse(localStorage.getItem('sb_content_history') || '[]'),
-      user: JSON.parse(localStorage.getItem('sb_user') || '{}'),
-      exportedAt: new Date().toISOString()
-    };
+  const handleExportAllData = async () => {
+    toast.loading("Preparing comprehensive business backup...", { id: 'backup-toast' });
+    try {
+      // 1. Authoritative inventory items from backend or cache
+      let productsList: any[] = JSON.parse(localStorage.getItem('sb_cached_products') || localStorage.getItem('sb_idice_products') || '[]');
+      try {
+        const prodRes = await api.get('/api/marketplace/products/');
+        if (Array.isArray(prodRes.data) && prodRes.data.length > 0) {
+          productsList = prodRes.data;
+        }
+      } catch {
+        // use local cache
+      }
 
-    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `smartbiz_full_backup_${Date.now()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success("Full business data backup exported!");
+      // 2. Authoritative sales & expenses from backend or cache
+      let salesList: any[] = JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
+      let expensesList: any[] = JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]');
+      try {
+        const [salesRes, expRes] = await Promise.allSettled([
+          api.get('/api/marketplace/daily-sales/'),
+          api.get('/api/marketplace/daily-expenses/')
+        ]);
+        if (salesRes.status === 'fulfilled' && Array.isArray(salesRes.value.data)) {
+          salesList = salesRes.value.data;
+        }
+        if (expRes.status === 'fulfilled' && Array.isArray(expRes.value.data)) {
+          expensesList = expRes.value.data;
+        }
+      } catch {
+        // use local cache
+      }
+
+      const allData = {
+        products: productsList,
+        cashbookSales: salesList,
+        cashbookExpenses: expensesList,
+        debtors: JSON.parse(localStorage.getItem('sb_debtors') || '[]'),
+        invoices: JSON.parse(localStorage.getItem('sb_invoices_detailed') || '[]'),
+        transactionLogs: JSON.parse(localStorage.getItem('sb_idice_transaction_logs') || '[]'),
+        brand: JSON.parse(localStorage.getItem('sb_brand') || 'null'),
+        contentHistory: JSON.parse(localStorage.getItem('sb_content_history') || '[]'),
+        user: JSON.parse(localStorage.getItem('sb_user') || '{}'),
+        exportedAt: new Date().toISOString(),
+        backupSchemaVersion: '2.0',
+        metadata: {
+          productCount: productsList.length,
+          salesCount: salesList.length,
+          expensesCount: expensesList.length,
+          debtorCount: JSON.parse(localStorage.getItem('sb_debtors') || '[]').length,
+          invoiceCount: JSON.parse(localStorage.getItem('sb_invoices_detailed') || '[]').length
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `smartbiz_full_backup_${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Full business data backup exported!", { id: 'backup-toast' });
+    } catch {
+      toast.error("Failed to export full backup", { id: 'backup-toast' });
+    }
   };
 
   const handleClearSpecificData = (key: string, label: string) => {
@@ -783,7 +839,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                 {userStats.bizCredits} <span className="text-lg font-medium text-indigo-300">Credits</span>
               </h3>
               <p className="text-xs text-indigo-300 max-w-sm leading-relaxed mb-6">
-                Use credits for advanced tasks: Business Plans (15), Photo Studio (2), AI Reminders (1), and more.
+                Use credits for advanced tasks: Business Plans (200), Content Studio (15), Photo Studio (2), AI Reminders (1), and more.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -925,8 +981,8 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                     <span className="text-base">📋</span>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="font-extrabold text-slate-900">Bankable AI Business Plan</p>
-                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">15 Credits</span>
+                        <p className="font-extrabold text-slate-900">Bankable AI Business Plan (3-Year Model)</p>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">200 Credits</span>
                       </div>
                       <p className="text-[11px] text-slate-500">Comprehensive 3-year financial model, market feasibility, and grant/loan-ready document.</p>
                     </div>
@@ -946,7 +1002,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="font-extrabold text-slate-900">AI Social & Marketing Copywriter</p>
-                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">1 Credit</span>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">15 Credits</span>
                       </div>
                       <p className="text-[11px] text-slate-500">Sales hooks, Instagram captions, WhatsApp promo broadcasts, and product pitches.</p>
                     </div>

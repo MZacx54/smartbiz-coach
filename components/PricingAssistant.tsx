@@ -38,7 +38,7 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
   const [deductOnConfirm, setDeductOnConfirm] = useState<(() => Promise<void>) | null>(null);
   const [copiedTemplate, setCopiedTemplate] = useState(false);
 
-  const executeAnalyse = async () => {
+  const executeAnalyse = async (shouldDeduct: boolean = false) => {
     setIsLoading(true);
     setError('');
     setShowCreditPrompt(false);
@@ -50,9 +50,11 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
         targetMargin: parseFloat(targetMargin),
       });
 
-      // Only deduct credits if generation successfully completed (2 credits matching UI promise)
-      const billingResponse = await billingService.deductCredits(2, 'AI Pricing & Margin Optimization Assistant');
-      onUpdateCredits(billingResponse.credits);
+      // Only deduct credits if free daily allowance was exceeded
+      if (shouldDeduct) {
+        const billingResponse = await billingService.deductCredits(2, 'AI Pricing & Margin Optimization Assistant');
+        onUpdateCredits(billingResponse.credits);
+      }
 
       setResult(data);
     } catch (e: any) {
@@ -74,12 +76,12 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
       return;
     }
     if (usage.useCredits) {
-      setDeductOnConfirm(() => async () => { await executeAnalyse(); });
+      setDeductOnConfirm(() => async () => { await executeAnalyse(true); });
       setShowCreditPrompt(true);
       return;
     }
     usageLimiter.incrementUsage('pricing_assistant');
-    await executeAnalyse();
+    await executeAnalyse(false);
   };
 
   const PriceCard = ({ label, price, margin, highlight = false }: { label: string; price: number; margin: number; highlight?: boolean }) => (
@@ -163,15 +165,19 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
         <button
           onClick={handleAnalyse}
           disabled={isLoading || !productName || !costPrice}
-          className="w-full py-3.5 bg-indigo-600 disabled:bg-gray-300 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 flex justify-center items-center gap-2"
+          className="w-full py-3.5 bg-indigo-600 disabled:bg-gray-300 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 flex justify-center items-center gap-2 cursor-pointer"
         >
           {isLoading ? (
             <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Calculating...</>
           ) : (
-            <><span>Analyse Pricing</span><span>💡</span></>
+            <><span>Analyse Pricing {usageLimiter.getUsageCount('pricing_assistant') < 2 ? `(Free • ${2 - usageLimiter.getUsageCount('pricing_assistant')} left today)` : '(2 Credits)'}</span><span>💡</span></>
           )}
         </button>
-        <p className="text-center text-xs text-slate-400">⚡ 2 credits per analysis • 2 free per day</p>
+        <p className="text-center text-xs text-slate-500">
+          ⚡ {usageLimiter.getUsageCount('pricing_assistant') < 2 
+            ? `2 free analyses per day (${2 - usageLimiter.getUsageCount('pricing_assistant')} remaining today) • then 2 credits` 
+            : 'Daily free allowance used • 2 BizCredits per analysis'}
+        </p>
       </div>
 
       {result && !isLoading && (

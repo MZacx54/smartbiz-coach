@@ -446,6 +446,23 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     setNewDebtor({ name: '', amount: '', phone: '', itemsBought: '', dueDate: '' });
     setSelectedItems([]);
     setShowForm(false);
+
+    // Also post to backend DailySale as a credit sale so backend analytics and cash cliff are synchronized
+    api.post('/api/marketplace/daily-sales/', {
+      item_name: itemsText || 'General Credit Sale',
+      total_amount: parseFloat(newDebtor.amount),
+      quantity: 1,
+      unit_price: parseFloat(newDebtor.amount),
+      payment_method: 'CREDIT',
+      is_debt: true,
+      customer_name: newDebtor.name,
+      customer_phone: newDebtor.phone,
+      debt_due_date: newDebtor.dueDate || undefined,
+      notes: `Gbege Book Debtor #${d.id}`
+    }).catch(err => {
+      console.warn("Could not sync credit sale to backend:", err);
+    });
+
     toast.success("Debtor recorded successfully!");
   };
 
@@ -551,6 +568,43 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     });
 
     setDebtors(updatedDebtors);
+
+    // Synchronize receipt transaction with DailyCashbook and backend
+    const today = new Date().toISOString().split('T')[0];
+    const saleReceiptPayload = {
+      item_name: `Debtor Recovery: ${paymentModalDebtor.name} (${paymentNote || 'Installment'})`,
+      total_amount: payVal,
+      quantity: 1,
+      unit_price: payVal,
+      payment_method: paymentMethod, // 'TRANSFER', 'CASH', or 'POS'
+      is_debt: false,
+      customer_name: paymentModalDebtor.name,
+      customer_phone: paymentModalDebtor.phone,
+      notes: `Gbege installment receipt for debtor #${paymentModalDebtor.id}`
+    };
+
+    // 1. Post to backend DailySale
+    api.post('/api/marketplace/daily-sales/', saleReceiptPayload).catch(err => {
+      console.warn("Failed to sync debtor receipt to backend:", err);
+    });
+
+    // 2. Also save to local offline sales cache so Day-Book reflects it immediately
+    try {
+      const localOffline = JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
+      const localSale = {
+        id: `deb-rec-${Date.now()}`,
+        date: today,
+        created_at: new Date().toISOString(),
+        ...saleReceiptPayload
+      };
+      localStorage.setItem('sb_offline_sales', JSON.stringify([localSale, ...localOffline]));
+
+      const cachedToday = JSON.parse(localStorage.getItem(`sb_cached_sales_${today}`) || '[]');
+      localStorage.setItem(`sb_cached_sales_${today}`, JSON.stringify([localSale, ...cachedToday]));
+    } catch (e) {
+      console.warn("Could not cache debtor receipt locally:", e);
+    }
+
     setPaymentModalDebtor(null);
     setPaymentAmount('');
     setPaymentNote('');
@@ -1141,11 +1195,15 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                     {isOverdue && <span className="text-[9px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-black animate-pulse uppercase tracking-wider flex items-center gap-1"><AlertCircle size={9} />OVERDUE</span>}
                     {debtor.status !== 'PAID' && (
                       <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider border ${
-                        mlRiskLevel === 'HIGH' ? 'bg-rose-100 text-rose-800 border-rose-200' :
-                        mlRiskLevel === 'MEDIUM' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                        'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        isOverdue ? 'bg-rose-100 text-rose-800 border-rose-200' :
+                        (debtor.payments && debtor.payments.length > 0) ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                        'bg-slate-100 text-slate-700 border-slate-200'
                       }`}>
-                        🤖 ML Default Risk: {mlRiskLevel} ({recoveryProbPct}% Recovery Prob.)
+                        {isOverdue 
+                          ? `⚠️ Overdue by ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}` 
+                          : (debtor.payments && debtor.payments.length > 0)
+                          ? `Repaying: ${Math.round(paidRatio * 100)}% Settled`
+                          : 'Active Credit • Awaiting Initial Payment'}
                       </span>
                     )}
                   </div>
