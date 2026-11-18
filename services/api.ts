@@ -99,12 +99,16 @@ api.interceptors.response.use(
     const method = (config?.method || '').toLowerCase();
     const url = config?.url || '';
 
+    const status = error?.response?.status;
+    const isServerError = status === 502 || status === 503 || status === 504;
+
     // Automated Failover: If custom subdomain API (api.smartbizcoach.com.ng) encounters DNS failure,
-    // connection drop, or network error, immediately retry against the direct Render origin.
+    // connection drop, network error, or 502/503/504 gateway/reboot errors, immediately retry against
+    // the direct Render origin.
     if (
       config &&
       !config._hasFailedOver &&
-      (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED' || !error.response)
+      (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED' || !error.response || isServerError)
     ) {
       config._hasFailedOver = true;
       config.baseURL = `${FALLBACK_API_ORIGIN}/api/`;
@@ -112,6 +116,22 @@ api.interceptors.response.use(
         return await axios(config);
       } catch (fallbackError) {
         // Continue to offline cache fallback
+      }
+    }
+
+    // Session Expiration Handling: Detect 401 Unauthorized from authenticated routes,
+    // clear stale tokens, and broadcast session expiration event to the app UI.
+    if (status === 401 && !url.includes('auth/login') && !url.includes('auth/register')) {
+      const existingToken = localStorage.getItem('sb_auth_token');
+      if (existingToken) {
+        localStorage.removeItem('sb_auth_token');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('sb_session_expired', {
+              detail: { message: 'Your session has expired. Please sign in again.' },
+            })
+          );
+        }
       }
     }
 

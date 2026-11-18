@@ -47,6 +47,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
@@ -58,30 +60,57 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [newPassword, setNewPassword] = useState('');
   const [agreedToNdpr, setAgreedToNdpr] = useState(false);
 
-
+  const DISPOSABLE_EMAIL_DOMAINS = new Set([
+    'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
+    'throwawaymail.com', 'trashmail.com', 'sharklasers.com', 'yopmail.com',
+    'getairmail.com', 'dispostable.com', 'fakemailgenerator.com'
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Client-side validations
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    if (authMode === 'register') {
+      const domain = cleanEmail.split('@')[1];
+      if (domain && DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+        toast.error("Please use a permanent business or personal email. Disposable email providers are not supported.");
+        return;
+      }
+      if (password.length < 8) {
+        toast.error("Password must contain at least 8 characters.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match. Please verify.");
+        return;
+      }
+      if (!agreedToNdpr) {
+        toast.error("Please accept the Terms of Service and NDPA 2023 & NDPR Data Processing to register.");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
       if (authMode === 'login') {
-        const response = await authService.login({ username: email, password });
+        const response = await authService.login({ username: cleanEmail, password });
         toast.success("Welcome back!");
         onLogin(response.user);
       } else if (authMode === 'register') {
-        if (!agreedToNdpr) {
-          toast.error("Please accept the Terms of Service and NDPA 2023 & NDPR Data Processing to register.");
-          setIsLoading(false);
-          return;
-        }
         const response = await authService.register({
-          username: email,
-          email,
+          username: cleanEmail,
+          email: cleanEmail,
           password,
-          first_name: name,
-          business_name: businessName,
-          phone,
+          first_name: name.trim(),
+          business_name: businessName.trim(),
+          phone: phone.trim(),
           location,
           currency,
           cohort,
@@ -93,26 +122,28 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           localStorage.setItem('sb_auth_token', response.token);
           onLogin(response.user);
         } else {
-          const loginResponse = await authService.login({ username: email, password });
+          const loginResponse = await authService.login({ username: cleanEmail, password });
           onLogin(loginResponse.user);
         }
       } else if (authMode === 'forgot_password') {
-        const response = await authService.forgotPassword(email);
-        // Security: Never display debug OTP codes in the UI.
-        const alertMessage = "A 6-digit recovery code has been sent to your email.";
-        toast.success(alertMessage, { duration: 6000 });
+        await authService.forgotPassword(cleanEmail);
+        toast.success("A 6-digit recovery code has been sent to your email.", { duration: 6000 });
         setAuthMode('reset_password_code');
-        setIsLoading(false);
       } else if (authMode === 'reset_password_code') {
+        if (newPassword.length < 8) {
+          toast.error("New password must be at least 8 characters long.");
+          setIsLoading(false);
+          return;
+        }
         await authService.resetPassword({
-          email,
-          code,
+          email: cleanEmail,
+          code: code.trim(),
           new_password: newPassword
         });
         toast.success("Password reset successfully! You can now sign in with your new password.", { duration: 6000 });
         setAuthMode('login');
         setPassword('');
-        setIsLoading(false);
+        setConfirmPassword('');
       }
     } catch (error: any) {
       console.error("Auth Error", error);
@@ -126,17 +157,26 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
       if (error.response?.data) {
         const data = error.response.data;
-        if (typeof data === 'object') {
-          const firstKey = Object.keys(data)[0];
-          const firstError = data[firstKey];
-          errorMsg = `${firstKey}: ${Array.isArray(firstError) ? firstError[0] : firstError}`;
-        } else if (data.error) {
-          errorMsg = data.error;
-        } else if (data.message) {
-          errorMsg = data.message;
+        if (typeof data === 'string') {
+          errorMsg = data;
+        } else if (Array.isArray(data)) {
+          errorMsg = data[0];
+        } else if (typeof data === 'object') {
+          const keys = Object.keys(data);
+          if (keys.length > 0) {
+            const k = keys[0];
+            const val = data[k];
+            const valStr = Array.isArray(val) ? val[0] : (typeof val === 'object' ? JSON.stringify(val) : String(val));
+            errorMsg = k === 'detail' || k === 'error' || k === 'message' || k === 'non_field_errors' 
+              ? valStr 
+              : `${k.charAt(0).toUpperCase() + k.slice(1).replace('_', ' ')}: ${valStr}`;
+          }
         }
+      } else if (error.message) {
+        errorMsg = error.message;
       }
-      toast.error(errorMsg, { duration: 5000 });
+      toast.error(errorMsg, { duration: 6000 });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -320,6 +360,35 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     title={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
+                      <EyeOff className="w-4 h-4 text-slate-500" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-slate-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {authMode === 'register' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    className="w-full pl-4 pr-11 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowConfirmPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1.5 focus:outline-none transition-colors cursor-pointer"
+                    title={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? (
                       <EyeOff className="w-4 h-4 text-slate-500" />
                     ) : (
                       <Eye className="w-4 h-4 text-slate-400" />

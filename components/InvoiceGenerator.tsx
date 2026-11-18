@@ -105,6 +105,7 @@ const InvoiceGenerator: React.FC = () => {
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [step, setStep] = useState<'LIST' | 'EDIT' | 'PREVIEW'>('LIST');
+  const [invoiceFilter, setInvoiceFilter] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   // Form State
@@ -300,6 +301,10 @@ const InvoiceGenerator: React.FC = () => {
       toast.error('All items must have a description and valid price');
       return;
     }
+    if (formInvoice.dueDate && formInvoice.date && formInvoice.dueDate < formInvoice.date) {
+      toast.error('Due date cannot precede invoice creation date');
+      return;
+    }
 
     const exists = invoices.some(inv => inv.id === formInvoice.id);
     let updatedList: Invoice[] = [];
@@ -316,10 +321,16 @@ const InvoiceGenerator: React.FC = () => {
   };
 
   const handleDeleteInvoice = (id: string) => {
-    if (!confirm('Are you sure you want to delete this invoice?')) return;
-    const filtered = invoices.filter(inv => inv.id !== id);
-    saveInvoicesToStore(filtered);
-    toast.success('Invoice deleted');
+    if (!confirm('Are you sure you want to archive this invoice? It can be restored anytime from the Archived view.')) return;
+    const updated = invoices.map(inv => inv.id === id ? { ...inv, is_archived: true, deleted_at: new Date().toISOString() } : inv);
+    saveInvoicesToStore(updated);
+    toast.success('Invoice moved to archive');
+  };
+
+  const handleRestoreInvoice = (id: string) => {
+    const updated = invoices.map(inv => inv.id === id ? { ...inv, is_archived: false, deleted_at: undefined } : inv);
+    saveInvoicesToStore(updated);
+    toast.success('Invoice restored from archive');
   };
 
   const exportInvoicesToCSV = () => {
@@ -348,11 +359,13 @@ const InvoiceGenerator: React.FC = () => {
   };
 
   // Stat computations
-  const totalVolume = invoices.reduce((acc, curr) => acc + calculateTotal(curr), 0);
-  const totalPaid = invoices.filter(inv => inv.paymentStatus === 'PAID').reduce((acc, curr) => acc + calculateTotal(curr), 0);
-  const totalOutstanding = invoices
+  const activeInvoices = invoices.filter(inv => !inv.is_archived);
+  const totalVolume = activeInvoices.reduce((acc, curr) => acc + calculateTotal(curr), 0);
+  const totalPaid = activeInvoices.filter(inv => inv.paymentStatus === 'PAID').reduce((acc, curr) => acc + calculateTotal(curr), 0);
+  const totalOutstanding = activeInvoices
     .filter(inv => inv.paymentStatus === 'SENT' || inv.paymentStatus === 'OVERDUE' || inv.paymentStatus === 'PARTIAL')
     .reduce((acc, curr) => acc + calculateTotal(curr), 0);
+  const displayedInvoices = invoices.filter(inv => invoiceFilter === 'ARCHIVED' ? inv.is_archived : !inv.is_archived);
 
   const generateInvoiceWhatsAppMessage = (inv: Invoice) => {
     const tot = calculateTotal(inv);
@@ -678,6 +691,7 @@ Generated via SmartBiz Coach`;
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Due Date</label>
               <input 
                 type="date"
+                min={formInvoice.date}
                 className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-indigo-500"
                 value={formInvoice.dueDate}
                 onChange={(e) => setFormInvoice({...formInvoice, dueDate: e.target.value})}
@@ -874,12 +888,30 @@ Generated via SmartBiz Coach`;
 
       {/* Invoice Table list */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
-          <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-600">Financial Log Book</h3>
-          <span className="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{invoices.length} Invoices</span>
+        <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex flex-wrap justify-between items-center gap-2">
+          <div className="flex items-center gap-3">
+            <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-600">Financial Log Book</h3>
+            <div className="flex items-center bg-slate-200/70 p-0.5 rounded-xl text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => setInvoiceFilter('ACTIVE')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${invoiceFilter === 'ACTIVE' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Active ({activeInvoices.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setInvoiceFilter('ARCHIVED')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${invoiceFilter === 'ARCHIVED' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Archived ({invoices.filter(i => i.is_archived).length})
+              </button>
+            </div>
+          </div>
+          <span className="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{displayedInvoices.length} Invoices</span>
         </div>
 
-        {invoices.length === 0 ? (
+        {displayedInvoices.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <span className="text-3xl">📭</span>
             <p className="font-bold text-slate-800 text-sm">No Invoices recorded</p>
@@ -899,7 +931,7 @@ Generated via SmartBiz Coach`;
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 text-xs">
-                {invoices.map(inv => {
+                {displayedInvoices.map(inv => {
                   const total = calculateTotal(inv);
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/55 transition-colors">
@@ -937,13 +969,25 @@ Generated via SmartBiz Coach`;
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button 
-                          onClick={() => handleDeleteInvoice(inv.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                          title="Delete Invoice"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {inv.is_archived ? (
+                          <button 
+                            type="button"
+                            onClick={() => handleRestoreInvoice(inv.id)}
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all text-xs font-bold cursor-pointer"
+                            title="Restore Invoice"
+                          >
+                            ↩️
+                          </button>
+                        ) : (
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteInvoice(inv.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                            title="Archive Invoice"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

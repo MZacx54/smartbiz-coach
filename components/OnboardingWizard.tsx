@@ -45,10 +45,10 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [formData, setFormData] = useState({
-    location: '',
-    phone: '',
+    location: user.location || 'Lagos',
+    phone: user.phone || '',
     industry: '',
-    businessName: user.businessName || '',
+    businessName: user.businessName || user.business_name || '',
     goals: [] as string[],
   });
 

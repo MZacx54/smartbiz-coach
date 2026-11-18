@@ -282,6 +282,8 @@ export interface Debtor {
   linkedInvoiceId?: string;
   payments?: DebtorPayment[];
   remindersSentCount?: number;
+  is_archived?: boolean;
+  deleted_at?: string;
 }
 
 export interface SupplierPayable {
@@ -337,6 +339,8 @@ export interface Invoice {
   paymentStatus?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'PARTIAL';
   paymentTerms?: 'DUE_ON_RECEIPT' | 'NET_15' | 'NET_30' | 'NET_60';
   dueDate?: string;
+  is_archived?: boolean;
+  deleted_at?: string;
 }
 
 // --- Marketplace Types ---

@@ -99,6 +99,21 @@ class ProductSerializer(serializers.ModelSerializer):
         except Exception:
             return ""
 
+    def validate_price(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Selling price must be ₦0 or greater.")
+        return value
+
+    def validate_cost_price(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Cost price (COGS) must be ₦0 or greater.")
+        return value
+
+    def validate_stock_count(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Stock quantity cannot be negative.")
+        return value
+
     def validate(self, attrs):
         is_promoted = attrs.get('is_promoted', False)
         request = self.context.get('request')

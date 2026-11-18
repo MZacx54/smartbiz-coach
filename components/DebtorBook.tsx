@@ -63,7 +63,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   };
   
   // Advanced features state
-  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID'>('ALL');
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'UNPAID' | 'PARTIAL' | 'PAID' | 'ARCHIVED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDebtorId, setExpandedDebtorId] = useState<string | null>(null);
   
@@ -398,13 +398,15 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       return;
     }
 
-    if (newDebtor.phone) {
-      const cleanPhone = newDebtor.phone.replace(/[\s\-()]/g, '');
-      const ngPhoneRegex = /^(?:\+?234|0)[789][01]\d{8}$/;
-      if (!ngPhoneRegex.test(cleanPhone) || /^0+$/.test(cleanPhone)) {
-        toast.error("Please enter a valid Nigerian mobile phone number (e.g. 08012345678 or +2348012345678) for WhatsApp debt recovery.");
-        return;
-      }
+    if (!newDebtor.phone || !newDebtor.phone.trim()) {
+      toast.error("Customer phone number is required for WhatsApp debt tracking and recovery.");
+      return;
+    }
+    const cleanPhone = newDebtor.phone.replace(/[\s\-()]/g, '');
+    const ngPhoneRegex = /^(?:\+?234|0)[789][01]\d{8}$/;
+    if (!ngPhoneRegex.test(cleanPhone) || /^0+$/.test(cleanPhone)) {
+      toast.error("Please enter a valid Nigerian mobile phone number (e.g. 08012345678 or +2348012345678) for WhatsApp debt recovery.");
+      return;
     }
 
     const itemsText = selectedItems.length > 0 
@@ -617,10 +619,15 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this debtor record?")) {
-      setDebtors(debtors.filter(d => d.id !== id));
-      toast.success("Debtor record deleted");
+    if (confirm("Are you sure you want to archive this debtor record? It can be restored anytime from the Archived tab.")) {
+      setDebtors(debtors.map(d => d.id === id ? { ...d, is_archived: true, deleted_at: new Date().toISOString() } : d));
+      toast.success("Debtor record moved to archive");
     }
+  };
+
+  const handleRestore = (id: string) => {
+    setDebtors(debtors.map(d => d.id === id ? { ...d, is_archived: false, deleted_at: undefined } : d));
+    toast.success("Debtor record restored from archive");
   };
 
   const executeGenerateReminder = async (
@@ -738,7 +745,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   };
 
   // Outstanding amounts
-  const unpaidDebtorsList = debtors.filter(d => d.status !== 'PAID');
+  const unpaidDebtorsList = debtors.filter(d => !d.is_archived && d.status !== 'PAID');
   const totalDebt = unpaidDebtorsList.reduce((acc, d) => acc + getOutstandingBalance(d), 0);
   
   const overdueDebtorsList = unpaidDebtorsList.filter(d => {
@@ -760,10 +767,14 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
 
   // Filtered & Searched Debtors list
   const filteredDebtors = debtors.filter(debtor => {
-    // Filter check
-    if (activeFilter === 'UNPAID' && debtor.status !== 'UNPAID') return false;
-    if (activeFilter === 'PARTIAL' && debtor.status !== 'PARTIAL') return false;
-    if (activeFilter === 'PAID' && debtor.status !== 'PAID') return false;
+    if (activeFilter === 'ARCHIVED') {
+      if (!debtor.is_archived) return false;
+    } else {
+      if (debtor.is_archived) return false;
+      if (activeFilter === 'UNPAID' && debtor.status !== 'UNPAID') return false;
+      if (activeFilter === 'PARTIAL' && debtor.status !== 'PARTIAL') return false;
+      if (activeFilter === 'PAID' && debtor.status !== 'PAID') return false;
+    }
 
     // Search query check
     if (searchQuery.trim()) {
@@ -1109,7 +1120,8 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
             { id: 'ALL', label: '🗂️ All' },
             { id: 'UNPAID', label: '🔴 Owing' },
             { id: 'PARTIAL', label: '🟡 Partial' },
-            { id: 'PAID', label: '🟢 Paid' }
+            { id: 'PAID', label: '🟢 Paid' },
+            { id: 'ARCHIVED', label: '🗄️ Archived' }
           ].map(opt => (
             <button
               key={opt.id}
@@ -1316,15 +1328,26 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                           <span>{expandedDebtorId === debtor.id ? 'Hide' : 'Ledger'}</span>
                         </button>
 
-                        <button 
-                          type="button"
-                          onClick={() => handleDelete(debtor.id)}
-                          className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 p-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                          title="Delete / Void Debtor Record"
-                        >
-                          <Trash2 size={12} />
-                          <span>Delete</span>
-                        </button>
+                        {debtor.is_archived ? (
+                          <button 
+                            type="button"
+                            onClick={() => handleRestore(debtor.id)}
+                            className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 px-3 py-2 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            title="Restore Debtor Record"
+                          >
+                            <span>↩️ Restore</span>
+                          </button>
+                        ) : (
+                          <button 
+                            type="button"
+                            onClick={() => handleDelete(debtor.id)}
+                            className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 p-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            title="Archive / Void Debtor Record"
+                          >
+                            <Trash2 size={12} />
+                            <span>Archive</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1338,13 +1361,23 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                         <Eye size={12} /> Ledger
                       </button>
                       
-                      <button 
-                        type="button"
-                        onClick={() => handleDelete(debtor.id)} 
-                        className="text-red-500 text-[10px] font-black uppercase tracking-wider hover:bg-red-50 border border-transparent hover:border-red-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
-                      >
-                        Remove
-                      </button>
+                      {debtor.is_archived ? (
+                        <button 
+                          type="button"
+                          onClick={() => handleRestore(debtor.id)} 
+                          className="text-emerald-600 text-[10px] font-black uppercase tracking-wider hover:bg-emerald-50 border border-transparent hover:border-emerald-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                        >
+                          Restore
+                        </button>
+                      ) : (
+                        <button 
+                          type="button"
+                          onClick={() => handleDelete(debtor.id)} 
+                          className="text-red-500 text-[10px] font-black uppercase tracking-wider hover:bg-red-50 border border-transparent hover:border-red-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                        >
+                          Archive
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -48,6 +48,10 @@ const PublicStorefront: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+
   // Cart & Checkout State
   const [cart, setCart] = useState<{ product: any; quantity: number }[]>([]);
   const [showCartModal, setShowCartModal] = useState(false);
@@ -378,6 +382,32 @@ const PublicStorefront: React.FC = () => {
     return cart.reduce((acc, item) => acc + (parseFloat(item.product.price) * item.quantity), 0);
   };
 
+  const availableCategories = React.useMemo(() => {
+    const cats = new Set<string>();
+    products.forEach(p => {
+      if (p.category && typeof p.category === 'string' && p.category.trim()) {
+        cats.add(p.category.trim());
+      }
+    });
+    return Array.from(cats);
+  }, [products]);
+
+  const filteredProducts = React.useMemo(() => {
+    return products.filter(p => {
+      if (selectedCategory !== 'ALL' && p.category !== selectedCategory) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = p.name?.toLowerCase().includes(q);
+        const matchDesc = p.description?.toLowerCase().includes(q);
+        const matchCat = p.category?.toLowerCase().includes(q);
+        if (!matchName && !matchDesc && !matchCat) return false;
+      }
+      return true;
+    });
+  }, [products, selectedCategory, searchQuery]);
+
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!checkoutForm.name || !checkoutForm.phone || !checkoutForm.address) {
@@ -404,20 +434,15 @@ const PublicStorefront: React.FC = () => {
     // 2. Open WhatsApp prefilled message
     let orderText = `Hi ${brand.businessName}, I would like to place an order:\n\n`;
     cart.forEach(item => {
-      orderText += `▪️ ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}\n`;
+      orderText += `- ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}\n`;
     });
     orderText += `\n💵 *Total:* ₦${cartTotal.toLocaleString()}\n`;
     orderText += `\n👤 *Customer Details:*\nName: ${checkoutForm.name}\nPhone: ${checkoutForm.phone}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`;
 
-    const rawWa = brand.whatsapp || brand.phone || '';
-    let cleanWa = rawWa.replace(/\D/g, '');
-    if (cleanWa.startsWith('0') && cleanWa.length === 11) {
-      cleanWa = '234' + cleanWa.slice(1);
-    } else if (cleanWa.length === 10) {
-      cleanWa = '234' + cleanWa;
-    }
-    if (cleanWa === '2348000000000' || cleanWa.length < 10) {
-      cleanWa = '';
+    const rawWa = brand.whatsapp || brand.phone || (brand as any).user_phone || (brand as any).vendor_phone || '';
+    const cleanWa = sanitizeWhatsAppNumber(rawWa);
+    if (!cleanWa) {
+      toast('Merchant direct phone not listed. Opening WhatsApp contact picker...', { icon: 'ℹ️' });
     }
     const waUrl = cleanWa
       ? `https://wa.me/${cleanWa}?text=${encodeURIComponent(orderText)}`
@@ -492,14 +517,14 @@ const PublicStorefront: React.FC = () => {
       
       let orderText = `Hi ${brand.businessName}, I would like to place an online order:\n\n`;
       cart.forEach(item => {
-        orderText += `▪️ ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}\n`;
+        orderText += `- ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}\n`;
       });
       orderText += `\n💵 *Total:* ₦${cartTotal.toLocaleString()}\n`;
       orderText += `\n👤 *Customer Details:*\nName: ${checkoutForm.name}\nPhone: ${checkoutForm.phone}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`;
 
       setShowCartModal(false);
       setCart([]);
-      const merchantWa = sanitizeWhatsAppNumber(brand.whatsapp || brand.phone);
+      const merchantWa = sanitizeWhatsAppNumber(brand.whatsapp || brand.phone || (brand as any).user_phone || (brand as any).vendor_phone);
       const waUrl = merchantWa ? `https://wa.me/${merchantWa}?text=${encodeURIComponent(orderText)}` : `https://wa.me/?text=${encodeURIComponent(orderText)}`;
       window.open(waUrl, '_blank', 'noopener,noreferrer');
     }
@@ -507,6 +532,12 @@ const PublicStorefront: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 pb-20 selection:bg-indigo-100 relative">
+      <SEO 
+        title={brand?.businessName ? `${brand.businessName} | Official Store` : 'Official Storefront | SmartBiz'}
+        description={brand?.taglines?.[0] || brand?.socialBio || `Shop verified products directly from ${brand?.businessName || 'this store'}. Instant checkout and direct delivery.`}
+        image={brand?.logoUrl || undefined}
+        url={typeof window !== 'undefined' ? window.location.href : undefined}
+      />
       {/* Brand cover Banner */}
       <div 
         className="w-full h-48 md:h-64 relative overflow-hidden bg-cover bg-center shadow-inner"
@@ -681,8 +712,75 @@ const PublicStorefront: React.FC = () => {
               </span>
             </div>
           )}
+
+          {/* Search & Category Filter Controls */}
+          {products.length > 0 && (
+            <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search products, services, or catalog..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <ShoppingBag className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {availableCategories.length > 0 && (
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                  <button
+                    onClick={() => setSelectedCategory('ALL')}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-[11px] whitespace-nowrap cursor-pointer ${
+                      selectedCategory === 'ALL'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    All Items ({products.length})
+                  </button>
+                  {availableCategories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-xl font-bold transition-all text-[11px] whitespace-nowrap cursor-pointer ${
+                        selectedCategory === cat
+                          ? 'bg-slate-900 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {filteredProducts.length === 0 && products.length > 0 && (
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 text-center space-y-3 shadow-sm">
+              <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto" />
+              <h4 className="text-xs font-bold text-slate-700">No items match your search &quot;{searchQuery}&quot;</h4>
+              <p className="text-[11px] text-slate-400">Try searching for another keyword or clearing category filters.</p>
+              <button
+                onClick={() => { setSearchQuery(''); setSelectedCategory('ALL'); }}
+                className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all cursor-pointer"
+              >
+                Clear Search & Filters
+              </button>
+            </div>
+          )}
+
           {['PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B'].map(type => {
-            const typeProducts = products.filter(p => p.product_type === type);
+            const typeProducts = filteredProducts.filter(p => p.product_type === type);
             if (typeProducts.length === 0) return null;
 
             return (

@@ -23,6 +23,21 @@ class RegisterView(generics.CreateAPIView):
     throttle_scope = 'auth'
 
     def post(self, request, *args, **kwargs):
+        # Disposable email anti-abuse check
+        email = request.data.get('email', '').strip().lower()
+        if '@' in email:
+            domain = email.split('@')[-1]
+            DISPOSABLE_DOMAINS = {
+                'mailinator.com', 'tempmail.com', '10minutemail.com', 'guerrillamail.com',
+                'throwawaymail.com', 'trashmail.com', 'sharklasers.com', 'yopmail.com',
+                'getairmail.com', 'dispostable.com', 'fakemailgenerator.com'
+            }
+            if domain in DISPOSABLE_DOMAINS:
+                return Response(
+                    {'email': ['Please provide a permanent business or personal email address. Disposable email services are not supported.']},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -41,14 +56,19 @@ class RegisterView(generics.CreateAPIView):
             except Exception as e:
                 print(f"Notice: Welcome CreditLedger creation notice: {e}")
 
-            # Auto-initialize baseline BrandIdentity & Vendor profile
+            # Auto-initialize baseline BrandIdentity & Vendor profile with merchant phone & email
             try:
                 from brand.models import BrandIdentity
                 from marketplace.models import VendorVerification
                 
                 BrandIdentity.objects.get_or_create(
                     user=user,
-                    defaults={'business_name': user.business_name or user.username}
+                    defaults={
+                        'business_name': user.business_name or user.username,
+                        'phone': user.phone or '',
+                        'email': user.email or '',
+                        'address': user.location or 'Lagos, Nigeria'
+                    }
                 )
                 VendorVerification.objects.get_or_create(
                     user=user,
@@ -135,7 +155,7 @@ class LoginView(views.APIView):
         if user:
             token, _ = Token.objects.get_or_create(user=user)
             return Response({'token': token.key, 'user': UserSerializer(user).data})
-        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Invalid email/username or password. Please verify your credentials and try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProfileView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):

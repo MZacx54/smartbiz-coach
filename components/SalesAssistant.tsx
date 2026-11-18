@@ -131,6 +131,16 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
     }
   };
 
+  const handleResetForm = () => {
+    setProductName('');
+    setProductPrice('');
+    setFloorPrice('');
+    setDeliveryLocation('');
+    setCustomerMessage('');
+    setResult(null);
+    toast.success('Sales script form cleared');
+  };
+
   const handleGenerate = async () => {
     const usage = usageLimiter.checkUsage('sales_assistant', credits);
     
@@ -228,25 +238,38 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
         </div>
 
         {/* Mode Switcher */}
-        <div className="relative z-10 bg-black/40 p-1.5 rounded-2xl flex items-center border border-white/10 shrink-0">
-          <button
-            onClick={() => setActiveTab('SUGGEST')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'SUGGEST' ? 'bg-white text-emerald-950 shadow-lg' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-            Executive Closer
-          </button>
-          <button
-            onClick={() => setActiveTab('ROLEPLAY')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'ROLEPLAY' ? 'bg-white text-emerald-950 shadow-lg' : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <Flame className="w-3.5 h-3.5 text-amber-500" />
-            Live Practice Sim
-          </button>
+        <div className="relative z-10 flex items-center gap-2 shrink-0">
+          <div className="bg-black/40 p-1.5 rounded-2xl flex items-center border border-white/10">
+            <button
+              onClick={() => setActiveTab('SUGGEST')}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'SUGGEST' ? 'bg-white text-emerald-950 shadow-lg' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              Executive Closer
+            </button>
+            <button
+              onClick={() => setActiveTab('ROLEPLAY')}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'ROLEPLAY' ? 'bg-white text-emerald-950 shadow-lg' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5 text-amber-500" />
+              Live Practice Sim
+            </button>
+          </div>
+          {activeTab === 'SUGGEST' && (
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-2.5 rounded-xl border border-white/10 flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Clear all inputs to start fresh"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">New Script</span>
+            </button>
+          )}
         </div>
       </div>
 

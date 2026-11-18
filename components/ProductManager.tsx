@@ -679,14 +679,23 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
       return;
     }
 
-    const payload = {
-      ...currentProduct,
-      price: parseFloat(currentProduct.price as string).toFixed(2),
-      price_max: currentProduct.price_max ? parseFloat(currentProduct.price_max as string).toFixed(2) : null,
-      cost_price: currentProduct.cost_price ? parseFloat(currentProduct.cost_price as string).toFixed(2) : "0.00",
-      stock_count: parseInt(currentProduct.stock_count as any) || 0,
-      low_stock_threshold: parseInt(currentProduct.low_stock_threshold as any) || 5
-    };
+    const parsedPrice = parseFloat(currentProduct.price as string);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      toast.error('Selling price must be ₦0 or greater');
+      return;
+    }
+
+    const parsedCost = currentProduct.cost_price ? parseFloat(currentProduct.cost_price as string) : 0;
+    if (isNaN(parsedCost) || parsedCost < 0) {
+      toast.error('Cost price (COGS) must be ₦0 or greater');
+      return;
+    }
+
+    const parsedStock = parseInt(currentProduct.stock_count as any) || 0;
+    if (parsedStock < 0) {
+      toast.error('Stock quantity cannot be negative');
+      return;
+    }
 
     const toastId = toast.loading('Saving listing...');
     try {
@@ -698,13 +707,13 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
       const payload = {
         ...currentProduct,
         image_url: compressedImage,
-        price: parseFloat(currentProduct.price as string).toFixed(2),
-        price_max: currentProduct.price_max ? parseFloat(currentProduct.price_max as string).toFixed(2) : null,
-        compare_at_price: currentProduct.compare_at_price ? parseFloat(currentProduct.compare_at_price as string).toFixed(2) : null,
+        price: parsedPrice.toFixed(2),
+        price_max: currentProduct.price_max ? Math.max(0, parseFloat(currentProduct.price_max as string)).toFixed(2) : null,
+        compare_at_price: currentProduct.compare_at_price ? Math.max(0, parseFloat(currentProduct.compare_at_price as string)).toFixed(2) : null,
         deal_ends_at: currentProduct.deal_ends_at || null,
-        cost_price: currentProduct.cost_price ? parseFloat(currentProduct.cost_price as string).toFixed(2) : "0.00",
-        stock_count: parseInt(currentProduct.stock_count as any) || 0,
-        low_stock_threshold: parseInt(currentProduct.low_stock_threshold as any) || 5,
+        cost_price: parsedCost.toFixed(2),
+        stock_count: Math.max(0, parsedStock),
+        low_stock_threshold: Math.max(0, parseInt(currentProduct.low_stock_threshold as any) || 5),
         is_public: currentProduct.is_public !== false,
         is_promoted: !!currentProduct.is_promoted
       };
@@ -1275,9 +1284,11 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Retail Selling Price (₦)</label>
                       <div className="relative">
-                        <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xs text-slate-400 select-none">₦</span>
                         <input 
                           type="number" 
+                          min="0"
+                          step="any"
                           value={currentProduct.price}
                           onChange={(e) => setCurrentProduct({ ...currentProduct, price: e.target.value })}
                           placeholder="0.00"
@@ -1293,6 +1304,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                       <label className="text-[10px] font-black text-rose-700 uppercase tracking-widest ml-1">🔥 Compare-At / Original Price (₦) (Optional Flash Deal)</label>
                       <input
                         type="number"
+                        min="0"
+                        step="any"
                         value={(currentProduct.compare_at_price as any) || ''}
                         onChange={(e) => setCurrentProduct({ ...currentProduct, compare_at_price: e.target.value })}
                         placeholder="Higher original price e.g. 25000"
@@ -1384,9 +1397,11 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                           <div className="space-y-1.5">
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Cost Price (COGS) (₦)</label>
                             <div className="relative">
-                              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xs text-slate-400 select-none">₦</span>
                               <input 
                                 type="number" 
+                                min="0"
+                                step="any"
                                 value={currentProduct.cost_price || ''}
                                 onChange={(e) => setCurrentProduct({ ...currentProduct, cost_price: e.target.value })}
                                 placeholder="0.00"
@@ -1433,8 +1448,9 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock Quantity</label>
                             <input 
                               type="number" 
-                              value={currentProduct.stock_count || 0}
-                              onChange={(e) => setCurrentProduct({ ...currentProduct, stock_count: parseInt(e.target.value) || 0 })}
+                              min="0"
+                              value={currentProduct.stock_count ?? 0}
+                              onChange={(e) => setCurrentProduct({ ...currentProduct, stock_count: Math.max(0, parseInt(e.target.value) || 0) })}
                               placeholder="1"
                               className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
                             />
@@ -1443,8 +1459,9 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Low Stock Limit Alert</label>
                             <input 
                               type="number" 
+                              min="0"
                               value={currentProduct.low_stock_threshold || 5}
-                              onChange={(e) => setCurrentProduct({ ...currentProduct, low_stock_threshold: parseInt(e.target.value) || 0 })}
+                              onChange={(e) => setCurrentProduct({ ...currentProduct, low_stock_threshold: Math.max(0, parseInt(e.target.value) || 0) })}
                               placeholder="5"
                               className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm"
                             />

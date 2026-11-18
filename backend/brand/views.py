@@ -328,8 +328,15 @@ class PublicStorefrontView(views.APIView):
 
     def get(self, request, slug):
         try:
-            brand = BrandIdentity.objects.get(slug=slug)
-            serializer = BrandSerializer(brand)
-            return Response(serializer.data)
+            brand = BrandIdentity.objects.select_related('user', 'user__vendor_profile').get(slug=slug)
+            data = BrandSerializer(brand).data
+            # Ensure contact phone and whatsapp fallback to user phone so WhatsApp checkout never breaks
+            user_phone = getattr(brand.user, 'phone', '') or ''
+            vp_phone = getattr(getattr(brand.user, 'vendor_profile', None), 'whatsapp_number', '') or ''
+            if not data.get('phone') or data.get('phone') == '2348000000000':
+                data['phone'] = user_phone or vp_phone or data.get('phone', '')
+            if not data.get('whatsapp') or data.get('whatsapp') == '2348000000000':
+                data['whatsapp'] = data.get('phone') or user_phone or vp_phone or ''
+            return Response(data)
         except BrandIdentity.DoesNotExist:
             return Response({'error': 'Store not found'}, status=404)

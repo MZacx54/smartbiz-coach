@@ -729,6 +729,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                     <option value="NGN">NGN (₦ - Nigerian Naira)</option>
                     <option value="USD">USD ($ - US Dollar)</option>
                     <option value="GBP">GBP (£ - British Pound)</option>
+                    <option value="EUR">EUR (€ - Euro)</option>
                   </select>
                 </div>
               </div>

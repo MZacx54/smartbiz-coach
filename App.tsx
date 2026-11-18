@@ -462,6 +462,17 @@ const App: React.FC = () => {
     navigate('/');
   };
 
+  // Listen for session expired events from API interceptor
+  useEffect(() => {
+    const onSessionExpired = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      toast.error(detail?.message || 'Your session has expired. Please sign in again.');
+      handleLogout();
+    };
+    window.addEventListener('sb_session_expired', onSessionExpired);
+    return () => window.removeEventListener('sb_session_expired', onSessionExpired);
+  }, []);
+
   const handleSaveBrand = async (brand: BrandIdentity) => {
     try {
       if (brand && brand.id) {

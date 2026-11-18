@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator
 
 class VendorVerification(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vendor_profile')
@@ -92,7 +93,7 @@ class Product(models.Model):
     brand = models.ForeignKey('brand.BrandIdentity', on_delete=models.CASCADE, related_name='products')
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=12, decimal_places=2)
+    price = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
     price_max = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     
     image_url = models.TextField(blank=True, null=True)
@@ -110,7 +111,7 @@ class Product(models.Model):
     is_promoted = models.BooleanField(default=False) # Shown in Market Square
     promoted_until = models.DateTimeField(null=True, blank=True)
     
-    stock_count = models.IntegerField(default=1)
+    stock_count = models.IntegerField(default=1, validators=[MinValueValidator(0)])
     
     # Flash deals & moderation (Commerce Phase 6/8)
     compare_at_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
@@ -118,7 +119,7 @@ class Product(models.Model):
     is_suspended = models.BooleanField(default=False)
     
     # Inventory Valuation & Auditing fields
-    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, validators=[MinValueValidator(0)])
     sku = models.CharField(max_length=100, blank=True, null=True)
     low_stock_threshold = models.IntegerField(default=5)
     
@@ -174,8 +175,8 @@ class DailySale(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     item_name = models.CharField(max_length=255)
     quantity = models.IntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
-    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, validators=[MinValueValidator(0)])
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default='CASH')
     customer_name = models.CharField(max_length=255, blank=True, default='')
@@ -297,7 +298,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=255)
     quantity = models.PositiveIntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
     line_total = models.DecimalField(max_digits=12, decimal_places=2)
 
     def __str__(self):

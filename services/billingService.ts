@@ -18,6 +18,8 @@ export interface CreditLedgerData {
   created_at: string;
 }
 
+const inFlightDeductions = new Map<string, Promise<{ message: string; credits: number }>>();
+
 export const billingService = {
   getTransactions: async (): Promise<TransactionData[]> => {
     const response = await api.get("billing/transactions/");
@@ -47,17 +49,37 @@ export const billingService = {
     return response.data;
   },
 
-  deductCredits: async (amount: number, activity: string): Promise<{ message: string; credits: number }> => {
-    const response = await api.post("billing/deduct-credits/", {
-      amount,
-      activity,
-    });
-    if (typeof response.data?.credits === 'number') {
-      try {
-        window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: response.data.credits }));
-      } catch (e) {}
+  deductCredits: async (amount: number, activity: string, idempotencyKey?: string): Promise<{ message: string; credits: number }> => {
+    const key = idempotencyKey || `${activity}_${amount}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const dedupeKey = `${activity}_${amount}`;
+    
+    // In-flight mutex: if identical deduction is already in-flight, return the existing promise
+    if (inFlightDeductions.has(dedupeKey)) {
+      return inFlightDeductions.get(dedupeKey)!;
     }
-    return response.data;
+
+    const deductionPromise = (async () => {
+      try {
+        const response = await api.post("billing/deduct-credits/", {
+          amount,
+          activity,
+          idempotency_key: key,
+        });
+        if (typeof response.data?.credits === 'number') {
+          try {
+            window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: response.data.credits }));
+          } catch (e) {}
+        }
+        return response.data;
+      } finally {
+        setTimeout(() => {
+          inFlightDeductions.delete(dedupeKey);
+        }, 1500);
+      }
+    })();
+
+    inFlightDeductions.set(dedupeKey, deductionPromise);
+    return deductionPromise;
   },
 
   rewardShare: async (productId?: string | number, productTitle?: string): Promise<{ message: string; credits: number; earned: number }> => {
