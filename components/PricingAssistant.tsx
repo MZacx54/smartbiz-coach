@@ -50,8 +50,8 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
         targetMargin: parseFloat(targetMargin),
       });
 
-      // Only deduct credits if generation successfully completed
-      const billingResponse = await billingService.deductCredits(20, 'AI Pricing & Margin Optimization Assistant');
+      // Only deduct credits if generation successfully completed (2 credits matching UI promise)
+      const billingResponse = await billingService.deductCredits(2, 'AI Pricing & Margin Optimization Assistant');
       onUpdateCredits(billingResponse.credits);
 
       setResult(data);

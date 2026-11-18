@@ -525,9 +525,15 @@ const PublicStorefront: React.FC = () => {
                  TIN: {brand.tin}
                </span>
              )}
-             <span className="bg-emerald-50 px-3 py-1 rounded-full text-[10px] font-black text-emerald-700 border border-emerald-150 flex items-center gap-1.5 uppercase tracking-wider">
-               <Check className="w-3.5 h-3.5 text-emerald-600" /> SmartBiz Verified
-             </span>
+             {((brand as any)?.is_verified || (brand as any)?.is_vendor_verified || Boolean(brand.cacNumber)) ? (
+               <span className="bg-emerald-50 px-3 py-1 rounded-full text-[10px] font-black text-emerald-700 border border-emerald-150 flex items-center gap-1.5 uppercase tracking-wider">
+                 <Check className="w-3.5 h-3.5 text-emerald-600" /> SmartBiz Verified
+               </span>
+             ) : (
+               <span className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-bold text-slate-650 border border-slate-200 flex items-center gap-1.5 uppercase tracking-wider">
+                 <ShieldCheck className="w-3.5 h-3.5 text-slate-500" /> Merchant Storefront
+               </span>
+             )}
              <Link
                to="/market"
                className="bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-full text-[10px] font-black text-indigo-700 border border-indigo-200 flex items-center gap-1.5 uppercase tracking-wider transition-colors"

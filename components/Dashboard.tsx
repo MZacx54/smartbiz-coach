@@ -163,7 +163,10 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
       } else {
         try {
           const savedDebtors: Debtor[] = JSON.parse(localStorage.getItem('sb_debtors') || '[]');
-          const unpaid = savedDebtors.filter(d => d.status !== 'PAID').reduce((acc, curr) => acc + curr.amount, 0);
+          const unpaid = savedDebtors.filter(d => d.status !== 'PAID').reduce((acc, curr) => {
+            const paid = (curr.payments || []).reduce((pa, p) => pa + (Number(p.amount) || 0), 0);
+            return acc + Math.max(0, (Number(curr.amount) || 0) - paid);
+          }, 0);
           setTotalDebt(unpaid);
 
           const savedInventory: InventoryItem[] = JSON.parse(localStorage.getItem('sb_inventory') || '[]');

@@ -539,7 +539,7 @@ class FindGrantsView(views.APIView):
                 "matchScore": 90,
                 "matchReason": f"Equity-free seed capital and 12-week business mentorship designed for early-stage entrepreneurs in {industry}.",
                 "requirements": ["Business under 3 years old", "Open to African entrepreneurs", "Completed TEF portal business training"],
-                "deadline": "March 31, 2026",
+                "deadline": "Annual Window (Jan 1 – March 31, Rolling Cohorts)",
                 "type": "GRANT",
                 "eligibility_checklist": ["Early Stage Business (< 3 yrs)", "Completed Online Training Module", "Business Pitch Submission"],
                 "application_steps": [
@@ -563,12 +563,12 @@ class FindGrantsView(views.APIView):
                 "type": "LOAN",
                 "eligibility_checklist": ["SMEDAN Registered (SUIN)", "Viable Cashflow", "Microfinance Account"],
                 "application_steps": [
-                    "Register your business for free on smedanregister.ng to get your SUIN code",
+                    "Register your business on the official SMEDAN portal (portal.smedan.gov.ng) to get your SUIN code",
                     "Apply through participating microfinance banks with your SUIN",
                     "Undergo business site inspection and credit scoring",
                     "Loan disbursed at 9% single-digit annual interest rate"
                 ],
-                "portal_url": "https://smedanregister.ng",
+                "portal_url": "https://portal.smedan.gov.ng/signup",
                 "is_currently_open": True
             }
         ]

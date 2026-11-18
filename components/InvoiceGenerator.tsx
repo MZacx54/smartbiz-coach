@@ -271,13 +271,13 @@ const InvoiceGenerator: React.FC = () => {
       taxRate: 7.5, // Standard Nigerian VAT
       currency: '₦',
       note: 'Please remit payment to the bank account listed above. Thank you for your business!',
-      senderAddress: savedBrand?.location || 'Yaba, Lagos',
+      senderAddress: savedBrand?.location || savedUser?.location || '',
       senderEmail: savedUser?.email || '',
       senderPhone: savedUser?.phone || '',
-      senderTin: savedBrand?.tin || 'TIN-184902-001',
-      bankName: 'Zenith Bank PLC',
-      bankAccountName: savedUser?.businessName || 'My Business Entity Ltd',
-      bankAccountNumber: '1012948190',
+      senderTin: savedBrand?.tin || '',
+      bankName: savedBrand?.bankName || savedUser?.bankName || '',
+      bankAccountName: savedBrand?.accountName || savedUser?.businessName || savedUser?.name || '',
+      bankAccountNumber: savedBrand?.accountNumber || savedUser?.accountNumber || '',
       paymentStatus: 'DRAFT',
       paymentTerms: 'NET_15'
     });
@@ -343,7 +343,9 @@ const InvoiceGenerator: React.FC = () => {
   // Stat computations
   const totalVolume = invoices.reduce((acc, curr) => acc + calculateTotal(curr), 0);
   const totalPaid = invoices.filter(inv => inv.paymentStatus === 'PAID').reduce((acc, curr) => acc + calculateTotal(curr), 0);
-  const totalOutstanding = invoices.filter(inv => inv.paymentStatus !== 'PAID').reduce((acc, curr) => acc + calculateTotal(curr), 0);
+  const totalOutstanding = invoices
+    .filter(inv => inv.paymentStatus === 'SENT' || inv.paymentStatus === 'OVERDUE' || inv.paymentStatus === 'PARTIAL')
+    .reduce((acc, curr) => acc + calculateTotal(curr), 0);
 
   const generateInvoiceWhatsAppMessage = (inv: Invoice) => {
     const tot = calculateTotal(inv);
@@ -471,10 +473,16 @@ Generated via SmartBiz Coach`;
                 }`}>
                   Invoice: {selectedInvoice.paymentStatus}
                 </span>
-                <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
-                  <CheckCircle className="w-3 h-3 text-emerald-600" />
-                  <span>Audited & Verified</span>
-                </span>
+                {selectedInvoice.paymentStatus === 'PAID' ? (
+                  <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                    <span>Payment Confirmed</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                    <span>Official Invoice</span>
+                  </span>
+                )}
               </div>
               <h1 className="text-2xl font-black text-slate-900 font-heading">INVOICE</h1>
               <p className="text-xs font-bold text-slate-400">Reference: #{selectedInvoice.id}</p>

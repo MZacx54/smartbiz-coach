@@ -22,6 +22,26 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
+    def save_model(self, request, obj, form, change):
+        if change and 'credits' in form.changed_data:
+            try:
+                orig = User.objects.get(pk=obj.pk)
+                diff = obj.credits - orig.credits
+                super().save_model(request, obj, form, change)
+                if diff != 0:
+                    from billing.models import CreditLedger
+                    sign = "+" if diff > 0 else ""
+                    admin_name = getattr(request.user, 'username', 'admin')
+                    CreditLedger.objects.create(
+                        user=obj,
+                        amount=diff,
+                        activity=f"Admin Portal Credit Adjustment ({sign}{diff} credits by {admin_name})"
+                    )
+                return
+            except Exception as e:
+                print(f"Error logging admin credit adjustment: {e}")
+        super().save_model(request, obj, form, change)
+
 @admin.register(PasswordResetCode)
 class PasswordResetCodeAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'code', 'created_at', 'is_used']

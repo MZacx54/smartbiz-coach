@@ -212,6 +212,52 @@ class CreditScoringService:
         else:
             inventory_points = 30
 
+        # If merchant has zero trading records, return strict unrated baseline
+        if sales_count == 0 and total_revenue == 0 and total_expenses == 0:
+            return {
+                "credit_score": 300,
+                "max_score": 850,
+                "rating_tier": "UNRATED (No Trading Records)",
+                "risk_level": "INSUFFICIENT_DATA",
+                "bank_recommendation": "Record daily sales in your Cashbook to generate your official SmartScore™ and unlock bank pre-qualification.",
+                "recommended_loan_limit_ngn": 0,
+                "ifrs9_risk": {
+                    "probability_of_default_pct": 0.0,
+                    "loss_given_default_pct": 0.0,
+                    "expected_credit_loss_ngn": 0.0,
+                    "debt_service_coverage_ratio": 0.0,
+                    "ifrs9_stage": "Stage 0 (Awaiting Trading History)",
+                    "ml_risk_engine": "IFRS-9 MSME Baseline Kernel (Awaiting Trading Records)",
+                },
+                "breakdown": {
+                    "compliance_points": compliance_points,
+                    "cashflow_points": 0,
+                    "debt_recovery_points": 0,
+                    "inventory_points": inventory_points,
+                },
+                "explainability": {
+                    "positive_drivers": [f"+{compliance_points} pts: Registered business profile"] if compliance_points > 0 else [],
+                    "negative_drivers": ["No daily sales or transactions recorded yet in Cashbook"],
+                    "improvement_actions": [
+                        {
+                            "action": "Record daily sales in Cashbook to begin building your credit score",
+                            "points_gain": 120,
+                            "category": "Cashflow",
+                        }
+                    ],
+                    "operating_margin_pct": 0.0,
+                    "fuel_expense_burden_pct": 0.0,
+                },
+                "metrics": {
+                    "cac_verified": bool(is_cac_verified or cac_number),
+                    "total_sales_logged": 0,
+                    "total_gmv_revenue": 0.0,
+                    "total_expenses_logged": 0.0,
+                    "active_inventory_items": prod_count,
+                    "active_trading_days_30d": 0,
+                }
+            }
+
         raw_score = base_score + compliance_points + cashflow_points + debt_recovery_points + inventory_points
         final_score = max(300, min(850, raw_score))
 
@@ -223,7 +269,7 @@ class CreditScoringService:
         elif final_score >= 650:
             tier = "GOOD (Bankable Grade B+)"
             risk_level = "MODERATE_LOW_RISK"
-            loan_eligibility = "Eligible for Up to ₦3,500,000 Microfinance Credit (FCMB SheVentures, NIRSAL MFB, LSETF) & Equipment Financing"
+            loan_eligibility = "Pre-Qualified for Up to ₦3,500,000 Microfinance Credit (FCMB SheVentures, NIRSAL MFB, LSETF) & Equipment Financing"
         elif final_score >= 550:
             tier = "FAIR (Developing Grade C)"
             risk_level = "MODERATE_RISK"
@@ -234,7 +280,7 @@ class CreditScoringService:
             loan_eligibility = "Log 14 days of continuous sales in Daily Day-Book and verify CAC to unlock ₦1M+ micro-credit"
 
         # 5. Supervised ML Probability of Default (PD%), LGD%, Expected Credit Loss (ECL) & DSCR (CBN / IFRS-9 Standard)
-        recommended_loan_limit = round(max(250000.0, min(15000000.0, (total_revenue / 3.0) * 0.45 if total_revenue > 0 else 500000.0)), -3)
+        recommended_loan_limit = round(max(0.0, min(15000000.0, (total_revenue / 3.0) * 0.45)), -3) if total_revenue > 0 else 0.0
         cv_norm = min(1.2, float(cashflow_points) / 192.0)
         repay_norm = float(debt_recovery_points) / 138.0
         comp_norm = float(compliance_points) / 110.0
@@ -386,7 +432,7 @@ class DemandForecastService:
 
         products = Product.objects.filter(brand__user=user)
         if not products.exists():
-            products = Product.objects.filter(product_type='PHYSICAL')[:8]
+            return []
 
         results = []
         now = timezone.now()
@@ -746,7 +792,11 @@ class PriceElasticityService:
         brand = BrandIdentity.objects.filter(user=user).first()
         products_qs = Product.objects.filter(brand=brand) if brand else Product.objects.filter(brand__user=user)
         if not products_qs.exists():
-            products_qs = Product.objects.filter(product_type='PHYSICAL')[:6]
+            return {
+                "has_sufficient_data": False,
+                "total_evaluated_products": 0,
+                "pricing_recommendations": []
+            }
 
         results = []
         for p in products_qs[:10]:
@@ -845,14 +895,31 @@ class CashCliffForecastService:
             [e.created_at.date() for e in expenses_30d if e.created_at]
         )))
 
-        avg_daily_inflow = round(total_inflow_30d / active_days, 2) if total_inflow_30d > 0 else 18500.0
-        avg_daily_outflow = round(total_outflow_30d / active_days, 2) if total_outflow_30d > 0 else 6200.0
+        has_trading_data = (total_inflow_30d > 0 or total_outflow_30d > 0)
+        if not has_trading_data:
+            return {
+                "has_sufficient_data": False,
+                "runway_status": "NO_DATA",
+                "runway_days": 0,
+                "estimated_liquid_cash": 0.0,
+                "avg_daily_inflow": 0.0,
+                "avg_daily_outflow": 0.0,
+                "daily_net_velocity": 0.0,
+                "credit_locked_30d": 0.0,
+                "fuel_gen_burn_pct": 0.0,
+                "fuel_gen_outflow_30d": 0.0,
+                "advisory": "No cash inflow or expense transactions recorded in the last 30 days. Record daily transactions in the Cashbook to unlock real-time predictive runway modeling.",
+                "trajectory_14d": [],
+            }
+
+        avg_daily_inflow = round(total_inflow_30d / active_days, 2)
+        avg_daily_outflow = round(total_outflow_30d / active_days, 2)
         daily_net_velocity = round(avg_daily_inflow - avg_daily_outflow, 2)
 
-        fuel_burn_pct = round((fuel_gen_outflow_30d / max(1.0, total_outflow_30d)) * 100, 1) if total_outflow_30d > 0 else 18.5
+        fuel_burn_pct = round((fuel_gen_outflow_30d / max(1.0, total_outflow_30d)) * 100, 1) if total_outflow_30d > 0 else 0.0
 
-        # Estimate current liquid cash buffer from net cashflow (minimum baseline for active shops)
-        estimated_liquid_cash = max(45000.0, round(total_inflow_30d - total_outflow_30d, 2)) if total_inflow_30d > 0 else 125000.0
+        # Estimate current liquid cash buffer from net cashflow
+        estimated_liquid_cash = max(0.0, round(total_inflow_30d - total_outflow_30d, 2))
 
         # Project 14-day trajectory
         trajectory = []

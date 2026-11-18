@@ -398,6 +398,15 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       return;
     }
 
+    if (newDebtor.phone) {
+      const cleanPhone = newDebtor.phone.replace(/[\s\-()]/g, '');
+      const ngPhoneRegex = /^(?:\+?234|0)[789][01]\d{8}$/;
+      if (!ngPhoneRegex.test(cleanPhone) || /^0+$/.test(cleanPhone)) {
+        toast.error("Please enter a valid Nigerian mobile phone number (e.g. 08012345678 or +2348012345678) for WhatsApp debt recovery.");
+        return;
+      }
+    }
+
     const itemsText = selectedItems.length > 0 
       ? selectedItems.map(i => `${i.quantity}x ${i.product.name}`).join(', ') 
       : newDebtor.itemsBought;
@@ -1247,6 +1256,16 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
                         >
                           <Eye size={12} />
                           <span>{expandedDebtorId === debtor.id ? 'Hide' : 'Ledger'}</span>
+                        </button>
+
+                        <button 
+                          type="button"
+                          onClick={() => handleDelete(debtor.id)}
+                          className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 p-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          title="Delete / Void Debtor Record"
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </div>

@@ -211,7 +211,7 @@ export const BankPayoutSetup: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Receive 100% of storefront product sales directly into your bank account via Paystack Subaccounts.
+              SmartBiz charges 0% platform commission. Receive 100% of your sales directly via Paystack Subaccounts (standard 1.5% gateway processor fee applies to card checkouts).
             </p>
           </div>
         </div>

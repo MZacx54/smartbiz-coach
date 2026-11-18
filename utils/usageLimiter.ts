@@ -28,7 +28,7 @@ export const FEATURE_CONFIGS: Record<FeatureKey, FeatureConfig> = {
   ai_chat: { freeLimit: 999999, creditCost: 0, label: 'AI Live Support Chat (Free)' },
   sales_assistant: { freeLimit: 0, creditCost: 10, label: 'AI Sales Assistant' },
   health_score: { freeLimit: 0, creditCost: 20, label: 'AI Business Health Score' },
-  pricing_assistant: { freeLimit: 0, creditCost: 20, label: 'AI Pricing Assistant' },
+  pricing_assistant: { freeLimit: 2, creditCost: 2, label: 'AI Pricing & Margin Assistant' },
   snap_and_list: { freeLimit: 0, creditCost: 5, label: 'AI Snap & List Scanner' },
   logo_generation: { freeLimit: 0, creditCost: 20, label: 'AI Logo Generation' },
 };

@@ -143,6 +143,11 @@ class GenerateSocialContentView(views.APIView):
         You are Nigeria's leading MSME Growth Marketing Specialist. 
         Write deep, persuasive, culturally authentic copy that sells directly to Nigerian buyers and businesses.
         Avoid robotic, lazy, or shallow output. Every sentence must build trust, demonstrate value, or drive immediate action.
+
+        STRICT ACCURACY & GROUNDING RULES:
+        1. Only mention attributes, materials, and benefits directly rooted in the provided topic or brand context.
+        2. Do NOT invent unsubstantiated superlatives or ungrounded claims (such as "100% genuine", "clinically tested", "tested and trusted") unless explicitly provided in the prompt.
+        3. Emphasize tangible customer benefits, genuine quality, clear pricing, and reliable delivery without misleading hype.
         """
 
         try:

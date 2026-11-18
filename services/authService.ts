@@ -266,7 +266,22 @@ export const authService = {
     },
 
     logout: () => {
-        localStorage.removeItem('sb_auth_token');
+        const keysToRemove = [
+            'sb_auth_token',
+            'sb_user',
+            'sb_cached_user',
+            'sb_brand',
+            'sb_invoices_detailed',
+            'sb_debtors',
+            'sb_inventory',
+            'sb_transactions',
+            'sb_analytics_ml_cache',
+            'sb_health_score_data'
+        ];
+        keysToRemove.forEach(k => {
+            try { localStorage.removeItem(k); } catch {}
+        });
+        try { sessionStorage.clear(); } catch {}
     },
 
     getStats: async () => {

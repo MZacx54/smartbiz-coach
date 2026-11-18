@@ -92,7 +92,10 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
 
   const debtors = useMemo<Debtor[]>(() => readCache<Debtor[]>('sb_debtors') || [], []);
   const unpaid = debtors.filter((d) => d.status !== 'PAID');
-  const totalOwed = unpaid.reduce((a, d) => a + (Number(d.amount) || 0), 0);
+  const totalOwed = unpaid.reduce((a, d) => {
+    const paid = (d.payments || []).reduce((pa, p) => pa + (Number(p.amount) || 0), 0);
+    return a + Math.max(0, (Number(d.amount) || 0) - paid);
+  }, 0);
   const overdue = unpaid
     .filter((d) => d.dueDate && new Date(d.dueDate) < new Date(today))
     .sort((a, b) => b.amount - a.amount);

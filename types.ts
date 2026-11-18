@@ -334,7 +334,7 @@ export interface Invoice {
   bankName?: string;
   bankAccountName?: string;
   bankAccountNumber?: string;
-  paymentStatus?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE';
+  paymentStatus?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'PARTIAL';
   paymentTerms?: 'DUE_ON_RECEIPT' | 'NET_15' | 'NET_30' | 'NET_60';
   dueDate?: string;
 }

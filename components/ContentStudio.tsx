@@ -1658,8 +1658,50 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                                                         )}
                                                     </div>
 
+                                                    {/* Story / WhatsApp Status Frame (if Story format) */}
+                                                    {format === 'Story' && (
+                                                        <div className="bg-gradient-to-br from-purple-950/40 via-slate-900 to-indigo-950/40 p-6 rounded-2xl border border-purple-500/30 space-y-4 shadow-xl">
+                                                            <div className="flex justify-between items-center">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="text-purple-400 font-bold uppercase text-[10px] tracking-widest">📱 Story & WhatsApp Status Frame</h4>
+                                                                    <span className="bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full text-[9px] font-bold">9:16 Vertical Preview</span>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const storyText = `${generatedContent.caption}\n\n${generatedContent.callToAction || ''}`;
+                                                                        navigator.clipboard.writeText(storyText);
+                                                                        toast.success("Story text copied to clipboard!");
+                                                                    }}
+                                                                    className="text-[10px] bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer"
+                                                                >
+                                                                    Copy Story Text
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="max-w-xs mx-auto bg-slate-950 border-2 border-purple-500/40 rounded-3xl p-5 aspect-[9/16] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+                                                                <div className="space-y-3">
+                                                                    <div className="flex items-center justify-between text-[10px] text-purple-300 font-bold border-b border-white/10 pb-2">
+                                                                        <span>⚡ Status Update</span>
+                                                                        <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full text-[9px]">Tap to Reply</span>
+                                                                    </div>
+                                                                    <p className="text-white text-sm font-extrabold leading-snug">
+                                                                        {generatedContent.imageText || generatedContent.caption?.slice(0, 120) + '...'}
+                                                                    </p>
+                                                                    <div className="bg-white/10 p-3 rounded-xl border border-white/10 text-xs text-slate-200">
+                                                                        {generatedContent.callToAction || "DM to order or ask questions!"}
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div className="space-y-2 pt-4 border-t border-white/10 text-center">
+                                                                    <p className="text-[10px] text-purple-300 font-bold">🎨 Recommended Visual Direction:</p>
+                                                                    <p className="text-[10px] text-slate-400 italic">High-contrast vertical product visual with sticker question or direct order link.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     {/* Multi-Slide Carousel Viewer (if Carousel format) */}
-                                                    {generatedContent.slides && generatedContent.slides.length > 0 && (
+                                                    {format !== 'Story' && generatedContent.slides && generatedContent.slides.length > 0 && (
                                                         <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900 to-purple-950/40 p-6 rounded-2xl border border-indigo-500/20 space-y-4 shadow-xl">
                                                             <div className="flex justify-between items-center">
                                                                 <div className="flex items-center gap-2">

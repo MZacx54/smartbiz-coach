@@ -203,22 +203,23 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
 
   const handleShareExemptionWhatsApp = () => {
     const text = `🏛️ *STATUTORY SMALL BUSINESS TAX EXEMPTION NOTICE*\n` +
-      `*Pursuant to Nigerian Finance Act 2019/2020 & CITA Section 23*\n\n` +
+      `*Pursuant to Nigeria Tax Act 2025/2026 & Finance Act CITA Section 23/40*\n\n` +
       `📋 *Entity Name:* ${exemptionBizName || 'Designated Micro-Enterprise'}\n` +
       `📑 *Category:* ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\n` +
       `📅 *Tax Period:* ${exemptionYear}\n` +
-      `💰 *Declared Gross Turnover:* ₦${Number(exemptionTurnover || 0).toLocaleString()} (Below ₦25,000,000 threshold)\n\n` +
+      `💰 *Declared Gross Turnover:* ₦${Number(exemptionTurnover || 0).toLocaleString()} (Within Small Enterprise ₦100M Statutory Threshold)\n\n` +
       `⚖️ *STATUTORY GROUNDS FOR ZERO-TAX EXEMPTION:*\n` +
-      `1. *0% Companies Income Tax (CIT):* Under Section 23 & 40 of CITA (as amended by Nigerian Finance Act 2019/2020), small companies with annual turnover under ₦25M are legally subject to ZERO PERCENT (0%) CIT.\n` +
-      `2. *VAT Exemption:* Under Section 15 of VAT Act (as amended), businesses below the ₦25M turnover threshold are exempt from charging, collecting, and remitting VAT.\n` +
+      `1. *0% Companies Income Tax (CIT):* Under the Nigeria Tax Act 2025 / 2026 and CITA Section 23 & 40 (as amended by Finance Acts), small companies with annual turnover under ₦100,000,000 are subject to ZERO PERCENT (0%) CIT.\n` +
+      `2. *VAT Exemption:* Under Section 15 of the VAT Act & Nigeria Tax Act 2025, qualifying small enterprises are exempt from charging, collecting, and remitting VAT.\n` +
       `3. *Protection Against Harassment:* Taxes & Levies Act prohibits illegal road blocks, arbitrary demands, and unlawful distraint of micro-enterprises.\n\n` +
+      `⚠️ *Disclaimer:* Informational statutory summary generated for MSME compliance transparency; not a certified tax audit certificate.\n\n` +
       `_Issued via SmartBiz Coach Compliance & Regulatory Shield Desk_ 🛡️`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleCopyNotice = () => {
-    const text = `STATUTORY SMALL BUSINESS TAX EXEMPTION NOTICE\nPursuant to Nigerian Finance Act 2019/2020 & CITA Section 23\n\nEntity Name: ${exemptionBizName || 'Designated Micro-Enterprise'}\nCategory: ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\nTax Period: ${exemptionYear}\nDeclared Gross Turnover: ₦${Number(exemptionTurnover || 0).toLocaleString()} (Below ₦25,000,000 threshold)\n\nSTATUTORY GROUNDS FOR ZERO-TAX EXEMPTION:\n1. 0% Companies Income Tax (CIT): Under Section 23 & 40 of CITA (as amended by Nigerian Finance Act 2019/2020), small companies with annual turnover under ₦25M are legally subject to ZERO PERCENT (0%) CIT.\n2. VAT Exemption: Under Section 15 of VAT Act (as amended), businesses below the ₦25M turnover threshold are exempt from charging, collecting, and remitting VAT.\n3. Protection Against Harassment: Taxes & Levies Act prohibits illegal road blocks, arbitrary demands, and unlawful distraint of micro-enterprises.\n\nIssued via SmartBiz Coach Compliance & Regulatory Shield Desk.`;
+    const text = `STATUTORY SMALL BUSINESS TAX EXEMPTION NOTICE\nPursuant to Nigeria Tax Act 2025/2026 & Finance Act CITA Section 23/40\n\nEntity Name: ${exemptionBizName || 'Designated Micro-Enterprise'}\nCategory: ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\nTax Period: ${exemptionYear}\nDeclared Gross Turnover: ₦${Number(exemptionTurnover || 0).toLocaleString()} (Within Small Enterprise ₦100M Statutory Threshold)\n\nSTATUTORY GROUNDS FOR ZERO-TAX EXEMPTION:\n1. 0% Companies Income Tax (CIT): Under the Nigeria Tax Act 2025 / 2026 and CITA Section 23 & 40, small companies with annual turnover under ₦100,000,000 are subject to ZERO PERCENT (0%) CIT.\n2. VAT Exemption: Under Section 15 of VAT Act & Nigeria Tax Act 2025, qualifying micro-enterprises are exempt from charging, collecting, and remitting VAT.\n3. Protection Against Harassment: Taxes & Levies Act prohibits illegal road blocks, arbitrary demands, and unlawful distraint of micro-enterprises.\n\nDisclaimer: Informational statutory summary for MSME compliance transparency.\n\nIssued via SmartBiz Coach Compliance & Regulatory Shield Desk.`;
     navigator.clipboard.writeText(text);
     toast.success('Statutory Exemption Notice copied to clipboard!');
   };
@@ -681,7 +682,7 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                 Small Business Tax Exemption Shield
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-                Statutory legal protection for Nigerian MSMEs earning under <strong>₦25,000,000</strong> annually. Cites Section 23 of CITA (0% CIT) and Section 15 of VAT Act.
+                Statutory legal protection for Nigerian MSMEs earning under <strong>₦100,000,000</strong> annually under Nigeria Tax Act 2025 / 2026 and CITA Section 23/40 (0% CIT & VAT Exemption).
               </p>
             </div>
           </div>
@@ -697,11 +698,11 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 relative z-10">
           <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
             <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">0% Companies Income Tax</p>
-            <p className="text-xs text-slate-200 mt-1">Section 23 CITA Cap C21 LFN 2004 (amended by Finance Act 2019/2020)</p>
+            <p className="text-xs text-slate-200 mt-1">Nigeria Tax Act 2025 / 2026 & Section 23 CITA Cap C21 LFN</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
             <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">VAT Filing Exemption</p>
-            <p className="text-xs text-slate-200 mt-1">Section 15 VAT Act Cap V1 LFN 2004 (below ₦25M turnover exempt)</p>
+            <p className="text-xs text-slate-200 mt-1">Section 15 VAT Act & Nigeria Tax Act 2025 (small business exempt)</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
             <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">Illegal Task Force Shield</p>
@@ -979,7 +980,7 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                     This is to formally place on record that <strong>{exemptionBizName || 'The Designated Business'}</strong> (Entity: <strong>{exemptionRegType}</strong> {exemptionRegNumber ? `• Registration/TIN: ${exemptionRegNumber}` : ''}) operates with an assessed gross annual turnover of <strong>₦{Number(exemptionTurnover || 0).toLocaleString()}</strong> for the tax period <strong>{exemptionYear}</strong>.
                   </p>
                   <p>
-                    Having an annual gross turnover strictly under the statutory threshold of <strong>₦25,000,000.00 (Twenty-Five Million Naira)</strong>, the aforementioned entity is statutorily classified as a <strong>Small Company / Exempt Micro-Enterprise</strong> under the extant laws of Nigeria.
+                    Having an annual gross turnover strictly under the statutory threshold of <strong>₦100,000,000.00 (One Hundred Million Naira)</strong>, the aforementioned entity is statutorily classified as a <strong>Small Company / Exempt Micro-Enterprise</strong> under the Nigeria Tax Act 2025/2026 and extant laws of the Federal Republic of Nigeria.
                   </p>
                 </div>
 
@@ -989,15 +990,19 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                   </p>
                   <div className="space-y-2 pl-3 border-l-2 border-emerald-600 text-[11px]">
                     <p>
-                      <strong>1. 0% Companies Income Tax Rate:</strong> Under <em>Section 23 and Section 40 of the Companies Income Tax Act (CITA)</em>, as amended by the <em>Finance Act 2019 (Section 23)</em> and <em>Finance Act 2020 (Section 14)</em>, small companies with gross turnover of ₦25,000,000 or less are subject to CIT at <strong>ZERO PERCENT (0%)</strong>.
+                      <strong>1. 0% Companies Income Tax Rate:</strong> Under the <em>Nigeria Tax Act 2025 / 2026</em> and <em>Section 23 and Section 40 of the Companies Income Tax Act (CITA)</em>, qualifying small companies with gross turnover under ₦100,000,000 are subject to CIT at <strong>ZERO PERCENT (0%)</strong>.
                     </p>
                     <p>
-                      <strong>2. Exemption from VAT Registration & Charging:</strong> Under <em>Section 15 of the Value Added Tax (VAT) Act</em> (as amended by Finance Act), businesses with turnover below ₦25,000,000 are <strong>exempt from registering for, charging, collecting, or remitting Value Added Tax</strong>.
+                      <strong>2. Exemption from VAT Registration & Charging:</strong> Under <em>Section 15 of the Value Added Tax (VAT) Act</em> and Nigeria Tax Act 2025, qualifying small enterprises are <strong>exempt from registering for, charging, collecting, or remitting Value Added Tax</strong>.
                     </p>
                     <p>
                       <strong>3. Prohibition of Illegal Levies & Harassment:</strong> Under the <em>Taxes and Levies (Approved List for Collection) Act</em>, it is unlawful for unauthorized committees, touts, or agents to mount roadblocks, seal trade premises, or enforce unapproved levies on micro-enterprises.
                     </p>
                   </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] text-slate-500 leading-relaxed">
+                  <strong>DISCLAIMER:</strong> This memorandum is an informational statutory exemption summary generated for MSME record-keeping and administrative transparency under the Nigeria Tax Act 2025 / Finance Acts. It does not constitute certified legal, accounting, or formal tax clearance opinion. For formal corporate tax filings or audits, consult the FIRS / SIRS or an ICAN/CITN certified tax consultant.
                 </div>
 
                 <div className="bg-emerald-900 text-white p-4 rounded-2xl flex items-center justify-between gap-4">

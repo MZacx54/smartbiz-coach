@@ -520,7 +520,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   <ul className="space-y-2 text-xs text-slate-700">
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <span><strong>Automated Split Settlement:</strong> Customer payments made through online Market Square checkout are processed via Central Bank of Nigeria (CBN)-licensed payment switches (primarily <strong>Paystack Payments Limited</strong> and <strong>HabariPay / Squadco</strong>). Sales proceeds settle directly into the merchant&rsquo;s verified Nigerian commercial or microfinance bank account, with the transparent 1.5%–2% gateway/platform technology processing fee settled automatically.</span>
+                      <span><strong>Automated Split Settlement:</strong> SmartBiz Coach charges <strong>0% platform commission</strong> on merchant sales. Customer card and bank payments made through online Market Square checkout are processed via Central Bank of Nigeria (CBN)-licensed payment switches (primarily <strong>Paystack Payments Limited</strong> and <strong>HabariPay / Squadco</strong>). Sales proceeds settle directly into the merchant&rsquo;s verified Nigerian bank account, with only standard third-party payment gateway processor fees (1.5% capped at ₦2,000 for local transactions) deducted by the payment switch.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />

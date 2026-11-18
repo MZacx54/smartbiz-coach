@@ -73,7 +73,7 @@ export interface CashCliffTrajectoryDay {
 }
 
 export interface CashCliffData {
-  runway_status: 'CASH_CLIFF_WARNING' | 'BURN_CAUTION' | 'HEALTHY_SURPLUS';
+  runway_status: 'CASH_CLIFF_WARNING' | 'BURN_CAUTION' | 'HEALTHY_SURPLUS' | 'NO_DATA';
   runway_days: number;
   estimated_liquid_cash: number;
   avg_daily_inflow: number;
@@ -344,57 +344,50 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           return;
         } catch {}
       }
-      // Fallback baseline states
+      // Fallback unrated baseline states (truthful empty state)
       setCreditData({
-        credit_score: 715,
-        rating_tier: "GOOD (Bankable Grade B+)",
-        risk_level: "MODERATE_LOW_RISK",
-        bank_recommendation: "Eligible for Up to ₦3,500,000 Working Capital & Equipment Facility (BOI, DBN, SMEDAN & Commercial Bank/MFB Partner Networks).",
+        credit_score: 300,
+        rating_tier: "UNRATED (No Records Yet)",
+        risk_level: "INSUFFICIENT_DATA",
+        bank_recommendation: "Record daily sales in your Cashbook to generate your official SmartScore™ and unlock bank pre-qualification.",
         breakdown: {
-          compliance_points: 75,
-          cashflow_points: 140,
-          debt_recovery_points: 110,
-          inventory_points: 90,
+          compliance_points: 0,
+          cashflow_points: 0,
+          debt_recovery_points: 0,
+          inventory_points: 0,
         },
         metrics: {
-          cac_verified: true,
-          total_sales_logged: 24,
-          total_gmv_revenue: 485000,
-          active_inventory_items: 8,
-          active_trading_days_30d: 14,
+          cac_verified: false,
+          total_sales_logged: 0,
+          total_gmv_revenue: 0,
+          active_inventory_items: 0,
+          active_trading_days_30d: 0,
         }
       });
       setCashCliff({
-        runway_status: 'HEALTHY_SURPLUS',
-        runway_days: 90,
-        estimated_liquid_cash: 285000,
-        avg_daily_inflow: 24500,
-        avg_daily_outflow: 7800,
-        daily_net_velocity: 16700,
-        credit_locked_30d: 35000,
-        fuel_gen_burn_pct: 21.4,
-        fuel_gen_outflow_30d: 48000,
-        advisory: 'Healthy positive cash velocity (+₦16,700/day net surplus). Projected 14-day working capital grows to ₦518,800.',
-        trajectory_14d: Array.from({ length: 14 }, (_, i) => ({
-          day: i + 1,
-          date: `Day ${i + 1}`,
-          projected_inflow: 24500,
-          projected_outflow: 7800,
-          projected_balance: 285000 + (i + 1) * 16700
-        }))
+        runway_status: 'NO_DATA',
+        runway_days: 0,
+        estimated_liquid_cash: 0,
+        avg_daily_inflow: 0,
+        avg_daily_outflow: 0,
+        daily_net_velocity: 0,
+        credit_locked_30d: 0,
+        fuel_gen_burn_pct: 0,
+        fuel_gen_outflow_30d: 0,
+        advisory: 'No cash inflow or expense transactions recorded. Record daily transactions in the Cashbook to unlock real-time predictive runway modeling.',
+        trajectory_14d: []
       });
       setAiAgents([
         {
           agent_id: 'DEBT_COLLECTOR',
           agent_name: 'Smart Debt Collector (Gbege AI)',
           icon: '🕵️‍♂️',
-          priority: 'HIGH',
-          badge_color: 'rose',
-          headline: 'Recover Unpaid Credit Sales Before 5 PM',
-          insight: 'Sending an automated WhatsApp reminder before 5 PM increases same-day debt recovery by 3.2x and boosts your SmartScore™.',
-          action_type: 'WHATSAPP_REMINDER',
-          action_label: '📲 Send WhatsApp Debt Reminder',
-          whatsapp_text: 'Hello 👋! Warm greetings from our store. This is a polite reminder regarding your outstanding balance. Kindly let us know when we can expect settlement today. Thank you! 🙏',
+          priority: 'LOW',
+          badge_color: 'emerald',
+          headline: 'Gbege Debt Shield Active',
+          insight: 'Record customer credit sales in the Gbege Debt Book to trigger automated WhatsApp payment recovery reminders.',
+          action_type: 'NAVIGATE',
+          action_label: '📖 Open Gbege Book',
           target_route: '/dashboard/debtor'
         },
         {
@@ -402,9 +395,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           agent_name: 'Cash Guardian & Fuel Auditor',
           icon: '🛡️',
           priority: 'MEDIUM',
-          badge_color: 'emerald',
-          headline: '14-Day Cash Velocity: +₦16,700/day Net Surplus',
-          insight: 'Generator fuel accounts for 21.4% of petty cash expenses. Logging daily till closing balances maintains 100% fraud shield integrity.',
+          badge_color: 'blue',
+          headline: '14-Day Cash Velocity: Record Daily Sales',
+          insight: 'Logging daily sales and generator fuel expenses in your Cashbook activates predictive cash cliff modeling and fraud prevention.',
           action_type: 'NAVIGATE',
           action_label: '⚡ Open Daily Day-Book',
           target_route: '/dashboard/cashbook'
@@ -415,11 +408,11 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
           icon: '🏛️',
           priority: 'MEDIUM',
           badge_color: 'indigo',
-          headline: 'SmartScore™ 715/850 • Pre-Qualified for BOI, DBN & Commercial Facilities',
-          insight: 'Your SHA-256 audited ledger is ready for one-click submission to Bank of Industry (BOI), DBN, SMEDAN, Tier-1 MFBs, and international donor grant programs.',
-          action_type: 'DOWNLOAD_DOSSIER',
-          action_label: '📄 Download Bank Underwriting PDF',
-          target_route: '/dashboard/grants'
+          headline: 'SmartScore™ Underwriter: Build Your Credit Profile',
+          insight: 'Record at least 7 to 14 days of trading activity to generate your SHA-256 certified bank underwriting dossier for BOI, DBN, and SMEDAN.',
+          action_type: 'NAVIGATE',
+          action_label: '📊 View Cashbook',
+          target_route: '/dashboard/cashbook'
         }
       ]);
     } finally {
@@ -507,40 +500,42 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
         const res = await api.get('/api/analytics/underwriting-dossier/');
         dossier = res.data;
       } catch (err) {
+        const savedU = (() => { try { return JSON.parse(localStorage.getItem('sb_user') || '{}'); } catch { return {}; } })();
+        const savedB = (() => { try { return JSON.parse(localStorage.getItem('sb_brand') || '{}'); } catch { return {}; } })();
         dossier = {
-          dossier_id: "SBC-UW-00108",
+          dossier_id: `SBC-UW-${Math.floor(10000 + Math.random() * 90000)}`,
           verification_hash: "9A4C7E82F1D0B3A6",
           issued_at: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
           business_info: {
-            business_name: "SmartBiz Certified Merchant",
-            owner_name: "Enterprise Account Owner",
-            email: "merchant@smartbiz.com.ng",
-            phone: "+234 800 000 0000",
-            cac_number: "RC/BN VERIFIED",
-            is_cac_verified: true,
+            business_name: savedB?.business_name || savedU?.businessName || "Registered Merchant",
+            owner_name: savedU?.name || "Business Owner",
+            email: savedU?.email || "",
+            phone: savedU?.phone || "",
+            cac_number: savedB?.cacNumber || "Pending Verification",
+            is_cac_verified: Boolean(savedB?.cacNumber),
           },
           underwriting_assessment: {
-            credit_score: creditData?.credit_score || 715,
-            rating_tier: creditData?.rating_tier || "GOOD (Bankable Grade B+)",
-            risk_level: creditData?.risk_level || "MODERATE_LOW_RISK",
-            bank_recommendation: creditData?.bank_recommendation || "Approved for MSME lending and grants.",
+            credit_score: creditData?.credit_score ?? 300,
+            rating_tier: creditData?.rating_tier || "UNRATED",
+            risk_level: creditData?.risk_level || "INSUFFICIENT_DATA",
+            bank_recommendation: creditData?.bank_recommendation || "Record daily sales in your Cashbook to build underwriting credibility.",
             breakdown: creditData?.breakdown || {
-              compliance_points: 75,
-              cashflow_points: 140,
-              debt_recovery_points: 110,
-              inventory_points: 90,
+              compliance_points: 0,
+              cashflow_points: 0,
+              debt_recovery_points: 0,
+              inventory_points: 0,
             },
             metrics: creditData?.metrics || {
-              cac_verified: true,
-              total_sales_logged: 24,
-              total_gmv_revenue: 485000,
-              active_inventory_items: 8,
+              cac_verified: Boolean(savedB?.cacNumber),
+              total_sales_logged: 0,
+              total_gmv_revenue: 0,
+              active_inventory_items: 0,
             },
-            till_integrity_score: anomalies?.integrity_score || 100,
+            till_integrity_score: anomalies?.integrity_score ?? 100,
             fraud_risk_status: anomalies?.status || "SECURE",
-            cash_runway_days: cashCliff?.runway_days || 90,
-            daily_net_velocity: cashCliff?.daily_net_velocity || 16700,
-            fuel_gen_burn_pct: cashCliff?.fuel_gen_burn_pct || 18.5,
+            cash_runway_days: cashCliff?.runway_days ?? 0,
+            daily_net_velocity: cashCliff?.daily_net_velocity ?? 0,
+            fuel_gen_burn_pct: cashCliff?.fuel_gen_burn_pct ?? 0,
           },
           target_institutions: [
             "Bank of Industry (BOI) & Development Bank of Nigeria (DBN)",
@@ -938,10 +933,14 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                       Up to ₦3.5M
                     </div>
                     <div className="text-xs font-bold text-indigo-300 mt-1">
-                      SmartScore™: <span className="text-emerald-400">{creditData?.credit_score || 715}/850</span> (Bankable Grade)
+                      SmartScore™: <span className="text-emerald-400">{creditData?.credit_score ?? 300}/850</span> ({creditData?.rating_tier || 'Evaluating'})
                     </div>
                     <p className="text-[11px] text-slate-300 mt-2 leading-relaxed">
-                      Your verified till volume qualifies you for facilities across <strong>BOI, DBN, SMEDAN, and Commercial Banks</strong>.
+                      {creditData?.metrics?.total_sales_logged ? (
+                        <>Your verified till volume qualifies you for facilities across <strong>BOI, DBN, SMEDAN, and Commercial Banks</strong>.</>
+                      ) : (
+                        <>Record daily sales in your Cashbook to generate your official bank pre-qualification rating.</>
+                      )}
                     </p>
                   </div>
 
@@ -971,19 +970,25 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                         💡 Daily Net Cash Velocity
                       </span>
-                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 rounded-full">
-                        {cashCliff?.runway_days || 90}+ Days Safe
+                      <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${
+                        cashCliff?.runway_status === 'NO_DATA' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {cashCliff?.runway_status === 'NO_DATA' ? 'Awaiting Records' : `${cashCliff?.runway_days ?? 0}+ Days Safe`}
                       </span>
                     </div>
                     <div className="mt-2 text-2xl sm:text-3xl font-black text-emerald-600 font-mono">
-                      +₦{Math.round(cashCliff?.daily_net_velocity || 16700).toLocaleString()}
+                      {(cashCliff?.daily_net_velocity ?? 0) >= 0 ? '+' : ''}₦{Math.round(cashCliff?.daily_net_velocity ?? 0).toLocaleString()}
                       <span className="text-xs font-bold text-slate-400">/day</span>
                     </div>
                     <div className="text-xs font-bold text-slate-800 mt-1">
-                      Working Capital Runway: Healthy
+                      {cashCliff?.runway_status === 'NO_DATA' ? 'Runway: Awaiting Daily Day-Book' : 'Working Capital Runway: Active'}
                     </div>
                     <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                      Generator fuel consumes <strong>{cashCliff?.fuel_gen_burn_pct || 18.5}%</strong> of your petty cash expenses. Cash inflows outpace burn.
+                      {cashCliff?.runway_status === 'NO_DATA' ? (
+                        <>Log daily sales and generator fuel expenses in your Cashbook to track net velocity and fuel burn.</>
+                      ) : (
+                        <>Generator fuel consumes <strong>{cashCliff?.fuel_gen_burn_pct ?? 0}%</strong> of petty cash expenses. Cash velocity is monitored in real-time.</>
+                      )}
                     </p>
                   </div>
 
@@ -1006,32 +1011,46 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                         📦 Stock Depletion Alert
                       </span>
                       <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 rounded-full">
-                        {forecasts.filter(f => f.urgency === 'CRITICAL' || f.urgency === 'HIGH').length || 1} SKU Ending
+                        {forecasts.filter(f => f.urgency === 'CRITICAL' || f.urgency === 'HIGH').length} SKU Ending
                       </span>
                     </div>
                     <div className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 font-mono">
-                      ~{forecasts[0]?.days_remaining || 3} Days Left
+                      {forecasts.length > 0 ? `~${forecasts[0]?.days_remaining ?? 0} Days Left` : 'Stocks Healthy'}
                     </div>
                     <div className="text-xs font-bold text-amber-700 mt-1 truncate">
-                      {forecasts[0]?.name || 'Fast-Moving Inventory Line'}
+                      {forecasts[0]?.name || 'Catalog Inventory Runway'}
                     </div>
                     <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                      Reordering now prevents losing ~₦{(forecasts[0]?.projected_lost_revenue || 45000).toLocaleString()} in paying walk-in customer sales.
+                      {forecasts.length > 0 ? (
+                        <>Reordering now prevents losing ~₦{(forecasts[0]?.projected_lost_revenue ?? 0).toLocaleString()} in customer sales.</>
+                      ) : (
+                        <>No urgent stockout bottlenecks detected. Add products in Inventory to activate automated restock alerts.</>
+                      )}
                     </p>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                    <button
-                      onClick={() =>
-                        openWhatsAppDispatch(
-                          `Hello Supplier, please send price invoice and restock availability for: ${forecasts[0]?.name || 'Fast-moving inventory'}. Need delivery within 48 hours.`
-                        )
-                      }
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>WhatsApp Supplier to Reorder</span>
-                    </button>
+                    {forecasts.length > 0 ? (
+                      <button
+                        onClick={() =>
+                          openWhatsAppDispatch(
+                            `Hello Supplier, please send price invoice and restock availability for: ${forecasts[0]?.name || 'Fast-moving inventory'}. Need delivery within 48 hours.`
+                          )
+                        }
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp Supplier to Reorder</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => navigate('/dashboard/inventory')}
+                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow transition flex items-center justify-center gap-1.5 cursor-pointer border-0"
+                      >
+                        <Package className="w-3.5 h-3.5" />
+                        <span>Manage Inventory Catalog</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => setActiveTab('DEMAND')}
                       className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer border-0"
@@ -1129,16 +1148,16 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                       14-Day Cash Runway
                     </span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className={`text-3xl font-black font-mono ${(cashCliff?.daily_net_velocity || 0) >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {(cashCliff?.daily_net_velocity || 0) >= 0 ? '+' : ''}₦{Math.round(cashCliff?.daily_net_velocity || 16700).toLocaleString()}
+                      <span className={`text-3xl font-black font-mono ${(cashCliff?.daily_net_velocity ?? 0) >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {(cashCliff?.daily_net_velocity ?? 0) >= 0 ? '+' : ''}₦{Math.round(cashCliff?.daily_net_velocity ?? 0).toLocaleString()}
                       </span>
                       <span className="text-[11px] font-bold text-slate-500">/ day</span>
                     </div>
                     <p className="text-xs font-bold text-slate-800 mt-1.5">
-                      Runway: {cashCliff?.runway_days || 90}+ Days Safe
+                      {cashCliff?.runway_status === 'NO_DATA' ? 'Runway: Awaiting Sales Records' : `Runway: ${cashCliff?.runway_days ?? 0}+ Days Safe`}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      Gen Fuel Burn: <strong>{cashCliff?.fuel_gen_burn_pct || 18.5}%</strong> of petty cash expenses.
+                      Gen Fuel Burn: <strong>{cashCliff?.fuel_gen_burn_pct ?? 0}%</strong> of petty cash expenses.
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-emerald-600 font-bold">
@@ -1690,35 +1709,45 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                 </div>
               </div>
 
-              {(() => {
-                const monthlyInstallment = Math.round(
-                  (simLoanAmount * (1 + (simInterestRate / 100) * (simTenorMonths / 12))) / Math.max(1, simTenorMonths)
-                );
-                const lift90d = Math.round(simLoanAmount * 0.28);
-                const monthlyNoi = Math.max(85000, Math.round((cashCliff?.daily_net_velocity || 18500) * 30 + lift90d / 3));
-                const simDscr = Number((monthlyNoi / Math.max(1, monthlyInstallment)).toFixed(2));
-                const simConf = Math.min(99.2, Math.max(25, Number((55 + simDscr * 18).toFixed(1))));
-                return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                      <span className="text-[10px] font-black uppercase text-emerald-800 block">95% Repayment Confidence</span>
-                      <span className="text-xl font-black text-emerald-700 font-mono mt-1 block">{simConf}%</span>
-                    </div>
-                    <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200">
-                      <span className="text-[10px] font-black uppercase text-indigo-800 block">Simulated DSCR</span>
-                      <span className="text-xl font-black text-indigo-700 font-mono mt-1 block">{simDscr}x</span>
-                    </div>
-                    <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
-                      <span className="text-[10px] font-black uppercase text-amber-800 block">Monthly Installment</span>
-                      <span className="text-xl font-black text-amber-800 font-mono mt-1 block">₦{monthlyInstallment.toLocaleString()}</span>
-                    </div>
-                    <div className="p-3.5 rounded-2xl bg-slate-900 text-white">
-                      <span className="text-[10px] font-black uppercase text-emerald-400 block">90-Day Inventory Lift</span>
-                      <span className="text-xl font-black text-white font-mono mt-1 block">+₦{lift90d.toLocaleString()}</span>
-                    </div>
+              {(!creditData?.metrics?.total_sales_logged) ? (
+                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-center gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <span className="font-bold block">Trading History Required for Simulation:</span>
+                    <span>Log daily sales in your Cashbook. The simulation engine requires verified trading revenue to project Debt Service Coverage (DSCR) and bank repayment probability.</span>
                   </div>
-                );
-              })()}
+                </div>
+              ) : (
+                (() => {
+                  const monthlyInstallment = Math.round(
+                    (simLoanAmount * (1 + (simInterestRate / 100) * (simTenorMonths / 12))) / Math.max(1, simTenorMonths)
+                  );
+                  const lift90d = Math.round(simLoanAmount * 0.28);
+                  const monthlyNoi = Math.max(0, Math.round((cashCliff?.daily_net_velocity || 0) * 30 + lift90d / 3));
+                  const simDscr = Number((monthlyNoi / Math.max(1, monthlyInstallment)).toFixed(2));
+                  const simConf = Math.min(95.0, Math.max(15, Number((35 + simDscr * 18).toFixed(1))));
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                        <span className="text-[10px] font-black uppercase text-emerald-800 block">Repayment Confidence</span>
+                        <span className="text-xl font-black text-emerald-700 font-mono mt-1 block">{simConf}%</span>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200">
+                        <span className="text-[10px] font-black uppercase text-indigo-800 block">Simulated DSCR</span>
+                        <span className="text-xl font-black text-indigo-700 font-mono mt-1 block">{simDscr}x</span>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+                        <span className="text-[10px] font-black uppercase text-amber-800 block">Monthly Installment</span>
+                        <span className="text-xl font-black text-amber-800 font-mono mt-1 block">₦{monthlyInstallment.toLocaleString()}</span>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-slate-900 text-white">
+                        <span className="text-[10px] font-black uppercase text-emerald-400 block">90-Day Inventory Lift</span>
+                        <span className="text-xl font-black text-white font-mono mt-1 block">+₦{lift90d.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
             </div>
 
             {/* Download Action Card */}

@@ -17,14 +17,21 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'GRANT' | 'LOAN' | 'EQUITY'>('ALL');
   const [error, setError] = useState('');
 
+  const savedUser = (() => {
+    try { return JSON.parse(localStorage.getItem('sb_user') || '{}'); } catch { return {}; }
+  })();
+  const savedBrand = (() => {
+    try { return JSON.parse(localStorage.getItem('sb_brand') || '{}'); } catch { return {}; }
+  })();
+
   const [formData, setFormData] = useState({
-    location: 'Lagos',
-    industry: 'Agriculture',
-    yearsInBusiness: '0-1 years',
-    gender: 'Male',
-    cacRegistration: 'Unregistered',
+    location: savedUser?.location || savedBrand?.location || 'Lagos',
+    industry: savedBrand?.industry || 'Agriculture',
+    yearsInBusiness: '1-3 years',
+    gender: 'Female',
+    cacRegistration: savedBrand?.cacNumber ? 'Business Name' : 'Unregistered',
     hasCorporateAccount: 'No',
-    targetAmount: 'Under ₦1M'
+    targetAmount: '₦1M - ₦5M'
   });
 
   // Credit modal state
@@ -460,11 +467,20 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
             </p>
           </div>
 
+          <div className="flex items-center justify-between p-3.5 bg-indigo-50/80 border border-indigo-150 rounded-xl text-xs text-indigo-900">
+            <span className="font-bold flex items-center gap-1.5">
+              <span>⚡ Audit Cost:</span>
+              <span className="bg-indigo-600 text-white px-2 py-0.5 rounded-md font-mono text-[11px]">50 Credits</span>
+            </span>
+            <span className="font-medium text-slate-650">Current Balance: <strong className="text-slate-900 font-mono">{credits}</strong></span>
+          </div>
+
           <button
             type="submit"
-            className="w-full py-3.5 bg-indigo-600 text-white font-extrabold rounded-xl hover:bg-indigo-750 transition-all shadow-lg transform active:scale-95 text-xs uppercase tracking-widest cursor-pointer"
+            className="w-full py-4 bg-indigo-600 text-white font-extrabold rounded-xl hover:bg-indigo-750 transition-all shadow-lg transform active:scale-95 text-xs uppercase tracking-widest cursor-pointer flex items-center justify-center gap-2"
           >
-            Match My Funding opportunities 🔎
+            <span>Match My Funding Opportunities 🔎</span>
+            <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">⚡ 50 Credits</span>
           </button>
         </form>
       </div>

@@ -2033,16 +2033,28 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                        </div>
                     </div>
 
-                   <div className="flex gap-4 pt-4">
+                   <div className="flex items-center gap-3 pt-4 flex-wrap">
+                      {currentProduct.id ? (
+                        <button 
+                          type="button"
+                          onClick={async () => {
+                            await handleDelete(currentProduct.id!);
+                            setIsEditing(false);
+                          }}
+                          className="px-5 py-4 rounded-2xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all flex items-center justify-center gap-1.5 border border-rose-200 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" /> Delete
+                        </button>
+                      ) : null}
                       <button 
                         onClick={() => setIsEditing(false)}
-                        className="flex-1 px-8 py-4 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all"
+                        className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
                       >
                         Cancel
                       </button>
                       <button 
                         onClick={handleSave}
-                        className="flex-[2] flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-3xl font-bold hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
+                        className="flex-[2] flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-3xl font-bold hover:bg-indigo-600 transition-all shadow-xl active:scale-95 cursor-pointer"
                       >
                         <Save className="w-5 h-5" /> Sync Listing
                       </button>
