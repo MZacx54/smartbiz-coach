@@ -28,7 +28,7 @@ export const mapDbToBrand = (dbBrand: any): BrandIdentity => {
             broadcastMessages: []
         },
         packaging: dbBrand.packaging || { thankYouNote: '', unboxingTip: '' },
-        phone: dbBrand.phone || '',
+        phone: dbBrand.phone || dbBrand.whatsapp || dbBrand.user_phone || dbBrand.user?.phone || '',
         email: dbBrand.email || '',
         location: dbBrand.location || dbBrand.address || '',
         address: dbBrand.address || dbBrand.location || '',
@@ -43,7 +43,7 @@ export const mapDbToBrand = (dbBrand: any): BrandIdentity => {
         executiveBio: dbBrand.executiveBio || dbBrand.executive_bio || '',
         slaPolicy: dbBrand.slaPolicy || dbBrand.sla_policy || '',
         ndprCompliance: dbBrand.ndprCompliance || dbBrand.ndpr_compliance || '',
-        whatsapp: dbBrand.whatsapp || '',
+        whatsapp: dbBrand.whatsapp || dbBrand.phone || dbBrand.whatsapp_number || dbBrand.user_phone || dbBrand.user?.phone || '',
         openingHours: dbBrand.openingHours || dbBrand.opening_hours || {
             monFri: '8:00 AM - 6:00 PM',
             saturday: '9:00 AM - 4:00 PM',

@@ -431,15 +431,11 @@ const PublicStorefront: React.FC = () => {
     );
     Promise.allSettled(leadPromises);
 
-    // 2. Open WhatsApp prefilled message
-    let orderText = `Hi ${brand.businessName}, I would like to place an order:\n\n`;
-    cart.forEach(item => {
-      orderText += `- ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}\n`;
-    });
-    orderText += `\n💵 *Total:* ₦${cartTotal.toLocaleString()}\n`;
-    orderText += `\n👤 *Customer Details:*\nName: ${checkoutForm.name}\nPhone: ${checkoutForm.phone}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`;
+    // 2. Open WhatsApp prefilled message using clean ASCII formatting
+    const itemsText = cart.map(item => `- ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}`).join('\n');
+    const orderText = `Hi ${brand.businessName || 'Seller'}, I would like to place an order:\n\n${itemsText}\n\n*Total:* ₦${cartTotal.toLocaleString()}\n\n*Customer Details:*\n- Name: ${checkoutForm.name}\n- Phone: ${checkoutForm.phone}\n- Address: ${checkoutForm.address}${checkoutForm.notes ? `\n- Notes: ${checkoutForm.notes}` : ''}`;
 
-    const rawWa = brand.whatsapp || brand.phone || (brand as any).user_phone || (brand as any).vendor_phone || '';
+    const rawWa = brand.whatsapp || brand.phone || products[0]?.whatsapp_number || (brand as any).user_phone || (brand as any).vendor_phone || '';
     const cleanWa = sanitizeWhatsAppNumber(rawWa);
     if (!cleanWa) {
       toast('Merchant direct phone not listed. Opening WhatsApp contact picker...', { icon: 'ℹ️' });
@@ -515,16 +511,12 @@ const PublicStorefront: React.FC = () => {
       console.warn("Paystack checkout notice:", err);
       toast.error(err?.message || "Card gateway loading error. Redirecting to WhatsApp...");
       
-      let orderText = `Hi ${brand.businessName}, I would like to place an online order:\n\n`;
-      cart.forEach(item => {
-        orderText += `- ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}\n`;
-      });
-      orderText += `\n💵 *Total:* ₦${cartTotal.toLocaleString()}\n`;
-      orderText += `\n👤 *Customer Details:*\nName: ${checkoutForm.name}\nPhone: ${checkoutForm.phone}\nAddress: ${checkoutForm.address}\nNotes: ${checkoutForm.notes}`;
+      const itemsText = cart.map(item => `- ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}`).join('\n');
+      const orderText = `Hi ${brand.businessName || 'Seller'}, I would like to place an order:\n\n${itemsText}\n\n*Total:* ₦${cartTotal.toLocaleString()}\n\n*Customer Details:*\n- Name: ${checkoutForm.name}\n- Phone: ${checkoutForm.phone}\n- Address: ${checkoutForm.address}${checkoutForm.notes ? `\n- Notes: ${checkoutForm.notes}` : ''}`;
 
       setShowCartModal(false);
       setCart([]);
-      const merchantWa = sanitizeWhatsAppNumber(brand.whatsapp || brand.phone || (brand as any).user_phone || (brand as any).vendor_phone);
+      const merchantWa = sanitizeWhatsAppNumber(brand.whatsapp || brand.phone || products[0]?.whatsapp_number || (brand as any).user_phone || (brand as any).vendor_phone);
       const waUrl = merchantWa ? `https://wa.me/${merchantWa}?text=${encodeURIComponent(orderText)}` : `https://wa.me/?text=${encodeURIComponent(orderText)}`;
       window.open(waUrl, '_blank', 'noopener,noreferrer');
     }
@@ -692,7 +684,7 @@ const PublicStorefront: React.FC = () => {
             </div>
             
             <a 
-              href={`https://wa.me/${sanitizeWhatsAppNumber(brand.whatsapp || brand.phone)}?text=${encodeURIComponent(`Hi ${brand.businessName}, I saw your store on SmartBiz and I'm interested in your services!`)}`}
+              href={`https://wa.me/${sanitizeWhatsAppNumber(brand.whatsapp || brand.phone || products[0]?.whatsapp_number || (brand as any).user_phone)}?text=${encodeURIComponent(`Hi ${brand.businessName || 'Seller'}, I saw your store on SmartBiz and I am interested in your services!`)}`}
               target="_blank"
               rel="noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black tracking-wide shadow-md transition-all active:scale-98"

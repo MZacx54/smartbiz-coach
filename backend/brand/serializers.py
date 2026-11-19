@@ -12,6 +12,23 @@ class BrandSerializer(serializers.ModelSerializer):
             return None
         return value
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        try:
+            user = getattr(instance, 'user', None)
+            user_phone = getattr(user, 'phone', '') if user else ''
+            vp = getattr(user, 'vendor_profile', None) if user else None
+            vp_phone = getattr(vp, 'whatsapp_number', '') if vp else ''
+            fallback_phone = user_phone or vp_phone or ''
+            
+            if not data.get('phone') or data.get('phone') == '2348000000000':
+                data['phone'] = fallback_phone
+            if not data.get('whatsapp') or data.get('whatsapp') == '2348000000000':
+                data['whatsapp'] = data.get('phone') or fallback_phone
+        except Exception:
+            pass
+        return data
+
     def update(self, instance, validated_data):
         if 'policies' in validated_data and isinstance(validated_data['policies'], dict):
             existing_policies = instance.policies if isinstance(instance.policies, dict) else {}

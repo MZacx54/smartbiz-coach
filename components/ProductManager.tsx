@@ -1275,6 +1275,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Title / Name</label>
                       <input 
                         type="text" 
+                        name="name"
+                        required
                         value={currentProduct.name}
                         onChange={(e) => setCurrentProduct({ ...currentProduct, name: e.target.value })}
                         placeholder="e.g. Ankara Fabric - 6 Yards"
@@ -1287,8 +1289,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xs text-slate-400 select-none">₦</span>
                         <input 
                           type="number" 
+                          name="price"
                           min="0"
                           step="any"
+                          required
                           value={currentProduct.price}
                           onChange={(e) => setCurrentProduct({ ...currentProduct, price: e.target.value })}
                           placeholder="0.00"
@@ -1304,6 +1308,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                       <label className="text-[10px] font-black text-rose-700 uppercase tracking-widest ml-1">🔥 Compare-At / Original Price (₦) (Optional Flash Deal)</label>
                       <input
                         type="number"
+                        name="compare_at_price"
                         min="0"
                         step="any"
                         value={(currentProduct.compare_at_price as any) || ''}
@@ -1400,6 +1405,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                               <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xs text-slate-400 select-none">₦</span>
                               <input 
                                 type="number" 
+                                name="cost_price"
                                 min="0"
                                 step="any"
                                 value={currentProduct.cost_price || ''}
@@ -1448,7 +1454,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Stock Quantity</label>
                             <input 
                               type="number" 
+                              name="stock_count"
                               min="0"
+                              step="1"
+                              required
                               value={currentProduct.stock_count ?? 0}
                               onChange={(e) => setCurrentProduct({ ...currentProduct, stock_count: Math.max(0, parseInt(e.target.value) || 0) })}
                               placeholder="1"
