@@ -6,10 +6,12 @@ import {
 } from 'lucide-react';
 import SEO from './SEO';
 import PaymentModal from './PaymentModal';
+import { billingService } from '../services/billingService';
 import { toast } from 'react-hot-toast';
 
 interface PricingPageProps {
   onTopUpSuccess?: (newCredits: number) => void;
+  onUpdateUser?: (updatedUser: any) => void;
   currentUser?: any;
 }
 
@@ -44,12 +46,35 @@ const FAQS = [
   }
 ];
 
-export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, currentUser }) => {
+export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpdateUser, currentUser }) => {
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
-  const [selectedPack, setSelectedPack] = useState<typeof CREDIT_PACKS[0] | null>(null);
+  const [checkoutItem, setCheckoutItem] = useState<{
+    price: number;
+    credits: number;
+    label: string;
+    isSubscription: boolean;
+    plan?: string;
+  } | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const handleUpgradePro = () => {
+    if (!currentUser) {
+      toast('Please sign in or create an account to upgrade to Growth Merchant Pro.', { icon: '🔐' });
+      navigate('/login?redirect=/pricing');
+      return;
+    }
+    const isAnnual = billingCycle === 'annual';
+    setCheckoutItem({
+      price: isAnnual ? 35000 : 3500,
+      credits: isAnnual ? 5000 : 450,
+      label: isAnnual ? 'Growth Merchant Pro (Annual Subscription)' : 'Growth Merchant Pro (Monthly Subscription)',
+      isSubscription: true,
+      plan: 'Pro'
+    });
+    setShowPaymentModal(true);
+  };
 
   const handleSelectPack = (pack: typeof CREDIT_PACKS[0]) => {
     if (!currentUser) {
@@ -57,15 +82,41 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, curren
       navigate('/login?redirect=/pricing');
       return;
     }
-    setSelectedPack(pack);
+    setCheckoutItem({
+      price: pack.price,
+      credits: pack.credits,
+      label: `BizCredit Top-Up (${pack.credits} Credits)`,
+      isSubscription: false
+    });
     setShowPaymentModal(true);
   };
 
-  const handlePaymentSuccess = (_reference: string) => {
+  const handlePaymentSuccess = async (reference: string) => {
+    if (!checkoutItem) return;
     setShowPaymentModal(false);
-    toast.success(`Payment verified! ${selectedPack?.credits} BizCredits added to your wallet.`);
-    if (onTopUpSuccess && selectedPack) {
-      onTopUpSuccess(selectedPack.credits);
+    toast.loading('Verifying transaction & activating benefits...', { id: 'pricing-verify' });
+    try {
+      const verifyRes = await billingService.verifyPayment(reference, checkoutItem.price, {
+        plan: checkoutItem.isSubscription ? 'Pro' : undefined,
+        billingCycle: checkoutItem.isSubscription ? billingCycle : undefined
+      });
+      toast.dismiss('pricing-verify');
+      if (checkoutItem.isSubscription) {
+        toast.success(`🎉 Welcome to Growth Merchant Pro! ${verifyRes.added || checkoutItem.credits} BizCredits added & Verified Merchant badge active.`);
+        if (onUpdateUser && currentUser) {
+          onUpdateUser({ ...currentUser, plan: 'Pro' });
+        }
+      } else {
+        toast.success(`🎉 Payment verified! ${verifyRes.added || checkoutItem.credits} BizCredits added to your wallet.`);
+      }
+      if (onTopUpSuccess) {
+        onTopUpSuccess(verifyRes.credits);
+      }
+    } catch (err: any) {
+      toast.dismiss('pricing-verify');
+      toast.error(err?.response?.data?.error || 'Payment succeeded with Paystack, but server verification is finalizing. Please refresh wallet.');
+    } finally {
+      setCheckoutItem(null);
     }
   };
 
@@ -255,10 +306,11 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, curren
             </div>
 
             <button
-              onClick={() => handleSelectPack(CREDIT_PACKS[2])}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
+              onClick={handleUpgradePro}
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
             >
-              Upgrade to Growth Pro
+              <Sparkles className="w-4 h-4" />
+              <span>Upgrade to Growth Pro ({billingCycle === 'annual' ? '₦35,000/yr' : '₦3,500/mo'})</span>
             </button>
           </div>
 
@@ -420,12 +472,15 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, curren
       </div>
 
       {/* Paystack Modal */}
-      {showPaymentModal && selectedPack && currentUser && (
+      {showPaymentModal && checkoutItem && currentUser && (
         <PaymentModal
-          amount={selectedPack.price}
-          description={`Top-Up: ${selectedPack.credits} BizCredits`}
+          amount={checkoutItem.price}
+          description={checkoutItem.label}
           email={currentUser.email}
-          onClose={() => setShowPaymentModal(false)}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setCheckoutItem(null);
+          }}
           onSuccess={handlePaymentSuccess}
         />
       )}

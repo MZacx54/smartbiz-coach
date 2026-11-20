@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { runPrecisionStudio } from '../services/geminiService';
 import { billingService } from '../services/billingService';
 import api from '../services/api';
+import CreditPromptModal from './CreditPromptModal';
 
 interface PhotoStudioProps {
     credits: number;
@@ -125,6 +126,8 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
     // 3. Generation & Result State
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [generationStep, setGenerationStep] = useState<string>('');
+    const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+    const [pendingShootCost, setPendingShootCost] = useState(2);
     const [studioResult, setStudioResult] = useState<string | null>(null);
     const [transparentCutout, setTransparentCutout] = useState<string | null>(null);
     const [detectedTitle, setDetectedTitle] = useState<string>('Commercial Product');
@@ -341,7 +344,8 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
             }
             const totalCost = filledSlots.length * 2;
             if (credits < totalCost) {
-                toast.error(`Insufficient credits for ${filledSlots.length} angles (Cost: ${totalCost} credits, Balance: ${credits}).`);
+                setPendingShootCost(totalCost);
+                setShowCreditPrompt(true);
                 return;
             }
 
@@ -418,7 +422,8 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
 
         const cost = 2;
         if (credits < cost) {
-            toast.error(`Insufficient credits (Cost: ${cost} credits, Balance: ${credits}). Please top up!`);
+            setPendingShootCost(cost);
+            setShowCreditPrompt(true);
             return;
         }
 
@@ -2124,6 +2129,23 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                     </div>
                 )}
             </AnimatePresence>
+
+            <CreditPromptModal
+                isOpen={showCreditPrompt}
+                featureLabel={studioMode === 'MULTI_ANGLE' ? 'AI Multi-Angle Studio Shoot' : 'AI Precision Studio Photoshoot'}
+                creditCost={pendingShootCost}
+                currentCredits={credits}
+                onConfirm={() => {
+                    setShowCreditPrompt(false);
+                    setTimeout(() => {
+                        handleGenerateShoot();
+                    }, 200);
+                }}
+                onClose={() => setShowCreditPrompt(false)}
+                onCreditsUpdated={(newBal) => {
+                    onUpdateCredits(newBal);
+                }}
+            />
         </div>
     );
 };

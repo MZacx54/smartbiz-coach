@@ -91,62 +91,102 @@ class VerifyPaymentView(APIView):
                     if existing_tx:
                         return Response({
                             "message": "Payment already verified",
-                            "credits": user.credits
+                            "credits": user.credits,
+                            "plan": getattr(user, 'plan', 'Free'),
+                            "is_pro": getattr(user, 'plan', '') == 'Pro'
                         }, status=status.HTTP_200_OK)
+
+                    # Extract requested plan / billing cycle intent
+                    requested_plan = str(request.data.get('plan') or '').strip().lower()
+                    billing_cycle = str(request.data.get('billing_cycle') or '').strip().lower()
+
+                    is_pro_subscription = False
+                    subscription_desc = ""
+
+                    # 1. Pro Annual Subscription (₦35,000)
+                    if abs(paystack_amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and (billing_cycle == 'annual' or abs(paystack_amount_naira - 35000) < 10)):
+                        is_pro_subscription = True
+                        credits_purchased = 5000  # 5,000 BizCredits for Annual Pro (400/mo * 12 + 200 bonus)
+                        subscription_desc = "Growth Merchant Pro (Annual) - 5,000 BizCredits Included"
+                    # 2. Pro Monthly Subscription (₦3,500)
+                    elif requested_plan in ('pro', 'growth_pro', 'growth merchant') or (abs(paystack_amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro'):
+                        is_pro_subscription = True
+                        credits_purchased = 450   # 400 credits + 50 bonus
+                        subscription_desc = "Growth Merchant Pro (Monthly) - 450 BizCredits Included"
+                    # 3. Pay-As-You-Go Credit Packs:
+                    elif abs(paystack_amount_naira - 500) < 5:
+                        credits_purchased = 50    # 50 Credits Pocket Pack
+                    elif abs(paystack_amount_naira - 1000) < 5:
+                        credits_purchased = 110   # 110 Credits Starter (+10 Bonus)
+                    elif abs(paystack_amount_naira - 1500) < 5:
+                        credits_purchased = 175   # 175 Credits Starter Pack
+                    elif abs(paystack_amount_naira - 2500) < 5:
+                        credits_purchased = 300   # 300 Credits Growth (+50 Bonus)
+                    elif abs(paystack_amount_naira - 3500) < 5:
+                        credits_purchased = 450   # 450 Credits Grower Pack (Pay-as-you-go)
+                    elif abs(paystack_amount_naira - 5000) < 5:
+                        credits_purchased = 700   # 700 Credits Oga Pack (+200 Bonus)
+                    elif abs(paystack_amount_naira - 7500) < 5:
+                        credits_purchased = 1100  # 1,100 Credits Vendor Pro
+                    elif abs(paystack_amount_naira - 15000) < 5:
+                        credits_purchased = 2500  # 2,500 Credits Mogul
+                    else:
+                        # Fallback: 10 Naira = 1 Credit
+                        credits_purchased = max(1, int(paystack_amount_naira / 10))
 
                     tx, created = Transaction.objects.get_or_create(
                         reference=reference,
                         defaults={
                             'user': user,
                             'amount': paystack_amount_naira,
-                            'description': "Credit Top-up via Paystack",
+                            'description': subscription_desc or f"Credit Top-up ({credits_purchased} BizCredits)",
                             'provider': "PAYSTACK",
-                            'type': "CREDIT_TOPUP",
+                            'type': "PURCHASE" if is_pro_subscription else "CREDIT_TOPUP",
                             'status': "SUCCESS"
                         }
                     )
                     if not created:
                         tx.status = 'SUCCESS'
                         tx.amount = paystack_amount_naira
-                        tx.save(update_fields=['status', 'amount'])
+                        tx.description = subscription_desc or f"Credit Top-up ({credits_purchased} BizCredits)"
+                        tx.type = "PURCHASE" if is_pro_subscription else "CREDIT_TOPUP"
+                        tx.save(update_fields=['status', 'amount', 'description', 'type'])
 
-                    # Map Naira amount to Credit Packs (Standard: ₦10 = 1 BizCredit + bonus tiers)
-                    credits_purchased = 0
-                    if abs(paystack_amount_naira - 500) < 5:
-                        credits_purchased = 50   # 50 Credits Pocket Pack
-                    elif abs(paystack_amount_naira - 1000) < 5:
-                        credits_purchased = 110  # 110 Credits Starter (+10 Bonus)
-                    elif abs(paystack_amount_naira - 1500) < 5:
-                        credits_purchased = 175  # 175 Credits
-                    elif abs(paystack_amount_naira - 2500) < 5:
-                        credits_purchased = 300  # 300 Credits Growth (+50 Bonus)
-                    elif abs(paystack_amount_naira - 3500) < 5:
-                        credits_purchased = 450  # 450 Credits
-                    elif abs(paystack_amount_naira - 5000) < 5:
-                        credits_purchased = 700  # 700 Credits Oga Pack (+200 Bonus)
-                    elif abs(paystack_amount_naira - 7500) < 5:
-                        credits_purchased = 1100 # 1,100 Credits Vendor Pro
-                    elif abs(paystack_amount_naira - 15000) < 5:
-                        credits_purchased = 2500 # 2,500 Credits Mogul
-                    else:
-                        # Fallback: 10 Naira = 1 Credit
-                        credits_purchased = max(1, int(paystack_amount_naira / 10))
-
-                    # Update user credits
+                    # Update user credits and plan
+                    update_fields = ['credits']
                     user.credits += credits_purchased
-                    user.save(update_fields=['credits'])
+                    if is_pro_subscription:
+                        user.plan = 'Pro'
+                        update_fields.append('plan')
+                    user.save(update_fields=update_fields)
+
+                    # If Pro plan activated, automatically mark vendor profile as verified
+                    if is_pro_subscription:
+                        try:
+                            from marketplace.models import VendorVerification
+                            vendor, _ = VendorVerification.objects.get_or_create(
+                                user=user,
+                                defaults={'business_name': getattr(user, 'business_name', '') or getattr(user, 'username', '')}
+                            )
+                            if not vendor.is_verified:
+                                vendor.is_verified = True
+                                vendor.save(update_fields=['is_verified'])
+                        except Exception as v_err:
+                            logger.warning("Could not auto-verify vendor on Pro upgrade: %s", v_err)
 
                     # Record in CreditLedger
                     CreditLedger.objects.create(
                         user=user,
                         amount=credits_purchased,
-                        activity=f"Purchased BizCredits ({credits_purchased} credits)"
+                        activity=subscription_desc or f"Purchased BizCredits ({credits_purchased} credits)"
                     )
 
                     return Response({
-                        "message": "Payment verified successfully",
+                        "message": "Welcome to Growth Merchant Pro! Your account and wallet have been upgraded." if is_pro_subscription else "Payment verified successfully",
                         "credits": user.credits,
-                        "added": credits_purchased
+                        "added": credits_purchased,
+                        "plan": user.plan,
+                        "is_pro": user.plan == 'Pro'
                     }, status=status.HTTP_200_OK)
             else:
                 return Response({

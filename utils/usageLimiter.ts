@@ -66,7 +66,8 @@ export const usageLimiter = {
 
   checkUsage: (
     feature: FeatureKey,
-    currentCredits: number
+    currentCredits: number,
+    userPlan?: string
   ): {
     allowed: boolean;
     useCredits: boolean;
@@ -76,8 +77,17 @@ export const usageLimiter = {
     const config = FEATURE_CONFIGS[feature];
     const currentUsage = usageLimiter.getUsageCount(feature);
 
+    const isPro = userPlan === 'Pro';
+    let effectiveFreeLimit = config.freeLimit;
+    if (isPro) {
+      if (feature === 'sales_assistant') effectiveFreeLimit = 3;
+      else if (feature === 'pricing_assistant') effectiveFreeLimit = 5;
+      else if (feature === 'name_check') effectiveFreeLimit = 2;
+      else if (feature === 'snap_and_list') effectiveFreeLimit = 5;
+    }
+
     // If within free daily limit
-    if (currentUsage < config.freeLimit) {
+    if (currentUsage < effectiveFreeLimit) {
       return { allowed: true, useCredits: false, cost: 0 };
     }
 

@@ -36,14 +36,27 @@ export const billingService = {
     return response.data;
   },
 
-  verifyPayment: async (reference: string, amount: number): Promise<{ message: string; credits: number }> => {
-    const response = await api.post("billing/verify-payment/", {
+  verifyPayment: async (
+    reference: string, 
+    amount: number, 
+    options?: { plan?: string; billingCycle?: string }
+  ): Promise<{ message: string; credits: number; added?: number; plan?: string; is_pro?: boolean }> => {
+    const payload: any = {
       reference,
       amount,
-    });
+    };
+    if (options?.plan) payload.plan = options.plan;
+    if (options?.billingCycle) payload.billing_cycle = options.billingCycle;
+
+    const response = await api.post("billing/verify-payment/", payload);
     if (typeof response.data?.credits === 'number') {
       try {
         window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: response.data.credits }));
+      } catch (e) {}
+    }
+    if (response.data?.plan) {
+      try {
+        window.dispatchEvent(new CustomEvent('smartbiz_plan_updated', { detail: response.data.plan }));
       } catch (e) {}
     }
     return response.data;

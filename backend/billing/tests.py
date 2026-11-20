@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from rest_framework.test import APIClient
 from rest_framework import status
 from .models import Transaction
@@ -10,6 +11,7 @@ User = get_user_model()
 
 class BillingTests(TestCase):
     def setUp(self):
+        settings.PAYSTACK_SECRET_KEY = 'sk_test_mock_secret_key_12345'
         self.client = APIClient()
         self.user = User.objects.create_user(
             username='testuser',
@@ -20,7 +22,7 @@ class BillingTests(TestCase):
 
     @patch('requests.get')
     def test_verify_payment_success(self, mock_get):
-        # Mock Paystack success response
+        # Mock Paystack success response for ₦5,000 (Oga Pack = 700 credits)
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             "status": True,
@@ -43,14 +45,96 @@ class BillingTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['message'], "Payment verified successfully")
         
-        # Verify user credits updated (5000 Naira = 5000 Credits)
+        # Verify user credits updated (50 default + 700 Oga Pack credits = 750)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.credits, 5010) # 10 default + 5000
+        self.assertEqual(self.user.credits, 750)
 
         # Verify transaction record created
         tx = Transaction.objects.get(reference="test-ref-123")
         self.assertEqual(tx.status, "SUCCESS")
         self.assertEqual(tx.amount, 5000)
+
+    @patch('requests.get')
+    def test_verify_pro_monthly_subscription(self, mock_get):
+        # Mock Paystack success for ₦3,500 Growth Pro monthly upgrade
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "status": True,
+            "data": {
+                "status": "success",
+                "reference": "pro-sub-monthly-001",
+                "amount": 350000, # 3500 Naira in kobo
+            }
+        }
+
+        response = self.client.post('/api/billing/verify-payment/', {
+            "reference": "pro-sub-monthly-001",
+            "amount": 3500,
+            "plan": "Pro",
+            "billing_cycle": "monthly"
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['plan'], "Pro")
+        self.assertTrue(response.data['is_pro'])
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.plan, "Pro")
+        self.assertEqual(self.user.credits, 500) # 50 default + 450 credits
+
+    @patch('requests.get')
+    def test_verify_pro_annual_subscription(self, mock_get):
+        # Mock Paystack success for ₦35,000 Growth Pro annual upgrade
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "status": True,
+            "data": {
+                "status": "success",
+                "reference": "pro-sub-annual-001",
+                "amount": 3500000, # 35,000 Naira in kobo
+            }
+        }
+
+        response = self.client.post('/api/billing/verify-payment/', {
+            "reference": "pro-sub-annual-001",
+            "amount": 35000,
+            "plan": "Pro",
+            "billing_cycle": "annual"
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['plan'], "Pro")
+        self.assertTrue(response.data['is_pro'])
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.plan, "Pro")
+        self.assertEqual(self.user.credits, 5050) # 50 default + 5000 credits
+
+    @patch('requests.get')
+    def test_verify_pay_as_you_go_pocket_pack(self, mock_get):
+        # Pay-as-you-go micro pack ₦500 -> 50 credits, plan remains Free
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "status": True,
+            "data": {
+                "status": "success",
+                "reference": "payg-pack-500",
+                "amount": 50000, # 500 Naira in kobo
+            }
+        }
+
+        response = self.client.post('/api/billing/verify-payment/', {
+            "reference": "payg-pack-500",
+            "amount": 500
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['plan'], "Free")
+        self.assertFalse(response.data['is_pro'])
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.plan, "Free")
+        self.assertEqual(self.user.credits, 100) # 50 default + 50 credits
 
     @patch('requests.get')
     def test_verify_payment_failure(self, mock_get):
@@ -71,11 +155,11 @@ class BillingTests(TestCase):
         
         # Verify credits NOT updated
         self.user.refresh_from_db()
-        self.assertEqual(self.user.credits, 10)
+        self.assertEqual(self.user.credits, 50)
 
     @patch('requests.get')
     def test_duplicate_verification(self, mock_get):
-        # First verification
+        # First verification (₦1,000 = 110 credits)
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             "status": True,
@@ -88,38 +172,8 @@ class BillingTests(TestCase):
         response = self.client.post('/api/billing/verify-payment/', {"reference": "dup-ref", "amount": 1000})
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['message'], "Payment already processed")
+        self.assertEqual(response.data['message'], "Payment already verified")
         
-        # Verify credits only updated once
+        # Verify credits only updated once (50 + 110 = 160)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.credits, 1010)
-
-    @patch('requests.get')
-    def test_verify_squad_payment_success(self, mock_get):
-        # Mock Squad success response
-        mock_get.return_value.status_code = 200
-        mock_get.return_value.json.return_value = {
-            "status": 200,
-            "message": "success",
-            "data": {
-                "transaction_status": "success",
-                "transaction_reference": "sqd-ref-123",
-                "amount": 200000, # 2000 Naira in kobo
-            }
-        }
-
-        response = self.client.post('/api/billing/verify-squad-payment/', {
-            "reference": "sqd-ref-123",
-            "amount": 2000
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Verify user credits updated
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.credits, 2010)
-
-        # Verify transaction record created
-        tx = Transaction.objects.get(reference="sqd-ref-123")
-        self.assertEqual(tx.provider, "SQUAD")
-        self.assertEqual(tx.amount, 2000)
+        self.assertEqual(self.user.credits, 160)

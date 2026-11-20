@@ -750,7 +750,7 @@ const App: React.FC = () => {
         } />
         <Route path="/pricing" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-white"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
-            <PricingPage currentUser={user} onTopUpSuccess={handleUpdateCredits} />
+            <PricingPage currentUser={user} onTopUpSuccess={handleUpdateCredits} onUpdateUser={handleUpdateUser} />
           </Suspense>
         } />
         <Route path="/blog" element={

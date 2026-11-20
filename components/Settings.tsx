@@ -375,11 +375,22 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
 
   const handlePaymentSuccess = async (reference: string) => {
     if (!selectedPack) return;
+    const isPlan = !!(selectedPack as any).isPlanUpgrade || selectedPack.price === 3500;
     setShowTopUp(false);
     setVerifyingPayment(true);
     try {
-      const response = await billingService.verifyPayment(reference, selectedPack.price);
-      toast.success(`Success! Added ${selectedPack.credits} credits to your account.`);
+      const response = await billingService.verifyPayment(reference, selectedPack.price, {
+        plan: isPlan ? 'Pro' : undefined,
+        billingCycle: 'monthly'
+      });
+      if (isPlan) {
+        toast.success(`🎉 Upgraded to Growth Merchant Pro! Added ${response.added || selectedPack.credits} BizCredits.`);
+        if (onUpdateUser) {
+          onUpdateUser({ ...user, plan: 'Pro' });
+        }
+      } else {
+        toast.success(`Success! Added ${response.added || selectedPack.credits} credits to your account.`);
+      }
       if (onTopUpSuccess) {
         onTopUpSuccess(response.credits);
       }
@@ -829,6 +840,64 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
       {activeTab === 'billing' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           
+          {/* Membership Plan Status Banner */}
+          {user.plan === 'Pro' ? (
+            <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 rounded-[32px] p-6 sm:p-7 border border-emerald-500/30 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                  👑
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Current Membership</span>
+                    <span className="bg-emerald-500 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">Active</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black font-heading mt-0.5">Growth Merchant Pro</h3>
+                  <p className="text-xs text-slate-300 mt-1 max-w-md">
+                    Active VIP privileges: 400 Monthly BizCredits, Verified CAC Merchant Badge, Priority Marketplace Placement, and Unlimited Marketing Contacts.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-2 rounded-xl shrink-0">
+                <span>✓ Verified CAC Badge</span>
+                <span>•</span>
+                <span>⚡ GEO Priority</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-[32px] p-6 sm:p-7 border border-indigo-500/30 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                  ⚡
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-widest text-indigo-400">Current Tier</span>
+                    <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">Free Forever</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black font-heading mt-0.5">MSME Starter Plan</h3>
+                  <p className="text-xs text-slate-300 mt-1 max-w-md">
+                    Core bookkeeping is 100% free. Upgrade to Growth Pro for 400 monthly BizCredits, Verified Merchant badge, and unlimited WhatsApp marketing contacts.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handlePackSelect({
+                  credits: 450,
+                  price: 3500,
+                  label: 'Growth Merchant Pro Subscription',
+                  desc: '450 BizCredits + Pro Verified Merchant Status',
+                  popular: true,
+                  isPlanUpgrade: true
+                } as any)}
+                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-3 rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 shrink-0 flex items-center gap-2 cursor-pointer"
+              >
+                <span className="text-sm">✨</span>
+                <span>Upgrade to Growth Pro (₦3,500/mo)</span>
+              </button>
+            </div>
+          )}
+
           {/* Wallet */}
           <div className="bg-gradient-to-br from-indigo-950 to-indigo-900 rounded-[32px] shadow-xl text-white p-6 sm:p-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full transform translate-x-8 -translate-y-8" />

@@ -214,20 +214,34 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [isBoosting, setIsBoosting] = useState(false);
   const [showCreditPrompt, setShowCreditPrompt] = useState(false);
-  const [creditPromptCost, setCreditPromptCost] = useState(150);
+  const [creditPromptCost, setCreditPromptCost] = useState(25);
+  const [selectedBoostDuration, setSelectedBoostDuration] = useState<number>(3);
   const [creditPromptFeature, setCreditPromptFeature] = useState('Marketplace Product Boost');
 
   const handleBoostListing = async (durationDays: number) => {
     if (!boostingProduct) return;
+    setSelectedBoostDuration(durationDays);
     const cost = durationDays <= 1 ? 10 : (durationDays <= 3 ? 25 : (durationDays <= 7 ? 50 : 150));
     setCreditPromptCost(cost);
+    setCreditPromptFeature(`Marketplace Boost (${durationDays} Days)`);
+
+    if (credits < cost) {
+      setShowBoostModal(false);
+      setShowCreditPrompt(true);
+      return;
+    }
+
     setIsBoosting(true);
     try {
       const res = await api.post(`/api/marketplace/products/${boostingProduct.id}/boost/`, {
         duration_days: durationDays
       });
       setProducts(prev => prev.map(p => p.id === boostingProduct.id ? { ...p, is_promoted: true } : p));
-      toast.success(res.data?.message || `Listing boosted for ${durationDays} days!`);
+      toast.success(res.data?.message || `Listing boosted for ${durationDays} days! 🚀`);
+      if (typeof res.data?.remaining_credits === 'number') {
+        if (onUpdateCredits) onUpdateCredits(res.data.remaining_credits);
+        window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: res.data.remaining_credits }));
+      }
       setShowBoostModal(false);
       setBoostingProduct(null);
     } catch (err: any) {
@@ -2733,7 +2747,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         onConfirm={() => {
           setShowCreditPrompt(false);
           if (boostingProduct) {
-            handleBoostListing(creditPromptCost <= 150 ? 3 : (creditPromptCost <= 300 ? 7 : 14));
+            handleBoostListing(selectedBoostDuration || 3);
           }
         }}
         onClose={() => setShowCreditPrompt(false)}
