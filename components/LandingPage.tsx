@@ -142,7 +142,7 @@ const LandingPage: React.FC = () => {
         { icon: '🔒', title: 'Fake Transfer Fraud Shield', desc: 'Step-by-step verification checklist protecting shop owners from counterfeit bank SMS alerts via bank app push confirmations.', color: 'from-rose-600 to-red-700', tag: 'Security', pillar: 'Operations' },
 
         // Pillar 2: AI Creative & Commercial Studio
-        { icon: '📸', title: 'Snap-to-Studio 2.0', desc: 'Snap raw items on a bedsheet or shop counter; AI transforms them into 16 photorealistic luxury sets (Marble, Sunlight, Raffia, Cafe Table, etc.).', color: 'from-violet-600 to-purple-700', tag: 'Top Feature', pillar: 'AI Studio' },
+        { icon: '📸', title: 'Product Catalog Studio', desc: 'Capture products on your counter; enhance with clean presentation backdrops and generate ready-to-share social copy.', color: 'from-violet-600 to-purple-700', tag: 'Visuals', pillar: 'AI Studio' },
         { icon: '✨', title: 'AI Brand Builder', desc: 'Generate high-resolution logos, brand colors, taglines, and a complete visual identity tailored to Nigerian buyers in seconds.', color: 'from-pink-500 to-rose-600', pillar: 'AI Studio' },
         { icon: '✍️', title: 'Content Studio & Broadcasts', desc: 'Create viral WhatsApp Status copy, Instagram reels copy, promotional flyers, and sales scripts tuned to Naija pop culture.', color: 'from-orange-500 to-amber-600', pillar: 'AI Studio' },
         { icon: '🎥', title: 'Product Video Suite', desc: 'Record 15-30s video demos with an in-app scrolling teleprompter script overlay and 1-click video reels export.', color: 'from-pink-600 to-rose-600', pillar: 'AI Studio' },
@@ -189,33 +189,32 @@ const LandingPage: React.FC = () => {
             mockup: 'pos',
         },
         {
-            label: '📸 Snap-to-Studio 2.0',
-            headline: 'Snap on a Bedsheet or Shop Counter ➔ Transform into Studio-Grade HD Photos',
-            subheadline: '16 Photorealistic Commercial Studio Backdrops in Seconds',
-            body: 'Stop paying ₦50,000+ for commercial photographers. Snap raw photos of your shoes, bags, cosmetics, or packaged food directly on your bed, shop counter, or floor. Our computer-vision engine isolates the product, renders realistic contact shadows and glossy surface reflections, and composites it into 16 luxury commercial scenes with 1-click WhatsApp Status copy.',
+            label: '📸 Product Studio & Marketing',
+            headline: 'Turn Smartphone Photos into Clean Product Catalog Listings',
+            subheadline: 'Zero Professional Studio Costs • Ready-to-Post Social Copy',
+            body: 'Capture your products on a counter or table and enhance them with clean commercial presentation backdrops. Generate compelling promotional captions for WhatsApp Status, Facebook, and Instagram in one tap, and publish directly to your online storefront.',
             bullets: [
-                '🏛️ 16 Photorealistic Sets: Luxury Marble & Fluted Wood, Azure Sunlight, Botanical Leaves, Warm Oak, African Raffia & 3D Podiums',
-                '✨ Automatic ambient contact shadows, ground reflections & edge isolation',
-                '🏷️ 4 Promotional overlay badges: Luxury Gold, Midnight Noir, Neon Viral & Emerald Green',
-                '📱 Interactive Before/After split comparison slider',
-                '💬 Auto-generated WhatsApp promotional sales copy with direct broadcast link',
-                '📦 1-click Save to Inventory and instant publish to Central Market Square',
+                '✨ Clean presentation backdrops with natural shadows and surface reflections',
+                '🏷️ Promotional badge overlays for discounts, new arrivals, and special offers',
+                '💬 Auto-generated WhatsApp promotional sales copy with direct product links',
+                '📦 1-click Save to Inventory and instant showcase on your digital storefront',
+                '📱 Mobile-optimized for fast sharing across social channels',
             ],
             color: 'from-violet-600 to-purple-700',
             mockup: 'studio',
         },
         {
-            label: '📒 Gbege Debt & WhatsApp Invoices',
-            headline: 'Stop Losing Working Capital: Recover Customer Debts & Send 1-Tap Invoices',
+            label: '📒 Debt Ledger & WhatsApp Invoices',
+            headline: 'Protect Working Capital: Recover Customer Debts & Send 1-Tap Invoices',
             subheadline: 'Dual Receivables Ledger with Automated WhatsApp Reminders & Paystack',
-            body: 'Customer debt is the #1 killer of Nigerian small businesses. Gbege Book tracks exactly "Who Dey Owe Me" and "Who I Owe". Send automated, respectful-to-firm WhatsApp payment reminders and 1-tap itemized receipts featuring direct Paystack debit card and transfer links so debtors settle right on their phones.',
+            body: 'Customer credit that goes uncollected kills small businesses. Track exactly who owes your business and who you owe. Send automated, respectful WhatsApp payment reminders with embedded Paystack card and bank transfer links so customers settle instantly from their phones.',
             bullets: [
                 '📒 Dual Ledger: Track customer debts ("Who Dey Owe Me") & supplier payables ("Who I Owe")',
-                '🧾 1-Tap WhatsApp Itemized Invoices & official branded PDF receipts',
-                '📢 3-Tier WhatsApp Escalation: Gentle Courtesy ➔ Due Notice ➔ Formal Legal Warning',
-                '💳 Embedded Paystack Payment Links in reminders for instant phone payments',
-                '⚡ Real-time webhook payment confirmation & automatic debt reconciliation',
-                '✅ Over ₦50,000,000+ in overdue merchant debt recovered to date',
+                '🧾 1-Tap WhatsApp itemized invoices & official branded PDF receipts',
+                '📢 3-Tier WhatsApp Escalation: Gentle Courtesy ➔ Due Notice ➔ Formal Settlement Notice',
+                '💳 Embedded Paystack payment links in reminders for instant mobile settlements',
+                '⚡ Real-time webhook payment confirmation & automatic ledger reconciliation',
+                '📲 Direct WhatsApp reminder dispatch powered by SmartBiz Cloud Bot',
             ],
             color: 'from-red-600 to-rose-700',
             mockup: 'debt',
@@ -289,29 +288,29 @@ const LandingPage: React.FC = () => {
     // ── 7-STEP DAILY OPERATING TIMELINE ──
     const ecosystemSteps = [
         { icon: '📱', label: 'Morning POS & Scan', desc: 'Phone camera barcode scan & PIN lock', color: 'bg-emerald-100 border-emerald-300 text-emerald-700' },
-        { icon: '📸', label: 'Snap-to-Studio 2.0', desc: 'Raw bedsheet to 4K luxury scenes', color: 'bg-violet-100 border-violet-300 text-violet-700' },
-        { icon: '🏪', label: 'Market Square Live', desc: '36 States showcase & CAC badge', color: 'bg-blue-100 border-blue-300 text-blue-700' },
-        { icon: '📒', label: 'Recover Bad Debt', desc: 'Gbege Book WhatsApp auto-nudges', color: 'bg-red-100 border-red-300 text-red-700' },
+        { icon: '📸', label: 'Catalog Studio', desc: 'Clean product photos & social copy', color: 'bg-violet-100 border-violet-300 text-violet-700' },
+        { icon: '🏪', label: 'Market Square Live', desc: '36 States showcase & online orders', color: 'bg-blue-100 border-blue-300 text-blue-700' },
+        { icon: '📒', label: 'Debt Recovery', desc: 'Automated WhatsApp payment nudges', color: 'bg-red-100 border-red-300 text-red-700' },
         { icon: '⛽', label: 'Fuel & Expenses', desc: 'Log generator fuel & petty cash', color: 'bg-amber-100 border-amber-300 text-amber-700' },
-        { icon: '📊', label: 'Evening Close', desc: '1-click WhatsApp daily profit memo', color: 'bg-teal-100 border-teal-300 text-teal-700' },
-        { icon: '🧠', label: 'ML Underwrite & Audit', desc: 'FICO 300–850 score & till theft defense', color: 'bg-indigo-100 border-indigo-300 text-indigo-700' },
+        { icon: '📊', label: 'Evening Close', desc: 'Daily profit & cash balance memo', color: 'bg-teal-100 border-teal-300 text-teal-700' },
+        { icon: '🧠', label: 'Financial Health', desc: 'Cashflow health & grant readiness', color: 'bg-indigo-100 border-indigo-300 text-indigo-700' },
     ];
 
     const testimonials = [
-        { name: 'Chidinma Obi', role: 'Fashion Designer & Boutique, Lagos', avatar: 'CO', color: 'bg-pink-500', text: 'The Snap-to-Studio transformed photos I took on my bed into luxury marble catalog shots! My WhatsApp Status orders tripled within a week.', stars: 5 },
-        { name: 'Chief Emeka Okonkwo', role: 'Building Materials Wholesaler, Onitsha', avatar: 'EO', color: 'bg-green-600', text: 'Apprentice Shift Mode solved attendant theft in my 3 stores. They cannot delete or change prices without my 4-digit PIN. Every kobo is accounted for.', stars: 5 },
-        { name: 'Fatima Al-Hassan', role: 'Agro-Commodity Merchant, Kano', avatar: 'FA', color: 'bg-purple-500', text: 'The Gbege Book recovered ₦380,000 in overdue customer debt in just 10 days using the automated polite WhatsApp reminders. It is the best tool on the market.', stars: 5 },
-        { name: 'Tunde Adeyemi', role: 'Tech & CAC Consultant, Abuja', avatar: 'TA', color: 'bg-blue-500', text: 'The Section 23 CITA Tax Exemption memo saved my client from paying illegal local council taxes. They confirmed 0% tax because their turnover is under ₦25M.', stars: 5 },
-        { name: 'Ngozi Williams', role: 'Caterer & Events Manager, Port Harcourt', avatar: 'NW', color: 'bg-amber-500', text: 'The 5-Second POS is lightning fast. I record cash, transfers, and fuel expenses for my generator in real time, and get my daily profit on WhatsApp every night.', stars: 5 },
-        { name: 'Alhaji Bello', role: 'Poultry & Feed Producer, Kaduna', avatar: 'AB', color: 'bg-teal-600', text: 'I matched with a ₦4.5M BOI agro loan and generated the complete 5-year business plan PDF on SmartBiz Coach. The loan officer accepted it without revisions.', stars: 5 },
+        { name: 'Chidinma Obi', role: 'Fashion Designer & Boutique, Lagos', avatar: 'CO', color: 'bg-pink-500', text: 'The Product Studio transformed simple photos taken on my counter into professional catalog shots! My WhatsApp Status orders increased significantly.', stars: 5 },
+        { name: 'Chief Emeka Okonkwo', role: 'Building Materials Wholesaler, Onitsha', avatar: 'EO', color: 'bg-green-600', text: 'Apprentice Shift Mode solved attendant leakage in my stores. Staff cannot edit prices or delete sales without my 4-digit PIN. Every kobo is accounted for.', stars: 5 },
+        { name: 'Fatima Al-Hassan', role: 'Agro-Commodity Merchant, Kano', avatar: 'FA', color: 'bg-purple-500', text: 'The debt ledger recovered overdue customer balances using polite automated WhatsApp reminders with direct bank transfer details. It saves me hours of awkward calls.', stars: 5 },
+        { name: 'Tunde Adeyemi', role: 'Tech & CAC Consultant, Abuja', avatar: 'TA', color: 'bg-blue-500', text: 'The Section 23 CITA Tax Exemption memo saved my client from paying illegal local council levies. Confirmed 0% company tax because their turnover is under statutory limits.', stars: 5 },
+        { name: 'Ngozi Williams', role: 'Caterer & Events Manager, Port Harcourt', avatar: 'NW', color: 'bg-amber-500', text: 'The Day-Book POS is lightning fast. I record cash, transfers, and generator fuel expenses in real time, and get my daily profit on WhatsApp every night.', stars: 5 },
+        { name: 'Alhaji Bello', role: 'Poultry & Feed Producer, Kaduna', avatar: 'AB', color: 'bg-teal-600', text: 'I matched with a BOI agro funding program and generated the complete business plan on SmartBiz Coach. The structure was clean, professional, and well accepted.', stars: 5 },
     ];
 
     const packs = [
-        { name: 'Micro Pack', price: '₦500', credits: '50 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['50 BizCredits (Never Expire)', '25x Snap-to-Studio HD Shoots', 'Debt Recovery Workflows', 'Content & Script Posts', '1-Tap Paystack Instant Checkout', 'Standard Merchant Support'] },
-        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 BizCredits', '75x Snap-to-Studio HD Shoots', '1x AI Brand Identity Kit', '1x Central Market Square 7-Day Boost', 'Pricing & Margin Audits', 'WhatsApp & Priority Email Desk'] },
-        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 BizCredits', '2x BOI Bankable 3-Year Business Plans', '200x Snap-to-Studio Shoots', '4x Market Square 7-Day Boosts', 'Full AI Creative Suite', 'Priority Merchant Support'] },
-        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 BizCredits', '5x Bank-Grade 3-Year Business Plans', '500x Snap-to-Studio Shoots', '10x Market Square Priority Boosts', 'CAC & Grant Application Support', 'VIP Concierge Desk'] },
-        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Enterprise Dominance', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', '12x Bank-Grade Business Plans', '1,250x Snap-to-Studio HD Shoots', '25x Market Square Priority Boosts', 'Multi-Branch & Agency Ready', 'Dedicated 24/7 Account Director'] },
+        { name: 'Micro Pack', price: '₦500', credits: '50 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['50 BizCredits (Never Expire)', '25x Product Studio Shoots', 'Debt Recovery Workflows', 'Content & Script Posts', '1-Tap Paystack Instant Checkout', 'Standard Merchant Support'] },
+        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 BizCredits', '75x Product Studio Shoots', '1x AI Brand Identity Kit', '1x Central Market Square 7-Day Boost', 'Pricing & Margin Audits', 'WhatsApp & Priority Email Desk'] },
+        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 BizCredits', '2x BOI Bankable 3-Year Business Plans', '200x Product Studio Shoots', '4x Market Square 7-Day Boosts', 'Full AI Creative Suite', 'Priority Merchant Support'] },
+        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 BizCredits', '5x Bank-Grade 3-Year Business Plans', '500x Product Studio Shoots', '10x Market Square Priority Boosts', 'CAC & Grant Application Support', 'VIP Concierge Desk'] },
+        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Enterprise Dominance', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', '12x Bank-Grade Business Plans', '1,250x Product Studio Shoots', '25x Market Square Priority Boosts', 'Multi-Branch & Agency Ready', 'Dedicated 24/7 Account Director'] },
     ];
 
     // ── THE MSME ZERO-SURPRISE FAIR-USE GUARANTEE MATRIX ──
@@ -322,47 +321,47 @@ const LandingPage: React.FC = () => {
         { feature: 'Open Market Offline PWA Mode (0% Network)', cost: '100% FREE FOREVER (0 Credits)', type: 'Offline Resilience', icon: '📶' },
         { feature: 'Petty Cash & Generator Fuel Expense Tracker', cost: '100% FREE FOREVER (0 Credits)', type: 'Expense Logger', icon: '⛽' },
         { feature: 'Payment Fraud Shield (Fake Transfer Checklist)', cost: '100% FREE FOREVER (0 Credits)', type: 'Fraud Defense', icon: '🔒' },
-        { feature: 'Gbege Book Debt Ledger & Auto WhatsApp Nudges', cost: '100% FREE FOREVER (0 Credits)', type: 'Cashflow Protection', icon: '📒' },
+        { feature: 'Debt Ledger & Automated WhatsApp Reminders', cost: '100% FREE FOREVER (0 Credits)', type: 'Cashflow Protection', icon: '📒' },
         { feature: '1-Tap WhatsApp Invoicing & Receipts (PDF)', cost: '100% FREE FOREVER (0 Credits)', type: 'Instant Billing', icon: '🧾' },
         { feature: 'Central MSME Market Square (36 States Trade Hub)', cost: '100% FREE FOREVER (0 Credits)', type: 'Nationwide Trade', icon: '🏪' },
         { feature: 'Section 23 CITA 0% Tax Exemption Memo', cost: '100% FREE FOREVER (0 Credits)', type: 'Legal Shield', icon: '⚖️' },
-        { feature: 'FICO 300-850 Credit Risk & Bankable PDF Dossier', cost: '100% FREE FOREVER (0 Credits)', type: 'Data Science & Credit', icon: '🧠' },
-        { feature: 'Ridge Regression Stockout Velocity & Days Left', cost: '100% FREE FOREVER (0 Credits)', type: 'Predictive Inventory', icon: '📈' },
-        { feature: 'Till Fraud Isolation Forest (Cashier Anomaly Audit)', cost: '100% FREE FOREVER (0 Credits)', type: 'Anti-Theft AI', icon: '🛡️' },
+        { feature: 'Credit Health & Bankable Financial Dossier', cost: '100% FREE FOREVER (0 Credits)', type: 'Financial Health', icon: '🧠' },
+        { feature: 'Stockout Prediction & Inventory Velocity', cost: '100% FREE FOREVER (0 Credits)', type: 'Predictive Inventory', icon: '📈' },
+        { feature: 'Till Audit & Cashier Anomaly Detection', cost: '100% FREE FOREVER (0 Credits)', type: 'Anti-Theft AI', icon: '🛡️' },
         { feature: 'Micro-Boost Trial (24-Hour Spotlight)', cost: '10 BizCredits (~₦100)', type: 'Marketplace Growth', icon: '⚡' },
-        { feature: 'AI WhatsApp Promo Pack (Status & Broadcast)', cost: '2 BizCredits', type: 'Viral Sales AI', icon: '📣' },
+        { feature: 'AI WhatsApp Promo Pack (Status & Broadcast)', cost: '2 BizCredits', type: 'Marketing Copy', icon: '📣' },
         { feature: 'Voice Note POS Ingestion & Paper Receipt OCR', cost: '2 BizCredits per audio/photo', type: 'Multimodal AI', icon: '🎙️' },
         { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits (~₦500)', type: 'National VIP', icon: '🚀' },
-        { feature: 'Snap-to-Studio 2.0 (Commercial Studio HD Photos)', cost: '2 BizCredits per image', type: 'Advanced AI Compute', icon: '📸' },
+        { feature: 'Product Studio Clean Backgrounds', cost: '2 BizCredits per image', type: 'Visual Studio', icon: '📸' },
         { feature: 'BOI-Compliant 3-Year Business Plan (PDF)', cost: '200 BizCredits', type: 'Financial Engine', icon: '📄' },
     ];
 
     const faqs = [
-        { q: 'Are the Daily POS, Phone Barcode Scanner, and Day-Book really 100% free forever?', a: 'YES. We believe no Nigerian entrepreneur should ever be locked out of their daily sales records or bookkeeping. The Daily 5-Second POS, Phone Camera Barcode/QR Scanner (zero hardware needed), Apprentice Shift Lock, Petty Cash & Fuel Tracker, Gbege Debt Book, Central Market Square basic listings, 1-Tap WhatsApp Invoicing, Section 23 CITA Tax Exemption Memo, and Machine Learning Credit Scoring require 0 credits and are 100% free for life.' },
-        { q: 'How does the FICO 300–850 Credit Risk Engine and Machine Learning Hub work without extra fees?', a: 'Traditional commercial banks demand landed property C-of-O or heavy collateral that 95% of small business owners do not possess. SmartBiz Coach includes an in-house Scikit-Learn data science engine running locally on your transactional records. It computes your 300–850 Credit Score based on live turnover consistency, customer debt recovery velocity, and inventory turnover. It also uses Ridge regression to predict stockout dates and Isolation Forest to audit tills for theft. Because this runs on serverless mathematical algorithms rather than expensive third-party APIs, it is completely free for business owners to generate institutional, bankable PDF Underwriting Dossiers with SHA-256 verification.' },
-        { q: 'How does the Phone Camera Barcode & QR Scanner work?', a: 'You do not need to buy an expensive Bluetooth or USB barcode reader. Simply open POS checkout on your smartphone, tap "Scan Barcode", point your camera at any item barcode or QR code. The scanner reads it instantly with audio beep feedback, adjusts inventory, and adds the item to the active bill in milliseconds.' },
-        { q: 'What is the Central MSME Market Square and how does my personal online store work?', a: 'Every registered merchant gets a dedicated personal web store (smartbizcoach.com.ng/u/your-brand) and public marketplace listing on /market. Buyers across all 36 Nigerian states can browse products, see automated delivery quotes based on their state, and checkout securely via Paystack escrow protection or order on WhatsApp. Orders include live parcel tracking (/track/:code) and 100% verified customer reviews. You can boost any listing starting at just 10 BizCredits (~₦100) or earn +5 free credits daily by sharing your store!' },
+        { q: 'Are the Daily POS, Phone Barcode Scanner, and Day-Book really 100% free forever?', a: 'YES. We believe no Nigerian entrepreneur should ever be locked out of their daily sales records or bookkeeping. The Daily 5-Second POS, Phone Camera Barcode/QR Scanner (zero hardware needed), Apprentice Shift Lock, Petty Cash & Fuel Tracker, Debt Book, Central Market Square basic listings, 1-Tap WhatsApp Invoicing, Section 23 CITA Tax Exemption Memo, and Credit Scoring require 0 credits and are 100% free for life.' },
+        { q: 'How does the Credit Risk Engine and Financial Health Dossier work without extra fees?', a: 'Traditional commercial banks demand heavy collateral that 95% of small business owners do not possess. SmartBiz Coach includes a data intelligence engine that analyzes your live sales consistency, customer debt recovery, and inventory turnover to compute a practical Credit Health Score and generate bank-ready financial dossiers at zero cost.' },
+        { q: 'How does the Phone Camera Barcode & QR Scanner work?', a: 'You do not need to buy an expensive Bluetooth or USB barcode reader. Simply open POS checkout on your smartphone, tap "Scan Barcode", and point your camera at any item barcode or QR code. The scanner reads it instantly with audio beep feedback, adjusts inventory, and adds the item to the active bill in milliseconds.' },
+        { q: 'What is the Central MSME Market Square and how does my personal online store work?', a: 'Every registered merchant gets a dedicated personal web store (smartbizcoach.com.ng/u/your-brand) and public marketplace listing on /market. Buyers across all 36 Nigerian states can browse products, see automated delivery quotes based on their state, and checkout securely via Paystack escrow protection or order on WhatsApp. Orders include live parcel tracking (/track/:code) and verified customer reviews.' },
         { q: 'How does the Anti-Theft Apprentice Shift Mode protect my shop?', a: 'When you activate Apprentice Mode, the cashier/attendant screen is locked behind a 4-digit supervisor PIN. Attendants can rapidly record sales, but they CANNOT edit prices, delete previous sales, backdate transactions, or see your total profit margins. At the end of the shift, the system generates a reconciliation report comparing physical cash to recorded sales.' },
         { q: 'Does the POS Day-Book work when there is no internet / network is down?', a: 'Yes! SmartBiz Coach features an Open Market Offline-First engine specifically engineered for crowded hubs like Alaba International, Balogun, and Computer Village. If your data runs out or cell towers disconnect, you can record sales, scan barcodes, and issue offline receipts. As soon as you are reconnected, all data syncs automatically to the cloud.' },
-        { q: 'How does Snap-to-Studio 2.0 work on photos taken on a bedsheet?', a: 'You do not need an expensive camera or backdrop. Simply snap your product on your bedspread, shop counter, or tile floor. Our vision AI removes the background, generates realistic ambient contact shadows and reflections, and composites the item into 16 photorealistic commercial studio environments like Luxury Marble, Sunlight & Shadows, African Raffia, or Warm Oak Cafe Tables.' },
-        { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigeria Tax Act and CITA Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦100,000,000 (expanded from ₦25,000,000) are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
-        { q: 'How do customers pay me through Gbege Book debt reminders and WhatsApp invoices?', a: 'When you send an automated polite WhatsApp reminder or 1-tap invoice, it automatically includes an encrypted Paystack payment link. Your customer can tap the link and pay instantly using their debit card, bank transfer, or USSD. Once paid, the debt or invoice is automatically marked as settled in your ledger with real-time webhook confirmation.' },
-        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new merchant gets 50 Free Welcome Credits upon creating an account. You can use them right away to boost products (a 24-hour spotlight boost is just 10 credits!), generate viral AI WhatsApp promo captions (2 credits), or render studio HD photos. When you need more compute, credit packs start at just ₦500 for 50 credits (only ₦10 per credit) via Paystack. Credits never expire and all core store management tools stay 100% free forever.' },
+        { q: 'How does the Product Studio work on smartphone photos?', a: 'You do not need an expensive photography studio. Simply take a photo of your product on your counter or table. SmartBiz Coach enhances the presentation with clean commercial studio environments like Luxury Marble, Clean Sunlight, African Raffia, or Warm Oak, and writes promotional sales captions ready to post on WhatsApp and Instagram.' },
+        { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigeria Tax Act and CITA Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦100,000,000 are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
+        { q: 'How do customers pay me through debt reminders and WhatsApp invoices?', a: 'When you send an automated polite WhatsApp reminder or 1-tap invoice, it automatically includes an encrypted Paystack payment link and your direct bank transfer details. Your customer can tap the link and pay instantly using their debit card, bank transfer, or USSD, or transfer directly to your bank account.' },
+        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new merchant gets 50 Free Welcome Credits upon creating an account. You can use them right away to boost products, generate AI promotional copy, or enhance catalog photos. When you need more compute, credit packs start at just ₦500 for 50 credits via Paystack. Credits never expire and all core store management tools stay 100% free forever.' },
     ];
 
     const stats = [
+        { value: '100% Offline', label: 'Zero-Data Daily Ledger', icon: '📶' },
         { value: '5-Sec', label: 'Counter POS Speed', icon: '⚡' },
-        { value: '16 Sets', label: 'Commercial 4K Backdrops', icon: '📸' },
+        { value: 'Automated', label: 'WhatsApp Receipts & Debt Reminders', icon: '💬' },
         { value: '100% Free', label: 'Core Tools Guarantee', icon: '🔒' },
-        { value: 'Pilot Live', label: 'Early Access Cohort', icon: '🚀' },
     ];
 
     return (
         <div className="min-h-screen bg-white font-sans selection:bg-green-200 overflow-x-hidden">
             <SEO
-                title="SmartBiz Coach | #1 AI Operating System for Nigerian SMEs"
-                description="The complete AI Business Operating System for Nigerian SMEs. 5-Sec POS Day-Book, Apprentice Anti-Theft Lock, Snap-to-Studio 2.0 (Bedsheet to 4K Studio), WhatsApp Debt Recovery (Gbege Book), Section 23 CITA Tax Shield, and BOI Grants."
-                keywords="SmartBiz Coach, AI business operating system, Nigerian SME POS, AI Commercial Photo Studio 2.0, Gbege Book WhatsApp debt recovery, Section 23 CITA tax shield, BOI business plan generator, CAC checklist Nigeria, SME grants 2026"
+                title="SmartBiz Coach | Practical AI Operating System for Nigerian MSMEs"
+                description="The AI-powered Business Operating System for Nigerian MSMEs. Offline POS Day-Book, Apprentice Anti-Theft Lock, Product Studio, Automated WhatsApp Debt Recovery, Digital Storefront, and Verified Business Grants."
+                keywords="SmartBiz Coach, Nigerian MSME POS, offline day-book, apprentice PIN anti-theft, WhatsApp debt recovery, Paystack storefront Nigeria, BOI grants, SMEDAN business plan"
                 schema={{
                     '@context': 'https://schema.org',
                     '@type': 'FAQPage',
@@ -477,23 +476,23 @@ const LandingPage: React.FC = () => {
                                 <span className="inline-flex items-center gap-1 py-1.5 px-3 rounded-full bg-emerald-950 text-emerald-300 text-xs font-bold border border-emerald-800/60">
                                     🔒 100% Free Core Tools Guarantee
                                 </span>
-                                <span className="inline-flex items-center gap-1 py-1.5 px-3 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
-                                    🎁 50 Free Welcome Credits
+                                <span className="inline-flex items-center gap-1 py-1.5 px-3 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-500/30">
+                                    📶 Works 100% Offline
                                 </span>
                             </motion.div>
 
                             <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.08] mb-6">
-                                The Complete AI
+                                Run, Grow & Digitize
                                 <br />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
-                                    Operating System
+                                    Your Entire Business
                                 </span>
                                 <br />
-                                <span className="text-slate-300 text-2xl sm:text-4xl font-bold">for every Nigerian SME</span>
+                                <span className="text-slate-300 text-2xl sm:text-4xl font-bold">Right From Your Smartphone</span>
                             </h1>
 
                             <p className="text-base sm:text-lg text-slate-300 max-w-xl leading-relaxed mb-6 font-normal">
-                                Built to empower Nigerian MSMEs with essential digital infrastructure — phone camera barcode checkout, 16 photorealistic 4K AI studio backdrops, nationwide Central Market Square showcasing, automated WhatsApp debt recovery, and bankable enterprise tools.
+                                SmartBiz Coach gives Nigerian merchants, retailers, and entrepreneurs a practical operating system to record daily sales offline, protect till cash with apprentice PINs, recover customer debts via automated WhatsApp reminders, and sell 24/7 on a verified digital storefront.
                             </p>
 
                             {/* Structured Provision Grid */}
@@ -501,36 +500,36 @@ const LandingPage: React.FC = () => {
                                 <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
                                     <span className="text-emerald-400 text-sm mt-0.5">⚡</span>
                                     <div>
-                                        <div className="text-xs font-bold text-white">POS & Camera Barcode Scanner</div>
-                                        <div className="text-[11px] text-slate-400">5-second sales, phone camera barcode reader & 4-digit apprentice PIN.</div>
+                                        <div className="text-xs font-bold text-white">Offline Day-Book & POS</div>
+                                        <div className="text-[11px] text-slate-400">Record cash, transfer, & POS sales in 5 seconds — even with zero network.</div>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
-                                    <span className="text-purple-400 text-sm mt-0.5">📸</span>
+                                    <span className="text-blue-400 text-sm mt-0.5">🛡️</span>
                                     <div>
-                                        <div className="text-xs font-bold text-white">Snap-to-Studio 2.0</div>
-                                        <div className="text-[11px] text-slate-400">Transform raw phone photos into 16 luxury commercial 4K scenes.</div>
+                                        <div className="text-xs font-bold text-white">Staff PIN & Till Defense</div>
+                                        <div className="text-[11px] text-slate-400">Prevent till theft and price tampering with a 4-digit supervisor shift lock.</div>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
-                                    <span className="text-blue-400 text-sm mt-0.5">🏪</span>
+                                    <span className="text-emerald-400 text-sm mt-0.5">💬</span>
                                     <div>
-                                        <div className="text-xs font-bold text-white">Central MSME Market Square</div>
-                                        <div className="text-[11px] text-slate-400">Showcase products across 36 states with CAC badges & WhatsApp reach.</div>
+                                        <div className="text-xs font-bold text-white">WhatsApp Debt Reminders</div>
+                                        <div className="text-[11px] text-slate-400">Automated polite payment notices with 1-tap Paystack & bank transfer links.</div>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
-                                    <span className="text-red-400 text-sm mt-0.5">📒</span>
+                                    <span className="text-purple-400 text-sm mt-0.5">🏪</span>
                                     <div>
-                                        <div className="text-xs font-bold text-white">Debt Recovery & 1-Tap Invoices</div>
-                                        <div className="text-[11px] text-slate-400">Automated WhatsApp payment nudges & instant Paystack receipts.</div>
+                                        <div className="text-xs font-bold text-white">Storefront & Market Square</div>
+                                        <div className="text-[11px] text-slate-400">Your personal digital shop with direct bank payouts and nationwide reach.</div>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-12">
                                 <button onClick={() => navigate('/register')} className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white text-base font-black rounded-2xl shadow-2xl shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-1 transition-all cursor-pointer">
-                                    🚀 Start Free — Claim 50 Free Welcome Credits 🎁
+                                    🚀 Start Free — Open Your Store
                                 </button>
                                 <button onClick={() => navigate('/market')} className="flex items-center justify-center gap-2 px-7 py-4 bg-white text-slate-950 hover:bg-emerald-50 text-base font-black rounded-2xl shadow-xl transition-all cursor-pointer">
                                     🇳🇬 Shop Market Square (No Login) →
@@ -1116,7 +1115,7 @@ const LandingPage: React.FC = () => {
                     <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                         <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Full Architectural Suite</span>
                         <h2 className="text-4xl font-extrabold text-slate-900 mb-4">26 Powerful Modules. Zero Missing Pieces.</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From daily cashbook POS and apprentice anti-theft protection to 4K commercial photo studio, FICO credit underwriting, and BOI business plans — everything an MSME needs to thrive.</p>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From offline Day-Book POS and apprentice anti-theft protection to product presentation, automated debt recovery, and digital storefronts — everything a modern MSME needs.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -1235,9 +1234,9 @@ const LandingPage: React.FC = () => {
                             className="space-y-4">
                             {[
                                 { icon: '⏱️', label: 'Hours Saved Monthly', value: `${timeSaved} hrs`, sub: 'From 5-Sec POS, automated day-book & WhatsApp close', color: 'from-violet-600 to-purple-700' },
-                                { icon: '💸', label: 'Avg. Debt Recovered/Month', value: `₦${debtRecovered.toLocaleString('en-NG')}`, sub: 'Via Gbege Book WhatsApp auto-nudges and Paystack links', color: 'from-red-600 to-rose-700' },
+                                { icon: '💸', label: 'Avg. Debt Recovered/Month', value: `₦${debtRecovered.toLocaleString('en-NG')}`, sub: 'Via automated WhatsApp reminders and Paystack links', color: 'from-red-600 to-rose-700' },
                                 { icon: '💰', label: 'Grant Programs Eligible', value: grantEligibility, sub: 'Based on your revenue tier — matched automatically', color: 'from-emerald-600 to-teal-700' },
-                                { icon: '🚀', label: 'Potential Revenue Uplift', value: `+₦${Math.round(roiRevenue * 0.15).toLocaleString('en-NG')}`, sub: 'From Snap-to-Studio 4K photos, marketplace reach & CRM', color: 'from-amber-600 to-orange-700' },
+                                { icon: '🚀', label: 'Potential Revenue Uplift', value: `+₦${Math.round(roiRevenue * 0.15).toLocaleString('en-NG')}`, sub: 'From digital storefront, marketplace reach & social content', color: 'from-amber-600 to-orange-700' },
                             ].map(({ icon, label, value, sub, color }, i) => (
                                 <motion.div key={i} className={`bg-gradient-to-r ${color} rounded-2xl p-5 shadow-lg text-white`}
                                     initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
