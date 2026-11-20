@@ -10,10 +10,21 @@ def is_deal_active(product):
     return product.deal_ends_at is None or product.deal_ends_at > timezone.now()
 
 class VendorVerificationSerializer(serializers.ModelSerializer):
+    badge_info = serializers.ReadOnlyField()
+
     class Meta:
         model = VendorVerification
-        fields = ['id', 'business_name', 'business_type', 'cac_number', 'is_verified', 'whatsapp_number', 'bank_name', 'bank_code', 'account_number', 'account_name', 'paystack_subaccount_code', 'created_at']
-        read_only_fields = ['is_verified']
+        fields = [
+            'id', 'business_name', 'business_type', 'cac_number', 'nin_number',
+            'is_verified', 'verification_tier', 'status', 'id_type', 'id_number',
+            'id_document_url', 'tin_number', 'cac_document_url', 'proof_of_address_url',
+            'physical_address', 'operating_state', 'operating_lga',
+            'naccima_member_id', 'naccima_chamber_name', 'naccima_document_url',
+            'rejection_reason', 'reviewed_by', 'reviewed_at', 'verified_at',
+            'whatsapp_number', 'bank_name', 'bank_code', 'account_number', 'account_name',
+            'paystack_subaccount_code', 'badge_info', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['is_verified', 'reviewed_by', 'reviewed_at', 'verified_at', 'badge_info']
 
 class MarketplaceListingSerializer(serializers.ModelSerializer):
     vendor = VendorVerificationSerializer(read_only=True)
@@ -39,6 +50,10 @@ class ProductSerializer(serializers.ModelSerializer):
     review_count = serializers.SerializerMethodField()
     deal_active = serializers.SerializerMethodField()
     discount_percent = serializers.SerializerMethodField()
+    vendor_badge = serializers.SerializerMethodField()
+    vendor_verification_tier = serializers.SerializerMethodField()
+    vendor_chamber = serializers.SerializerMethodField()
+    vendor_verification_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -75,9 +90,38 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_is_vendor_verified(self, obj):
         try:
-            return getattr(obj.brand.user.vendor_profile, 'is_verified', False)
+            vp = getattr(obj.brand.user, 'vendor_profile', None)
+            return bool(vp and vp.is_verified and vp.status == 'VERIFIED')
         except Exception:
             return False
+
+    def get_vendor_badge(self, obj):
+        try:
+            vp = getattr(obj.brand.user, 'vendor_profile', None)
+            return vp.badge_info if vp else None
+        except Exception:
+            return None
+
+    def get_vendor_verification_tier(self, obj):
+        try:
+            vp = getattr(obj.brand.user, 'vendor_profile', None)
+            return getattr(vp, 'verification_tier', 'NONE') if vp and vp.is_verified else 'NONE'
+        except Exception:
+            return 'NONE'
+
+    def get_vendor_chamber(self, obj):
+        try:
+            vp = getattr(obj.brand.user, 'vendor_profile', None)
+            return getattr(vp, 'naccima_chamber_name', '') if vp else ''
+        except Exception:
+            return ''
+
+    def get_vendor_verification_status(self, obj):
+        try:
+            vp = getattr(obj.brand.user, 'vendor_profile', None)
+            return getattr(vp, 'status', 'UNVERIFIED') if vp else 'UNVERIFIED'
+        except Exception:
+            return 'UNVERIFIED' 
 
     def get_whatsapp_number(self, obj):
         try:

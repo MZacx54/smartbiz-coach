@@ -572,60 +572,208 @@ class BoostProductView(views.APIView):
 
 
 class VerifyVendorWithCreditsView(views.APIView):
+    """
+    Deprecated / Restricted:
+    Subscriptions or BizCredits CANNOT grant verified status.
+    Verification must be legitimately earned via KYC / KYB / NACCIMA institutional review.
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        from .models import VendorVerification
-        from django.db import transaction
-        from django.contrib.auth import get_user_model
-        from billing.models import CreditLedger
-        User = get_user_model()
+        return Response({
+            'error': 'Official verification cannot be purchased with BizCredits or subscriptions. To obtain an audited Trust Badge, apply through the Trust & Verification desk with your National ID, CAC Registration, or NACCIMA Chamber accreditation.',
+            'can_purchase': False
+        }, status=status.HTTP_400_BAD_REQUEST)
 
+
+class VendorVerificationStatusView(views.APIView):
+    """Retrieve the logged-in user's verification profile, active tier, and review status."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
         vendor, _ = VendorVerification.objects.get_or_create(
             user=request.user,
             defaults={
                 'business_name': getattr(request.user, 'business_name', '') or request.user.username,
                 'business_type': 'Retail',
-                'whatsapp_number': getattr(request.user, 'phone', '') or '2348000000000'
+                'whatsapp_number': getattr(request.user, 'phone', '') or ''
+            }
+        )
+        serializer = VendorVerificationSerializer(vendor)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class VendorVerificationApplyView(views.APIView):
+    """Submit or update a tiered verification application (Level 1 ID, Level 2 CAC, Level 3 NACCIMA)."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        vendor, _ = VendorVerification.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'business_name': getattr(request.user, 'business_name', '') or request.user.username,
+                'business_type': 'Retail',
+                'whatsapp_number': getattr(request.user, 'phone', '') or ''
             }
         )
 
-        if vendor.is_verified:
-            return Response({
-                'message': 'Your vendor profile is already verified with an official badge.',
-                'is_verified': True
-            }, status=status.HTTP_200_OK)
+        tier = request.data.get('verification_tier', 'TIER_1_ID')
+        if tier not in ['TIER_1_ID', 'TIER_2_CAC', 'TIER_3_NACCIMA']:
+            return Response({'error': 'Invalid verification tier selected.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        plan = str(request.data.get('plan') or 'lifetime').lower()
-        # 30-Day Starter Badge: 35 credits; Lifetime Badge: 100 credits (down from 500)
-        credits_required = 35 if plan in ('trial', 'trial_30', 'monthly') else 100
+        # Basic validations per tier
+        id_type = request.data.get('id_type') or vendor.id_type
+        id_number = (request.data.get('id_number') or vendor.id_number or '').strip()
+        cac_number = (request.data.get('cac_number') or vendor.cac_number or '').strip()
+        naccima_member_id = (request.data.get('naccima_member_id') or vendor.naccima_member_id or '').strip()
 
-        with transaction.atomic():
-            user = User.objects.select_for_update().get(id=request.user.id)
-            if user.credits < credits_required:
-                return Response({
-                    'error': f'Insufficient BizCredits. You have {user.credits} credits, but {credits_required} credits are required to obtain the Verified Vendor Badge ({plan}).',
-                    'credits_required': credits_required,
-                    'current_credits': user.credits
-                }, status=status.HTTP_402_PAYMENT_REQUIRED)
+        if tier == 'TIER_1_ID':
+            if not id_type or not id_number:
+                return Response({'error': 'Government ID Type and ID Number are required for Identity Verification.'}, status=status.HTTP_400_BAD_REQUEST)
+        elif tier == 'TIER_2_CAC':
+            if not cac_number:
+                return Response({'error': 'CAC Registration Number (RC/BN) is required for Business Verification.'}, status=status.HTTP_400_BAD_REQUEST)
+        elif tier == 'TIER_3_NACCIMA':
+            if not naccima_member_id:
+                return Response({'error': 'NACCIMA / Chamber Member ID or Certificate is required for Tier 3 Accreditation.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            user.credits -= credits_required
-            user.save(update_fields=['credits'])
+        # Update fields
+        vendor.verification_tier = tier
+        vendor.status = 'PENDING_REVIEW'
+        vendor.business_name = request.data.get('business_name') or vendor.business_name or request.user.business_name or 'My Business'
+        vendor.business_type = request.data.get('business_type') or vendor.business_type or 'Retail'
+        vendor.whatsapp_number = request.data.get('whatsapp_number') or vendor.whatsapp_number or getattr(request.user, 'phone', '')
+        
+        if 'id_type' in request.data: vendor.id_type = request.data['id_type']
+        if 'id_number' in request.data: vendor.id_number = request.data['id_number']
+        if 'id_document_url' in request.data: vendor.id_document_url = request.data['id_document_url']
+        if 'cac_number' in request.data: vendor.cac_number = request.data['cac_number']
+        if 'tin_number' in request.data: vendor.tin_number = request.data['tin_number']
+        if 'cac_document_url' in request.data: vendor.cac_document_url = request.data['cac_document_url']
+        if 'proof_of_address_url' in request.data: vendor.proof_of_address_url = request.data['proof_of_address_url']
+        if 'physical_address' in request.data: vendor.physical_address = request.data['physical_address']
+        if 'operating_state' in request.data: vendor.operating_state = request.data['operating_state']
+        if 'operating_lga' in request.data: vendor.operating_lga = request.data['operating_lga']
+        if 'naccima_member_id' in request.data: vendor.naccima_member_id = request.data['naccima_member_id']
+        if 'naccima_chamber_name' in request.data: vendor.naccima_chamber_name = request.data['naccima_chamber_name']
+        if 'naccima_document_url' in request.data: vendor.naccima_document_url = request.data['naccima_document_url']
+        
+        vendor.rejection_reason = "" # Clear previous rejection on re-application
+        vendor.save()
 
-            CreditLedger.objects.create(
-                user=user,
-                amount=-credits_required,
-                activity=f"Verified Vendor Badge Activation ({'30-Day' if credits_required == 35 else 'Lifetime'})"
-            )
-
-            vendor.is_verified = True
-            vendor.save(update_fields=['is_verified'])
-
+        serializer = VendorVerificationSerializer(vendor)
         return Response({
-            'message': 'Congratulations! Your Vendor profile is now verified with the official Verified Badge on all Marketplace listings.',
-            'is_verified': True,
-            'remaining_credits': user.credits,
-            'credits_deducted': credits_required
+            'message': 'Verification application submitted successfully! Our compliance desk and NACCIMA audit team will review your credentials within 24-48 business hours.',
+            'vendor': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class AdminVerificationListView(views.APIView):
+    """List verification requests for SmartBiz staff and NACCIMA review desk."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        ADMIN_EMAILS = [
+            'meshachzax@gmail.com', 'admin@smartbiz.com.ng', 'admin@smartbizcoach.com.ng',
+            'partners@smartbizcoach.com.ng', 'info@smartbizcoach.com.ng', 'mzacs54@gmail.com'
+        ]
+        u = request.user
+        is_staff = bool(u.is_staff or u.is_superuser or (getattr(u, 'email', '') or '').lower() in ADMIN_EMAILS)
+        if not is_staff:
+            return Response({'error': 'Access limited to SmartBiz staff and NACCIMA compliance desk.'}, status=status.HTTP_403_FORBIDDEN)
+
+        status_filter = request.query_params.get('status', 'ALL').upper()
+        tier_filter = request.query_params.get('tier', 'ALL').upper()
+
+        qs = VendorVerification.objects.select_related('user').order_by('-updated_at')
+        if status_filter != 'ALL':
+            qs = qs.filter(status=status_filter)
+        if tier_filter != 'ALL':
+            qs = qs.filter(verification_tier=tier_filter)
+
+        serializer = VendorVerificationSerializer(qs[:100], many=True)
+        counts = {
+            'pending': VendorVerification.objects.filter(status='PENDING_REVIEW').count(),
+            'verified': VendorVerification.objects.filter(status='VERIFIED').count(),
+            'action_required': VendorVerification.objects.filter(status='ACTION_REQUIRED').count(),
+            'total': VendorVerification.objects.count()
+        }
+        return Response({
+            'requests': serializer.data,
+            'counts': counts
+        }, status=status.HTTP_200_OK)
+
+
+class AdminVerificationActionView(views.APIView):
+    """Action on a verification request: APPROVE, REQUEST_ACTION, REJECT, SUSPEND."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        u = request.user
+        is_staff = bool(u.is_staff or u.is_superuser or (getattr(u, 'email', '') or '').lower() in [
+            'meshachzax@gmail.com', 'admin@smartbiz.com.ng', 'admin@smartbizcoach.com.ng',
+            'partners@smartbizcoach.com.ng', 'info@smartbizcoach.com.ng', 'mzacs54@gmail.com'
+        ])
+        if not is_staff:
+            return Response({'error': 'Access limited to SmartBiz staff and NACCIMA compliance desk.'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            vendor = VendorVerification.objects.select_related('user').get(pk=pk)
+        except VendorVerification.DoesNotExist:
+            return Response({'error': 'Vendor verification profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        action = request.data.get('action', '').upper()
+        note = request.data.get('note', '').strip()
+        assigned_tier = request.data.get('verification_tier') or vendor.verification_tier or 'TIER_1_ID'
+
+        reviewer_tag = u.email or u.username or 'SmartBiz Admin'
+        now = timezone.now()
+
+        if action == 'APPROVE':
+            vendor.status = 'VERIFIED'
+            vendor.is_verified = True
+            vendor.verification_tier = assigned_tier if assigned_tier != 'NONE' else 'TIER_1_ID'
+            vendor.verified_at = now
+            vendor.reviewed_by = reviewer_tag
+            vendor.reviewed_at = now
+            vendor.rejection_reason = ""
+            vendor.save()
+            msg = f"Vendor '{vendor.business_name}' approved successfully for {vendor.get_verification_tier_display()}!"
+
+        elif action == 'REQUEST_ACTION':
+            vendor.status = 'ACTION_REQUIRED'
+            vendor.is_verified = False
+            vendor.rejection_reason = note or "Additional documentation or clearer uploads required."
+            vendor.reviewed_by = reviewer_tag
+            vendor.reviewed_at = now
+            vendor.save()
+            msg = f"Action requested from vendor: {vendor.rejection_reason}"
+
+        elif action == 'REJECT':
+            vendor.status = 'REJECTED'
+            vendor.is_verified = False
+            vendor.rejection_reason = note or "Application did not meet compliance criteria."
+            vendor.reviewed_by = reviewer_tag
+            vendor.reviewed_at = now
+            vendor.save()
+            msg = f"Vendor verification rejected: {vendor.rejection_reason}"
+
+        elif action == 'SUSPEND':
+            vendor.status = 'SUSPENDED'
+            vendor.is_verified = False
+            vendor.rejection_reason = note or "Trust badge suspended due to dispute or compliance investigation."
+            vendor.reviewed_by = reviewer_tag
+            vendor.reviewed_at = now
+            vendor.save()
+            msg = f"Vendor trust badge suspended: {vendor.rejection_reason}"
+
+        else:
+            return Response({'error': 'Invalid action. Must be APPROVE, REQUEST_ACTION, REJECT, or SUSPEND.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = VendorVerificationSerializer(vendor)
+        return Response({
+            'message': msg,
+            'vendor': serializer.data
         }, status=status.HTTP_200_OK)
 
 

@@ -18,7 +18,7 @@ interface PricingPageProps {
 const CREDIT_PACKS = [
   { credits: 50, price: 500, label: 'Micro Pack', desc: '50 BizCredits (~₦10/credit) for daily AI marketing & price tags' },
   { credits: 150, price: 1500, label: 'Starter Pack', desc: '150 BizCredits for 7-day boost + photo AI' },
-  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 BizCredits (+50 Bonus) for Verified Badge & Studio Shoots', popular: true },
+  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 BizCredits (+50 Bonus) for Studio Shoots & Marketplace Boosts', popular: true },
   { credits: 1000, price: 7500, label: 'Vendor Pro Pack', desc: '1,000 BizCredits (+250 Bonus) for 30-Day VIP + Full AI Studio' },
   { credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 BizCredits for continuous weekly boosts & business plans' },
 ];
@@ -274,7 +274,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
                 Active Traders & Boutiques
               </span>
               <h2 className="text-2xl font-black text-white font-heading">Growth Merchant</h2>
-              <p className="text-xs text-slate-300">AI-powered studio, voice ingestion, and verified merchant badge.</p>
+              <p className="text-xs text-slate-300">AI-powered studio, voice ingestion, and priority MSME marketing tools.</p>
               
               <div className="pt-2">
                 <span className="text-4xl font-black text-white font-heading">
@@ -291,7 +291,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
                   'AI Photo Studio (Clean background removal & tags)',
                   'Voice POS Note Ingest (Pidgin & English audio-to-sale)',
                   'Paper Receipt OCR Camera Scanner',
-                  'Verified CAC Merchant Badge on Marketplace',
+                  'VIP Spotlight Priority Ranking on Marketplace',
                   '400 Monthly BizCredits Included',
                   'Automated WhatsApp Outbound Confirmations',
                   'Priority Google & AI Search Engine (GEO) Indexing',
@@ -303,6 +303,9 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
                   </li>
                 ))}
               </ul>
+              <p className="text-[10px] text-emerald-300/80 italic mt-2">
+                🛡️ Verified MSME badges are granted strictly via regulatory identity/CAC/NACCIMA audit, not purchased.
+              </p>
             </div>
 
             <button

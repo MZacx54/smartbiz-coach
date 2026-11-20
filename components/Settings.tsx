@@ -20,12 +20,14 @@ interface SettingsProps {
 const CREDIT_PACKS = [
   { credits: 50, price: 500, label: 'Micro Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
   { credits: 150, price: 1500, label: 'Starter Pack', desc: '150 🪙 for 7-day boost + photo AI' },
-  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 🪙 (+50 Bonus) for Verified Badge + Boosts', popular: true },
+  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 🪙 (+50 Bonus) for Studio Shoots & Marketplace Boosts', popular: true },
   { credits: 1000, price: 7500, label: 'Vendor Pro Pack', desc: '1,000 🪙 (+250 Bonus) for 30-Day VIP + Full AI Studio' },
   { credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 🪙 for continuous weekly boosts & business plans' },
 ];
 
 import { BankPayoutSetup } from './BankPayoutSetup';
+import AdminVerificationDesk from './AdminVerificationDesk';
+import VendorVerificationModal from './VendorVerificationModal';
 
 type SettingsTab = 'profile' | 'payout' | 'billing' | 'social' | 'preferences' | 'data' | 'admin';
 
@@ -137,7 +139,15 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   // Admin console states
   const [adminData, setAdminData] = useState<AdminDashboardData | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
-  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'credits' | 'partnerships' | 'cac' | 'pos' | 'payouts'>('orders');
+  const [adminSubTab, setAdminSubTab] = useState<'orders' | 'credits' | 'partnerships' | 'cac' | 'pos' | 'payouts' | 'verification'>('orders');
+  const [showUserVerificationModal, setShowUserVerificationModal] = useState(false);
+  const [userVendorProfile, setUserVendorProfile] = useState<any | null>(null);
+
+  useEffect(() => {
+    api.get('/api/marketplace/vendor/verification/').then(res => {
+      setUserVendorProfile(res.data);
+    }).catch(() => {});
+  }, []);
 
   const handleExportAdminCSV = () => {
     if (!adminData) return;
@@ -854,12 +864,12 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black font-heading mt-0.5">Growth Merchant Pro</h3>
                   <p className="text-xs text-slate-300 mt-1 max-w-md">
-                    Active VIP privileges: 400 Monthly BizCredits, Verified CAC Merchant Badge, Priority Marketplace Placement, and Unlimited Marketing Contacts.
+                    Active VIP privileges: 400 Monthly BizCredits, VIP Marketplace Priority Placement, AI Studio, and Unlimited Marketing Contacts.
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-3.5 py-2 rounded-xl shrink-0">
-                <span>✓ Verified CAC Badge</span>
+                <span>✓ 400 Monthly Credits</span>
                 <span>•</span>
                 <span>⚡ GEO Priority</span>
               </div>
@@ -877,7 +887,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black font-heading mt-0.5">MSME Starter Plan</h3>
                   <p className="text-xs text-slate-300 mt-1 max-w-md">
-                    Core bookkeeping is 100% free. Upgrade to Growth Pro for 400 monthly BizCredits, Verified Merchant badge, and unlimited WhatsApp marketing contacts.
+                    Core bookkeeping is 100% free. Upgrade to Growth Pro for 400 monthly BizCredits, VIP marketplace ranking, and unlimited WhatsApp marketing contacts.
                   </p>
                 </div>
               </div>
@@ -897,6 +907,43 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </button>
             </div>
           )}
+
+          {/* Institutional Trust & Verification Banner */}
+          <div className="bg-white rounded-[32px] p-6 sm:p-7 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                🏛️
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-amber-700">Trust & Accreditation</span>
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                    userVendorProfile?.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' :
+                    userVendorProfile?.status === 'PENDING_REVIEW' ? 'bg-amber-100 text-amber-900 animate-pulse' :
+                    userVendorProfile?.status === 'ACTION_REQUIRED' ? 'bg-rose-100 text-rose-800' :
+                    'bg-slate-100 text-slate-600'
+                  }`}>
+                    {userVendorProfile?.badge_info?.label || userVendorProfile?.status || 'Unverified'}
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black font-heading mt-0.5 text-slate-900">
+                  {userVendorProfile?.is_verified ? userVendorProfile?.badge_info?.label : 'MSME Regulatory & Chamber Verification'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 max-w-lg leading-relaxed">
+                  In compliance with NACCIMA and federal standards, verified badges cannot be bought through subscriptions. Earn your badge with authentic NIN, CAC registration, or Chamber accreditation.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowUserVerificationModal(true)}
+              className="bg-slate-900 hover:bg-indigo-600 text-white font-extrabold text-xs px-5 py-3 rounded-2xl transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer"
+            >
+              <span>🛡️</span>
+              <span>{userVendorProfile?.is_verified ? 'View Verification Dossier' : 'Apply for Official Verification'}</span>
+            </button>
+          </div>
 
           {/* Wallet */}
           <div className="bg-gradient-to-br from-indigo-950 to-indigo-900 rounded-[32px] shadow-xl text-white p-6 sm:p-8 relative overflow-hidden">
@@ -1752,6 +1799,14 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               📱 POS Retail Day-Book
             </button>
             <button
+              onClick={() => setAdminSubTab('verification')}
+              className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
+                adminSubTab === 'verification' ? 'border-amber-600 text-amber-700' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              🛡️ Verification & NACCIMA Desk
+            </button>
+            <button
               onClick={() => setAdminSubTab('payouts')}
               className={`pb-2.5 px-3.5 text-xs font-black border-b-2 transition-all cursor-pointer border-0 bg-transparent whitespace-nowrap ${
                 adminSubTab === 'payouts' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
@@ -2062,6 +2117,13 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </div>
             )}
 
+            {/* SUB-TAB: VENDOR VERIFICATION & NACCIMA DESK */}
+            {adminSubTab === 'verification' && (
+              <div className="p-4 sm:p-6">
+                <AdminVerificationDesk />
+              </div>
+            )}
+
             {/* SUB-TAB 6: MERCHANT BANK SUBACCOUNTS */}
             {adminSubTab === 'payouts' && (
               <div>
@@ -2106,6 +2168,12 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
           </div>
         </div>
       )}
+
+      <VendorVerificationModal
+        isOpen={showUserVerificationModal}
+        onClose={() => setShowUserVerificationModal(false)}
+        onVerificationUpdated={(v) => setUserVendorProfile(v)}
+      />
 
       {/* Paystack Payment Modal */}
       {showTopUp && selectedPack && (

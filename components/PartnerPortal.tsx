@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import BulkOnboardModal from './BulkOnboardModal';
+import AdminVerificationDesk from './AdminVerificationDesk';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
@@ -332,6 +333,7 @@ export const PartnerPortal: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [approvedIds, setApprovedIds] = useState<string[]>([]);
   const [partnerProgram, setPartnerProgram] = useState<string>('ALL');
+  const [activePortalTab, setActivePortalTab] = useState<'analytics' | 'verification'>('analytics');
   const [showBulkOnboardModal, setShowBulkOnboardModal] = useState<boolean>(false);
 
   // Upgrade 5: Interactive Monte Carlo Loan & Grant Underwriting Simulator state
@@ -631,7 +633,38 @@ export const PartnerPortal: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 mt-6 space-y-6">
+      {/* Primary Navigation Tabs: Analytics vs Verification Desk */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 mt-6">
+        <div className="flex border-b border-slate-800 gap-2">
+          <button
+            onClick={() => setActivePortalTab('analytics')}
+            className={`px-5 py-3 font-black text-xs sm:text-sm border-b-2 transition flex items-center gap-2 cursor-pointer ${
+              activePortalTab === 'analytics'
+                ? 'border-emerald-500 text-emerald-400 bg-slate-900/60 rounded-t-xl'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            📊 Portfolio Underwriting & Analytics
+          </button>
+          <button
+            onClick={() => setActivePortalTab('verification')}
+            className={`px-5 py-3 font-black text-xs sm:text-sm border-b-2 transition flex items-center gap-2 cursor-pointer ${
+              activePortalTab === 'verification'
+                ? 'border-indigo-500 text-indigo-400 bg-slate-900/60 rounded-t-xl'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            🛡️ MSME Regulatory & Chamber Verification Desk (NACCIMA / CAC / NIN)
+          </button>
+        </div>
+      </div>
+
+      {activePortalTab === 'verification' ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 mt-6">
+          <AdminVerificationDesk />
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 mt-6 space-y-6">
         {/* Macro Impact KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4">
@@ -1107,8 +1140,9 @@ export const PartnerPortal: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
-  );
+    )}
+  </div>
+);
 };
 
 export default PartnerPortal;

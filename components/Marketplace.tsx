@@ -255,7 +255,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       trust_badge_text: item.trust_badge_text,
       is_vendor_verified: item.is_vendor_verified,
       whatsapp_number: item.whatsapp_number,
-      location: item.location
+      location: item.location,
+      vendor_badge: (item as any).vendor_badge,
+      vendor_verification_tier: (item as any).vendor_verification_tier,
+      vendor_chamber: (item as any).vendor_chamber
     });
     setIsMerchantDrawerOpen(true);
   };
@@ -821,12 +824,28 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     </button>
 
                     {item.is_vendor_verified ? (
-                      <span 
-                        onClick={() => handleOpenMerchantProfile(item)}
-                        className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-emerald-100 transition-colors"
-                      >
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified MSME
-                      </span>
+                      (item as any).vendor_verification_tier === 'TIER_3_NACCIMA' ? (
+                        <span 
+                          onClick={() => handleOpenMerchantProfile(item)}
+                          className="text-[9px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-amber-200 transition-colors"
+                        >
+                          <span>🏅</span> NACCIMA Partner
+                        </span>
+                      ) : (item as any).vendor_verification_tier === 'TIER_2_CAC' ? (
+                        <span 
+                          onClick={() => handleOpenMerchantProfile(item)}
+                          className="text-[9px] font-black text-indigo-900 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-indigo-100 transition-colors"
+                        >
+                          <span>🏛️</span> CAC Verified
+                        </span>
+                      ) : (
+                        <span 
+                          onClick={() => handleOpenMerchantProfile(item)}
+                          className="text-[9px] font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-emerald-100 transition-colors"
+                        >
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> ID Verified
+                        </span>
+                      )
                     ) : item.cac_number ? (
                       <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
                         RC: {item.cac_number}

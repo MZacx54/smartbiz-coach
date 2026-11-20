@@ -24,6 +24,9 @@ interface MerchantProfileDrawerProps {
     is_vendor_verified?: boolean;
     whatsapp_number?: string;
     location?: string;
+    vendor_badge?: any;
+    vendor_verification_tier?: string;
+    vendor_chamber?: string;
   } | null;
   onAddToCart?: (item: UnifiedItem) => void;
   onSelectItem?: (item: UnifiedItem) => void;
@@ -145,12 +148,22 @@ export const MerchantProfileDrawer: React.FC<MerchantProfileDrawerProps> = ({
                     <span>Business Credibility Audit</span>
                   </div>
                   {merchant.is_vendor_verified ? (
-                    <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wide">
-                      <CheckCircle2 className="w-2.5 h-2.5" /> Verified
-                    </span>
+                    merchant.vendor_verification_tier === 'TIER_3_NACCIMA' ? (
+                      <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wide">
+                        <span>🏅</span> NACCIMA Partner
+                      </span>
+                    ) : merchant.vendor_verification_tier === 'TIER_2_CAC' ? (
+                      <span className="bg-indigo-100 text-indigo-900 border border-indigo-200 text-[9px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wide">
+                        <span>🏛️</span> CAC Registered
+                      </span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[9px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wide">
+                        <span>🛡️</span> ID Verified
+                      </span>
+                    )
                   ) : (
-                    <span className="bg-indigo-100 text-indigo-800 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
-                      Registered
+                    <span className="bg-slate-100 text-slate-700 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+                      Standard Merchant
                     </span>
                   )}
                 </div>
@@ -163,12 +176,20 @@ export const MerchantProfileDrawer: React.FC<MerchantProfileDrawerProps> = ({
                     </strong>
                   </div>
                   <div className="bg-white/80 p-2.5 rounded-xl border border-indigo-50/60">
-                    <span className="text-[9px] font-bold text-slate-400 block uppercase">SMEDAN Status</span>
+                    <span className="text-[9px] font-bold text-slate-400 block uppercase">
+                      {merchant.vendor_verification_tier === 'TIER_3_NACCIMA' ? 'Chamber Partner' : 'SMEDAN Status'}
+                    </span>
                     <strong className="text-slate-800 font-extrabold text-[10px] block truncate">
-                      {merchant.smedan_number ? `SMEDAN: ${merchant.smedan_number}` : 'MSME Certified'}
+                      {merchant.vendor_verification_tier === 'TIER_3_NACCIMA' 
+                        ? (merchant.vendor_chamber || 'NACCIMA Accredited')
+                        : (merchant.smedan_number ? `SMEDAN: ${merchant.smedan_number}` : 'MSME Certified')}
                     </strong>
                   </div>
                 </div>
+
+                <p className="text-[10px] text-slate-500 leading-tight pt-1 border-t border-indigo-100/60 italic">
+                  🛡️ SmartBiz & NACCIMA verified. Verified badges are awarded strictly via regulatory identity audit and cannot be purchased.
+                </p>
 
                 {(merchant.brand_address || merchant.location) && (
                   <div className="flex items-start gap-2 text-xs text-slate-600 pt-1">

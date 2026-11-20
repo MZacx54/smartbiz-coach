@@ -3,13 +3,56 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 
 class VendorVerification(models.Model):
+    VERIFICATION_TIERS = [
+        ('NONE', 'Unverified'),
+        ('TIER_1_ID', 'Identity-Verified Merchant'),
+        ('TIER_2_CAC', 'CAC-Registered Business'),
+        ('TIER_3_NACCIMA', 'NACCIMA Certified Chamber Partner'),
+    ]
+
+    STATUS_CHOICES = [
+        ('UNVERIFIED', 'Unverified'),
+        ('PENDING_REVIEW', 'Pending Compliance Review'),
+        ('ACTION_REQUIRED', 'Action Required'),
+        ('VERIFIED', 'Verified & Approved'),
+        ('REJECTED', 'Rejected'),
+        ('SUSPENDED', 'Suspended'),
+    ]
+
+    ID_TYPES = [
+        ('NIN', 'National Identification Number (NIN)'),
+        ('DRIVERS_LICENSE', "FRSC Driver's License"),
+        ('PASSPORT', 'Nigerian International Passport'),
+        ('VOTERS_CARD', "INEC Voter's Card"),
+    ]
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='vendor_profile')
     business_name = models.CharField(max_length=255)
-    business_type = models.CharField(max_length=100) # e.g. "Retail", "Logistics", "Wholesale"
+    business_type = models.CharField(max_length=100, blank=True, default='Retail')
     cac_number = models.CharField(max_length=100, blank=True, null=True)
     nin_number = models.CharField(max_length=100, blank=True, null=True)
     is_verified = models.BooleanField(default=False)
-    whatsapp_number = models.CharField(max_length=20)
+    whatsapp_number = models.CharField(max_length=20, blank=True, default='')
+
+    # Tiered Verification fields
+    verification_tier = models.CharField(max_length=30, choices=VERIFICATION_TIERS, default='NONE')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='UNVERIFIED')
+    id_type = models.CharField(max_length=30, choices=ID_TYPES, blank=True, null=True)
+    id_number = models.CharField(max_length=100, blank=True, null=True)
+    id_document_url = models.TextField(blank=True, null=True)
+    tin_number = models.CharField(max_length=100, blank=True, null=True)
+    cac_document_url = models.TextField(blank=True, null=True)
+    proof_of_address_url = models.TextField(blank=True, null=True)
+    physical_address = models.CharField(max_length=255, blank=True, null=True)
+    operating_state = models.CharField(max_length=100, blank=True, null=True)
+    operating_lga = models.CharField(max_length=100, blank=True, null=True)
+    naccima_member_id = models.CharField(max_length=100, blank=True, null=True)
+    naccima_chamber_name = models.CharField(max_length=150, blank=True, null=True)
+    naccima_document_url = models.TextField(blank=True, null=True)
+    rejection_reason = models.TextField(blank=True, null=True)
+    reviewed_by = models.CharField(max_length=150, blank=True, null=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
     
     # Direct Paystack Payout Fields
     bank_name = models.CharField(max_length=150, blank=True, null=True)
@@ -19,9 +62,53 @@ class VendorVerification(models.Model):
     paystack_subaccount_code = models.CharField(max_length=100, blank=True, null=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.business_name or 'Vendor'} ({'Verified' if self.is_verified else 'Pending'})"
+        return f"{self.business_name or 'Vendor'} ({self.verification_tier} - {self.status})"
+
+    @property
+    def badge_info(self):
+        if not self.is_verified or self.status != 'VERIFIED':
+            return None
+        if self.verification_tier == 'TIER_3_NACCIMA':
+            return {
+                'tier': 'TIER_3_NACCIMA',
+                'label': 'NACCIMA Verified Partner',
+                'short_label': 'NACCIMA Partner',
+                'icon': '🏅',
+                'badge_color': 'amber',
+                'chamber': self.naccima_chamber_name or 'NACCIMA National',
+                'description': 'Accredited NACCIMA Chamber Member, CAC registered, and identity-audited by SmartBiz compliance desk.'
+            }
+        elif self.verification_tier == 'TIER_2_CAC':
+            return {
+                'tier': 'TIER_2_CAC',
+                'label': 'CAC Registered Business',
+                'short_label': 'CAC Verified',
+                'icon': '🏛️',
+                'badge_color': 'indigo',
+                'cac_number': self.cac_number,
+                'description': 'Formally incorporated with the Corporate Affairs Commission (CAC) with verified TIN and operating address.'
+            }
+        elif self.verification_tier == 'TIER_1_ID':
+            return {
+                'tier': 'TIER_1_ID',
+                'label': 'Identity-Verified Merchant',
+                'short_label': 'ID Verified',
+                'icon': '🛡️',
+                'badge_color': 'emerald',
+                'description': 'Government ID, bank verification, and phone identity audited and confirmed.'
+            }
+        return {
+            'tier': 'TIER_1_ID',
+            'label': 'Verified Merchant',
+            'short_label': 'Verified',
+            'icon': '🛡️',
+            'badge_color': 'emerald',
+            'description': 'Audited and verified by SmartBiz compliance desk.'
+        }
+
 
 class MarketplaceListing(models.Model):
     CATEGORY_CHOICES = [

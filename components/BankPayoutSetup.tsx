@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { Building2, CheckCircle2, ShieldCheck, ArrowRight, RefreshCw, CreditCard, Shield } from 'lucide-react';
-import CreditPromptModal from './CreditPromptModal';
+import VendorVerificationModal from './VendorVerificationModal';
 
 interface BankOption {
   name: string;
@@ -47,8 +47,7 @@ export const BankPayoutSetup: React.FC = () => {
   const [isResolving, setIsResolving] = useState(false);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
-  const [isVerifyingWithCredits, setIsVerifyingWithCredits] = useState(false);
-  const [showCreditPrompt, setShowCreditPrompt] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [userCredits, setUserCredits] = useState<number>(() => {
     try {
       return JSON.parse(localStorage.getItem('sb_user') || '{}')?.credits || 0;
@@ -169,21 +168,8 @@ export const BankPayoutSetup: React.FC = () => {
     }
   };
 
-  const handleActivateVerification = async () => {
-    setIsVerifyingWithCredits(true);
-    try {
-      const res = await api.post('/api/marketplace/vendor/verify-with-credits/');
-      setPayoutDetails(prev => prev ? ({ ...prev, is_verified: true }) : null);
-      toast.success("Verified Vendor Badge activated! Your listings now display the official verified trust badge.");
-    } catch (err: any) {
-      if (err?.response?.status === 402) {
-        setShowCreditPrompt(true);
-      } else {
-        toast.error(err?.response?.data?.error || "Failed to activate vendor badge.");
-      }
-    } finally {
-      setIsVerifyingWithCredits(false);
-    }
+  const handleOpenVerification = () => {
+    setShowVerificationModal(true);
   };
 
   if (isLoadingDetails) {
@@ -218,18 +204,20 @@ export const BankPayoutSetup: React.FC = () => {
 
         <div className="flex items-center gap-2 flex-wrap">
           {payoutDetails?.is_verified ? (
-            <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-3.5 py-1.5 rounded-full text-xs font-bold">
-              <Shield className="w-4 h-4 text-blue-600 fill-blue-600" />
-              <span>OFFICIAL VERIFIED VENDOR</span>
+            <div 
+              onClick={handleOpenVerification}
+              className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3.5 py-1.5 rounded-full text-xs font-bold cursor-pointer hover:bg-emerald-100 transition-colors"
+            >
+              <Shield className="w-4 h-4 text-emerald-600 fill-emerald-600" />
+              <span>OFFICIAL VERIFIED VENDOR (VIEW DOSSIER)</span>
             </div>
           ) : (
             <button
-              onClick={handleActivateVerification}
-              disabled={isVerifyingWithCredits}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all"
+              onClick={handleOpenVerification}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
             >
               <Shield className="w-4 h-4" />
-              <span>{isVerifyingWithCredits ? 'Activating...' : 'Get Verified Badge (500 Credits)'}</span>
+              <span>Apply for Official Verification / NACCIMA</span>
             </button>
           )}
 
@@ -367,17 +355,12 @@ export const BankPayoutSetup: React.FC = () => {
         )}
       </div>
 
-      <CreditPromptModal
-        isOpen={showCreditPrompt}
-        featureLabel="Official Verified Vendor Badge"
-        creditCost={500}
-        currentCredits={userCredits}
-        onConfirm={() => {
-          setShowCreditPrompt(false);
-          handleActivateVerification();
+      <VendorVerificationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        onVerificationUpdated={(v) => {
+          setPayoutDetails(prev => prev ? ({ ...prev, is_verified: v.is_verified }) : null);
         }}
-        onClose={() => setShowCreditPrompt(false)}
-        onCreditsUpdated={(newBal) => setUserCredits(newBal)}
       />
     </div>
   );

@@ -3,10 +3,42 @@ from .models import VendorVerification, MarketplaceListing, Product, Lead, Daily
 
 @admin.register(VendorVerification)
 class VendorVerificationAdmin(admin.ModelAdmin):
-    list_display = ['id', 'business_name', 'user', 'business_type', 'whatsapp_number', 'is_verified', 'bank_name', 'account_number', 'paystack_subaccount_code', 'created_at']
-    list_filter = ['is_verified', 'business_type', 'created_at']
-    search_fields = ['business_name', 'user__username', 'user__email', 'whatsapp_number', 'account_number']
+    list_display = [
+        'id', 'business_name', 'user', 'verification_tier', 'status', 'is_verified',
+        'id_type', 'cac_number', 'naccima_member_id', 'reviewed_by', 'verified_at', 'created_at'
+    ]
+    list_filter = ['status', 'verification_tier', 'is_verified', 'id_type', 'created_at']
+    search_fields = [
+        'business_name', 'user__username', 'user__email', 'whatsapp_number',
+        'cac_number', 'nin_number', 'tin_number', 'naccima_member_id', 'naccima_chamber_name'
+    ]
     list_display_links = ['id', 'business_name']
+    actions = ['approve_selected_vendors', 'suspend_selected_vendors']
+
+    @admin.action(description="Approve verification for selected vendors")
+    def approve_selected_vendors(self, request, queryset):
+        from django.utils import timezone
+        for v in queryset:
+            v.status = 'VERIFIED'
+            v.is_verified = True
+            v.verified_at = timezone.now()
+            v.reviewed_by = request.user.email or request.user.username
+            v.reviewed_at = timezone.now()
+            v.rejection_reason = ""
+            v.save()
+        self.message_user(request, f"{queryset.count()} vendors approved with official verified badge.")
+
+    @admin.action(description="Suspend verification for selected vendors")
+    def suspend_selected_vendors(self, request, queryset):
+        from django.utils import timezone
+        for v in queryset:
+            v.status = 'SUSPENDED'
+            v.is_verified = False
+            v.rejection_reason = "Suspended by admin review."
+            v.reviewed_by = request.user.email or request.user.username
+            v.reviewed_at = timezone.now()
+            v.save()
+        self.message_user(request, f"{queryset.count()} vendors suspended from verified status.")
 
 @admin.register(MarketplaceListing)
 class MarketplaceListingAdmin(admin.ModelAdmin):
