@@ -2711,11 +2711,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                     onClick={() => {
                       const msg = promoResult.broadcast_copy;
                       window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                      billingService.rewardShare(promoProduct.id, promoProduct.name).catch(() => {});
                     }}
                     className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
                   >
-                    <span>📲 Open in WhatsApp (+5 Free Credits)</span>
+                    <span>📲 Open in WhatsApp</span>
                   </button>
                   <button
                     type="button"

@@ -315,17 +315,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       `📍 *Location:* ${item.location || 'Nigeria'}\n\n` +
       `👉 *Buy / View Item:* ${productLink}\n` +
       `🏪 *Seller's Full Store:* ${storeLink}`;
-    
-    // Reward +5 SmartBiz Credits for sharing
-    try {
-      const rewardRes = await billingService.rewardShare(item.id, item.name);
-      if (rewardRes.earned > 0) {
-        toast.success(`🎉 +${rewardRes.earned} SmartBiz Credits earned for sharing! (Balance: ${rewardRes.credits})`, { icon: '⚡' });
-        window.dispatchEvent(new CustomEvent('smartbiz_credits_updated', { detail: rewardRes.credits }));
-      }
-    } catch (e) {
-      console.warn("Share reward notice:", e);
-    }
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);

@@ -1341,7 +1341,7 @@ class SendWhatsAppCloudMessageView(APIView):
             url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
             headers = {
                 "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json; charset=utf-8"
             }
 
             if template_name:
@@ -1367,7 +1367,8 @@ class SendWhatsAppCloudMessageView(APIView):
                 }
 
             try:
-                res = requests.post(url, headers=headers, json=payload, timeout=15)
+                data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+                res = requests.post(url, headers=headers, data=data, timeout=15)
                 res_data = res.json()
 
                 if res.status_code in [200, 201] and 'messages' in res_data:

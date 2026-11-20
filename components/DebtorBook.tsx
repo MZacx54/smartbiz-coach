@@ -147,18 +147,17 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     const outstanding = getOutstandingBalance(debtor);
     const m = getMerchantDetails();
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://smartbizcoach.com.ng';
-    const params = new URLSearchParams({
-      n: debtor.name,
-      a: String(debtor.amount),
-      b: String(outstanding),
-      i: debtor.itemsBought || 'Credit Purchase',
-      d: debtor.dueDate || '',
-      m: m.merchantName,
-      p: m.merchantPhone,
-      bn: m.bankName,
-      ba: m.bankAccount,
-      ban: m.bankAccountName
-    });
+    const params = new URLSearchParams();
+    if (debtor.name) params.set('n', debtor.name);
+    if (debtor.amount) params.set('a', String(debtor.amount));
+    if (outstanding) params.set('b', String(outstanding));
+    if (debtor.itemsBought) params.set('i', debtor.itemsBought.slice(0, 50));
+    if (debtor.dueDate) params.set('d', debtor.dueDate);
+    if (m.merchantName) params.set('m', m.merchantName);
+    if (m.merchantPhone) params.set('p', m.merchantPhone);
+    if (m.bankName) params.set('bn', m.bankName);
+    if (m.bankAccount) params.set('ba', m.bankAccount);
+    if (m.bankAccountName) params.set('ban', m.bankAccountName);
     return `${origin}/pay-debt/${debtor.id}?${params.toString()}`;
   };
 
@@ -174,9 +173,9 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     const daysOverdue = debtor.dueDate ? Math.max(0, Math.floor((Date.now() - new Date(debtor.dueDate).getTime()) / 86400000)) : 0;
 
     const bankBlock = m.bankAccount
-      ? `\n\n🏦 *Direct Bank Transfer:*\n• Bank: ${m.bankName}\n• Account: ${m.bankAccount}\n• Name: ${m.bankAccountName}`
+      ? `\n\n🏦 *Direct Bank Transfer:*\n• Bank: *${m.bankName}*\n• Account: *${m.bankAccount}*\n• Name: *${m.bankAccountName}*`
       : '';
-    const payBlock = `\n\n💳 *Pay Online Instantly (Card / USSD / Transfer):*\n👉 ${payUrl}`;
+    const payBlock = `\n\n💳 *Pay Online Instantly (Card / USSD / Transfer):*\n${payUrl}`;
 
     if (lang === 'pidgin' || tone === 'NATIVE_PIDGIN') {
       let body = '';
