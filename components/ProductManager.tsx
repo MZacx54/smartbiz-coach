@@ -2143,10 +2143,18 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                           📲 Share on WhatsApp
                         </button>
                         <a
+                          href={storeUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold text-center inline-flex items-center justify-center gap-1.5"
+                        >
+                          👁️ View Storefront
+                        </a>
+                        <a
                           href="/market"
                           target="_blank"
                           rel="noreferrer"
-                          className="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold text-center"
+                          className="flex-1 lg:flex-initial bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl text-xs font-extrabold text-center"
                         >
                           🇳🇬 Open Market Square
                         </a>

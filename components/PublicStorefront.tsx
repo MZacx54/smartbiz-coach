@@ -283,6 +283,33 @@ const PublicStorefront: React.FC = () => {
     if (brand) fetchRelated();
   }, [brand, products]);
 
+  const availableCategories = React.useMemo(() => {
+    const cats = new Set<string>();
+    (products || []).forEach(p => {
+      if (p?.category && typeof p.category === 'string' && p.category.trim()) {
+        cats.add(p.category.trim());
+      }
+    });
+    return Array.from(cats);
+  }, [products]);
+
+  const filteredProducts = React.useMemo(() => {
+    return (products || []).filter(p => {
+      if (!p) return false;
+      if (selectedCategory !== 'ALL' && p.category !== selectedCategory) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = p.name?.toLowerCase().includes(q);
+        const matchDesc = p.description?.toLowerCase().includes(q);
+        const matchCat = p.category?.toLowerCase().includes(q);
+        if (!matchName && !matchDesc && !matchCat) return false;
+      }
+      return true;
+    });
+  }, [products, selectedCategory, searchQuery]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -379,34 +406,10 @@ const PublicStorefront: React.FC = () => {
   };
 
   const getCartTotal = () => {
-    return cart.reduce((acc, item) => acc + (parseFloat(item.product.price) * item.quantity), 0);
+    return cart.reduce((acc, item) => acc + ((parseFloat(item.product?.price) || 0) * item.quantity), 0);
   };
 
-  const availableCategories = React.useMemo(() => {
-    const cats = new Set<string>();
-    products.forEach(p => {
-      if (p.category && typeof p.category === 'string' && p.category.trim()) {
-        cats.add(p.category.trim());
-      }
-    });
-    return Array.from(cats);
-  }, [products]);
 
-  const filteredProducts = React.useMemo(() => {
-    return products.filter(p => {
-      if (selectedCategory !== 'ALL' && p.category !== selectedCategory) {
-        return false;
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchName = p.name?.toLowerCase().includes(q);
-        const matchDesc = p.description?.toLowerCase().includes(q);
-        const matchCat = p.category?.toLowerCase().includes(q);
-        if (!matchName && !matchDesc && !matchCat) return false;
-      }
-      return true;
-    });
-  }, [products, selectedCategory, searchQuery]);
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -772,7 +775,7 @@ const PublicStorefront: React.FC = () => {
           )}
 
           {['PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B'].map(type => {
-            const typeProducts = filteredProducts.filter(p => p.product_type === type);
+            const typeProducts = filteredProducts.filter(p => ((p.product_type || 'PHYSICAL').toUpperCase()) === type);
             if (typeProducts.length === 0) return null;
 
             return (
