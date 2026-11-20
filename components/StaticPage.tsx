@@ -48,8 +48,8 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
   const pageMeta = {
     about: { title: "About Us | SmartBiz Coach", desc: "Nigeria's #1 AI Business Operating System empowering MSMEs with daily POS, Snap-to-Studio, Central Market Square, and funding readiness." },
     contact: { title: "Contact Us | SmartBiz Coach", desc: "Get in touch with our team. Phone/WhatsApp: 09064556107, Email: support@smartbizcoach.com.ng" },
-    privacy: { title: "Privacy Policy & Statutory Data Protection Notice | SmartBiz Coach", desc: "Official data protection notice under NDPA 2023, NDPR, NACCIMA Youth Entrepreneurs Institutional Governance Framework (SBC/NYE/MOU/2026/V3.1), and CBN non-custodial standards." },
-    terms: { title: "Terms of Service & Merchant Operational Agreement | SmartBiz Coach", desc: "Binding terms of service, fair-use lifetime free tools guarantee, BizCredits utility token billing rules, Market Square guidelines, NACCIMA institutional rules, and alternative underwriting disclaimers." },
+    privacy: { title: "Privacy Policy & Statutory Data Protection Notice | SmartBiz Coach", desc: "Official data protection notice under NDPA 2023, NDPR, Multi-Tier Partner Ecosystem Governance Framework (SBC/NEP/GOV/2026/V4.2), and CBN non-custodial standards." },
+    terms: { title: "Terms of Service & Merchant Operational Agreement | SmartBiz Coach", desc: "Binding terms of service, fair-use lifetime free tools guarantee, BizCredits billing rules, Market Square guidelines, and Multi-Partner Ecosystem Framework." },
     help: { title: "Help Center & FAQs | SmartBiz Coach", desc: "Find tutorials, credit costs, fair-use guarantees, and quick answers to how our platform works." },
     grants: { title: "SME Grants & Funding Guide | SmartBiz Coach", desc: "Master guide to qualifying for BOI loans, SMEDAN grants, TEF, and bank financing in Nigeria." },
     cac: { title: "CAC Registration & Compliance Guide | SmartBiz Coach", desc: "The official step-by-step checklist to register your business, get a TIN, SCUML, and Section 23 CITA tax shield." },
@@ -278,7 +278,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <Shield className="w-3 h-3" /> NDPA 2023 &amp; NDPR Compliant
                   </span>
                   <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                    <Building className="w-3 h-3" /> NACCIMA/NYE MOU Protocol Ref: SBC/NYE/MOU/2026/V3.1
+                    <Building className="w-3 h-3" /> Multi-Partner Ecosystem Protocol: SBC/NEP/GOV/2026/V4.2
                   </span>
                   <span className="bg-amber-100 text-amber-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
                     <Lock className="w-3 h-3" /> CBN Non-Custodial Gateway
@@ -288,7 +288,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   Privacy Policy &amp; Statutory Data Protection Notice
                 </h1>
                 <p className="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                  <span>Version 4.2 · Last Legally Ratified &amp; Deployed: November 2026</span>
+                  <span>Version 4.2 · Nationally Standardized &amp; Deployed: November 2026</span>
                   <span>·</span>
                   <span>Governing Jurisdiction: Federal Republic of Nigeria</span>
                 </p>
@@ -308,9 +308,9 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                       SmartBiz Coach Technologies Limited (&ldquo;SmartBiz Coach&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates in strict conformity with the 
                       <strong> Nigeria Data Protection Act 2023 (NDPA)</strong>, the <strong>Nigeria Data Protection Regulation 2019 (NDPR)</strong>, and directives of the 
                       <strong> Nigeria Data Protection Commission (NDPC)</strong>. Your sales records, supplier margins, customer contacts, and debtor ledgers 
-                      (&ldquo;Gbege Book&rdquo;) remain your <strong>100% private, sovereign commercial property</strong>. In accordance with Section 8.2 &amp; 15 of the bilateral 
-                      NACCIMA Youth Entrepreneurs (NYE) Memorandum of Understanding (Document Ref: <code className="bg-white/80 px-1 py-0.5 rounded font-mono text-blue-900">SBC/NYE/MOU/2026/V3.1</code>), 
-                      neither chambers, governmental entities, nor financial institutions can inspect your individual counter records without your explicit, affirmative, in-app written consent.
+                      remain your <strong>100% private, sovereign commercial property</strong>. Under our standardized National Ecosystem Partner Framework 
+                      (Document Ref: <code className="bg-white/80 px-1 py-0.5 rounded font-mono text-blue-900">SBC/NEP/GOV/2026/V4.2</code>), 
+                      neither partner aggregators, business chambers, credit institutions, nor government agencies can inspect your individual counter records without your explicit, affirmative, in-app written consent.
                     </p>
                   </div>
                 </div>
@@ -334,10 +334,10 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   </p>
                   <ul className="list-disc list-inside mt-2 space-y-1.5 text-xs text-slate-700 pl-2">
                     <li><strong>The Nigeria Data Protection Act (NDPA) 2023</strong> enacted by the National Assembly of Nigeria.</li>
-                    <li><strong>The Nigeria Data Protection Regulation (NDPR) 2019</strong> and regulatory issuances by the NDPC.</li>
+                    <li><strong>The Nigeria Data Protection Regulation (NDPR) 2019</strong> and statutory guidelines issued by the NDPC.</li>
                     <li><strong>Central Bank of Nigeria (CBN) Consumer Protection Framework</strong> &amp; Payment Service Provider guidelines.</li>
-                    <li><strong>The Bilateral NACCIMA Youth Entrepreneurs (NYE) Memorandum of Understanding</strong> (Ref: <span className="font-mono text-slate-900">SBC/NYE/MOU/2026/V3.1</span>).</li>
-                    <li>International principles on cross-border data processing, confidentiality, and data minimization.</li>
+                    <li><strong>The National Multi-Tier Partner Ecosystem Protocol</strong> (Ref: <span className="font-mono text-slate-900">SBC/NEP/GOV/2026/V4.2</span>) establishing strict data boundaries across all partner categories.</li>
+                    <li>International best practices on cross-border data processing, confidentiality, and data minimization.</li>
                   </ul>
                 </section>
 
@@ -436,34 +436,91 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
                     <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">05</span>
-                    <h3>NACCIMA &amp; Institutional Chamber Governance Framework (MOU Ref: SBC/NYE/MOU/2026/V3.1)</h3>
+                    <h3>Multi-Tier Ecosystem Governance Framework (Ref: SBC/NEP/GOV/2026/V4.2)</h3>
                   </div>
-                  <p className="mb-3">
-                    Our platform operates under formal bilateral technical partnership protocols with the Nigerian Association of Chambers of Commerce, Industry, Mines and Agriculture Youth Entrepreneurs 
-                    (&ldquo;NACCIMA / NYE&rdquo;). This bilateral relationship is governed by the executed Memorandum of Understanding (Document Ref: <code className="text-slate-900 font-mono font-bold">SBC/NYE/MOU/2026/V3.1</code>). 
-                    All users, whether onboarded through chamber cohorts or independently, benefit from the following mandatory safeguards:
+                  <p className="mb-4">
+                    SmartBiz Coach operates as a foundational digital operating platform within the broader Nigerian MSME economy. 
+                    In accordance with our standardized <strong>National Ecosystem Partner Framework</strong> (Protocol Ref: <code className="text-slate-900 font-mono font-bold">SBC/NEP/GOV/2026/V4.2</code>), 
+                    our technical and commercial interactions across all <strong>five partner categories</strong> are governed by strict, legally enforceable data privacy boundaries under the NDPA 2023:
                   </p>
                   
-                  <div className="space-y-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <div className="flex items-start gap-2">
-                      <span className="font-bold text-slate-900 shrink-0">1. Strict Data Segregation:</span>
-                      <p>
-                        In accordance with Clause 8.2 and Clause 15 of the MOU, an individual merchant&rsquo;s sales day-book, profit margins, supplier purchase costs, customer directories, and private debtor records 
-                        are strictly confidential. Chambers, regional secretariats, and cohort coordinators have <strong>zero technical or legal authority to view or inspect</strong> individual business ledgers.
+                  <div className="space-y-3.5 text-xs">
+                    {/* Category 1 */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 font-bold text-slate-900 text-sm mb-1.5">
+                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-[10px] font-mono">1</span>
+                        <span>Institutional &amp; Chamber Aggregators (Distribution &amp; Trust)</span>
+                      </div>
+                      <p className="text-slate-600 mb-2">
+                        <em>Encompasses: National and State Chambers of Commerce (e.g. NACCIMA, bilateral state chambers), Trade Associations, Market Merchant Unions, and MSME Coalitions.</em>
                       </p>
+                      <ul className="list-disc list-inside space-y-1 text-slate-700 pl-1">
+                        <li><strong>Strict Data Segregation:</strong> Aggregators possess <strong>zero technical access or legal authority</strong> to inspect individual merchant sales ledgers, profit margins, supplier purchase costs, or debtor books.</li>
+                        <li><strong>Aggregated Macro Telemetry Only:</strong> Partner dashboards receive exclusively anonymized macro impact metrics (e.g. total MSMEs digitized in a state, aggregated transaction volume indices, sectoral distribution) for policy and trade advocacy.</li>
+                        <li><strong>Affiliation Badges:</strong> Institutional verification badges displayed on Market Square confirm valid accredited membership in good standing and do not constitute sovereign credit guarantees or product warranties.</li>
+                      </ul>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <span className="font-bold text-slate-900 shrink-0">2. Aggregated Macro Telemetry Only:</span>
-                      <p>
-                        Chamber administrative dashboards and executive impact reports receive strictly aggregated, anonymized, macro-economic telemetry (e.g. &ldquo;1,420 MSMEs digitized in Kano State; ₦480M total macro sales velocity recorded; 65% retail trade sector composition&rdquo;). No individual merchant or consumer identifiers are ever disclosed in these reports.
+
+                    {/* Category 2 */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 font-bold text-slate-900 text-sm mb-1.5">
+                        <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[10px] font-mono">2</span>
+                        <span>Credit, DFI &amp; Capital Partners (Monetization &amp; Underwriting)</span>
+                      </div>
+                      <p className="text-slate-600 mb-2">
+                        <em>Encompasses: Development Finance Institutions (BOI, DBN), Commercial Banks, Licensed Microfinance Banks (MFBs), SME Credit Funds, and Institutional Grant Foundations.</em>
                       </p>
+                      <ul className="list-disc list-inside space-y-1 text-slate-700 pl-1">
+                        <li><strong>Voluntary, Affirmative In-App Consent:</strong> Financial health dossiers and cashflow records are transmitted to capital partners <strong>only when the merchant explicitly applies for a credit facility or grant</strong> and affirmatively authorizes sharing.</li>
+                        <li><strong>Diagnostic Independence:</strong> SmartScore™ and cashflow evaluations are objective indicators of counter regularity; partner institutions evaluate financing applications according to their independent risk and regulatory criteria.</li>
+                        <li><strong>Non-Broker Safeguard:</strong> SmartBiz Coach does not act as a credit broker, loan guarantee house, or debt collection agency for third-party financiers.</li>
+                      </ul>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <span className="font-bold text-slate-900 shrink-0">3. Verification Badges (&ldquo;Verified NYE Member&rdquo;):</span>
-                      <p>
-                        In accordance with Clause 13.2 of the MOU, chamber accreditation badges displayed on marketplace storefronts signify that the merchant is in good standing with their accredited business chamber. 
-                        Badges do not constitute a sovereign financial guarantee, co-signature, or product warranty by NACCIMA or SmartBiz Coach.
+
+                    {/* Category 3 */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 font-bold text-slate-900 text-sm mb-1.5">
+                        <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-[10px] font-mono">3</span>
+                        <span>Government &amp; Regulatory Partners (Endorsement &amp; Compliance)</span>
+                      </div>
+                      <p className="text-slate-600 mb-2">
+                        <em>Encompasses: Small and Medium Enterprises Development Agency of Nigeria (SMEDAN), Corporate Affairs Commission (CAC), Federal &amp; State Internal Revenue Services, NITDA, NDPC, and NAFDAC.</em>
                       </p>
+                      <ul className="list-disc list-inside space-y-1 text-slate-700 pl-1">
+                        <li><strong>Compliance Assistance:</strong> Educational tools, CAC registration checklists, and Section 23/40 CITA tax exemption memos are informational software aids to assist MSME formalization.</li>
+                        <li><strong>No Automatic Tax Ledger Transmission:</strong> SmartBiz Coach does not transmit merchant financial ledgers to revenue authorities. Disclosures occur strictly when compelled by valid, certified Nigerian judicial orders complying with NDPA 2023 due process.</li>
+                      </ul>
+                    </div>
+
+                    {/* Category 4 */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 font-bold text-slate-900 text-sm mb-1.5">
+                        <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-[10px] font-mono">4</span>
+                        <span>Fintech &amp; Infrastructure Rails (APIs &amp; Payment Settlements)</span>
+                      </div>
+                      <p className="text-slate-600 mb-2">
+                        <em>Encompasses: CBN-Licensed Payment Switches &amp; Solution Providers (Paystack, Squadco), Meta WhatsApp Cloud API, NIBSS, Telecom &amp; SMS Aggregators, and Cloud Hosting Infrastructure.</em>
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-slate-700 pl-1">
+                        <li><strong>Non-Custodial Direct Settlement:</strong> Customer checkout proceeds settle directly into the merchant&rsquo;s verified Nigerian bank account via licensed gateway rails; SmartBiz Coach never holds, pools, or custodies merchant funds.</li>
+                        <li><strong>Zero Card Data Retention:</strong> Payment card numbers, CVVs, and authorization PINs are processed directly within PCI-DSS Level 1 compliant tokenized vaults and are never saved on SmartBiz Coach servers.</li>
+                        <li><strong>Messaging Compliance:</strong> Automated WhatsApp receipts and debt collection notices adhere to Meta Business Messaging Policies; merchants may opt out or utilize direct 1-tap Click-to-Chat deep links at any time.</li>
+                      </ul>
+                    </div>
+
+                    {/* Category 5 */}
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-2 font-bold text-slate-900 text-sm mb-1.5">
+                        <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-[10px] font-mono">5</span>
+                        <span>Grassroots &amp; Ecosystem Hubs (Grassroots User Activation)</span>
+                      </div>
+                      <p className="text-slate-600 mb-2">
+                        <em>Encompasses: Technology Innovation Hubs, SME Incubators, Trade Cooperatives, Youth &amp; Women Entrepreneurship Initiatives, and International Donor Digitization Pilots (e.g. UNDP, donor-supported cohorts).</em>
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-slate-700 pl-1">
+                        <li><strong>Community Capacity Building:</strong> Hub partners facilitate local onboarding, digital literacy workshops, and technical assistance.</li>
+                        <li><strong>Cohort Telemetry Protection:</strong> Program monitoring is restricted strictly to aggregated capacity KPIs (e.g. number of micro-enterprises onboarded, digital literacy completion rates). Hub administrators have no access to private till records or customer details.</li>
+                      </ul>
                     </div>
                   </div>
                 </section>
@@ -490,9 +547,9 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     </div>
 
                     <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                      <span className="font-bold text-amber-900 block mb-1">2. Indicative Diagnostic Tool Disclaimer (MOU Clause 15.5):</span>
+                      <span className="font-bold text-amber-900 block mb-1">2. Indicative Diagnostic Tool Disclaimer:</span>
                       <p className="text-slate-700">
-                        SmartScore™ and its generated IFRS-9 staging indicators are diagnostic operational evaluations calculated from your self-recorded counter discipline, till regularity, and debt collection turnaround. 
+                        SmartScore™ and its generated cashflow staging indicators are diagnostic operational evaluations calculated from your self-recorded counter discipline, till regularity, and debt collection turnaround. 
                         A high SmartScore™ demonstrates commercial discipline but <strong>does not guarantee loan approval, credit limits, or concessionary interest rates</strong> from any financial institution. 
                         Lending partners evaluate applications against their independent statutory risk models and prudential guidelines.
                       </p>
@@ -583,16 +640,16 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
                     <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">10</span>
-                    <h3>Data Retention, Portability &amp; Guaranteed 60-to-90 Day Exit Transition (MOU Clause 15.4)</h3>
+                    <h3>Data Retention, Portability &amp; Guaranteed 60-to-90 Day Exit Transition (NDPA 2023 &amp; Ecosystem Protocol)</h3>
                   </div>
                   <p className="mb-3">
-                    We retain your data for the duration of your active subscription to maintain operational continuity, multi-year sales trends, and tax compliance records.
+                    We retain your data for the duration of your active platform usage to maintain operational continuity, multi-year sales trends, and tax compliance records.
                   </p>
                   <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-slate-700 leading-relaxed mb-3">
                     <strong className="text-emerald-950 block mb-1 flex items-center gap-1.5">
                       <Download className="w-4 h-4 text-emerald-700" /> Guaranteed 60-to-90 Day Data Portability Window
                     </strong>
-                    In accordance with <strong>Clause 15.4 of the NACCIMA/NYE MOU</strong>, should an account be deactivated, cancelled, or should institutional chamber sponsorship expire, 
+                    In accordance with <strong>Section 38 of the Nigeria Data Protection Act (NDPA) 2023</strong> and our National Ecosystem Partner Protocol, should an account be deactivated, cancelled, or should institutional sponsorship expire, 
                     every merchant is guaranteed an unhindered <strong>60-to-90 day grace window</strong> to export all historical sales day-books, inventory catalogs, debtor records (&ldquo;Gbege Book&rdquo;), 
                     customer directories, and tax balance sheets in open, machine-readable formats (<strong>CSV, JSON, and PDF</strong>). 
                     You will never suffer vendor lock-in or lose access to your commercial records.
@@ -676,7 +733,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <CheckCircle className="w-3 h-3" /> 100% Free Lifetime Tools Guarantee
                   </span>
                   <span className="bg-blue-100 text-blue-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                    <Scale className="w-3 h-3" /> NACCIMA/NYE MOU Integrated Ref: SBC/NYE/MOU/2026/V3.1
+                    <Scale className="w-3 h-3" /> Multi-Partner Ecosystem Protocol: SBC/NEP/GOV/2026/V4.2
                   </span>
                   <span className="bg-amber-100 text-amber-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
                     <Sparkles className="w-3 h-3" /> BizCredits Pay-As-You-Go Billing
@@ -686,7 +743,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   Terms of Service &amp; Merchant Operational Agreement
                 </h1>
                 <p className="text-slate-500 text-xs mt-2 flex items-center gap-2">
-                  <span>Version 4.2 · Last Legally Ratified &amp; Deployed: November 2026</span>
+                  <span>Version 4.2 · Nationally Standardized &amp; Deployed: November 2026</span>
                   <span>·</span>
                   <span>Governing Law: Laws of the Federal Republic of Nigeria</span>
                 </p>
@@ -699,16 +756,16 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
                     <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">01</span>
-                    <h3>Acceptance of Terms &amp; Institutional Governance Integration</h3>
+                    <h3>Acceptance of Terms &amp; Multi-Partner Ecosystem Integration</h3>
                   </div>
                   <p className="mb-3">
                     By creating an account, accessing our Progressive Web App (PWA), utilizing our offline POS day-book, or participating in the Central MSME Market Square, 
                     you agree to be legally bound by this Merchant Operational Agreement and all incorporated schedules.
                   </p>
                   <p className="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                    <strong>NACCIMA Youth Entrepreneurs (NYE) Institutional Framework:</strong> If you were onboarded through a NACCIMA state chamber, sectoral trade association, 
-                    or bilateral institutional cohort, your platform usage is additionally governed by the bilateral Memorandum of Understanding (Document Ref: <code className="font-mono text-slate-900">SBC/NYE/MOU/2026/V3.1</code>). 
-                    In the event of any operational conflict, the provisions protecting merchant data sovereignty, free core tools, and 60-to-90 day data portability shall strictly take precedence.
+                    <strong>National Multi-Partner Ecosystem Framework:</strong> If you were onboarded through an accredited business chamber, sectoral trade association, 
+                    credit institution, tech incubator, or grassroots development cohort, your platform usage is governed under our standardized Multi-Partner Ecosystem Protocol (Ref: <code className="font-mono text-slate-900">SBC/NEP/GOV/2026/V4.2</code>). 
+                    In all cases, the statutory provisions protecting merchant data sovereignty, free core tools, non-custodial direct payouts, and unrestricted data portability shall strictly take precedence.
                   </p>
                 </section>
 
@@ -720,7 +777,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   </div>
                   <p className="mb-3">
                     SmartBiz Coach was founded to eliminate the high digital barriers that hold back Nigerian traders and artisans. 
-                    In strict accordance with Clause 4 and Clause 12 of the NACCIMA/NYE MOU, we guarantee that all <strong>Core Daily Retail Operating Utilities cost 0 credits and remain 100% free forever</strong>:
+                    In strict accordance with our National Ecosystem Partner Framework, we guarantee that all <strong>Core Daily Retail Operating Utilities cost 0 credits and remain 100% free forever</strong>:
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-800">
                     <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
@@ -773,7 +830,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
                     <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">03</span>
-                    <h3>BizCredits Digital Utility Token Commercial Policy, Pricing &amp; Billing (MOU Section 4 &amp; 12)</h3>
+                    <h3>BizCredits Digital Utility Token Commercial Policy, Pricing &amp; Billing</h3>
                   </div>
                   <p className="mb-3">
                     Advanced generative computing, GPU-based commercial image rendering, voice recognition transcription, and automated marketing campaigns operate on a transparent 
@@ -840,27 +897,44 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
                     <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">05</span>
-                    <h3>NACCIMA Youth Entrepreneurs (NYE) Institutional Cohort Rules (MOU Section 6 &amp; 13)</h3>
+                    <h3>Multi-Category Ecosystem Partner Rules &amp; Institutional Standards (Ref: SBC/NEP/GOV/2026/V4.2)</h3>
                   </div>
                   <p className="mb-3">
-                    For merchants onboarded under organized chamber cohorts (e.g. NACCIMA Youth Entrepreneurs, state chambers of commerce, women in business networks, or market associations):
+                    SmartBiz Coach integrates with diverse national and international partner organizations to drive MSME digitization, market access, and capital mobilization across five structured partner categories:
                   </p>
-                  <ul className="space-y-2 text-xs text-slate-700">
-                    <li><strong>Accreditation Badges:</strong> Displaying the &ldquo;Verified NYE Member&rdquo; or &ldquo;Verified Technical Innovator&rdquo; badge requires valid chamber enrollment in good standing. Badges are revocable upon chamber notification of member deregistration.</li>
-                    <li><strong>Chamber Independence:</strong> As codified in Clause 13.3 of the MOU, institutional verification confirms chamber membership and identity verification only. It does not transfer merchant operational liability to NACCIMA, nor does it imply sovereign debt backing.</li>
-                    <li><strong>Cohort Macro Reporting:</strong> You acknowledge that your anonymized, aggregated transaction volume will contribute to regional chamber trade reports and policy advocacy whitepapers.</li>
-                  </ul>
+                  <div className="space-y-3 text-xs text-slate-700">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <strong className="text-slate-900 block mb-1">1. Institutional &amp; Chamber Aggregators (Distribution &amp; Trust):</strong>
+                      <span>Chamber accreditation badges displayed on storefronts verify recognized merchant affiliation in good standing. Verification confirms identity and standing only; it does not transfer merchant operational liabilities to the chamber, nor does it imply sovereign debt underwriting.</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <strong className="text-slate-900 block mb-1">2. Credit, DFI &amp; Capital Partners (Monetization &amp; Underwriting):</strong>
+                      <span>SmartBiz Coach facilitates financing readiness through diagnostic indicators and structured business plans. Financing decisions remain exclusively within the independent statutory underwriting authority of partner DFIs, banks, and credit funds.</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <strong className="text-slate-900 block mb-1">3. Government &amp; Regulatory Partners (Endorsement &amp; Compliance):</strong>
+                      <span>Compliance support tools (e.g. CAC preparation guides, Section 23/40 CITA tax exemption memos) are educational aids designed to assist regulatory formalization. Merchants remain responsible for authentic statutory filings with relevant regulatory bodies.</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <strong className="text-slate-900 block mb-1">4. Fintech &amp; Infrastructure Rails (APIs &amp; Payment Settlements):</strong>
+                      <span>Direct bank settlements are routed exclusively through CBN-licensed payment switches (Paystack, Squadco) to merchant-designated accounts. Messaging services conform to Meta WhatsApp Business Policies.</span>
+                    </div>
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <strong className="text-slate-900 block mb-1">5. Grassroots &amp; Ecosystem Hubs (Grassroots User Activation):</strong>
+                      <span>Cohorts managed in collaboration with tech incubators, trade cooperatives, or international development agencies (e.g. UNDP, donor pilots) are subject to aggregated program monitoring KPIs, with individual counter ledgers remaining strictly confidential and sovereign to each merchant.</span>
+                    </div>
+                  </div>
                 </section>
 
                 {/* Section 6 */}
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
                     <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">06</span>
-                    <h3>Alternative Underwriting, SmartScore™ &amp; Institutional Lending Disclaimers (MOU Clause 15.5)</h3>
+                    <h3>Alternative Underwriting, SmartScore™ &amp; Institutional Lending Disclaimers</h3>
                   </div>
                   <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-slate-700 leading-relaxed mb-3">
                     <strong className="text-amber-950 block mb-1">Critical Regulatory Notice Regarding Loan Approvals</strong>
-                    In accordance with Clause 15.5 of Document Ref: <code className="font-mono text-amber-900">SBC/NYE/MOU/2026/V3.1</code>, SmartScore™ (300 to 850) and our generated 
+                    In accordance with our National Ecosystem Partner Framework (Ref: <code className="font-mono text-amber-900">SBC/NEP/GOV/2026/V4.2</code>), SmartScore™ (300 to 850) and our generated 
                     cryptographic audit dossiers (<code>PublicAuditReport</code>) are <strong>diagnostic operational indicators</strong> reflecting your recorded cash turnover regularity, 
                     till integrity, and debtor collection efficiency.
                   </div>
