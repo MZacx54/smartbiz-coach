@@ -25,7 +25,7 @@ export const marketingService = {
     return response.data;
   },
 
-  sendWhatsAppCloudMessage: async (payload: { phone: string; message: string; template_name?: string }): Promise<{ success: boolean; message: string; whatsapp_message_id?: string }> => {
+  sendWhatsAppCloudMessage: async (payload: { phone: string; message: string; template_name?: string }): Promise<{ success: boolean; message: string; whatsapp_message_id?: string; sent_via_cloud_api?: boolean; whatsapp_url?: string }> => {
     const response = await api.post('marketing/send-whatsapp-cloud/', payload);
     return response.data;
   }

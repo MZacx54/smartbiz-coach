@@ -218,9 +218,22 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
         phone: reminder.debtor.phone,
         message: msgText
       });
-      toast.success(res.message || "WhatsApp debt reminder sent via Cloud API! ⚡");
+      if (res.sent_via_cloud_api) {
+        toast.success(res.message || "WhatsApp debt reminder sent via Cloud API! ⚡");
+      } else if (res.whatsapp_url) {
+        toast.success("Opening WhatsApp chat with debtor... 💬");
+        window.open(res.whatsapp_url, '_blank');
+      } else {
+        toast.success(res.message || "Reminder processed successfully!");
+      }
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Failed to send WhatsApp Cloud message. Check Settings & Wallet.");
+      const fallbackUrl = err?.response?.data?.whatsapp_url;
+      if (fallbackUrl) {
+        toast("Connecting to WhatsApp chat directly... 💬");
+        window.open(fallbackUrl, '_blank');
+      } else {
+        toast.error(err?.response?.data?.error || "Failed to send WhatsApp message. Falling back to direct chat.");
+      }
     } finally {
       setSendingCloudReminder(false);
     }

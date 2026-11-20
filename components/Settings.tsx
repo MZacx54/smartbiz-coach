@@ -1165,32 +1165,48 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
 
             {/* WhatsApp Cloud API Section */}
             <div className="pt-4 border-t border-slate-100 space-y-4">
-              <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-                <span>💬</span> WhatsApp Cloud API Automation Settings
-              </h4>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                  <span>💬</span> WhatsApp Cloud Messaging
+                </h4>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 w-fit">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  SmartBiz Platform Bot: Active for All Users
+                </span>
+              </div>
+
+              <div className="bg-emerald-50/80 border border-emerald-200/70 rounded-2xl p-4 text-xs text-emerald-900 leading-relaxed">
+                <div className="font-bold flex items-center gap-1.5 text-emerald-950 mb-1">
+                  <span>⚡</span> Included Automatically with Your Account
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-normal">
+                  You do <strong>not</strong> need to set up a Meta Developer account or enter API tokens! Automated WhatsApp receipts, debtor reminders, and daily Day-Book logging are powered automatically by the SmartBiz Coach platform bot. You only need to enter custom keys below if you want messages sent from your personal custom Meta developer app.
+                </p>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    WhatsApp Phone Number ID
+                    Custom WhatsApp Phone Number ID (Optional)
                   </label>
                   <input
                     type="text"
                     value={socialConnect.whatsapp_phone_number_id}
                     onChange={e => setSocialConnect({ ...socialConnect, whatsapp_phone_number_id: e.target.value })}
-                    placeholder="105492..."
+                    placeholder="Leave blank to use SmartBiz Platform Bot"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    WhatsApp Access Token (Optional if Meta Token used)
+                    Custom WhatsApp Access Token (Optional)
                   </label>
                   <input
                     type="password"
                     value={socialConnect.whatsapp_access_token}
                     onChange={e => setSocialConnect({ ...socialConnect, whatsapp_access_token: e.target.value })}
-                    placeholder="Leave blank to use Meta Access Token above"
+                    placeholder="Leave blank to use SmartBiz Platform Bot"
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>

@@ -1201,13 +1201,15 @@ class SocialConnectView(APIView):
         connect, _ = SocialConnect.objects.get_or_create(user=request.user)
         has_meta = bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
         has_wa = bool((connect.whatsapp_access_token or connect.meta_access_token) and connect.whatsapp_phone_number_id)
+        platform_wa = bool(os.getenv('WHATSAPP_ACCESS_TOKEN') and os.getenv('WHATSAPP_PHONE_NUMBER_ID'))
         return Response({
             'meta_access_token': connect.meta_access_token,
             'instagram_account_id': connect.instagram_account_id,
             'facebook_page_id': connect.facebook_page_id,
             'whatsapp_phone_number_id': connect.whatsapp_phone_number_id,
             'whatsapp_access_token': connect.whatsapp_access_token,
-            'is_connected': has_meta or has_wa
+            'is_connected': has_meta or has_wa,
+            'platform_whatsapp_active': platform_wa
         })
 
     def post(self, request):
@@ -1334,58 +1336,87 @@ class SendWhatsAppCloudMessageView(APIView):
         token = (connect.whatsapp_access_token if connect and connect.whatsapp_access_token else connect.meta_access_token) if connect else ''
         phone_number_id = connect.whatsapp_phone_number_id if connect else ''
 
-        # Fallback to system environment variables if user has not configured custom keys
-        if not token:
-            token = os.environ.get('WHATSAPP_CLOUD_ACCESS_TOKEN', '')
-        if not phone_number_id:
-            phone_number_id = os.environ.get('WHATSAPP_CLOUD_PHONE_NUMBER_ID', '')
-
-        if not token or not phone_number_id:
-            return Response({
-                'error': 'WhatsApp Cloud API credentials not configured. Please add your Phone Number ID and Access Token in Settings & Wallet.'
-            }, status=400)
-
-        url = f"https://graph.facebook.com/v19.0/{phone_number_id}/messages"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-
-        if template_name:
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": clean_phone,
-                "type": "template",
-                "template": {
-                    "name": template_name,
-                    "language": {"code": "en_US"}
-                }
-            }
-        else:
-            payload = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual",
-                "to": clean_phone,
-                "type": "text",
-                "text": {
-                    "preview_url": True,
-                    "body": message_text
-                }
+        # 1. If merchant configured custom Meta credentials in Settings, dispatch using their custom number
+        if token and phone_number_id:
+            url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
             }
 
-        try:
-            res = requests.post(url, headers=headers, json=payload, timeout=15)
-            res_data = res.json()
-
-            if res.status_code in [200, 201] and 'messages' in res_data:
-                msg_id = res_data['messages'][0]['id']
-                return Response({
-                    'success': True,
-                    'message': f'WhatsApp message dispatched successfully to {clean_phone}!',
-                    'whatsapp_message_id': msg_id
-                })
+            if template_name:
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": clean_phone,
+                    "type": "template",
+                    "template": {
+                        "name": template_name,
+                        "language": {"code": "en_US"}
+                    }
+                }
             else:
-                err_msg = res_data.get('error', {}).get('message', 'Failed to dispatch WhatsApp message.')
-                return Response({'error': f'WhatsApp Cloud API Error: {err_msg}'}, status=400)
-        except Exception as e:
-            return Response({'error': f'Network error contacting WhatsApp Cloud API: {str(e)}'}, status=500)
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": clean_phone,
+                    "type": "text",
+                    "text": {
+                        "preview_url": True,
+                        "body": message_text
+                    }
+                }
+
+            try:
+                res = requests.post(url, headers=headers, json=payload, timeout=15)
+                res_data = res.json()
+
+                if res.status_code in [200, 201] and 'messages' in res_data:
+                    msg_id = res_data['messages'][0]['id']
+                    return Response({
+                        'success': True,
+                        'sent_via_cloud_api': True,
+                        'message': f'WhatsApp message dispatched successfully to {clean_phone}!',
+                        'whatsapp_message_id': msg_id
+                    })
+                else:
+                    err_msg = res_data.get('error', {}).get('message', 'Failed to dispatch WhatsApp message.')
+                    import urllib.parse
+                    wa_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(message_text)}"
+                    return Response({
+                        'success': False,
+                        'sent_via_cloud_api': False,
+                        'whatsapp_url': wa_url,
+                        'error': f'WhatsApp Cloud API: {err_msg}'
+                    }, status=400)
+            except Exception as e:
+                import urllib.parse
+                wa_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(message_text)}"
+                return Response({
+                    'success': False,
+                    'sent_via_cloud_api': False,
+                    'whatsapp_url': wa_url,
+                    'error': f'Network error contacting WhatsApp Cloud API: {str(e)}'
+                }, status=500)
+
+        # 2. Central Platform Engine Fallback:
+        # Standard merchants do NOT need custom credentials. We dispatch seamlessly via the
+        # Platform Owner's central WhatsApp Cloud API credentials configured on Render!
+        from marketplace.whatsapp_cloud import WhatsAppOutboundService
+        outbound = WhatsAppOutboundService.send_message(clean_phone, message_text)
+
+        if outbound.get('sent_via_cloud_api'):
+            return Response({
+                'success': True,
+                'sent_via_cloud_api': True,
+                'message': f'WhatsApp message dispatched successfully to {clean_phone} via SmartBiz Cloud Engine! ⚡',
+                'whatsapp_message_id': outbound.get('whatsapp_message_id'),
+                'whatsapp_url': outbound.get('whatsapp_url')
+            }, status=200)
+        else:
+            return Response({
+                'success': True,
+                'sent_via_cloud_api': False,
+                'mode': 'DEEP_LINK_FALLBACK',
+                'message': 'WhatsApp message ready! Opening in WhatsApp... 💬',
+                'whatsapp_url': outbound.get('whatsapp_url')
+            }, status=200)
