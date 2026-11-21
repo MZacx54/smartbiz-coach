@@ -162,7 +162,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/orders')) setCurrentView(AppView.ORDER_INBOX);
     else if (path.includes('/dashboard/store-preview')) setCurrentView(AppView.STOREFRONT);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
-    else if (path.includes('/dashboard/hub')) setCurrentView(AppView.HUB);
+    else if (path.includes('/dashboard/hub') || path.includes('/dashboard/marketplace')) setCurrentView(AppView.MARKETPLACE);
     else if (path.includes('/dashboard/marketing')) setCurrentView(AppView.MARKETING_AGENT);
     else if (path.includes('/dashboard/analytics')) setCurrentView(AppView.DATA_SCIENCE_HUB);
     else if (path.includes('/dashboard/partner-portal') || path.includes('/partner-portal')) setCurrentView(AppView.PARTNER_PORTAL);
@@ -392,7 +392,7 @@ const App: React.FC = () => {
       case AppView.STOREFRONT: navigate(`/dashboard/store-preview${query}`); break;
       case AppView.PRODUCT_MANAGER: navigate(`/dashboard/inventory${query}`); break;
       case AppView.SETTINGS: navigate(`/dashboard/settings${query}`); break;
-      case AppView.HUB: navigate(`/dashboard/hub${query}`); break;
+      case AppView.HUB: navigate(`/dashboard/marketplace${query ? query + '&tab=B2B' : '?tab=B2B'}`); break;
       case AppView.PRICING_ASSISTANT: navigate(`/dashboard/pricing-assistant${query}`); break;
       case AppView.MARKETING_AGENT: navigate(`/dashboard/marketing${query}`); break;
       case AppView.LEAD_MANAGER: navigate(`/dashboard/leads${query}`); break;
@@ -898,7 +898,7 @@ const App: React.FC = () => {
                   <Route path="invoices" element={<InvoiceGenerator />} />
                   <Route path="cashbook" element={<DailyCashbook />} />
                   <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" />} />
-                  <Route path="hub" element={<Marketplace onAddToCart={handleAddToCart} initialType="B2B" />} />
+                  <Route path="hub" element={<Navigate to="/dashboard/marketplace?tab=B2B" replace />} />
                   <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
                   <Route path="compliance" element={<Compliance brand={savedBrand} user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="roadmap" element={<DigitalRoadmap onNavigate={handleNavigate} />} />

@@ -499,7 +499,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             items: [
                 { label: 'Shop Inventory Tracker', icon: '📦', view: AppView.PRODUCT_MANAGER },
                 { label: 'National Market Square', icon: '🏛️', view: AppView.MARKETPLACE },
-                { label: 'Wholesale B2B Hub', icon: '🤝', view: AppView.HUB },
             ]
         },
         {

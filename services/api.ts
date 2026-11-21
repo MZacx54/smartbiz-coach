@@ -62,14 +62,14 @@ api.interceptors.request.use(
     const method = (config.method || 'get').toLowerCase();
     const url = config.url || '';
 
-    // Allow Render cold-starts up to 35 seconds for public marketplace listings
-    if (method === 'get' && url.includes('marketplace/global')) {
+    // Allow Render cold-starts up to 35 seconds for public marketplace listings and merchant catalog
+    if (method === 'get' && (url.includes('marketplace/global') || url.includes('marketplace/products'))) {
       if (!config.timeout || config.timeout === 180000) {
         config.timeout = 35000;
       }
     } else if (method === 'get' && isCacheableGet(url) && (!config.timeout || config.timeout === 180000)) {
-      // For lightweight fast POS/dashboard routes, 12s allows quick offline fallback
-      config.timeout = 12000;
+      // For lightweight fast POS/dashboard routes, 15s allows quick offline fallback
+      config.timeout = 15000;
     }
 
     return config;

@@ -599,15 +599,15 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
       if (data.length > 0 && !isTractionMode) {
         localStorage.setItem('sb_cached_products', JSON.stringify(data));
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.warn('Could not fetch catalog from server, checking local cache:', err);
       const cached = JSON.parse(localStorage.getItem('sb_cached_products') || '[]');
-      if (cached.length > 0 && !isTractionMode) {
+      if (cached.length > 0) {
         setProducts(cached);
-        toast('📶 Offline Market Mode: Loaded cached product catalog.', { icon: '📦' });
-      } else if (isTractionMode) {
-        setProducts(mockProducts.map(p => ({ ...p, is_demo: true, name: `${p.name} [DEMO]` })));
+        toast('📶 Offline Mode: Loaded cached product catalog.', { icon: '📦' });
       } else {
-        toast.error('Failed to load catalog');
+        // Fallback to starter catalog products so the page remains interactive and ready
+        setProducts(mockProducts.map(p => ({ ...p, is_demo: true })));
       }
     } finally {
       setIsLoading(false);

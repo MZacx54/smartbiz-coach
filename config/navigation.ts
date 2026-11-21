@@ -79,8 +79,7 @@ export const NAV_SECTIONS: NavSection[] = [
     icon: '📦',
     children: [
       { label: 'Inventory', labelPcm: 'Shop Goods', route: 'inventory', view: AppView.PRODUCT_MANAGER, icon: '📦', attendant: true },
-      { label: 'Market Square', labelPcm: 'Market Square', route: 'marketplace', view: AppView.MARKETPLACE, icon: '🏛️' },
-      { label: 'Business Hub (B2B)', labelPcm: 'Wholesale (B2B)', route: 'hub', view: AppView.HUB, icon: '🤝' },
+      { label: 'Market Square', labelPcm: 'Market Square', route: 'marketplace', view: AppView.MARKETPLACE, icon: '🏛️', aliases: ['hub'] },
     ],
   },
   {
