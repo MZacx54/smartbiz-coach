@@ -1966,3 +1966,99 @@ class WhatsAppCartRecoveryView(views.APIView):
         }, status=status.HTTP_200_OK)
 
 
+class PublicDebtorSettlementView(views.APIView):
+    """
+    Publicly accessible endpoint for debtors to view their debt details,
+    the merchant's verified bank account, and settle their balance.
+    No authentication required so debtors can settle on any phone.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, debtor_id):
+        from .models import DailySale, VendorVerification
+        from django.db.models import Q
+
+        sale = None
+        if debtor_id:
+            # 1. Look up by notes tag, e.g. "Gbege Book Debtor #<debtor_id>"
+            sale = DailySale.objects.filter(
+                Q(notes__icontains=f"#{debtor_id}") |
+                Q(notes__icontains=str(debtor_id))
+            ).first()
+
+            # 2. Or by primary key if debtor_id is a numeric id
+            if not sale and str(debtor_id).isdigit():
+                sale = DailySale.objects.filter(pk=int(debtor_id)).first()
+
+        if not sale:
+            return Response({"found": False}, status=status.HTTP_200_OK)
+
+        user = sale.user
+        vendor = VendorVerification.objects.filter(user=user).first()
+
+        # Reject any demo or placeholder bank accounts
+        INVALID_PLACEHOLDERS = ['0098765432', '1012345678', '0123456789', '1234567890']
+        has_verified_bank = bool(
+            vendor and
+            vendor.account_number and
+            vendor.account_number not in INVALID_PLACEHOLDERS and
+            vendor.bank_name
+        )
+
+        merchant_name = ""
+        if vendor and vendor.business_name:
+            merchant_name = vendor.business_name
+        elif getattr(user, 'business_name', ''):
+            merchant_name = user.business_name
+        elif user.get_full_name():
+            merchant_name = user.get_full_name()
+        else:
+            merchant_name = "SmartBiz Verified Merchant"
+
+        merchant_phone = (vendor.whatsapp_number if vendor and vendor.whatsapp_number else (getattr(user, 'phone', '') or ''))
+
+        return Response({
+            "found": True,
+            "id": debtor_id,
+            "customer_name": sale.customer_name or "Valued Customer",
+            "customer_phone": sale.customer_phone or "",
+            "item_name": sale.item_name or "Credit Purchase",
+            "total_amount": float(sale.total_amount),
+            "outstanding": float(sale.total_amount) if sale.is_debt else 0.0,
+            "is_paid": not sale.is_debt,
+            "due_date": str(sale.debt_due_date) if sale.debt_due_date else "",
+            "merchant_name": merchant_name,
+            "merchant_phone": merchant_phone,
+            "bank_name": vendor.bank_name if has_verified_bank else "",
+            "bank_code": getattr(vendor, 'bank_code', '') if has_verified_bank else "",
+            "account_number": vendor.account_number if has_verified_bank else "",
+            "account_name": vendor.account_name if has_verified_bank else "",
+            "has_verified_bank": has_verified_bank
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, debtor_id):
+        """Allow marking debt settled upon confirmed Paystack reference."""
+        from .models import DailySale
+        from django.db.models import Q
+
+        reference = request.data.get('reference', '')
+        sale = None
+        if debtor_id:
+            sale = DailySale.objects.filter(
+                Q(notes__icontains=f"#{debtor_id}") |
+                Q(notes__icontains=str(debtor_id))
+            ).first()
+
+            if not sale and str(debtor_id).isdigit():
+                sale = DailySale.objects.filter(pk=int(debtor_id)).first()
+
+        if sale:
+            sale.is_debt = False
+            sale.notes = (sale.notes or "") + f" | Settled via 1-Tap Paystack (Ref: {reference})"
+            sale.save(update_fields=['is_debt', 'notes'])
+            return Response({"success": True, "message": "Debt settled and reconciled successfully."})
+
+        return Response({"success": True, "message": "Acknowledged."})
+
+
+

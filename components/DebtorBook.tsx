@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   DollarSign, Calendar, Phone, Plus, Trash2, CheckCircle, 
   Clock, AlertTriangle, ArrowRight, RefreshCw, Send, Search, 
@@ -22,6 +23,7 @@ interface DebtorBookProps {
 }
 
 const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits }) => {
+  const navigate = useNavigate();
   const [primaryMode, setPrimaryMode] = useState<'RECEIVABLES' | 'PAYABLES'>('RECEIVABLES');
 
   const [debtors, setDebtors] = useState<Debtor[]>(() => {
@@ -95,11 +97,54 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   const [demandNoticeDebtor, setDemandNoticeDebtor] = useState<Debtor | null>(null);
   const [copiedLinkDebtorId, setCopiedLinkDebtorId] = useState<string | null>(null);
 
+  // Live verified merchant bank details
+  const [merchantBank, setMerchantBank] = useState<{ bank_name: string; account_number: string; account_name: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('sb_bank_payout');
+      if (saved) {
+        const b = JSON.parse(saved);
+        if (b.account_number && !['0098765432', '1012345678', '0123456789'].includes(b.account_number)) {
+          return b;
+        }
+      }
+    } catch {}
+    return null;
+  });
+
+  useEffect(() => {
+    // 1. Fetch live bank payout details from backend
+    api.get('/api/marketplace/payout/details/').then(res => {
+      if (res.data && res.data.account_number && !['0098765432', '1012345678', '0123456789'].includes(res.data.account_number)) {
+        const payoutInfo = {
+          bank_name: res.data.bank_name || '',
+          account_number: res.data.account_number || '',
+          account_name: res.data.account_name || ''
+        };
+        setMerchantBank(payoutInfo);
+        localStorage.setItem('sb_bank_payout', JSON.stringify(payoutInfo));
+      }
+    }).catch(() => {});
+
+    const onBankUpdated = () => {
+      try {
+        const saved = localStorage.getItem('sb_bank_payout');
+        if (saved) {
+          const b = JSON.parse(saved);
+          if (b.account_number && !['0098765432', '1012345678'].includes(b.account_number)) {
+            setMerchantBank(b);
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener('sb_bank_payout_updated', onBankUpdated);
+    return () => window.removeEventListener('sb_bank_payout_updated', onBankUpdated);
+  }, []);
+
   // Helper: Retrieve merchant branding & bank details for payment embedding
   const getMerchantDetails = () => {
     let merchantName = 'My Business';
     let merchantPhone = '';
-    let bankName = 'Access Bank PLC';
+    let bankName = '';
     let bankAccount = '';
     let bankAccountName = '';
 
@@ -112,26 +157,38 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       }
     } catch {}
 
-    try {
-      const savedBank = localStorage.getItem('sb_bank_payout');
-      if (savedBank) {
-        const b = JSON.parse(savedBank);
-        if (b.account_number) {
-          bankName = b.bank_name || bankName;
-          bankAccount = b.account_number;
-          bankAccountName = b.account_name || merchantName;
+    const DUMMY_ACCOUNTS = ['0098765432', '1012345678', '0123456789', '1234567890'];
+
+    if (merchantBank && merchantBank.account_number && !DUMMY_ACCOUNTS.includes(merchantBank.account_number)) {
+      bankName = merchantBank.bank_name || '';
+      bankAccount = merchantBank.account_number;
+      bankAccountName = merchantBank.account_name || merchantName;
+    } else {
+      try {
+        const savedBank = localStorage.getItem('sb_bank_payout');
+        if (savedBank) {
+          const b = JSON.parse(savedBank);
+          if (b.account_number && !DUMMY_ACCOUNTS.includes(b.account_number)) {
+            bankName = b.bank_name || '';
+            bankAccount = b.account_number;
+            bankAccountName = b.account_name || merchantName;
+          }
         }
-      }
-    } catch {}
+      } catch {}
+    }
 
     if (!bankAccount) {
       try {
         const savedInvoices = localStorage.getItem('sb_invoices_detailed');
         if (savedInvoices) {
           const invList = JSON.parse(savedInvoices);
-          const withBank = invList.find((i: any) => i.bankAccountNumber);
+          const withBank = invList.find((i: any) => 
+            i.bankAccountNumber && 
+            !DUMMY_ACCOUNTS.includes(i.bankAccountNumber) &&
+            !String(i.id || '').startsWith('INV-202')
+          );
           if (withBank) {
-            bankName = withBank.bankName || bankName;
+            bankName = withBank.bankName || '';
             bankAccount = withBank.bankAccountNumber;
             bankAccountName = withBank.bankAccountName || merchantName;
           }
@@ -155,9 +212,11 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     if (debtor.dueDate) params.set('d', debtor.dueDate);
     if (m.merchantName) params.set('m', m.merchantName);
     if (m.merchantPhone) params.set('p', m.merchantPhone);
-    if (m.bankName) params.set('bn', m.bankName);
-    if (m.bankAccount) params.set('ba', m.bankAccount);
-    if (m.bankAccountName) params.set('ban', m.bankAccountName);
+    if (m.bankAccount && m.bankName) {
+      params.set('bn', m.bankName);
+      params.set('ba', m.bankAccount);
+      params.set('ban', m.bankAccountName || m.merchantName);
+    }
     return `${origin}/pay-debt/${debtor.id}?${params.toString()}`;
   };
 
@@ -837,6 +896,27 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
           </button>
         </div>
       </div>
+
+      {/* Verified Bank Account Status Banner */}
+      {!getMerchantDetails().bankAccount && (
+        <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-xl shrink-0">⚠️</span>
+            <div>
+              <p className="text-xs font-black text-amber-950">Direct Bank Account Not Configured for Debt Settlement</p>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Customers can settle debts via online Paystack checkout, but direct bank transfer details won't be shown until you configure your verified bank account in Settings & Wallet.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/dashboard/settings?tab=payouts')}
+            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            Add Bank Account ➔
+          </button>
+        </div>
+      )}
 
       {primaryMode === 'RECEIVABLES' ? (
         <>

@@ -77,6 +77,17 @@ export const BankPayoutSetup: React.FC = () => {
           if (detailsRes.value.data.account_name) {
             setResolvedAccountName(detailsRes.value.data.account_name);
           }
+
+          // Persist verified merchant bank payout info to local storage for Gbege Book and Invoices
+          if (detailsRes.value.data.account_number && detailsRes.value.data.bank_name) {
+            localStorage.setItem('sb_bank_payout', JSON.stringify({
+              bank_name: detailsRes.value.data.bank_name,
+              bank_code: detailsRes.value.data.bank_code || '',
+              account_number: detailsRes.value.data.account_number,
+              account_name: detailsRes.value.data.account_name || ''
+            }));
+            window.dispatchEvent(new Event('sb_bank_payout_updated'));
+          }
         }
 
         if (bankRes.status === 'fulfilled' && bankRes.value.data?.banks) {
@@ -159,6 +170,15 @@ export const BankPayoutSetup: React.FC = () => {
         account_name: resolvedAccountName,
         paystack_subaccount_code: res.data.paystack_subaccount_code || ''
       });
+
+      // Persist to localStorage for debt recovery links and instant invoices
+      localStorage.setItem('sb_bank_payout', JSON.stringify({
+        bank_name: bankName,
+        bank_code: selectedBankCode,
+        account_number: accountNumber,
+        account_name: resolvedAccountName
+      }));
+      window.dispatchEvent(new Event('sb_bank_payout_updated'));
 
       toast.success("Direct Paystack Bank Payouts enabled! Customer product payments will now route directly to your bank account.");
     } catch (err: any) {

@@ -126,9 +126,24 @@ const InvoiceGenerator: React.FC = () => {
     senderEmail: '',
     senderPhone: '',
     senderTin: '',
-    bankName: '',
-    bankAccountName: '',
-    bankAccountNumber: '',
+    bankName: (() => {
+      try {
+        const b = JSON.parse(localStorage.getItem('sb_bank_payout') || '{}');
+        return !['0098765432', '1012345678'].includes(b.account_number) ? (b.bank_name || '') : '';
+      } catch { return ''; }
+    })(),
+    bankAccountName: (() => {
+      try {
+        const b = JSON.parse(localStorage.getItem('sb_bank_payout') || '{}');
+        return !['0098765432', '1012345678'].includes(b.account_number) ? (b.account_name || '') : '';
+      } catch { return ''; }
+    })(),
+    bankAccountNumber: (() => {
+      try {
+        const b = JSON.parse(localStorage.getItem('sb_bank_payout') || '{}');
+        return !['0098765432', '1012345678'].includes(b.account_number) ? (b.account_number || '') : '';
+      } catch { return ''; }
+    })(),
     paymentStatus: 'DRAFT',
     paymentTerms: configuredTerms as any
   });
@@ -145,7 +160,7 @@ const InvoiceGenerator: React.FC = () => {
       }));
     } else if (!isTractionMode) {
       // Purge any leaked demo mock invoices from real mode
-      parsed = parsed.filter(inv => inv.id !== 'INV-2024-001' && inv.id !== 'INV-2024-002');
+      parsed = parsed.filter(inv => !['INV-2024-001', 'INV-2024-002', 'INV-2026-001', 'INV-2026-002', 'INV-2026-003', 'INV-2026-004'].includes(inv.id));
     }
     setInvoices(parsed);
   };

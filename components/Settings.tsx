@@ -146,6 +146,15 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   useEffect(() => {
     api.get('/api/marketplace/vendor/verification/').then(res => {
       setUserVendorProfile(res.data);
+      if (res.data?.account_number && res.data?.bank_name && !['0098765432', '1012345678'].includes(res.data.account_number)) {
+        localStorage.setItem('sb_bank_payout', JSON.stringify({
+          bank_name: res.data.bank_name,
+          bank_code: res.data.bank_code || '',
+          account_number: res.data.account_number,
+          account_name: res.data.account_name || ''
+        }));
+        window.dispatchEvent(new Event('sb_bank_payout_updated'));
+      }
     }).catch(() => {});
   }, []);
 

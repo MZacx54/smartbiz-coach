@@ -33,7 +33,8 @@ from .views import (
     VoicePOSConfirmView,
     PaperReceiptOCRView,
     VisualSearchProductView,
-    WhatsAppCartRecoveryView
+    WhatsAppCartRecoveryView,
+    PublicDebtorSettlementView
 )
 from .commerce_orders import DeliveryQuoteView
 from .commerce_views import (
@@ -92,6 +93,7 @@ urlpatterns = [
     path('search/', DashboardSearchView.as_view(), name='dashboard_search'),
     path('daily-sales/', DailySaleListCreateView.as_view(), name='daily_sales'),
     path('daily-sales/<int:pk>/', DailySaleDetailView.as_view(), name='daily_sale_detail'),
+    path('debtors/settle/<str:debtor_id>/', PublicDebtorSettlementView.as_view(), name='public_debtor_settlement'),
     path('daily-expenses/', DailyExpenseListCreateView.as_view(), name='daily_expenses'),
     path('daily-expenses/<int:pk>/', DailyExpenseDetailView.as_view(), name='daily_expense_detail'),
     path('daily-summary/', DailySummaryView.as_view(), name='daily_summary'),

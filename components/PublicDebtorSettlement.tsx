@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, Copy, ShieldCheck, ArrowLeft, ExternalLink, MessageCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { openPaystackCheckout } from '../services/paystackService';
+import api from '../services/api';
 import { toast } from 'react-hot-toast';
 
 interface DebtorData {
@@ -32,114 +33,134 @@ const PublicDebtorSettlement: React.FC = () => {
   const [copiedBank, setCopiedBank] = useState(false);
 
   useEffect(() => {
-    // 1. Try to load from localStorage if on same machine/browser
-    let foundDebtor: DebtorData | null = null;
-    try {
-      const savedDebtors = localStorage.getItem('sb_debtors');
-      if (savedDebtors && debtorId) {
-        const list = JSON.parse(savedDebtors);
-        const match = list.find((d: any) => String(d.id) === String(debtorId));
-        if (match) {
-          const totalPaid = (match.payments || []).reduce((acc: number, p: any) => acc + (p.amount || 0), 0);
-          const outstanding = Math.max(0, match.amount - totalPaid);
-          
-          // Get saved bank payout or invoice bank if available
-          let bankName = 'Access Bank PLC';
-          let bankAccount = '0098765432';
-          let bankAccountName = 'SmartBiz Merchant';
-          
-          try {
-            const savedBank = localStorage.getItem('sb_bank_payout');
-            if (savedBank) {
-              const b = JSON.parse(savedBank);
-              if (b.account_number) {
-                bankName = b.bank_name || bankName;
-                bankAccount = b.account_number;
-                bankAccountName = b.account_name || bankAccountName;
-              }
-            }
-          } catch {}
+    const loadDebtor = async () => {
+      setLoading(true);
+      let foundDebtor: DebtorData | null = null;
+      const DUMMY_ACCOUNTS = ['0098765432', '1012345678', '0123456789', '1234567890'];
 
-          const savedUser = localStorage.getItem('sb_user');
-          let merchantName = 'Verified Merchant Store';
-          let merchantPhone = '2349064556107';
-          if (savedUser) {
-            try {
-              const u = JSON.parse(savedUser);
-              merchantName = u.businessName || u.name || merchantName;
-              merchantPhone = u.phone || merchantPhone;
-            } catch {}
+      // 1. Try Live Backend API lookup first (works on any device/phone globally)
+      if (debtorId) {
+        try {
+          const res = await api.get(`/api/marketplace/debtors/settle/${debtorId}/`);
+          if (res.data && res.data.found) {
+            const data = res.data;
+            const validBankAcc = data.has_verified_bank && !DUMMY_ACCOUNTS.includes(data.account_number) ? data.account_number : '';
+            foundDebtor = {
+              id: debtorId,
+              name: data.customer_name || 'Valued Customer',
+              phone: data.customer_phone || '',
+              amount: data.total_amount || 0,
+              outstanding: data.is_paid ? 0 : (data.outstanding || 0),
+              itemsBought: data.item_name || 'Credit purchase',
+              dueDate: data.due_date || '',
+              merchantName: data.merchant_name || 'Verified Merchant Store',
+              merchantPhone: data.merchant_phone || '',
+              bankName: validBankAcc ? (data.bank_name || '') : '',
+              bankAccount: validBankAcc,
+              bankAccountName: validBankAcc ? (data.account_name || data.merchant_name || '') : ''
+            };
           }
-
-          foundDebtor = {
-            id: match.id,
-            name: match.name,
-            phone: match.phone || '',
-            amount: match.amount,
-            outstanding: match.status === 'PAID' ? 0 : outstanding,
-            itemsBought: match.itemsBought || 'Credit purchase',
-            dueDate: match.dueDate || '',
-            merchantName,
-            merchantPhone,
-            bankName,
-            bankAccount,
-            bankAccountName
-          };
+        } catch (err) {
+          console.warn("Backend debtor lookup notice:", err);
         }
       }
-    } catch (e) {
-      console.warn("Could not read local debtor data", e);
-    }
 
-    // 2. URL parameters fallback (allows link to work on any remote device/phone)
-    if (!foundDebtor && searchParams.get('n')) {
-      const name = searchParams.get('n') || 'Valued Customer';
-      const amount = parseFloat(searchParams.get('a') || '0') || 0;
-      const outstanding = parseFloat(searchParams.get('b') || searchParams.get('a') || '0') || 0;
-      const items = searchParams.get('i') || 'Credit Purchase';
-      const due = searchParams.get('d') || '';
-      const mName = searchParams.get('m') || 'SmartBiz Verified Merchant';
-      const mPhone = searchParams.get('p') || '';
-      const bName = searchParams.get('bn') || 'Access Bank PLC';
-      const bAcc = searchParams.get('ba') || '';
-      const bAccName = searchParams.get('ban') || mName;
+      // 2. Try localStorage if on merchant's own browser/device
+      if (!foundDebtor) {
+        try {
+          const savedDebtors = localStorage.getItem('sb_debtors');
+          if (savedDebtors && debtorId) {
+            const list = JSON.parse(savedDebtors);
+            const match = list.find((d: any) => String(d.id) === String(debtorId));
+            if (match) {
+              const totalPaid = (match.payments || []).reduce((acc: number, p: any) => acc + (p.amount || 0), 0);
+              const outstanding = Math.max(0, match.amount - totalPaid);
+              
+              // Only load valid verified bank accounts; never use fake placeholders
+              let bankName = '';
+              let bankAccount = '';
+              let bankAccountName = '';
+              
+              try {
+                const savedBank = localStorage.getItem('sb_bank_payout');
+                if (savedBank) {
+                  const b = JSON.parse(savedBank);
+                  if (b.account_number && !DUMMY_ACCOUNTS.includes(b.account_number)) {
+                    bankName = b.bank_name || '';
+                    bankAccount = b.account_number;
+                    bankAccountName = b.account_name || '';
+                  }
+                }
+              } catch {}
 
-      foundDebtor = {
-        id: debtorId || 'debt-settle',
-        name,
-        phone: '',
-        amount,
-        outstanding,
-        itemsBought: items,
-        dueDate: due,
-        merchantName: mName,
-        merchantPhone: mPhone,
-        bankName: bName,
-        bankAccount: bAcc,
-        bankAccountName: bAccName
-      };
-    }
+              const savedUser = localStorage.getItem('sb_user');
+              let merchantName = 'Verified Merchant Store';
+              let merchantPhone = '';
+              if (savedUser) {
+                try {
+                  const u = JSON.parse(savedUser);
+                  merchantName = u.businessName || u.name || merchantName;
+                  merchantPhone = u.phone || merchantPhone;
+                } catch {}
+              }
 
-    if (!foundDebtor) {
-      // Default demo mock so the portal never crashes
-      foundDebtor = {
-        id: debtorId || 'demo',
-        name: 'Customer Account',
-        phone: '',
-        amount: 25000,
-        outstanding: 25000,
-        itemsBought: 'General Merchandise Credit',
-        dueDate: new Date().toISOString().split('T')[0],
-        merchantName: 'ZACX Digital Store',
-        merchantPhone: '2349064556107',
-        bankName: 'Zenith Bank PLC',
-        bankAccount: '1012345678',
-        bankAccountName: 'ZACX Digital Merchant'
-      };
-    }
+              foundDebtor = {
+                id: match.id,
+                name: match.name,
+                phone: match.phone || '',
+                amount: match.amount,
+                outstanding: match.status === 'PAID' ? 0 : outstanding,
+                itemsBought: match.itemsBought || 'Credit purchase',
+                dueDate: match.dueDate || '',
+                merchantName,
+                merchantPhone,
+                bankName,
+                bankAccount,
+                bankAccountName: bankAccountName || merchantName
+              };
+            }
+          }
+        } catch (e) {
+          console.warn("Could not read local debtor data", e);
+        }
+      }
 
-    setDebtor(foundDebtor);
-    setLoading(false);
+      // 3. URL parameters fallback (allows link to work on any remote device/phone)
+      if (!foundDebtor && searchParams.get('n')) {
+        const name = searchParams.get('n') || 'Valued Customer';
+        const amount = parseFloat(searchParams.get('a') || '0') || 0;
+        const outstanding = parseFloat(searchParams.get('b') || searchParams.get('a') || '0') || 0;
+        const items = searchParams.get('i') || 'Credit Purchase';
+        const due = searchParams.get('d') || '';
+        const mName = searchParams.get('m') || 'SmartBiz Verified Merchant';
+        const mPhone = searchParams.get('p') || '';
+        const rawBAcc = searchParams.get('ba') || '';
+        const isBAccValid = rawBAcc && !DUMMY_ACCOUNTS.includes(rawBAcc);
+        const bName = isBAccValid ? (searchParams.get('bn') || '') : '';
+        const bAcc = isBAccValid ? rawBAcc : '';
+        const bAccName = isBAccValid ? (searchParams.get('ban') || mName) : '';
+
+        foundDebtor = {
+          id: debtorId || 'debt-settle',
+          name,
+          phone: '',
+          amount,
+          outstanding,
+          itemsBought: items,
+          dueDate: due,
+          merchantName: mName,
+          merchantPhone: mPhone,
+          bankName: bName,
+          bankAccount: bAcc,
+          bankAccountName: bAccName
+        };
+      }
+
+      setDebtor(foundDebtor);
+      setLoading(false);
+    };
+
+    loadDebtor();
   }, [debtorId, searchParams]);
 
   const handlePayOnline = async () => {
@@ -159,6 +180,11 @@ const PublicDebtorSettlement: React.FC = () => {
           setPaymentRef(res.reference);
           setPaymentSuccess(true);
           toast.success("Payment confirmed successfully! 🎉");
+
+          // Sync settlement to backend DailySale
+          if (debtor.id) {
+            api.post(`/api/marketplace/debtors/settle/${debtor.id}/`, { reference: res.reference }).catch(() => {});
+          }
 
           // Update local debtor record if present
           try {
@@ -364,7 +390,7 @@ const PublicDebtorSettlement: React.FC = () => {
         </div>
 
         {/* Direct Bank Transfer Option */}
-        {!paymentSuccess && debtor.outstanding > 0 && debtor.bankAccount && (
+        {!paymentSuccess && debtor.outstanding > 0 && debtor.bankAccount ? (
           <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-xl space-y-4">
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-emerald-400">Option 2: Direct Bank Transfer</h3>
@@ -402,7 +428,23 @@ const PublicDebtorSettlement: React.FC = () => {
               <MessageCircle size={14} /> Notify Merchant on WhatsApp After Transfer
             </button>
           </div>
-        )}
+        ) : !paymentSuccess && debtor.outstanding > 0 ? (
+          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 text-center space-y-2 shadow-sm">
+            <p className="text-xs font-bold text-slate-800">Need to pay via Bank Transfer or USSD?</p>
+            <p className="text-[11px] text-slate-500 leading-relaxed max-w-sm mx-auto">
+              Please use <strong>Option 1 (Pay Online Instantly)</strong> above. Paystack supports instant Nigerian Bank Transfer, USSD, Debit Cards, and Mobile Banking.
+            </p>
+            {debtor.merchantPhone && (
+              <button
+                onClick={handleNotifyMerchantWhatsApp}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <MessageCircle size={14} className="text-emerald-600" />
+                <span>Message Merchant on WhatsApp</span>
+              </button>
+            )}
+          </div>
+        ) : null}
 
         {/* Footer info */}
         <div className="text-center space-y-1">
