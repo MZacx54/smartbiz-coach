@@ -442,6 +442,16 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [localCartCount, setLocalCartCount] = useState<number>(0);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  // Mobile Back-To-Top listener
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Sync activeTab when query param or initialType changes
   useEffect(() => {
@@ -772,25 +782,25 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       )}
       
       {/* ── 1. Hero Banner (Nationwide MSME Commerce Hub) ── */}
-      <section className="relative rounded-3xl sm:rounded-[36px] overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-6 sm:p-10 md:p-14 shadow-2xl border border-slate-800">
-        <div className="absolute top-0 right-0 w-72 sm:w-96 h-72 sm:h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-60 sm:w-80 h-60 sm:h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative rounded-2xl sm:rounded-[36px] overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-4 sm:p-8 md:p-12 shadow-xl border border-slate-800">
+        <div className="absolute top-0 right-0 w-60 sm:w-96 h-60 sm:h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-48 sm:w-80 h-48 sm:h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 max-w-3xl space-y-4 sm:space-y-5">
+        <div className="relative z-10 max-w-3xl space-y-3.5 sm:space-y-5">
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-             <div className="flex flex-wrap items-center gap-2 mb-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-[10px] font-extrabold uppercase tracking-widest">
-                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> #1 Nigerian MSME Central Market Square
+             <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-[10px] font-extrabold uppercase tracking-widest">
+                   <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> #1 Nigerian MSME Market Square
                 </div>
                 <button
                   onClick={() => navigate(hasAuthToken ? '/dashboard/inventory?action=new' : '/register')}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold transition-all cursor-pointer shadow-sm"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[10px] font-extrabold transition-all cursor-pointer shadow-sm"
                 >
-                   <Sparkles className="w-3 h-3 text-emerald-400" /> 🏪 Showcase Your Business (1-Click) ➔
+                   <Sparkles className="w-3 h-3 text-emerald-400" /> 🏪 Showcase Goods (1-Click) ➔
                 </button>
              </div>
 
-             <h1 className="text-2xl sm:text-4xl md:text-5xl font-black font-heading tracking-tight leading-tight">
+             <h1 className="text-xl sm:text-3xl md:text-5xl font-black font-heading tracking-tight leading-tight">
                Showcasing Nigerian <span className="bg-gradient-to-r from-emerald-400 via-indigo-300 to-pink-400 bg-clip-text text-transparent">MSMEs</span> Nationwide
              </h1>
              <p className="text-slate-300 text-xs sm:text-sm md:text-base max-w-xl leading-relaxed">
@@ -798,48 +808,61 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
              </p>
           </motion.div>
  
-          {/* Live Search Form */}
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2.5 max-w-2xl pt-1">
-            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          {/* Live Search Form (Optimized with Integrated Visual Search on Mobile) */}
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 max-w-2xl pt-1">
+            <div className="flex-1 relative flex items-center">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ask AI Shopper: e.g. 'Ankara in Lagos', 'Catering Abuja', 'Wholesale nylon'..."
-                className="w-full bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all shadow-inner"
+                placeholder="Ask AI: e.g. 'Ankara Lagos', 'Catering Abuja'..."
+                className="w-full bg-white/10 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl pl-10 pr-20 sm:pr-10 py-3 sm:py-3.5 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all shadow-inner"
               />
-              {searchQuery && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {searchQuery && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setSearchQuery(''); fetchItems(true); }}
+                    className="p-1 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button 
-                  type="button" 
-                  onClick={() => { setSearchQuery(''); fetchItems(true); }}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  type="button"
+                  onClick={() => setShowVisualSearchModal(true)}
+                  className="sm:hidden p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 cursor-pointer"
+                  title="Snap photo to search"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Camera className="w-4 h-4 text-emerald-400" />
                 </button>
-              )}
+              </div>
             </div>
-            <button 
-              type="submit"
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-7 py-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-600/30 active:scale-95 cursor-pointer"
-            >
-              Search Hub
-            </button>
-            <button 
-              type="button"
-              onClick={() => setShowVisualSearchModal(true)}
-              className="bg-white/15 hover:bg-white/25 border border-white/20 text-white px-4 py-3 rounded-2xl text-xs sm:text-sm font-extrabold transition-all flex items-center gap-2 cursor-pointer"
-              title="Upload or snap a photo of any item to find exact matching products"
-            >
-              <Camera className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">Visual Search</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                type="submit"
+                className="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-extrabold transition-all shadow-lg shadow-emerald-600/30 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 min-h-[44px]"
+              >
+                <Search className="w-3.5 h-3.5 sm:hidden" />
+                <span>Search Hub</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowVisualSearchModal(true)}
+                className="hidden sm:flex bg-white/15 hover:bg-white/25 border border-white/20 text-white px-4 py-3 sm:py-3.5 rounded-2xl text-xs sm:text-sm font-extrabold transition-all items-center gap-2 cursor-pointer min-h-[44px]"
+                title="Upload or snap a photo of any item to find exact matching products"
+              >
+                <Camera className="w-4 h-4 text-emerald-400" />
+                <span>Visual Search</span>
+              </button>
+            </div>
           </form>
 
-          {/* AI Smart Shopper Quick Discovery Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300 flex items-center gap-1 mr-1">
-              <Sparkles className="w-3 h-3" /> Popular in Naija:
+          {/* AI Smart Shopper Quick Discovery Chips (Horizontally Swipeable on Mobile) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-300 flex items-center gap-1 shrink-0 mr-1">
+              <Sparkles className="w-3 h-3" /> Popular:
             </span>
             {[
               { label: '👗 Ankara & Aso-Ebi', q: 'Ankara' },
@@ -856,7 +879,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                   setSearchQuery(chip.q);
                   setTimeout(() => fetchItems(true), 20);
                 }}
-                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 hover:bg-emerald-500/30 border border-white/15 text-slate-200 transition-colors cursor-pointer"
+                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/10 hover:bg-emerald-500/30 border border-white/15 text-slate-200 transition-colors cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
               >
                 {chip.label}
               </button>
@@ -864,15 +887,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           </div>
 
           {/* Trust Guarantees Strip */}
-          <div className="flex flex-wrap items-center gap-4 pt-2 text-[11px] text-slate-300 font-medium">
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Verified CAC & Identity Checks
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 pt-1 text-[10px] sm:text-[11px] text-slate-300 font-medium">
+            <span className="flex items-center gap-1 text-emerald-400">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Verified MSMEs
             </span>
-            <span className="flex items-center gap-1.5 text-indigo-300">
-              <Truck className="w-3.5 h-3.5" /> Nationwide Waybill & In-Store Pickup
+            <span className="flex items-center gap-1 text-indigo-300">
+              <Truck className="w-3.5 h-3.5" /> Nationwide Waybill
             </span>
-            <span className="flex items-center gap-1.5 text-amber-300">
-              <Zap className="w-3.5 h-3.5" /> 1-Tap Direct WhatsApp & Paystack Checkout
+            <span className="flex items-center gap-1 text-amber-300">
+              <Zap className="w-3.5 h-3.5" /> 1-Tap WhatsApp & Paystack
             </span>
           </div>
         </div>
@@ -940,96 +963,91 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
           })}
         </div>
 
-        {/* Bottom Control Strip: State Selector + Quick Toggles + Filter Drawer Trigger + Sorter */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
-          {/* Left: Commercial Hub & State Dropdown Selector + Quick Chips */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-600 pointer-events-none" />
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 rounded-xl pl-8 pr-7 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none transition-colors"
-                title="Filter by Nigerian State or Commercial Trade Hub"
-              >
-                {NIGERIAN_GEO_HUBS.map(hub => (
-                  <option key={hub.id} value={hub.id}>{hub.label}</option>
-                ))}
-              </select>
-              <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 rotate-90 pointer-events-none" />
-            </div>
-
-            {/* Quick Chips: Flash Deals */}
-            <button
-              type="button"
-              onClick={() => setDealsOnly(v => !v)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border cursor-pointer transition-all ${
-                dealsOnly ? 'bg-rose-600 text-white border-rose-600 shadow-sm' : 'bg-rose-50/70 text-rose-700 border-rose-200 hover:bg-rose-100/70'
-              }`}
+        {/* Bottom Control Strip: State Selector + Quick Toggles + Filter Drawer Trigger + Sorter (Scrollable on Mobile) */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-2 border-t border-slate-100 sm:flex-wrap">
+          {/* Commercial Hub & State Dropdown Selector */}
+          <div className="relative shrink-0">
+            <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-600 pointer-events-none" />
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 rounded-xl pl-8 pr-7 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none transition-colors min-h-[38px]"
+              title="Filter by Nigerian State or Commercial Trade Hub"
             >
-              🔥 Flash Deals
-            </button>
-
-            {/* Quick Chips: Verified MSMEs */}
-            <button
-              type="button"
-              onClick={() => setVerifiedOnly(v => !v)}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-extrabold border cursor-pointer transition-all ${
-                verifiedOnly ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-emerald-50/70 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Verified MSMEs</span>
-            </button>
-
-            {/* Quick Chips: Saved Wishlist */}
-            <button
-              type="button"
-              onClick={() => setSavedOnly(v => !v)}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-extrabold border cursor-pointer transition-all ${
-                savedOnly ? 'bg-pink-600 text-white border-pink-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <Heart className={`w-3.5 h-3.5 ${savedOnly ? 'fill-white' : 'text-pink-600'}`} />
-              <span>Saved ({wishlist.ids.length})</span>
-            </button>
+              {NIGERIAN_GEO_HUBS.map(hub => (
+                <option key={hub.id} value={hub.id}>{hub.label}</option>
+              ))}
+            </select>
+            <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 rotate-90 pointer-events-none" />
           </div>
 
-          {/* Right: Deep Filter Drawer Trigger + Sorter Dropdown */}
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Filter Drawer Button */}
-            <button
-              type="button"
-              onClick={() => setShowFilterDrawer(true)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                activeFilterCount > 0 
-                  ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
-              <span>More Filters</span>
-              {activeFilterCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center ml-0.5">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
+          {/* Quick Chips: Flash Deals */}
+          <button
+            type="button"
+            onClick={() => setDealsOnly(v => !v)}
+            className={`px-3 py-2 rounded-xl text-xs font-extrabold border cursor-pointer transition-all shrink-0 whitespace-nowrap min-h-[38px] ${
+              dealsOnly ? 'bg-rose-600 text-white border-rose-600 shadow-sm' : 'bg-rose-50/70 text-rose-700 border-rose-200 hover:bg-rose-100/70'
+            }`}
+          >
+            🔥 Flash Deals
+          </button>
 
-            {/* Sorter Selector */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 rounded-xl pl-3 pr-7 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none transition-colors"
-              >
-                <option value="boosted">⚡ Featured</option>
-                <option value="price_low">💵 Price: Low to High</option>
-                <option value="price_high">💎 Price: High to Low</option>
-                <option value="newest">✨ Newest</option>
-              </select>
-              <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 rotate-90 pointer-events-none" />
-            </div>
+          {/* Quick Chips: Verified MSMEs */}
+          <button
+            type="button"
+            onClick={() => setVerifiedOnly(v => !v)}
+            className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-extrabold border cursor-pointer transition-all shrink-0 whitespace-nowrap min-h-[38px] ${
+              verifiedOnly ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-emerald-50/70 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Verified MSMEs</span>
+          </button>
+
+          {/* Quick Chips: Saved Wishlist */}
+          <button
+            type="button"
+            onClick={() => setSavedOnly(v => !v)}
+            className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-extrabold border cursor-pointer transition-all shrink-0 whitespace-nowrap min-h-[38px] ${
+              savedOnly ? 'bg-pink-600 text-white border-pink-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${savedOnly ? 'fill-white' : 'text-pink-600'}`} />
+            <span>Saved ({wishlist.ids.length})</span>
+          </button>
+
+          {/* Deep Filter Drawer Trigger */}
+          <button
+            type="button"
+            onClick={() => setShowFilterDrawer(true)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer shrink-0 whitespace-nowrap min-h-[38px] ${
+              activeFilterCount > 0 
+                ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center ml-0.5">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* Sorter Selector */}
+          <div className="relative shrink-0 sm:ml-auto">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200/90 rounded-xl pl-3 pr-7 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer appearance-none transition-colors min-h-[38px]"
+            >
+              <option value="boosted">⚡ Featured</option>
+              <option value="price_low">💵 Low to High</option>
+              <option value="price_high">💎 High to Low</option>
+              <option value="newest">✨ Newest</option>
+            </select>
+            <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 rotate-90 pointer-events-none" />
           </div>
         </div>
       </div>
@@ -1107,8 +1125,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         </section>
       )}
 
-      {/* ── 6. Main Modern Commerce Product & B2B Grid ── */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+      {/* ── 6. Main Modern Commerce Product & B2B Grid (Ultra-Optimized 2-Col Mobile Layout) ── */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         <AnimatePresence mode="popLayout">
           {displayedItems.map((item) => {
             const isBoosted = item.is_promoted;
@@ -1119,9 +1137,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`group bg-white rounded-3xl border overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col h-full relative ${
+                className={`group bg-white rounded-2xl sm:rounded-3xl border overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full relative ${
                   isBoosted 
-                    ? 'border-amber-300 ring-2 ring-amber-300/40 shadow-lg shadow-amber-500/10' 
+                    ? 'border-amber-300 ring-2 ring-amber-300/40 shadow-md shadow-amber-500/10' 
                     : 'border-slate-200/80 hover:border-slate-300 shadow-sm'
                 }`}
               >
@@ -1138,143 +1156,124 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300">
-                      <ShoppingBag className="w-12 h-12" />
+                      <ShoppingBag className="w-10 h-10" />
                     </div>
                   )}
 
                   {/* Badges on Top of Image */}
-                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="bg-slate-900/85 backdrop-blur-md text-white px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                  <div className="absolute top-2 left-2 right-2 flex items-start justify-between pointer-events-none z-10">
+                    <div className="flex items-center gap-1 flex-wrap max-w-[70%]">
+                      <span className="bg-slate-900/85 backdrop-blur-md text-white px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
                         {item.product_type === 'PHYSICAL' && '🛍️ Shop'}
                         {item.product_type === 'SERVICE' && '🛠️ Service'}
                         {item.product_type === 'PROPERTY' && '🏠 Property'}
                         {item.product_type === 'B2B' && '⚡ B2B'}
                       </span>
                       {isBoosted && (
-                        <span className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-                          ⚡ Boosted
+                        <span className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm flex items-center gap-0.5">
+                          ⚡ Top
                         </span>
                       )}
                       {item.deal_active && item.discount_percent ? (
-                        <span className="bg-rose-600 text-white px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm">
-                          -{item.discount_percent}% DEAL
+                        <span className="bg-rose-600 text-white px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm">
+                          -{item.discount_percent}%
                         </span>
                       ) : null}
                     </div>
-                    {item.location && (
-                      <span className="bg-white/90 backdrop-blur-md text-slate-800 px-2 py-1 rounded-lg text-[9px] font-bold shadow-sm flex items-center gap-1">
-                        <MapPin className="w-2.5 h-2.5 text-indigo-600" /> {item.location}
-                      </span>
-                    )}
+
+                    {/* Floating Action Icons (Share + Wishlist) */}
+                    <div className="flex items-center gap-1 pointer-events-auto">
+                      <button
+                        type="button"
+                        aria-label="Share listing"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShareListing(item);
+                        }}
+                        className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-md text-slate-700 hover:text-slate-950 flex items-center justify-center shadow-sm cursor-pointer active:scale-90 transition-transform"
+                        title="Share Product"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Save item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const saved = wishlist.toggle(item.id);
+                          toast.success(saved ? 'Saved to wishlist!' : 'Removed from wishlist');
+                        }}
+                        className="w-7 h-7 rounded-full bg-white/90 backdrop-blur-md text-slate-400 hover:text-pink-600 flex items-center justify-center shadow-sm cursor-pointer active:scale-90 transition-transform"
+                        title="Save to Wishlist"
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${wishlist.has(item.id) ? 'fill-pink-600 text-pink-600' : ''}`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {/* Card Content Details */}
-                <div className="p-3 sm:p-5 flex flex-col flex-1 space-y-2 sm:space-y-3">
+                <div className="p-2.5 sm:p-4 flex flex-col flex-1 space-y-1.5 sm:space-y-2">
                   
                   {/* Vendor Brand & Verified Badge (Click to open Drawer) */}
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-1 text-[10px]">
                     <button
                       onClick={() => handleOpenMerchantProfile(item)}
-                      className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-wider truncate flex items-center gap-1 cursor-pointer transition-colors"
+                      className="font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-wider truncate flex items-center gap-1 cursor-pointer transition-colors max-w-[65%]"
                       title="View Merchant Profile & Catalog"
                     >
-                      <Store className="w-3 h-3" />
+                      <Store className="w-3 h-3 shrink-0" />
                       <span className="truncate">{item.brand_name || 'Verified Merchant'}</span>
                     </button>
 
-                    {item.is_vendor_verified ? (
-                      (item as any).vendor_verification_tier === 'TIER_3_NACCIMA' ? (
-                        <span 
-                          onClick={() => handleOpenMerchantProfile(item)}
-                          className="text-[9px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-amber-200 transition-colors"
-                        >
-                          <span>🏅</span> NACCIMA Partner
-                        </span>
-                      ) : (item as any).vendor_verification_tier === 'TIER_2_CAC' ? (
-                        <span 
-                          onClick={() => handleOpenMerchantProfile(item)}
-                          className="text-[9px] font-black text-indigo-900 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-indigo-100 transition-colors"
-                        >
-                          <span>🏛️</span> CAC Verified
-                        </span>
-                      ) : (
-                        <span 
-                          onClick={() => handleOpenMerchantProfile(item)}
-                          className="text-[9px] font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer hover:bg-emerald-100 transition-colors"
-                        >
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> ID Verified
-                        </span>
-                      )
-                    ) : item.cac_number ? (
-                      <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                        RC: {item.cac_number}
+                    {item.location && (
+                      <span className="text-[9px] text-slate-500 font-bold truncate flex items-center gap-0.5 shrink-0">
+                        <MapPin className="w-2.5 h-2.5 text-emerald-600 shrink-0" /> {item.location.split(',')[0]}
                       </span>
-                    ) : (item.review_count || 0) > 0 ? (
-                      <span className="text-[9px] font-bold text-amber-600">
-                        ⭐ {Number(item.avg_rating || 5).toFixed(1)} ({item.review_count})
-                      </span>
-                    ) : null}
-                    <button
-                      type="button"
-                      aria-label="Save item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const saved = wishlist.toggle(item.id);
-                        toast.success(saved ? 'Saved to your wishlist!' : 'Removed from wishlist');
-                      }}
-                      className="p-1.5 rounded-full hover:bg-pink-50 text-slate-400 hover:text-pink-600 cursor-pointer"
-                    >
-                      <Heart className={`w-3.5 h-3.5 ${wishlist.has(item.id) ? 'fill-pink-600 text-pink-600' : ''}`} />
-                    </button>
+                    )}
                   </div>
 
                   {/* Title & Price */}
-                  <div onClick={() => setSelectedItem(item)} className="cursor-pointer">
-                    <h3 className="text-xs sm:text-base font-extrabold text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                  <div onClick={() => setSelectedItem(item)} className="cursor-pointer space-y-0.5">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 line-clamp-2 leading-tight group-hover:text-emerald-700 transition-colors">
                       {item.name}
                     </h3>
-                    <p className="text-sm sm:text-lg font-black text-slate-900 font-heading mt-0.5">
-                      ₦{Number(item.price).toLocaleString()}
-                    </p>
+                    <div className="flex items-baseline gap-1.5 flex-wrap pt-0.5">
+                      <span className="text-sm sm:text-base font-black text-slate-950 font-heading">
+                        ₦{Number(item.price).toLocaleString()}
+                      </span>
+                      {item.compare_at_price && Number(item.compare_at_price) > Number(item.price) && (
+                        <span className="text-[10px] text-slate-400 line-through">
+                          ₦{Number(item.compare_at_price).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Category-Specific Component Chips */}
-                  <div className="text-[10px] space-y-1.5 pt-1">
+                  {/* Category-Specific Component Chips (Compact on Mobile) */}
+                  <div className="text-[9px] sm:text-[10px] space-y-1 pt-0.5">
                     {/* PHYSICAL SPEC */}
                     {item.product_type === 'PHYSICAL' && (
-                      <div className="flex flex-wrap gap-1.5 text-slate-600 font-bold">
-                        <span className="bg-slate-100 px-2 py-0.5 rounded-md">
+                      <div className="flex flex-wrap gap-1 text-slate-600 font-bold">
+                        <span className="bg-slate-100 px-1.5 py-0.5 rounded">
                           📦 {item.stock_count && item.stock_count > 0 ? `${item.stock_count} in stock` : 'Available'}
                         </span>
-                        {item.metadata?.brand && (
-                          <span className="bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-[120px]">
-                            🏷️ {item.metadata.brand}
-                          </span>
-                        )}
                       </div>
                     )}
 
                     {/* SERVICE SPEC */}
                     {item.product_type === 'SERVICE' && (
-                      <div className="flex flex-wrap gap-1.5 text-purple-700 font-bold">
-                        <span className="bg-purple-50 px-2 py-0.5 rounded-md">
+                      <div className="flex flex-wrap gap-1 text-purple-700 font-bold">
+                        <span className="bg-purple-50 px-1.5 py-0.5 rounded">
                           ⏱️ {item.metadata?.duration || 'Fast Delivery'}
-                        </span>
-                        <span className="bg-purple-50 px-2 py-0.5 rounded-md">
-                          💳 {item.metadata?.billingType || 'Fixed Quote'}
                         </span>
                       </div>
                     )}
 
                     {/* REAL ESTATE SPEC */}
                     {item.product_type === 'PROPERTY' && (
-                      <div className="flex flex-wrap gap-1.5 text-emerald-700 font-bold">
-                        <span className="bg-emerald-50 px-2 py-0.5 rounded-md">
-                          🛏️ {item.metadata?.bedrooms || 0} Beds
-                        </span>
-                        <span className="bg-emerald-50 px-2 py-0.5 rounded-md">
+                      <div className="flex flex-wrap gap-1 text-emerald-700 font-bold">
+                        <span className="bg-emerald-50 px-1.5 py-0.5 rounded">
                           🏢 {item.metadata?.propertyType || 'Commercial'}
                         </span>
                       </div>
@@ -1282,21 +1281,16 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
                     {/* B2B COMPONENT SPEC */}
                     {item.product_type === 'B2B' && (
-                      <div className="flex flex-wrap gap-1.5 text-amber-800 font-bold">
-                        <span className="bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+                      <div className="flex flex-wrap gap-1 text-amber-800 font-bold">
+                        <span className="bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60">
                           📦 MOQ: {item.metadata?.moq || '10'} units
                         </span>
-                        {item.category === 'LOGISTICS' && item.metadata?.vehicleType && (
-                          <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md">
-                            🚚 {item.metadata.vehicleType}
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
 
                   {/* Modern, High-Converting 1-Tap Action Bar */}
-                  <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-1.5">
+                  <div className="mt-auto pt-2 sm:pt-3 border-t border-slate-100 flex items-center gap-1.5">
                     {item.product_type === 'PHYSICAL' ? (
                       <button
                         onClick={() => {
@@ -1305,41 +1299,41 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                             setLocalCartCount(prev => prev + 1);
                             toast.success((t) => (
                               <div className="flex items-center justify-between gap-3 w-full">
-                                <span className="text-xs font-bold">Added "{item.name.substring(0, 20)}" to cart!</span>
+                                <span className="text-xs font-bold">Added to cart!</span>
                                 <button
                                   onClick={() => {
                                     toast.dismiss(t.id);
                                     navigate('/dashboard/cart');
                                   }}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
+                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg whitespace-nowrap cursor-pointer"
                                 >
                                   View Cart →
                                 </button>
                               </div>
-                            ), { duration: 4000 });
+                            ), { duration: 3500 });
                           } else {
                             navigate(getProductDeepLink(item));
                           }
                         }}
-                        className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-black py-2 sm:py-2.5 px-2.5 rounded-xl transition-all shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1 cursor-pointer active:scale-95 min-h-[38px]"
                       >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>{onAddToCart && !isPublicMode ? 'Add to Cart' : 'Buy Now'}</span>
+                        <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{onAddToCart && !isPublicMode ? 'Add to Cart' : 'Buy Now'}</span>
                       </button>
                     ) : item.product_type === 'B2B' ? (
                       <button
                         onClick={() => setRfqItem(item)}
-                        className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all shadow-sm shadow-amber-600/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-[11px] sm:text-xs font-black py-2 sm:py-2.5 px-2.5 rounded-xl transition-all shadow-sm shadow-amber-600/20 flex items-center justify-center gap-1 cursor-pointer active:scale-95 min-h-[38px]"
                       >
-                        <Package className="w-3.5 h-3.5" />
-                        <span>Wholesale RFQ</span>
+                        <Package className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Wholesale RFQ</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => navigate(getProductDeepLink(item))}
-                        className="flex-1 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-black py-2.5 px-3 rounded-xl transition-all shadow-sm shadow-indigo-600/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] sm:text-xs font-black py-2 sm:py-2.5 px-2.5 rounded-xl transition-all shadow-sm shadow-indigo-600/20 flex items-center justify-center gap-1 cursor-pointer active:scale-95 min-h-[38px]"
                       >
-                        <span>{item.product_type === 'PROPERTY' ? '🏡 Inquire' : '💼 Book Service'}</span>
+                        <span className="truncate">{item.product_type === 'PROPERTY' ? '🏡 Inquire' : '💼 Book Service'}</span>
                       </button>
                     )}
 
@@ -1350,33 +1344,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                         const cleanNum = rawNum.replace(/\D/g, '');
                         const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
                         const text = encodeURIComponent(
-                          `Hello ${item.brand_name || 'Vendor'}! I saw your listing "${item.name}" (₦${Number(item.price).toLocaleString()}) on the SmartBiz Nigerian Market Square and would like to order / make an inquiry.`
+                          `Hello ${item.brand_name || 'Vendor'}! I saw your listing "${item.name}" (₦${Number(item.price).toLocaleString()}) on SmartBiz Market Square and would like to order / make an inquiry.`
                         );
                         window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
                       }}
-                      className="px-2.5 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/90 border border-emerald-200/80 text-emerald-800 text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0"
+                      className="px-2.5 py-2 sm:py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[11px] font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0 min-h-[38px]"
                       title="Instant WhatsApp Order & Chat"
                     >
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="hidden sm:inline text-[11px]">WhatsApp</span>
-                    </button>
-
-                    {/* Open Dedicated Product Page & Store */}
-                    <button
-                      onClick={() => navigate(getProductDeepLink(item))}
-                      className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer shrink-0"
-                      title="Open Product Page & Seller Store"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Share Button */}
-                    <button
-                      onClick={() => handleShareListing(item)}
-                      className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer shrink-0"
-                      title="Copy Product Link & Share to WhatsApp Status"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
+                      <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="hidden sm:inline text-[11px]">Chat</span>
                     </button>
                   </div>
                 </div>
@@ -1527,33 +1503,38 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         )}
       </AnimatePresence>
 
-      {/* ── 8. Rich Item Detail Modal ── */}
+      {/* ── 8. Rich Item Detail Modal (Bottom Sheet on Mobile, Centered Modal on Desktop) ── */}
       <AnimatePresence>
         {selectedItem && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setSelectedItem(null)}
               className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              className="relative w-full max-w-4xl bg-white rounded-3xl sm:rounded-[36px] shadow-3xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] z-10"
+              initial={{ opacity: 0, y: 50 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 50 }}
+              className="relative w-full max-w-4xl bg-white rounded-t-3xl sm:rounded-[36px] shadow-3xl overflow-hidden flex flex-col md:flex-row max-h-[92vh] sm:max-h-[90vh] z-10"
             >
+               {/* Mobile Drag Indicator */}
+               <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+
                <button 
                 onClick={() => setSelectedItem(null)}
-                className="absolute top-4 right-4 z-20 w-10 h-10 bg-slate-900/50 hover:bg-slate-900/80 text-white rounded-full flex items-center justify-center transition-all cursor-pointer"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 w-9 h-9 sm:w-10 sm:h-10 bg-slate-900/60 hover:bg-slate-900/90 text-white rounded-full flex items-center justify-center transition-all cursor-pointer"
                >
-                 <X className="w-5 h-5" />
+                 <X className="w-4 h-4 sm:w-5 sm:h-5" />
                </button>
 
                {/* Media Section */}
-               <div className="w-full md:w-1/2 aspect-[4/3] md:aspect-auto bg-slate-100 relative">
+               <div className="w-full md:w-1/2 aspect-[16/10] sm:aspect-[4/3] md:aspect-auto bg-slate-100 relative shrink-0">
                   {selectedItem.image_url ? (
                     <img src={selectedItem.image_url} alt={selectedItem.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300">
-                      <ShoppingBag className="w-20 h-20" />
+                      <ShoppingBag className="w-16 h-16 sm:w-20 sm:h-20" />
                     </div>
                   )}
 
@@ -1562,87 +1543,81 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     onClick={() => {
                       handleOpenMerchantProfile(selectedItem);
                     }}
-                    className="absolute bottom-4 left-4 right-4 bg-slate-900/85 backdrop-blur-md p-3.5 rounded-2xl text-white cursor-pointer hover:bg-slate-900 transition-all border border-white/10"
+                    className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 bg-slate-900/85 backdrop-blur-md p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-white cursor-pointer hover:bg-slate-900 transition-all border border-white/10"
                   >
                      <div className="flex items-center justify-between">
                        <div>
-                         <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Listed By Verified MSME</p>
-                         <p className="font-extrabold text-sm">{selectedItem.brand_name || 'Verified Merchant'}</p>
+                         <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Verified MSME Seller</p>
+                         <p className="font-extrabold text-xs sm:text-sm truncate">{selectedItem.brand_name || 'Verified Merchant'}</p>
                        </div>
-                       <span className="text-[10px] font-bold text-indigo-300 flex items-center gap-1">
+                       <span className="text-[10px] font-bold text-indigo-300 flex items-center gap-1 shrink-0">
                          View Store ➔
                        </span>
                      </div>
                      {selectedItem.location && (
-                       <p className="text-xs text-slate-300 flex items-center gap-1 mt-1">
-                         <MapPin className="w-3 h-3 text-emerald-400" /> {selectedItem.location}
+                       <p className="text-[11px] sm:text-xs text-slate-300 flex items-center gap-1 mt-0.5">
+                         <MapPin className="w-3 h-3 text-emerald-400 shrink-0" /> {selectedItem.location}
                        </p>
                      )}
                   </div>
                </div>
 
-               {/* Info Section */}
-               <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col overflow-y-auto space-y-4">
-                  <div className="space-y-1.5">
-                     <div className="flex items-center gap-2">
-                        <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider">
+               {/* Info Section with Sticky Action Footer on Mobile */}
+               <div className="w-full md:w-1/2 p-4 sm:p-8 flex flex-col overflow-y-auto space-y-3 sm:space-y-4">
+                  <div className="space-y-1">
+                     <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider">
                           {selectedItem.product_type}
                         </span>
                         {selectedItem.is_vendor_verified && (
-                          <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md text-[9px] font-extrabold flex items-center gap-1">
+                          <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-[9px] font-extrabold flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Verified MSME
                           </span>
                         )}
                         {selectedItem.cac_number && (
-                          <span className="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-md text-[9px] font-bold">
+                          <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[9px] font-bold">
                             RC: {selectedItem.cac_number}
                           </span>
                         )}
                      </div>
-                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-heading leading-tight">{selectedItem.name}</h2>
-                     <p className="text-2xl font-black text-slate-950 font-heading">₦{Number(selectedItem.price).toLocaleString()}</p>
+                     <h2 className="text-lg sm:text-2xl font-black text-slate-900 font-heading leading-tight">{selectedItem.name}</h2>
+                     <p className="text-xl sm:text-2xl font-black text-slate-950 font-heading">₦{Number(selectedItem.price).toLocaleString()}</p>
                   </div>
 
-                  <div className="space-y-4 text-xs">
+                  <div className="space-y-3 text-xs flex-1">
                      <div>
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">About This Listing</h4>
-                        <p className="text-slate-600 leading-relaxed whitespace-pre-line">{selectedItem.description}</p>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">About This Listing</h4>
+                        <p className="text-slate-600 leading-relaxed whitespace-pre-line text-xs sm:text-sm">{selectedItem.description}</p>
                      </div>
 
                      {/* Specs Grid */}
-                     <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2">
+                     <div className="bg-slate-50 border border-slate-200/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 space-y-2">
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Specifications & Fulfillment</h4>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           {selectedItem.category && (
                             <div>
-                              <span className="text-slate-400 font-medium block">Category:</span>
+                              <span className="text-slate-400 font-medium block text-[10px]">Category:</span>
                               <strong className="text-slate-800">{selectedItem.category}</strong>
                             </div>
                           )}
                           <div>
-                            <span className="text-slate-400 font-medium block">Stock Status:</span>
+                            <span className="text-slate-400 font-medium block text-[10px]">Stock Status:</span>
                             <strong className="text-emerald-700">{selectedItem.stock_count && selectedItem.stock_count > 0 ? `${selectedItem.stock_count} units available` : 'In Stock'}</strong>
                           </div>
                           {selectedItem.product_type === 'B2B' && (
                             <div>
-                              <span className="text-slate-400 font-medium block">Min Order (MOQ):</span>
+                              <span className="text-slate-400 font-medium block text-[10px]">Min Order (MOQ):</span>
                               <strong className="text-slate-800">{selectedItem.metadata?.moq || '10 units'}</strong>
                             </div>
                           )}
                           {selectedItem.product_type === 'PROPERTY' && (
                             <div>
-                              <span className="text-slate-400 font-medium block">Rooms:</span>
-                              <strong className="text-slate-800">{selectedItem.metadata?.bedrooms || 0} Bed / {selectedItem.metadata?.bathrooms || 0} Bath</strong>
-                            </div>
-                          )}
-                          {selectedItem.product_type === 'SERVICE' && (
-                            <div>
-                              <span className="text-slate-400 font-medium block">Turnaround:</span>
-                              <strong className="text-slate-800">{selectedItem.metadata?.duration || 'Flexible Delivery'}</strong>
+                              <span className="text-slate-400 font-medium block text-[10px]">Property Specs:</span>
+                              <strong className="text-slate-800">{selectedItem.metadata?.propertyType || 'Commercial'}</strong>
                             </div>
                           )}
                           <div>
-                            <span className="text-slate-400 font-medium block">Fulfillment:</span>
+                            <span className="text-slate-400 font-medium block text-[10px]">Fulfillment:</span>
                             <strong className="text-slate-800">Nationwide Waybill</strong>
                           </div>
                         </div>
@@ -1650,15 +1625,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                   </div>
 
                   {/* Trust badge note */}
-                  <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-3 flex items-center gap-2.5 text-[11px] text-emerald-900">
-                    <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-2.5 sm:p-3 flex items-center gap-2 text-[10px] sm:text-[11px] text-emerald-900">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                     <p className="leading-tight">
-                      <strong>Safe Nigerian Commerce:</strong> Chat directly with the business owner, agree on waybill delivery, or pay securely via Paystack.
+                      <strong>Safe Nigerian Commerce:</strong> Chat directly with the merchant on WhatsApp or pay securely via Paystack.
                     </p>
                   </div>
 
-                  {/* Actions in Modal */}
-                  <div className="mt-auto pt-3 flex flex-col gap-2">
+                  {/* Actions in Modal (Sticky Bottom on Mobile for Effortless Thumb Access) */}
+                  <div className="mt-auto pt-2.5 sm:pt-3 border-t border-slate-100 flex flex-col gap-2 sticky bottom-0 bg-white/95 backdrop-blur-md pb-safe">
                      <div className="flex items-center gap-2">
                         {selectedItem.product_type === 'PHYSICAL' ? (
                           <button 
@@ -1666,26 +1641,13 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                               if (onAddToCart) {
                                 onAddToCart(selectedItem);
                                 setLocalCartCount(prev => prev + 1);
-                                toast.success((t) => (
-                                  <div className="flex items-center justify-between gap-3 w-full">
-                                    <span className="text-xs font-bold">Added to shopping bag!</span>
-                                    <button
-                                      onClick={() => {
-                                        toast.dismiss(t.id);
-                                        navigate('/dashboard/cart');
-                                      }}
-                                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg shadow-sm whitespace-nowrap cursor-pointer"
-                                    >
-                                      View Cart →
-                                    </button>
-                                  </div>
-                                ), { duration: 4000 });
+                                toast.success('Added to shopping cart! 🛍️');
                               }
                               setSelectedItem(null);
                             }}
-                            className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white py-3 rounded-xl font-extrabold text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
                           >
-                            <ShoppingBag className="w-4 h-4" /> Add to Shopping Bag
+                            <ShoppingBag className="w-4 h-4" /> Add to Cart
                           </button>
                         ) : selectedItem.product_type === 'B2B' ? (
                           <button 
@@ -1693,9 +1655,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                               setRfqItem(selectedItem);
                               setSelectedItem(null);
                             }}
-                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 cursor-pointer"
+                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-xl font-extrabold text-xs transition-all shadow-md active:scale-95 cursor-pointer min-h-[44px]"
                           >
-                            Request Bulk Quotation
+                            Request Bulk Quote
                           </button>
                         ) : null}
 
@@ -1705,30 +1667,30 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                             const cleanNum = rawNum.replace(/\D/g, '');
                             const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
                             const text = encodeURIComponent(
-                              `Hello ${selectedItem.brand_name || 'Vendor'}! I saw your listing "${selectedItem.name}" (₦${Number(selectedItem.price).toLocaleString()}) on the SmartBiz Nigerian Market Square and would like to order/negotiate.`
+                              `Hello ${selectedItem.brand_name || 'Vendor'}! I saw your listing "${selectedItem.name}" (₦${Number(selectedItem.price).toLocaleString()}) on SmartBiz Market Square and would like to order/negotiate.`
                             );
                             window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
                           }}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-extrabold text-xs transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-extrabold text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
                         >
-                          <MessageCircle className="w-4 h-4" /> WhatsApp Negotiate
+                          <MessageCircle className="w-4 h-4" /> WhatsApp Order
                         </button>
                      </div>
 
                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleShareListing(selectedItem)}
-                          className="flex-1 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[38px]"
                         >
                           {hasCopiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Share2 className="w-3.5 h-3.5" />}
-                          <span>{hasCopiedLink ? 'Copied to Clipboard!' : 'Share to WhatsApp Status'}</span>
+                          <span>{hasCopiedLink ? 'Copied Link!' : 'Share Listing'}</span>
                         </button>
                         <button
                           onClick={() => {
                             handleOpenMerchantProfile(selectedItem);
                             setSelectedItem(null);
                           }}
-                          className="py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer min-h-[38px]"
                         >
                           <Store className="w-3.5 h-3.5" /> Seller Store
                         </button>
@@ -1755,18 +1717,21 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       {/* ── Slide-over / Modal for Deep Filters ── */}
       <AnimatePresence>
         {showFilterDrawer && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowFilterDrawer(false)}
               className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 15 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 space-y-5 z-10 max-h-[90vh] overflow-y-auto"
+              initial={{ opacity: 0, y: 50 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 50 }}
+              className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4 z-10 max-h-[88vh] overflow-y-auto"
             >
+              {/* Mobile Drag Indicator */}
+              <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-2 sm:hidden shrink-0" />
+
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal className="w-5 h-5 text-emerald-600" />
@@ -1774,7 +1739,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                 </div>
                 <button 
                   onClick={() => setShowFilterDrawer(false)} 
-                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-lg hover:bg-slate-100 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1887,16 +1852,18 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
       {/* ── 10. Cutting-Edge AI Feature: Visual Search by Photo Modal ── */}
       {showVisualSearchModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-8 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto">
+            {/* Mobile Drag Indicator */}
+            <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-1 sm:hidden shrink-0" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
                   <Camera className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900 text-lg">AI Visual Product Search</h3>
-                  <p className="text-xs text-slate-500">Find matching marketplace goods by photo</p>
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg">AI Visual Product Search</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-500">Find matching marketplace goods by photo</p>
                 </div>
               </div>
               <button 
@@ -1906,7 +1873,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                   setVisualSearchPreview(null);
                   setVisualSearchResults(null);
                 }}
-                className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer rounded-lg hover:bg-slate-100 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1914,12 +1881,12 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
             {/* Upload Area */}
             {!visualSearchPreview ? (
-              <label className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer bg-slate-50/50 hover:bg-indigo-50/20 transition-all">
+              <label className="border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 cursor-pointer bg-slate-50/50 hover:bg-indigo-50/20 transition-all">
                 <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center">
                   <Camera className="w-6 h-6" />
                 </div>
                 <div className="text-center">
-                  <span className="font-bold text-xs text-slate-800 block">Upload Product Snapshot or Screenshot</span>
+                  <span className="font-bold text-xs sm:text-sm text-slate-800 block">Upload Product Snapshot or Screenshot</span>
                   <span className="text-[11px] text-slate-400">Snap a photo of shoes, lace fabric, or electronics to match in seconds</span>
                 </div>
                 <input 
@@ -1974,7 +1941,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                         setIsVisualSearching(false);
                       }
                     }}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>{isVisualSearching ? 'Matching Visual Embeddings...' : 'Match Catalog Items via AI'}</span>
@@ -2021,6 +1988,37 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Floating Mobile Cart Pill ── */}
+      {localCartCount > 0 && (
+        <motion.button
+          initial={{ opacity: 0, y: 30, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 30, scale: 0.9 }}
+          onClick={() => navigate(isPublicMode ? '/cart' : '/dashboard/cart')}
+          className="fixed bottom-6 right-4 sm:right-6 z-40 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white px-4 sm:px-5 py-3 rounded-full shadow-2xl shadow-emerald-900/40 flex items-center gap-2.5 font-black text-xs sm:text-sm border border-emerald-400/30 cursor-pointer active:scale-95 transition-all"
+        >
+          <div className="relative">
+            <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="absolute -top-1.5 -right-2 bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-black animate-pulse">
+              {localCartCount}
+            </span>
+          </div>
+          <span>View Cart ({localCartCount})</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </motion.button>
+      )}
+
+      {/* ── Floating Back-to-Top Button ── */}
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className={`fixed ${localCartCount > 0 ? 'bottom-20' : 'bottom-6'} right-4 z-30 w-11 h-11 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center shadow-lg backdrop-blur-md transition-all cursor-pointer active:scale-95 border border-slate-700`}
+          title="Scroll to Top"
+        >
+          <ArrowUpDown className="w-4 h-4" />
+        </button>
       )}
 
     </div>

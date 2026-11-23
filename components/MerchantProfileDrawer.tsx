@@ -106,7 +106,7 @@ export const MerchantProfileDrawer: React.FC<MerchantProfileDrawerProps> = ({
           className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
         />
 
-        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+        <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10 z-[120]">
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
