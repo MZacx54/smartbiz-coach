@@ -20,6 +20,15 @@ interface DebtorData {
   bankAccountName: string;
 }
 
+const isValidNuban = (acc: string | null | undefined): boolean => {
+  if (!acc) return false;
+  const clean = String(acc).replace(/\D/g, '');
+  if (clean.length !== 10) return false;
+  if (/^(\d)\1{9}$/.test(clean)) return false; // reject 0000000000, 1111111111
+  const knownDummies = ['0098765432', '1012345678', '0123456789', '1234567890', '9876543210'];
+  return !knownDummies.includes(clean);
+};
+
 const PublicDebtorSettlement: React.FC = () => {
   const { debtorId } = useParams<{ debtorId: string }>();
   const [searchParams] = useSearchParams();
@@ -44,7 +53,7 @@ const PublicDebtorSettlement: React.FC = () => {
           const res = await api.get(`/api/marketplace/debtors/settle/${debtorId}/`);
           if (res.data && res.data.found) {
             const data = res.data;
-            const validBankAcc = data.has_verified_bank && !DUMMY_ACCOUNTS.includes(data.account_number) ? data.account_number : '';
+            const validBankAcc = data.has_verified_bank && isValidNuban(data.account_number) ? data.account_number : '';
             foundDebtor = {
               id: debtorId,
               name: data.customer_name || 'Valued Customer',
@@ -85,7 +94,7 @@ const PublicDebtorSettlement: React.FC = () => {
                 const savedBank = localStorage.getItem('sb_bank_payout');
                 if (savedBank) {
                   const b = JSON.parse(savedBank);
-                  if (b.account_number && !DUMMY_ACCOUNTS.includes(b.account_number)) {
+                  if (isValidNuban(b.account_number)) {
                     bankName = b.bank_name || '';
                     bankAccount = b.account_number;
                     bankAccountName = b.account_name || '';
@@ -135,7 +144,7 @@ const PublicDebtorSettlement: React.FC = () => {
         const mName = searchParams.get('m') || 'SmartBiz Verified Merchant';
         const mPhone = searchParams.get('p') || '';
         const rawBAcc = searchParams.get('ba') || '';
-        const isBAccValid = rawBAcc && !DUMMY_ACCOUNTS.includes(rawBAcc);
+        const isBAccValid = isValidNuban(rawBAcc);
         const bName = isBAccValid ? (searchParams.get('bn') || '') : '';
         const bAcc = isBAccValid ? rawBAcc : '';
         const bAccName = isBAccValid ? (searchParams.get('ban') || mName) : '';

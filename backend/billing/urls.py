@@ -8,6 +8,7 @@ from .views import (
     PaystackConfigView, 
     AdminTransactionsView,
     PaystackWebhookView,
+    SquadWebhookView,
     RewardShareView,
     AIBudgetStatusView,
 )
@@ -18,6 +19,7 @@ urlpatterns = [
     path('buy-credits/', CreditPurchaseView.as_view(), name='buy-credits'),
     path('verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
     path('webhook/paystack/', PaystackWebhookView.as_view(), name='paystack-webhook'),
+    path('webhook/squad/', SquadWebhookView.as_view(), name='squad-webhook'),
     path('deduct-credits/', DeductCreditsView.as_view(), name='deduct-credits'),
     path('reward-share/', RewardShareView.as_view(), name='reward-share'),
     path('config/', PaystackConfigView.as_view(), name='billing-config'),

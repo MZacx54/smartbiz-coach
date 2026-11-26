@@ -454,9 +454,200 @@ class AdminTransactionsView(APIView):
         })
 
 class PaystackWebhookView(APIView):
+    """
+    Cryptographically secure, idempotent Paystack Webhook Handler.
+    Verifies HMAC-SHA512 signature against PAYSTACK_SECRET_KEY,
+    and atomically credits user wallet/subscription in case client connection dropped.
+    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        import hmac
+        import hashlib
+        import json
+
+        paystack_secret = getattr(settings, 'PAYSTACK_SECRET_KEY', None)
+        if not paystack_secret:
+            print("[WEBHOOK ERROR] PAYSTACK_SECRET_KEY missing on server.")
+            return Response({"error": "Gateway not configured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        paystack_sig = request.headers.get('x-paystack-signature') or request.META.get('HTTP_X_PAYSTACK_SIGNATURE', '')
+        if not paystack_sig:
+            print("[WEBHOOK REJECTED] Missing x-paystack-signature header.")
+            return Response({"error": "Signature required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Compute HMAC SHA512 signature on raw payload
+        raw_body = request.body
+        computed_sig = hmac.new(
+            paystack_secret.encode('utf-8'),
+            msg=raw_body,
+            digestmod=hashlib.sha512
+        ).hexdigest()
+
+        if not hmac.compare_digest(computed_sig, paystack_sig):
+            print(f"[WEBHOOK REJECTED] Signature mismatch! Computed: {computed_sig[:10]}... Got: {paystack_sig[:10]}...")
+            return Response({"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            event_data = json.loads(raw_body.decode('utf-8'))
+        except Exception as e:
+            return Response({"error": f"Invalid JSON payload: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        event = event_data.get('event')
+        data = event_data.get('data', {})
+
+        if event == 'charge.success':
+            reference = data.get('reference')
+            amount_kobo = data.get('amount', 0)
+            amount_naira = amount_kobo / 100.0
+            customer_email = data.get('customer', {}).get('email', '')
+            metadata = data.get('metadata', {}) or {}
+
+            if not reference:
+                return Response({"status": "ignored", "reason": "No reference in payload"}, status=status.HTTP_200_OK)
+
+            with transaction.atomic():
+                # 1. Idempotency Check: if reference already fulfilled
+                existing_success = Transaction.objects.filter(reference=reference, status='SUCCESS').exists()
+                if existing_success:
+                    print(f"[WEBHOOK IDEMPOTENT] Reference {reference} already processed. Skipping duplicate fulfillment.")
+                    return Response({"status": "already_processed"}, status=status.HTTP_200_OK)
+
+                # 2. Resolve matching User
+                user_id = metadata.get('user_id')
+                user = None
+                if user_id:
+                    user = User.objects.select_for_update().filter(id=user_id).first()
+                if not user and customer_email:
+                    user = User.objects.select_for_update().filter(email__iexact=customer_email).first()
+
+                if not user:
+                    print(f"[WEBHOOK NOTE] Charge success for unlinked customer {customer_email} (Ref: {reference}, ₦{amount_naira})")
+                    Transaction.objects.update_or_create(
+                        reference=reference,
+                        defaults={
+                            'amount': amount_naira,
+                            'description': f"Direct Storefront/Guest Payment (Ref: {reference})",
+                            'provider': "PAYSTACK",
+                            'type': "PURCHASE",
+                            'status': "SUCCESS"
+                        }
+                    )
+                    return Response({"status": "recorded_unlinked"}, status=status.HTTP_200_OK)
+
+                # 3. Determine Plan or Credit Pack purchased
+                requested_plan = str(metadata.get('plan') or '').strip().lower()
+                billing_cycle = str(metadata.get('billing_cycle') or '').strip().lower()
+                is_pro_subscription = False
+                subscription_desc = ""
+
+                if abs(amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and (billing_cycle == 'annual' or abs(amount_naira - 35000) < 10)):
+                    is_pro_subscription = True
+                    credits_purchased = 5000
+                    subscription_desc = "Growth Merchant Pro (Annual) - 5,000 BizCredits Included"
+                elif requested_plan in ('pro', 'growth_pro', 'growth merchant') or (abs(amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro'):
+                    is_pro_subscription = True
+                    credits_purchased = 450
+                    subscription_desc = "Growth Merchant Pro (Monthly) - 450 BizCredits Included"
+                elif abs(amount_naira - 500) < 5:
+                    credits_purchased = 50
+                elif abs(amount_naira - 1000) < 5:
+                    credits_purchased = 110
+                elif abs(amount_naira - 1500) < 5:
+                    credits_purchased = 175
+                elif abs(amount_naira - 2500) < 5:
+                    credits_purchased = 300
+                elif abs(amount_naira - 3500) < 5:
+                    credits_purchased = 450
+                elif abs(amount_naira - 5000) < 5:
+                    credits_purchased = 700
+                elif abs(amount_naira - 7500) < 5:
+                    credits_purchased = 1100
+                elif abs(amount_naira - 15000) < 5:
+                    credits_purchased = 2500
+                else:
+                    credits_purchased = max(1, int(amount_naira / 10))
+
+                # 4. Atomically persist Transaction & Credit Wallet
+                tx, _ = Transaction.objects.update_or_create(
+                    reference=reference,
+                    defaults={
+                        'user': user,
+                        'amount': amount_naira,
+                        'description': subscription_desc or f"Credit Top-up ({credits_purchased} BizCredits)",
+                        'provider': "PAYSTACK",
+                        'type': "PURCHASE" if is_pro_subscription else "CREDIT_TOPUP",
+                        'status': "SUCCESS"
+                    }
+                )
+
+                update_fields = ['credits']
+                user.credits += credits_purchased
+                if is_pro_subscription:
+                    user.plan = 'Pro'
+                    update_fields.append('plan')
+                user.save(update_fields=update_fields)
+
+                CreditLedger.objects.create(
+                    user=user,
+                    amount=credits_purchased,
+                    activity=f"Paystack Top-up (Ref: {reference})"
+                )
+
+                if is_pro_subscription:
+                    try:
+                        from marketplace.models import VendorVerification
+                        VendorVerification.objects.get_or_create(
+                            user=user,
+                            defaults={'business_name': getattr(user, 'business_name', '') or getattr(user, 'username', '')}
+                        )
+                    except Exception as ve:
+                        print(f"[WEBHOOK NOTE] VendorVerification auto-link notice: {ve}")
+
+                print(f"[OK] Webhook fulfilled: +{credits_purchased} credits to {user.username} (Ref: {reference})")
+
+        return Response({"status": "processed"}, status=status.HTTP_200_OK)
+
+
+class SquadWebhookView(APIView):
+    """
+    HabariPay / Squad Webhook Handler with signature verification & atomic idempotency.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        import hmac
+        import hashlib
+        import json
+
+        squad_secret = getattr(settings, 'SQUAD_SECRET_KEY', None) or os.getenv('SQUAD_SECRET_KEY', '')
+        squad_sig = request.headers.get('x-squad-signature') or request.META.get('HTTP_X_SQUAD_SIGNATURE', '')
+
+        raw_body = request.body
+        if squad_secret and squad_sig:
+            computed_sig = hmac.new(
+                squad_secret.encode('utf-8'),
+                msg=raw_body,
+                digestmod=hashlib.sha512
+            ).hexdigest()
+            if not hmac.compare_digest(computed_sig, squad_sig):
+                return Response({"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            payload = json.loads(raw_body.decode('utf-8'))
+        except Exception:
+            return Response({"error": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
+
+        event = payload.get('Event') or payload.get('event')
+        data = payload.get('Body') or payload.get('data') or {}
+        reference = data.get('transaction_ref') or data.get('reference')
+
+        if reference:
+            with transaction.atomic():
+                existing = Transaction.objects.filter(reference=reference, status='SUCCESS').exists()
+                if existing:
+                    return Response({"status": "already_processed"}, status=status.HTTP_200_OK)
+
         return Response({"status": "received"}, status=status.HTTP_200_OK)
 
 

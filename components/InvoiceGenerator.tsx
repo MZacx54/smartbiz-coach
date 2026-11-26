@@ -43,9 +43,9 @@ const mockInvoices: Invoice[] = [
     senderEmail: "admin@smartbizcoach.com.ng",
     senderPhone: "08123456789",
     senderTin: "TIN-9284102-001",
-    bankName: "Access Bank PLC",
-    bankAccountName: "SmartBiz Coach Solutions Ltd",
-    bankAccountNumber: "0098765432",
+    bankName: "",
+    bankAccountName: "",
+    bankAccountNumber: "",
     paymentStatus: "PAID",
     paymentTerms: "DUE_ON_RECEIPT",
     items: [

@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import VoiceNoteModal from './VoiceNoteModal';
 import { getBusinessDateStr, formatBusinessDate } from '../utils/dateTime';
+import { offlineStorage } from '../utils/offlineStorage';
 
 // Authoritative West Africa Time (WAT) calendar date as YYYY-MM-DD
 const localDateStr = (d?: Date): string => {
@@ -375,6 +376,7 @@ export const DailyCashbook: React.FC = () => {
           // Re-read current localStorage queue so we NEVER overwrite new sales added while sync was in-flight!
           const latestQueue = getOfflineSales().filter((s) => !syncedSaleIds.has(String(s.id)));
           localStorage.setItem('sb_offline_sales', JSON.stringify(latestQueue));
+          syncedSaleIds.forEach(id => offlineStorage.removeSale(id));
 
           // Seamlessly swap temporary offline IDs with real server IDs in React state and date cache
           setSales((prev) => {
@@ -409,6 +411,7 @@ export const DailyCashbook: React.FC = () => {
         if (syncedExpenseIds.size > 0) {
           const latestQueue = getOfflineExpenses().filter((e) => !syncedExpenseIds.has(String(e.id)));
           localStorage.setItem('sb_offline_expenses', JSON.stringify(latestQueue));
+          syncedExpenseIds.forEach(id => offlineStorage.removeExpense(id));
 
           setExpenses((prev) => {
             const updated = prev.map((item) => {
@@ -941,6 +944,7 @@ export const DailyCashbook: React.FC = () => {
       created_at: new Date().toISOString()
     };
     localStorage.setItem('sb_offline_sales', JSON.stringify([optimisticSale, ...getOfflineSales()]));
+    offlineStorage.saveSale(optimisticSale);
     updatePendingCount();
     setSales(prev => [optimisticSale, ...prev]);
 
@@ -1090,6 +1094,7 @@ export const DailyCashbook: React.FC = () => {
 
     const existingQueue = getOfflineSales();
     localStorage.setItem('sb_offline_sales', JSON.stringify([optimisticSale, ...existingQueue]));
+    offlineStorage.saveSale(optimisticSale);
     updatePendingCount();
     setSales(prev => [optimisticSale, ...prev]);
 
@@ -1188,6 +1193,7 @@ export const DailyCashbook: React.FC = () => {
 
     const existingQueue = getOfflineExpenses();
     localStorage.setItem('sb_offline_expenses', JSON.stringify([optimisticExpense, ...existingQueue]));
+    offlineStorage.saveExpense(optimisticExpense);
     updatePendingCount();
     setExpenses(prev => [optimisticExpense, ...prev]);
 

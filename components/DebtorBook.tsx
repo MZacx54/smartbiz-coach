@@ -22,6 +22,15 @@ interface DebtorBookProps {
   onUpdateCredits?: (credits: number) => void;
 }
 
+const isValidNuban = (acc: string | null | undefined): boolean => {
+  if (!acc) return false;
+  const clean = String(acc).replace(/\D/g, '');
+  if (clean.length !== 10) return false;
+  if (/^(\d)\1{9}$/.test(clean)) return false;
+  const knownDummies = ['0098765432', '1012345678', '0123456789', '1234567890', '9876543210'];
+  return !knownDummies.includes(clean);
+};
+
 const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits }) => {
   const navigate = useNavigate();
   const [primaryMode, setPrimaryMode] = useState<'RECEIVABLES' | 'PAYABLES'>('RECEIVABLES');
@@ -103,7 +112,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       const saved = localStorage.getItem('sb_bank_payout');
       if (saved) {
         const b = JSON.parse(saved);
-        if (b.account_number && !['0098765432', '1012345678', '0123456789'].includes(b.account_number)) {
+        if (isValidNuban(b.account_number)) {
           return b;
         }
       }
@@ -114,7 +123,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   useEffect(() => {
     // 1. Fetch live bank payout details from backend
     api.get('/api/marketplace/payout/details/').then(res => {
-      if (res.data && res.data.account_number && !['0098765432', '1012345678', '0123456789'].includes(res.data.account_number)) {
+      if (res.data && isValidNuban(res.data.account_number)) {
         const payoutInfo = {
           bank_name: res.data.bank_name || '',
           account_number: res.data.account_number || '',
@@ -157,9 +166,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       }
     } catch {}
 
-    const DUMMY_ACCOUNTS = ['0098765432', '1012345678', '0123456789', '1234567890'];
-
-    if (merchantBank && merchantBank.account_number && !DUMMY_ACCOUNTS.includes(merchantBank.account_number)) {
+    if (merchantBank && isValidNuban(merchantBank.account_number)) {
       bankName = merchantBank.bank_name || '';
       bankAccount = merchantBank.account_number;
       bankAccountName = merchantBank.account_name || merchantName;
@@ -168,7 +175,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
         const savedBank = localStorage.getItem('sb_bank_payout');
         if (savedBank) {
           const b = JSON.parse(savedBank);
-          if (b.account_number && !DUMMY_ACCOUNTS.includes(b.account_number)) {
+          if (isValidNuban(b.account_number)) {
             bankName = b.bank_name || '';
             bankAccount = b.account_number;
             bankAccountName = b.account_name || merchantName;
@@ -183,8 +190,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
         if (savedInvoices) {
           const invList = JSON.parse(savedInvoices);
           const withBank = invList.find((i: any) => 
-            i.bankAccountNumber && 
-            !DUMMY_ACCOUNTS.includes(i.bankAccountNumber) &&
+            isValidNuban(i.bankAccountNumber) &&
             !String(i.id || '').startsWith('INV-202')
           );
           if (withBank) {
