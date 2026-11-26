@@ -262,7 +262,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUserVerified }) => {
               🎁 Verify your email ({user.email}) to unlock 50 Free Welcome BizCredits
             </p>
             <p className="text-xs text-amber-800 mt-0.5">
-              Core POS &amp; bookkeeping work right away. Enter the 6-digit code sent to your inbox to claim your AI/Boost credits.
+              Core POS &amp; bookkeeping work right away. Check your inbox or Spam/Junk folder for your 6-digit code to claim your AI/Boost credits.
             </p>
           </div>
           <form onSubmit={handleVerifyEmail} className="flex flex-wrap items-center gap-2 shrink-0">

@@ -1,9 +1,18 @@
 import os
 import re
+import time
 import requests
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from django.utils.html import strip_tags
+
+# Cache for Brevo sender validation (avoids slow HTTP requests on every single email)
+_BREVO_SENDER_CACHE = {
+    'timestamp': 0,
+    'is_valid': False,
+    'senders': [],
+    'details': None
+}
 
 # Exact WhatsApp VIP Community link
 WA_COMMUNITY_LINK = os.getenv("WA_COMMUNITY_LINK", "https://chat.whatsapp.com/LMGlpUWATmVE2t98iKIcY4").strip()
@@ -68,10 +77,15 @@ def get_sender_email(fallback='noreply@smartbizcoach.com.ng'):
 def check_brevo_account_and_senders(brevo_api_key):
     """
     Queries Brevo REST API to retrieve verified senders and account status.
+    Uses in-memory caching to avoid round-trip delays on subsequent email dispatches.
     Returns: (is_valid_api_key, verified_senders_list, raw_details)
     """
     if not brevo_api_key:
         return False, [], "No Brevo API key provided"
+
+    now = time.time()
+    if now - _BREVO_SENDER_CACHE['timestamp'] < 300 and _BREVO_SENDER_CACHE['is_valid']:
+        return _BREVO_SENDER_CACHE['is_valid'], _BREVO_SENDER_CACHE['senders'], _BREVO_SENDER_CACHE['details']
     
     headers = {
         "accept": "application/json",
@@ -80,10 +94,14 @@ def check_brevo_account_and_senders(brevo_api_key):
     }
     
     try:
-        resp = requests.get("https://api.brevo.com/v3/senders", headers=headers, timeout=10)
+        resp = requests.get("https://api.brevo.com/v3/senders", headers=headers, timeout=8)
         if resp.status_code == 200:
             data = resp.json()
             senders = [s.get('email') for s in data.get('senders', []) if s.get('email') and s.get('active', True)]
+            _BREVO_SENDER_CACHE['timestamp'] = now
+            _BREVO_SENDER_CACHE['is_valid'] = True
+            _BREVO_SENDER_CACHE['senders'] = senders
+            _BREVO_SENDER_CACHE['details'] = data
             return True, senders, data
         else:
             return False, [], f"Brevo HTTP {resp.status_code}: {resp.text}"
@@ -91,13 +109,51 @@ def check_brevo_account_and_senders(brevo_api_key):
         return False, [], f"Brevo connection error: {ex}"
 
 
+def send_otp_sms(phone, code, purpose="Verification"):
+    """
+    Sends an instant 6-digit OTP code to the user's mobile number via Termii SMS (fallback/dual channel).
+    """
+    termii_key = os.getenv('TERMII_API_KEY', '').strip()
+    if not termii_key or not phone:
+        return False, "Termii not configured or phone missing"
+
+    clean_phone = "".join(c for c in str(phone) if c.isdigit())
+    if clean_phone.startswith("0") and len(clean_phone) == 11:
+        clean_phone = "234" + clean_phone[1:]
+    elif clean_phone.startswith("234") and len(clean_phone) == 13:
+        pass
+    else:
+        return False, "Invalid Nigerian phone number format"
+
+    msg = f"Your SmartBiz Coach {purpose} code is: {code}. Valid for 24 hours. Keep this confidential."
+    payload = {
+        "to": clean_phone,
+        "from": os.getenv("TERMII_SENDER_ID", "SmartBiz").strip() or "SmartBiz",
+        "sms": msg,
+        "type": "plain",
+        "channel": "generic",
+        "api_key": termii_key,
+    }
+    try:
+        resp = requests.post("https://api.ng.termii.com/api/sms/send", json=payload, timeout=8)
+        if resp.status_code == 200:
+            print(f"[OK] Termii OTP SMS sent to {clean_phone} ({purpose})")
+            return True, "SMS delivered"
+        else:
+            print(f"[NOTE] Termii OTP SMS notice ({resp.status_code}): {resp.text}")
+            return False, resp.text
+    except Exception as ex:
+        print(f"[NOTE] Termii SMS notice: {ex}")
+        return False, str(ex)
+
+
 def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz Coach", from_email=None):
     """
     Unified, ultra-resilient email delivery engine:
-    1. Brevo (Sendinblue) v3 REST API (with automatic verified sender resolution).
+    1. Brevo (Sendinblue) v3 REST API (with automatic verified sender resolution + replyTo).
     2. Direct Python SMTP Relay (Brevo / Custom SMTP over TLS).
     3. Resend REST API (via RESEND_API_KEY).
-    4. Django standard Email Backend (in DEBUG mode).
+    4. Django Standard Email Backend (production SMTP or configured backend fallback).
     """
     brevo_api_key = get_brevo_api_key()
     sender_email_addr = from_email or get_sender_email()
@@ -132,6 +188,10 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                         "name": recipient_email.split('@')[0]
                     }
                 ],
+                "replyTo": {
+                    "email": "support@smartbizcoach.com.ng",
+                    "name": "SmartBiz Support"
+                },
                 "subject": subject,
                 "htmlContent": html_content
             }
@@ -140,7 +200,7 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                 "api-key": brevo_api_key,
                 "content-type": "application/json"
             }
-            resp = requests.post(url, json=payload, headers=headers, timeout=15)
+            resp = requests.post(url, json=payload, headers=headers, timeout=12)
             if resp.status_code in [200, 201]:
                 message_id = resp.json().get('messageId', 'sent')
                 print(f"[OK] Brevo API Email Delivered to {recipient_email} [ID: {message_id}] (sender: {effective_sender})")
@@ -155,7 +215,7 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                     alt_sender = os.getenv('BREVO_SENDER_EMAIL', '').strip() or 'meshachzax@gmail.com'
                     if alt_sender and alt_sender != effective_sender:
                         payload['sender']['email'] = alt_sender
-                        retry_resp = requests.post(url, json=payload, headers=headers, timeout=15)
+                        retry_resp = requests.post(url, json=payload, headers=headers, timeout=12)
                         if retry_resp.status_code in [200, 201]:
                             message_id = retry_resp.json().get('messageId', 'sent')
                             print(f"[OK] Brevo API Email Delivered to {recipient_email} via {alt_sender} [ID: {message_id}]")
@@ -195,13 +255,14 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                 msg['Subject'] = subject
                 msg['From'] = f"{sender_name} <{candidate_user}>"
                 msg['To'] = recipient_email
+                msg.add_header('Reply-To', 'support@smartbizcoach.com.ng')
 
                 part1 = MIMEText(strip_tags(html_content), 'plain', 'utf-8')
                 part2 = MIMEText(html_content, 'html', 'utf-8')
                 msg.attach(part1)
                 msg.attach(part2)
 
-                with smtplib.SMTP(smtp_host, smtp_port, timeout=12) as server:
+                with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
                     server.starttls()
                     server.login(candidate_user, smtp_pass)
                     server.sendmail(candidate_user, [recipient_email], msg.as_string())
@@ -227,7 +288,7 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                 "Authorization": f"Bearer {resend_api_key}",
                 "Content-Type": "application/json"
             }
-            resp = requests.post("https://api.resend.com/emails", json=payload, headers=headers, timeout=15)
+            resp = requests.post("https://api.resend.com/emails", json=payload, headers=headers, timeout=12)
             if resp.status_code in [200, 201]:
                 email_id = resp.json().get('id', 'sent')
                 print(f"[OK] Resend Email Delivered to {recipient_email} [ID: {email_id}]")
@@ -237,21 +298,22 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
         except Exception as ex:
             attempt_logs.append(f"Resend Exception: {ex}")
 
-    # ── 4. Local Development Fallback (DEBUG mode only) ──────────────────────
-    if getattr(settings, 'DEBUG', False):
-        try:
-            msg = EmailMultiAlternatives(
-                subject=subject,
-                body=strip_tags(html_content),
-                from_email=f"{sender_name} <{pure_email}>",
-                to=[recipient_email]
-            )
-            msg.attach_alternative(html_content, "text/html")
-            msg.send(fail_silently=False)
-            print(f"[OK] Email logged to local console (DEBUG=True)")
-            return True, "Delivered to local dev console"
-        except Exception as e:
-            return False, f"Local mail backend error: {e}"
+    # ── 4. Standard Django Mail Fallback (Production & Local Dev) ────────────
+    try:
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=strip_tags(html_content),
+            from_email=f"{sender_name} <{pure_email}>",
+            to=[recipient_email],
+            reply_to=["support@smartbizcoach.com.ng"]
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send(fail_silently=False)
+        print(f"[OK] Email sent to {recipient_email} via Django EmailBackend")
+        return True, "Delivered via Django EmailBackend"
+    except Exception as e:
+        attempt_logs.append(f"Django EmailBackend: {e}")
+        print(f"[NOTE] Django EmailBackend fallback notice: {e}")
 
     error_summary = f"Email delivery failed. Attempts: {'; '.join(attempt_logs) if attempt_logs else 'No valid email credentials provided.'}"
     print(f"[ERROR] {error_summary}")
@@ -375,13 +437,22 @@ def send_welcome_email(user):
 def send_email_verification_code(user, code):
     """
     Sends a 6-digit email verification OTP to unlock the 50 Welcome BizCredits.
+    Also dispatches via SMS (Termii) if the user has a valid mobile phone number registered.
     """
+    # 1. Dual delivery: attempt SMS OTP if phone is present
+    user_phone = getattr(user, 'phone', '').strip()
+    if user_phone:
+        try:
+            send_otp_sms(user_phone, code, purpose="Email Verification")
+        except Exception as e:
+            print(f"Notice: SMS verification OTP delivery notice: {e}")
+
     recipient_email = getattr(user, 'email', '').strip()
     if not recipient_email or '@' not in recipient_email:
         return False
 
-    name = user.get_full_name() or user.business_name or user.username or "Entrepreneur"
-    subject = f"Verify Your SmartBiz Coach Email — Code: {code}"
+    name = user.get_full_name() or getattr(user, 'business_name', '') or getattr(user, 'username', '') or "Entrepreneur"
+    subject = f"SmartBiz Coach Verification Code: {code}"
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -400,6 +471,7 @@ def send_email_verification_code(user, code):
               <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #065F46;">{code}</span>
             </div>
             <p style="font-size: 12px; color: #64748B;">This code expires in 24 hours. Core POS and bookkeeping tools remain 100% free forever.</p>
+            <p style="font-size: 11px; color: #94A3B8; margin-top: 15px;">If this email arrived in your Spam or Promotions folder, please click 'Report Not Spam' or move it to your Primary Inbox to ensure you receive future sales and payment notifications.</p>
           </td>
         </tr>
       </table>
@@ -413,13 +485,22 @@ def send_email_verification_code(user, code):
 def send_password_reset_email(user, code):
     """
     Sends a professional HTML email containing the 6-digit password recovery code.
+    Also dispatches via SMS (Termii) if the user has a valid mobile phone number registered.
     """
+    # 1. Dual delivery: attempt SMS OTP if phone is present
+    user_phone = getattr(user, 'phone', '').strip()
+    if user_phone:
+        try:
+            send_otp_sms(user_phone, code, purpose="Password Reset")
+        except Exception as e:
+            print(f"Notice: SMS password reset OTP delivery notice: {e}")
+
     recipient_email = getattr(user, 'email', '').strip()
     if not recipient_email or '@' not in recipient_email:
         return False
 
-    name = user.get_full_name() or user.business_name or user.username or "Entrepreneur"
-    subject = "SmartBiz Coach - Your Password Reset Code 🔑"
+    name = user.get_full_name() or getattr(user, 'business_name', '') or getattr(user, 'username', '') or "Entrepreneur"
+    subject = f"SmartBiz Coach Password Reset Code: {code}"
 
     html_content = f"""
     <!DOCTYPE html>

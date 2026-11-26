@@ -80,15 +80,22 @@ class RegisterView(generics.CreateAPIView):
                 print(f"Notice: Registration brand initialization notice: {e}")
 
             # Dispatch Welcome & Email Verification Code asynchronously
+            user_id = user.id
             def send_reg_emails():
+                from django.db import close_old_connections
+                close_old_connections()
                 try:
-                    send_email_verification_code(user, ver_code)
+                    target_user = User.objects.filter(id=user_id).first() or user
+                    send_email_verification_code(target_user, ver_code)
                 except Exception as e:
                     print(f"Notice: Verification email dispatch notice: {e}")
                 try:
-                    send_welcome_email(user)
+                    target_user = User.objects.filter(id=user_id).first() or user
+                    send_welcome_email(target_user)
                 except Exception as e:
                     print(f"Notice: Welcome email dispatch notice: {e}")
+                finally:
+                    close_old_connections()
 
             threading.Thread(target=send_reg_emails, daemon=True).start()
 
@@ -223,8 +230,23 @@ class ResendVerificationEmailView(views.APIView):
         EmailVerificationCode.objects.filter(user=user, is_used=False).update(is_used=True)
         ver_code = str(random.randint(100000, 999999))
         EmailVerificationCode.objects.create(user=user, code=ver_code)
-        threading.Thread(target=lambda: send_email_verification_code(user, ver_code), daemon=True).start()
-        return Response({'message': f'A fresh 6-digit verification code has been sent to {user.email}.'}, status=status.HTTP_200_OK)
+        user_id = user.id
+
+        def send_resend_async():
+            from django.db import close_old_connections
+            close_old_connections()
+            try:
+                target_user = User.objects.filter(id=user_id).first() or user
+                send_email_verification_code(target_user, ver_code)
+            except Exception as e:
+                print(f"Notice: Resend email dispatch notice: {e}")
+            finally:
+                close_old_connections()
+
+        threading.Thread(target=send_resend_async, daemon=True).start()
+        return Response({
+            'message': f'A fresh 6-digit verification code has been sent to {user.email}. Please check your inbox and Spam/Junk folder.'
+        }, status=status.HTTP_200_OK)
 
 class ProfileView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
@@ -468,17 +490,22 @@ class ForgotPasswordView(views.APIView):
         PasswordResetCode.objects.create(user=user, code=code)
         
         # Send Email asynchronously via multi-tier Brevo REST API / Resend / SMTP helper
+        user_id = user.id
         def send_email_async():
+            from django.db import close_old_connections
+            close_old_connections()
             try:
-                send_password_reset_email(user, code)
+                target_user = User.objects.filter(id=user_id).first() or user
+                send_password_reset_email(target_user, code)
             except Exception as ex:
                 print(f"Warning: Password reset email delivery error: {ex}")
+            finally:
+                close_old_connections()
 
-        email_thread = threading.Thread(target=send_email_async)
-        email_thread.daemon = True
+        email_thread = threading.Thread(target=send_email_async, daemon=True)
         email_thread.start()
 
-        res_data = {'message': 'A 6-digit verification code has been sent to your email address.'}
+        res_data = {'message': 'A 6-digit verification code has been sent to your email address. Please check your inbox and Spam/Junk folder.'}
         # Security: Never expose OTP in API response. Log to server console only.
         if getattr(settings, 'DEBUG', False):
             print(f"DEBUG (server log only): Password reset code for {email} is {code}")
