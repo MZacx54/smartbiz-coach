@@ -5,6 +5,7 @@ from django.utils import timezone
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     credits = models.IntegerField(default=50)
+    is_email_verified = models.BooleanField(default=False)
     
     # Business Profile Fields
     business_name = models.CharField(max_length=255, blank=True)
@@ -31,6 +32,20 @@ class PasswordResetCode(models.Model):
 
     def is_valid(self):
         expiry = self.created_at + timezone.timedelta(minutes=15)
+        return not self.is_used and timezone.now() < expiry
+
+    def __str__(self):
+        return f"{self.user.email if self.user else 'User'} - {self.code}"
+
+
+class EmailVerificationCode(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_verification_codes')
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    def is_valid(self):
+        expiry = self.created_at + timezone.timedelta(hours=24)
         return not self.is_used and timezone.now() < expiry
 
     def __str__(self):

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppView, User, UserStats, Debtor } from '../types';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
+import { authService } from '../services/authService';
 import { storeShareUrl } from '../services/commerceService';
 import { useOwnerLock } from '../hooks/useOwnerLock';
 import { Card, Button, StatTile, Skeleton, PageHeader, useLanguage } from './ui';
@@ -11,6 +12,7 @@ interface HomeProps {
   user: User;
   userStats: UserStats;
   onNavigate: (view: AppView, params?: string) => void;
+  onUserVerified?: (updatedUser: User, newCredits?: number) => void;
 }
 
 interface Summary {
@@ -45,11 +47,15 @@ const readCache = <T,>(key: string): T | null => {
   }
 };
 
-const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
+const Home: React.FC<HomeProps> = ({ user, onNavigate, onUserVerified }) => {
   const navigate = useNavigate();
   const today = localDate();
   const { isStaffMode: isStaff } = useOwnerLock();
   const { t } = useLanguage();
+
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [resendingCode, setResendingCode] = useState(false);
 
   const [summary, setSummary] = useState<Summary | null>(() => readCache<Summary>(`sb_home_summary_${today}`));
   const [trends, setTrends] = useState<Trends | null>(() => readCache<Trends>('sb_home_trends'));
@@ -62,11 +68,15 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      if (!localStorage.getItem('sb_auth_token')) {
+        setLoading(false);
+        return;
+      }
       const [s, tRes, p, mkt] = await Promise.allSettled([
         api.get(`/api/marketplace/daily-summary/?date=${today}`, { timeout: 8000 }),
         api.get('/api/marketplace/daily-trends/?days=7', { timeout: 8000 }),
         api.get('/api/marketplace/products/', { timeout: 8000 }),
-        api.get('/api/marketplace/global/?sort_by=boosted', { timeout: 8000 }),
+        api.get('/api/marketplace/global/?sort_by=boosted&limit=6', { timeout: 8000 }),
       ]);
       if (cancelled) return;
       if (s.status === 'fulfilled' && s.value?.data) {
@@ -205,12 +215,83 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate }) => {
     emerald: 'bg-emerald-50 text-emerald-700', blue: 'bg-blue-50 text-blue-700',
   };
 
+  const handleVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verifyCode.trim()) {
+      toast.error('Please enter your 6-digit verification code.');
+      return;
+    }
+    setVerifyingEmail(true);
+    try {
+      const res = await authService.verifyEmail(verifyCode.trim());
+      toast.success(res.message || 'Email verified! +50 BizCredits unlocked.');
+      if (res.user && onUserVerified) {
+        onUserVerified(res.user, res.user.credits);
+      }
+      setVerifyCode('');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Invalid or expired code.');
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setResendingCode(true);
+    try {
+      const res = await authService.resendVerification();
+      toast.success(res.message || 'Verification code sent!');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Could not resend code right now.');
+    } finally {
+      setResendingCode(false);
+    }
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
       <PageHeader
         title={`${t(greetingEn, greetingPcm)}, ${firstName} 👋`}
         subtitle={`${businessName} · ${dateLabel}`}
       />
+
+      {user.is_email_verified === false && !isStaff && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-black text-amber-950">
+              🎁 Verify your email ({user.email}) to unlock 50 Free Welcome BizCredits
+            </p>
+            <p className="text-xs text-amber-800 mt-0.5">
+              Core POS &amp; bookkeeping work right away. Enter the 6-digit code sent to your inbox to claim your AI/Boost credits.
+            </p>
+          </div>
+          <form onSubmit={handleVerifyEmail} className="flex flex-wrap items-center gap-2 shrink-0">
+            <input
+              type="text"
+              maxLength={6}
+              value={verifyCode}
+              onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="6-digit code"
+              className="w-32 px-3 py-2 rounded-xl border border-amber-300 bg-white text-sm font-mono font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="submit"
+              disabled={verifyingEmail}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black disabled:opacity-60 cursor-pointer"
+            >
+              {verifyingEmail ? 'Verifying...' : 'Unlock 50 Credits'}
+            </button>
+            <button
+              type="button"
+              onClick={handleResendCode}
+              disabled={resendingCode}
+              className="px-3 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100 disabled:opacity-60 cursor-pointer"
+            >
+              {resendingCode ? 'Sending...' : 'Resend'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* 1. One primary action */}
       <Card className="bg-gradient-to-br from-emerald-600 to-teal-700 border-0 text-white">

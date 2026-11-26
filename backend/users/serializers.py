@@ -12,10 +12,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'email', 'password', 'first_name', 'last_name',
-            'business_name', 'plan', 'credits', 'has_onboarded', 'logo',
+            'business_name', 'plan', 'credits', 'is_email_verified', 'has_onboarded', 'logo',
             'phone', 'location', 'currency', 'is_apprentice_mode', 'has_owner_passcode'
         ]
-        read_only_fields = ['credits', 'plan', 'is_apprentice_mode', 'has_owner_passcode']
+        read_only_fields = ['credits', 'plan', 'is_email_verified', 'is_apprentice_mode', 'has_owner_passcode']
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
 
     def _get_security_vault(self, obj):

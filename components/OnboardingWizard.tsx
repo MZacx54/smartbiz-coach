@@ -5,7 +5,7 @@ import { NIGERIAN_STATES } from '../constants';
 
 interface OnboardingWizardProps {
   user: User;
-  onComplete: (updatedUser: User) => void;
+  onComplete: (updatedUser: User) => Promise<void> | void;
 }
 
 const INDUSTRIES = [
@@ -44,6 +44,7 @@ const steps = [
 const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete }) => {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     location: user.location || 'Lagos',
     phone: user.phone || '',
@@ -69,36 +70,42 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
     }));
   };
 
-  const handleComplete = () => {
-    // If no brand identity exists yet, initialize a baseline one so all AI tools have context immediately
-    const existingBrand = localStorage.getItem('sb_brand');
-    if (!existingBrand || existingBrand === 'null') {
-      const initialBrand = {
-        businessName: formData.businessName || user.businessName || 'My Business',
-        niche: formData.industry || 'General Retail',
-        brandVoice: 'Friendly, Professional, and Authentic Nigerian',
-        taglines: [
-          `Quality & Value at ${formData.businessName || 'Our Business'}`,
-          `Your Trusted Partner for ${formData.industry || 'Excellence'}`
-        ],
-        elevatorPitch: `${formData.businessName || 'Our business'} is a premier ${formData.industry || 'enterprise'} based in ${formData.location || 'Nigeria'}, dedicated to providing top-quality products and services to our valued customers.`,
-        targetAudience: 'Value-conscious Nigerian customers, retail shoppers, and local businesses',
-        primaryColor: '#4F46E5',
-        secondaryColor: '#10B981',
-        location: formData.location || 'Lagos, Nigeria',
-        whatsapp: formData.phone || '',
-        phone: formData.phone || '',
-      };
-      localStorage.setItem('sb_brand', JSON.stringify(initialBrand));
-    }
+  const handleComplete = async () => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      // If no brand identity exists yet, initialize a baseline one so all AI tools have context immediately
+      const existingBrand = localStorage.getItem('sb_brand');
+      if (!existingBrand || existingBrand === 'null') {
+        const initialBrand = {
+          businessName: formData.businessName || user.businessName || 'My Business',
+          niche: formData.industry || 'General Retail',
+          brandVoice: 'Friendly, Professional, and Authentic Nigerian',
+          taglines: [
+            `Quality & Value at ${formData.businessName || 'Our Business'}`,
+            `Your Trusted Partner for ${formData.industry || 'Excellence'}`
+          ],
+          elevatorPitch: `${formData.businessName || 'Our business'} is a premier ${formData.industry || 'enterprise'} based in ${formData.location || 'Nigeria'}, dedicated to providing top-quality products and services to our valued customers.`,
+          targetAudience: 'Value-conscious Nigerian customers, retail shoppers, and local businesses',
+          primaryColor: '#4F46E5',
+          secondaryColor: '#10B981',
+          location: formData.location || 'Lagos, Nigeria',
+          whatsapp: formData.phone || '',
+          phone: formData.phone || '',
+        };
+        localStorage.setItem('sb_brand', JSON.stringify(initialBrand));
+      }
 
-    onComplete({
-      ...user,
-      location: formData.location,
-      phone: formData.phone,
-      businessName: formData.businessName,
-      hasOnboarded: true,
-    });
+      await onComplete({
+        ...user,
+        location: formData.location,
+        phone: formData.phone,
+        businessName: formData.businessName,
+        hasOnboarded: true,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const variants = {
@@ -271,16 +278,25 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
               <span className="font-bold text-slate-800 text-sm">SmartBiz Coach</span>
             </div>
             <button
-              onClick={() => onComplete({
-                ...user,
-                location: user.location || 'Lagos, Nigeria',
-                phone: user.phone || '08123456789',
-                businessName: user.businessName || 'SmartBiz Merchant Ltd',
-                hasOnboarded: true
-              })}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors"
+              disabled={isSaving}
+              onClick={async () => {
+                if (isSaving) return;
+                setIsSaving(true);
+                try {
+                  await onComplete({
+                    ...user,
+                    location: user.location || 'Lagos',
+                    phone: user.phone || '',
+                    businessName: user.businessName || user.business_name || 'My Business',
+                    hasOnboarded: true
+                  });
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors disabled:opacity-50"
             >
-              Express Onboarding (Skip) →
+              {isSaving ? 'Saving...' : 'Express Onboarding (Skip) →'}
             </button>
           </div>
 
@@ -339,9 +355,10 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
             ) : (
               <button
                 onClick={handleComplete}
-                className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-lg hover:-translate-y-0.5"
+                disabled={isSaving}
+                className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-bold rounded-2xl transition-all shadow-lg hover:-translate-y-0.5"
               >
-                🚀 Go to My Dashboard
+                {isSaving ? '⏳ Saving Profile...' : '🚀 Go to My Dashboard'}
               </button>
             )}
           </div>

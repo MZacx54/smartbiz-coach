@@ -9,8 +9,8 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from .serializers import UserSerializer, UserComplianceSerializer, AgentHireRequestSerializer
-from .models import PasswordResetCode, UserCompliance, AgentHireRequest, PartnershipInquiry
-from smartbiz_backend.email_utils import send_password_reset_email, send_welcome_email
+from .models import PasswordResetCode, EmailVerificationCode, UserCompliance, AgentHireRequest, PartnershipInquiry
+from smartbiz_backend.email_utils import send_password_reset_email, send_welcome_email, send_email_verification_code
 
 
 User = get_user_model()
@@ -42,19 +42,17 @@ class RegisterView(generics.CreateAPIView):
         if serializer.is_valid():
             user = serializer.save()
             user.set_password(serializer.validated_data['password'])
-            user.credits = 50
+            # Gate 50 Welcome BizCredits behind email verification to prevent automated credit farming
+            user.credits = 0
+            user.is_email_verified = False
             user.save()
 
-            # Record initial 50 credits in CreditLedger
+            # Generate 6-digit email verification code
+            ver_code = str(random.randint(100000, 999999))
             try:
-                from billing.models import CreditLedger
-                CreditLedger.objects.create(
-                    user=user,
-                    amount=50,
-                    activity="Welcome Bonus (50 Free BizCredits)"
-                )
+                EmailVerificationCode.objects.create(user=user, code=ver_code)
             except Exception as e:
-                print(f"Notice: Welcome CreditLedger creation notice: {e}")
+                print(f"Notice: EmailVerificationCode creation notice: {e}")
 
             # Auto-initialize baseline BrandIdentity & Vendor profile with merchant phone & email
             try:
@@ -81,12 +79,18 @@ class RegisterView(generics.CreateAPIView):
             except Exception as e:
                 print(f"Notice: Registration brand initialization notice: {e}")
 
-            # Send Welcome Email with 200 Credits & WhatsApp Community link
-            try:
-                from smartbiz_backend.email_utils import send_welcome_email
-                send_welcome_email(user)
-            except Exception as e:
-                print(f"Notice: Welcome email dispatch notice: {e}")
+            # Dispatch Welcome & Email Verification Code asynchronously
+            def send_reg_emails():
+                try:
+                    send_email_verification_code(user, ver_code)
+                except Exception as e:
+                    print(f"Notice: Verification email dispatch notice: {e}")
+                try:
+                    send_welcome_email(user)
+                except Exception as e:
+                    print(f"Notice: Welcome email dispatch notice: {e}")
+
+            threading.Thread(target=send_reg_emails, daemon=True).start()
 
             # Handle Referral Credit Bonus
             ref_code = request.data.get('ref', '').strip()
@@ -156,6 +160,71 @@ class LoginView(views.APIView):
             token, _ = Token.objects.get_or_create(user=user)
             return Response({'token': token.key, 'user': UserSerializer(user).data})
         return Response({'error': 'Invalid email/username or password. Please verify your credentials and try again.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyEmailView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+
+    def post(self, request):
+        code = str(request.data.get('code', '')).strip()
+        if not code:
+            return Response({'error': 'Please enter the 6-digit verification code sent to your email.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        if user.is_email_verified:
+            return Response({'message': 'Email already verified.', 'user': UserSerializer(user).data, 'credits_awarded': 0})
+
+        code_obj = EmailVerificationCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at').first()
+        if not code_obj or not code_obj.is_valid():
+            return Response({'error': 'Invalid or expired verification code. Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        code_obj.is_used = True
+        code_obj.save(update_fields=['is_used'])
+
+        user.is_email_verified = True
+        credits_awarded = 0
+        try:
+            from billing.models import CreditLedger
+            already_credited = CreditLedger.objects.filter(
+                user=user,
+                activity="Welcome Bonus (50 Free BizCredits)"
+            ).exists()
+            if not already_credited:
+                user.credits += 50
+                credits_awarded = 50
+                CreditLedger.objects.create(
+                    user=user,
+                    amount=50,
+                    activity="Welcome Bonus (50 Free BizCredits)"
+                )
+        except Exception as e:
+            print(f"Notice: Welcome CreditLedger award notice: {e}")
+
+        user.save(update_fields=['is_email_verified', 'credits'])
+        return Response({
+            'message': f'Email verified! +{credits_awarded} Welcome BizCredits unlocked.' if credits_awarded else 'Email verified!',
+            'credits_awarded': credits_awarded,
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_200_OK)
+
+
+class ResendVerificationEmailView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+
+    def post(self, request):
+        user = request.user
+        if user.is_email_verified:
+            return Response({'message': 'Your email is already verified.'}, status=status.HTTP_200_OK)
+
+        EmailVerificationCode.objects.filter(user=user, is_used=False).update(is_used=True)
+        ver_code = str(random.randint(100000, 999999))
+        EmailVerificationCode.objects.create(user=user, code=ver_code)
+        threading.Thread(target=lambda: send_email_verification_code(user, ver_code), daemon=True).start()
+        return Response({'message': f'A fresh 6-digit verification code has been sent to {user.email}.'}, status=status.HTTP_200_OK)
 
 class ProfileView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
@@ -621,7 +690,7 @@ class AgentHireRequestView(views.APIView):
         def send_notification():
             api_key = (settings.EMAIL_HOST_PASSWORD or '').strip()
             from_email = (settings.DEFAULT_FROM_EMAIL or '').strip()
-            admin_email = 'admin@smartbiz.com.ng'
+            admin_email = 'admin@smartbizcoach.com.ng'
 
             subject = f"{'🚨 PAID' if hire_request.payment_status == 'PAID' else 'New'} CAC Registration Request: {hire_request.business_name} (₦{hire_request.amount_paid:,.2f})"
             body = (
@@ -634,7 +703,7 @@ class AgentHireRequestView(views.APIView):
                 f"Payment Reference: {hire_request.payment_reference or 'N/A'}\n"
                 f"Payment Status: {hire_request.payment_status}\n\n"
                 f"Open Django Admin to assign an agent and begin filing:\n"
-                f"https://smartbiz-coach.onrender.com/admin/users/agenthirerequest/{hire_request.id}/change/"
+                f"https://api.smartbizcoach.com.ng/admin/users/agenthirerequest/{hire_request.id}/change/"
             )
 
             if api_key and len(api_key) > 20:
@@ -803,7 +872,7 @@ class PartnershipInquiryView(views.APIView):
         def notify_admins():
             admin_emails = [
                 'partners@smartbizcoach.com.ng',
-                'admin@smartbiz.com.ng',
+                'admin@smartbizcoach.com.ng',
                 'info@smartbizcoach.com.ng'
             ]
             
@@ -1155,6 +1224,7 @@ class BulkOnboardingView(views.APIView):
                         phone=phone,
                         location=state_val,
                         credits=100,  # Elevated 100 BizCredits for NACCIMA members
+                        is_email_verified=True,
                         has_onboarded=False  # Allow them to complete customized onboarding wizard
                     )
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { 
     ArrowLeft, 
     Calendar, 
@@ -521,18 +521,16 @@ const BlogPost: React.FC = () => {
                                 <p className="text-[11px] text-slate-300 mb-3">
                                     Speak directly with our technical deployment officers for cohort proposals and custom API integrations.
                                 </p>
-                                <a
-                                    href="https://wa.me/2349064556107?text=Hello%20SmartBiz%20Coach%20Partnership%20Desk%2C%20we%20want%20to%20discuss%20an%20MSME%20digitization%20pilot."
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <Link
+                                    to="/contact"
                                     className="block text-center bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all mb-2"
                                 >
-                                    WhatsApp: 09064556107
-                                </a>
+                                    Contact Partnership Desk →
+                                </Link>
                                 <div className="text-[10px] text-slate-400 text-center space-y-1 pt-1">
                                     <div>🤝 <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a></div>
                                     <div>🛟 <a href="mailto:support@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">support@smartbizcoach.com.ng</a></div>
-                                    <div>⚙️ <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a></div>
+                                    <div>⚙️ <a href="mailto:admin@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">admin@smartbizcoach.com.ng</a></div>
                                 </div>
                             </div>
                         </div>

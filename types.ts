@@ -203,6 +203,8 @@ export interface User {
   // New Onboarding Fields
   hasOnboarded?: boolean;
   has_onboarded?: boolean;
+  is_email_verified?: boolean;
+  credits?: number;
   logo?: string;
   phone?: string;
   location?: string;

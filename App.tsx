@@ -63,7 +63,7 @@ import {
   UnifiedItem,
 } from "./types";
 import api from "./services/api";
-import { authService, securityLockService } from "./services/authService";
+import { authService, securityLockService, clearAllTenantLocalState } from "./services/authService";
 import { brandService } from "./services/brandService";
 import { billingService } from "./services/billingService";
 
@@ -80,6 +80,7 @@ const normalizeUser = (backendUser: any): User | null => {
     plan: backendUser.plan || 'Free',
     hasOnboarded: backendUser.hasOnboarded || backendUser.has_onboarded || false,
     has_onboarded: backendUser.has_onboarded || backendUser.hasOnboarded || false,
+    is_email_verified: typeof backendUser.is_email_verified === 'boolean' ? backendUser.is_email_verified : true,
     logo: backendUser.logo || '',
     phone: backendUser.phone || '',
     location: backendUser.location || '',
@@ -246,6 +247,14 @@ const App: React.FC = () => {
 
         if (profileRes.status === "fulfilled" && profileRes.value) {
           const profile = profileRes.value;
+          const activeId = localStorage.getItem("sb_active_user_id");
+          if (profile.id && activeId && String(profile.id) !== activeId) {
+            clearAllTenantLocalState();
+            localStorage.setItem("sb_auth_token", token);
+          }
+          if (profile.id) {
+            localStorage.setItem("sb_active_user_id", String(profile.id));
+          }
           setUser(normalizeUser(profile));
           if (typeof profile.credits === 'number') {
             setUserStats((prev) => ({ ...prev, bizCredits: profile.credits }));
@@ -403,13 +412,25 @@ const App: React.FC = () => {
   };
 
   const handleLogin = (userData: any) => {
+    setSavedBrand(null);
+    setContentHistory([]);
+    setTransactions([]);
+    setActions([]);
     securityLockService.syncFromUserOrBrand(userData);
     setUser(normalizeUser(userData));
     if (userData && typeof userData.credits === 'number') {
-      setUserStats((prev) => ({ ...prev, bizCredits: userData.credits }));
+      setUserStats({
+        grantReadinessScore: 0,
+        bizCredits: userData.credits,
+        completedTasks: 0,
+        totalTasks: 6,
+      });
     }
     authService.getStats().then(stats => {
       if (stats) setUserStats(stats);
+    }).catch(() => {});
+    brandService.getBrand().then(b => {
+      if (b) setSavedBrand(b);
     }).catch(() => {});
     if (securityLockService.isApprenticeModeActive()) {
       toast('👨‍💼 Apprentice / Cashier Mode is active on this account. Owner Password required for Petty Cash & Admin.', { icon: '🔒' });
@@ -445,20 +466,14 @@ const App: React.FC = () => {
     setContentHistory([]);
     setCartItems([]);
     setTransactions([]);
-    const sessionKeys = [
-      'sb_auth_token',
-      'sb_user',
-      'sb_brand',
-      'sb_content_history',
-      'sb_cart',
-      'sb_transactions',
-      'sb_user_stats',
-      'sb_user_actions',
-      'sb_shift_mode',
-      'sb_cashier_mode',
-      'sb_has_owner_passcode'
-    ];
-    sessionKeys.forEach((k) => localStorage.removeItem(k));
+    setActions([]);
+    setUserStats({
+      grantReadinessScore: 0,
+      bizCredits: 0,
+      completedTasks: 0,
+      totalTasks: 6,
+    });
+    clearAllTenantLocalState();
     navigate('/');
   };
 
@@ -675,6 +690,7 @@ const App: React.FC = () => {
             </div>
           </Suspense>
         } />
+        <Route path="/marketsquare" element={<Navigate to="/market" replace />} />
         <Route path="/marketplace" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
             <div className="min-h-screen bg-slate-50 pt-2">
@@ -728,11 +744,13 @@ const App: React.FC = () => {
             <StaticPage pageType="privacy" />
           </Suspense>
         } />
+        <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
         <Route path="/terms" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
             <StaticPage pageType="terms" />
           </Suspense>
         } />
+        <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
         <Route path="/help" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
             <StaticPage pageType="help" />
@@ -879,7 +897,12 @@ const App: React.FC = () => {
                 }
               >
                 <Routes>
-                  <Route path="" element={<Home user={user} userStats={userStats} onNavigate={handleNavigate} />} />
+                  <Route path="" element={<Home user={user} userStats={userStats} onNavigate={handleNavigate} onUserVerified={(updatedUser, newCredits) => {
+                    setUser(normalizeUser(updatedUser));
+                    if (typeof newCredits === 'number') {
+                      setUserStats((prev) => ({ ...prev, bizCredits: newCredits }));
+                    }
+                  }} />} />
                   <Route path="insights" element={
                     <div className="space-y-3">
                       <button onClick={() => navigate('/dashboard')} className="min-h-[44px] px-3 rounded-xl text-sm font-bold text-emerald-700 hover:bg-emerald-50 cursor-pointer">← Back to Home</button>

@@ -1,37 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
 import SEO from './SEO';
 import { PWAInstallButton } from './PWAInstallPrompt';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { getSupportDisplayPhone, getSupportWhatsAppUrl } from '../utils/supportContact';
 
-// --- Animated Counter Component ---
-const AnimatedCounter: React.FC<{ target: string; duration?: number }> = ({ target, duration = 2 }) => {
-    const ref = useRef<HTMLSpanElement>(null);
-    const isInView = useInView(ref, { once: true });
-    const [display, setDisplay] = useState('0');
-
-    useEffect(() => {
-        if (!isInView) return;
-        const numeric = parseFloat(target.replace(/[^0-9.]/g, ''));
-        const suffix = target.replace(/[0-9.,]/g, '');
-        if (isNaN(numeric)) { setDisplay(target); return; }
-        const steps = 60;
-        const increment = numeric / steps;
-        let current = 0;
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= numeric) { setDisplay(target); clearInterval(timer); return; }
-            const formatted = numeric > 999
-                ? Math.floor(current).toLocaleString('en-NG')
-                : current.toFixed(current < 10 ? 1 : 0);
-            setDisplay(formatted + suffix);
-        }, (duration * 1000) / steps);
-        return () => clearInterval(timer);
-    }, [isInView, target, duration]);
-
-    return <span ref={ref}>{display}</span>;
+// --- Static SSR-Safe Metric Display (eliminates 0 / mid-animation glitches) ---
+const AnimatedCounter: React.FC<{ target: string; duration?: number }> = ({ target }) => {
+    return <span>{target}</span>;
 };
 
 // --- Main LandingPage Component ---
@@ -54,7 +32,7 @@ const LandingPage: React.FC = () => {
         const loadFeaturedMarket = async () => {
             setMarketLoading(true);
             try {
-                const params: Record<string, string> = { sort_by: 'boosted' };
+                const params: Record<string, string> = { sort_by: 'boosted', limit: '8' };
                 if (marketCategory === 'SERVICE' || marketCategory === 'B2B') {
                     params.product_type = marketCategory;
                 } else if (marketCategory) {
@@ -131,59 +109,59 @@ const LandingPage: React.FC = () => {
     const debtRecovered = Math.round(roiRevenue * 0.08);
     const grantEligibility = roiRevenue < 200000 ? 'TEF, SMEDAN Micro' : roiRevenue < 1000000 ? 'BOI MSME, DBN, TEF' : 'BOI Growth, DBN, Commercial Syndicate';
 
-    // ── 16 COMPREHENSIVE PLATFORM CAPABILITIES (All 4 Pillars) ──
+    // ── CORE & ADVANCED PLATFORM CAPABILITIES ──
     const allFeatures = [
-        // Pillar 1: Daily Retail & Operations
-        { icon: '📱', title: 'Phone Camera Barcode & QR Scanner', desc: 'Scan product barcodes and QR codes instantly using your phone camera with zero expensive POS hardware and instant audio beep feedback.', color: 'from-emerald-600 to-teal-700', tag: 'New POS', pillar: 'Operations' },
-        { icon: '⚡', title: '5-Second POS Day-Book', desc: 'Rapid counter checkout for Cash, POS card, Bank Transfer, and Customer Debt with instant stock deduction and offline queue sync.', color: 'from-emerald-600 to-teal-700', tag: 'Core Free', pillar: 'Operations' },
-        { icon: '🛡️', title: 'Anti-Theft Apprentice Lock', desc: 'Lock checkout with a 4-digit supervisor PIN. Attendants log daily sales without backdating, modifying records, or accessing profit margins.', color: 'from-blue-600 to-indigo-700', tag: 'Anti-Theft', pillar: 'Operations' },
-        { icon: '📶', title: 'Open Market Offline PWA Mode', desc: 'Sell seamlessly in Alaba, Balogun, and Computer Village even with 0% data or dead network. Syncs automatically when back online.', color: 'from-cyan-600 to-blue-700', tag: 'Offline First', pillar: 'Operations' },
-        { icon: '⛽', title: 'Petty Cash & Fuel Logger', desc: 'Track daily generator fueling, dispatch waybills, and store supplies. Real-time net daily profit margin balances.', color: 'from-amber-500 to-orange-600', tag: 'Expense Tracker', pillar: 'Operations' },
-        { icon: '🔒', title: 'Fake Transfer Fraud Shield', desc: 'Step-by-step verification checklist protecting shop owners from counterfeit bank SMS alerts via bank app push confirmations.', color: 'from-rose-600 to-red-700', tag: 'Security', pillar: 'Operations' },
+        // Pillar 1: Daily Retail & Operations (Core Wedge)
+        { icon: '📱', title: 'Phone Camera Barcode & QR Scanner', desc: 'Scan product barcodes and QR codes instantly using your phone camera with audio beep feedback — zero external scanner needed.', color: 'from-emerald-600 to-teal-700', tag: 'Core Free', pillar: 'Operations' },
+        { icon: '⚡', title: '5-Second POS Day-Book', desc: 'Rapid counter checkout for Cash, POS card, Bank Transfer, and Customer Debt with automatic stock deduction and offline sync.', color: 'from-emerald-600 to-teal-700', tag: 'Core Free', pillar: 'Operations' },
+        { icon: '🛡️', title: 'Staff Shift Lock', desc: 'Lock checkout with a 6+ character Owner Security Password. Attendants log daily sales without editing prices, backdating, or viewing profit margins.', color: 'from-blue-600 to-indigo-700', tag: 'Anti-Theft', pillar: 'Operations' },
+        { icon: '📶', title: 'Open Market Offline Mode', desc: 'Record sales in busy open markets even when cellular data drops. Queued transactions sync automatically once reconnected.', color: 'from-cyan-600 to-blue-700', tag: 'Offline Ready', pillar: 'Operations' },
+        { icon: '⛽', title: 'Petty Cash & Fuel Logger', desc: 'Track daily generator fueling, dispatch waybills, and store supplies for clear daily net cashflow balances.', color: 'from-amber-500 to-orange-600', tag: 'Expense Tracker', pillar: 'Operations' },
+        { icon: '🔒', title: 'Fake Transfer Fraud Checklist', desc: 'Counter verification checklist helping shop attendants confirm bank app push alerts before releasing goods.', color: 'from-rose-600 to-red-700', tag: 'Security', pillar: 'Operations' },
 
-        // Pillar 2: AI Creative & Commercial Studio
-        { icon: '📸', title: 'Product Catalog Studio', desc: 'Capture products on your counter; enhance with clean presentation backdrops and generate ready-to-share social copy.', color: 'from-violet-600 to-purple-700', tag: 'Visuals', pillar: 'AI Studio' },
-        { icon: '✨', title: 'AI Brand Builder', desc: 'Generate high-resolution logos, brand colors, taglines, and a complete visual identity tailored to Nigerian buyers in seconds.', color: 'from-pink-500 to-rose-600', pillar: 'AI Studio' },
-        { icon: '✍️', title: 'Content Studio & Broadcasts', desc: 'Create viral WhatsApp Status copy, Instagram reels copy, promotional flyers, and sales scripts tuned to Naija pop culture.', color: 'from-orange-500 to-amber-600', pillar: 'AI Studio' },
-        { icon: '🎥', title: 'Product Video Suite', desc: 'Record 15-30s video demos with an in-app scrolling teleprompter script overlay and 1-click video reels export.', color: 'from-pink-600 to-rose-600', pillar: 'AI Studio' },
+        // Pillar 2: Creative & Commercial Studio
+        { icon: '📸', title: 'Product Catalog Studio', desc: 'Capture products on your counter, apply clean commercial backdrops, and generate ready-to-post WhatsApp sales copy.', color: 'from-violet-600 to-purple-700', tag: 'Visuals', pillar: 'Creative Studio' },
+        { icon: '✨', title: 'AI Brand Builder', desc: 'Generate brand color palettes, taglines, and a cohesive visual identity tailored to your target buyers in seconds.', color: 'from-pink-500 to-rose-600', pillar: 'Creative Studio' },
+        { icon: '✍️', title: 'Content Studio & Broadcasts', desc: 'Draft WhatsApp Status copy, social captions, and promotional offers tuned to Nigerian buyers.', color: 'from-orange-500 to-amber-600', pillar: 'Creative Studio' },
+        { icon: '🎥', title: 'Product Video Teleprompter', desc: 'Record short 15–30s product demos with an in-app scrolling script teleprompter for social reels.', color: 'from-pink-600 to-rose-600', tag: 'Labs', pillar: 'Creative Studio' },
 
         // Pillar 3: Commerce & Debt Recovery
-        { icon: '🏪', title: 'Central MSME Market Square', desc: 'Showcase products across 36 Nigerian states with verified CAC & SMEDAN trust badges, 1-click WhatsApp Status virality, and direct buyer orders.', color: 'from-green-600 to-emerald-700', tag: 'Nationwide Trade', pillar: 'Commerce' },
-        { icon: '📒', title: 'Gbege Debt Recovery', desc: 'Dual ledger tracking "Who Dey Owe Me" and "Who I Owe". Automated WhatsApp reminders with embedded Paystack payment links.', color: 'from-red-500 to-orange-600', tag: 'Cashflow', pillar: 'Commerce' },
-        { icon: '🧾', title: '1-Tap WhatsApp Invoicing', desc: 'Dispatch instant itemized receipts and PDF invoices to customer WhatsApp with embedded Paystack links and real-time payment webhook alerts.', color: 'from-amber-500 to-yellow-600', tag: 'Instant Receipts', pillar: 'Commerce' },
-        { icon: '🤝', title: 'WhatsApp Negotiation Sandbox', desc: 'Practice closing tough deals with interactive AI customer roleplay across Naija Pidgin, Corporate, and FOMO tones.', color: 'from-amber-500 to-orange-600', pillar: 'Commerce' },
+        { icon: '🏪', title: 'Web Storefront & Market Square', desc: 'Instant shareable store (/u/your-brand) plus placement on the Market Square with verified ID/CAC trust tiers and Paystack checkout.', color: 'from-green-600 to-emerald-700', tag: 'Core Free', pillar: 'Commerce' },
+        { icon: '📒', title: 'Gbege Debt Recovery', desc: 'Dual ledger tracking customer debts and supplier payables. Send polite WhatsApp payment nudges with Paystack links.', color: 'from-red-500 to-orange-600', tag: 'Cashflow', pillar: 'Commerce' },
+        { icon: '🧾', title: '1-Tap WhatsApp Invoicing', desc: 'Create itemized PDF invoices and receipts with optional VAT/discounts and share directly to customer WhatsApp.', color: 'from-amber-500 to-yellow-600', tag: 'Core Free', pillar: 'Commerce' },
+        { icon: '🤝', title: 'WhatsApp Sales Practice', desc: 'Rehearse closing buyer objections with interactive AI roleplay across English, Pidgin, and formal tones.', color: 'from-amber-500 to-orange-600', tag: 'Labs', pillar: 'Commerce' },
 
         // Pillar 4: Governance, Tax & Capital
-        { icon: '⚖️', title: 'Section 23 CITA Tax Shield', desc: 'Official legal tax exemption memo citing Nigeria Tax Act 2025/2026 & Section 23/40 CITA (0% tax rate for MSMEs under ₦100M turnover, formerly ₦25M).', color: 'from-emerald-700 to-teal-800', tag: 'Legal Shield', pillar: 'Capital & Law' },
-        { icon: '🏛️', title: 'Accredited CAC Filing Desk', desc: 'Fast-track Done-For-You CAC registration: Business Name (₦20,000), Ltd Co (₦65,000), NGO/Trustee, and SCUML in 3-7 days.', color: 'from-emerald-600 to-teal-700', tag: 'Accredited', pillar: 'Capital & Law' },
-        { icon: '💰', title: 'Grant & Funding Matcher', desc: 'Automatically scan and match your business with available grants, BOI loans, and international donor programs worth ₦Billions.', color: 'from-emerald-500 to-teal-600', tag: '₦Billions', pillar: 'Capital & Law' },
-        { icon: '📄', title: 'BOI 3-Year Business Plans', desc: 'Generate bank-grade, investor-ready business plans with 3-year cashflow projections, break-even analysis, and official PDF export.', color: 'from-blue-500 to-indigo-600', pillar: 'Capital & Law' },
+        { icon: '⚖️', title: 'Small Business Tax Guidance', desc: 'Informational summary referencing Nigeria Tax Act & CITA small-company CIT/VAT provisions plus annual filing checklists.', color: 'from-emerald-700 to-teal-800', tag: 'Guidance', pillar: 'Capital & Law' },
+        { icon: '🏛️', title: 'CAC Formalization Desk', desc: 'Step-by-step checklists and assisted filing requests for Business Name (from ₦20,000), Ltd Co (from ₦65,000), and TIN.', color: 'from-emerald-600 to-teal-700', tag: 'Formalization', pillar: 'Capital & Law' },
+        { icon: '💰', title: 'Grant & Funding Matcher', desc: 'Match your business profile against active Nigerian MSME funding and loan programs (LSETF, BOI, SMEDAN, TEF).', color: 'from-emerald-500 to-teal-600', tag: 'Funding', pillar: 'Capital & Law' },
+        { icon: '📄', title: '3-Year Bankable Business Plans', desc: 'Draft structured business plans with 3-year cashflow projections and break-even tables exported to PDF.', color: 'from-blue-500 to-indigo-600', pillar: 'Capital & Law' },
 
-        // Pillar 5: Machine Learning & Institutional Data Science
-        { icon: '🧠', title: '300-850 MSME Credit Underwriting', desc: 'Scikit-Learn algorithmic credit risk scorer evaluating real ledger volume, debt recovery speed, and compliance for BOI & bank loans.', color: 'from-indigo-600 to-purple-700', tag: 'Bankable ML', pillar: 'Data Science' },
-        { icon: '📈', title: 'Stockout Demand Forecaster', desc: 'Ridge regression time-series model predicting exact stockout dates and reorder quantities before weekend sales rushes.', color: 'from-blue-600 to-cyan-600', tag: 'Predictive', pillar: 'Data Science' },
-        { icon: '🛡️', title: 'Till Fraud Isolation Forest', desc: 'Unsupervised ML anomaly detection scanner detecting petty cash leaks, float manipulation, and cashier till irregularities.', color: 'from-rose-600 to-pink-700', tag: 'Anti-Theft AI', pillar: 'Data Science' },
-        { icon: '🎙️', title: 'Voice Note POS Auto-Ingestion', desc: 'Speak for 5 seconds on WhatsApp or mic: Multimodal AI transcribes Pidgin/English and logs sales & petty cash without typing.', color: 'from-pink-600 to-rose-600', tag: 'Multimodal AI', pillar: 'Data Science' },
-        { icon: '🧾', title: 'Paper Receipt & Waybill OCR', desc: 'Snap photo of handwritten market receipts or wholesaler waybills; Vision AI extracts line items and logs restock expenses in 1 tap.', color: 'from-teal-600 to-emerald-700', tag: 'Vision AI', pillar: 'Data Science' },
-        { icon: '🎯', title: 'K-Means Customer Segmentation', desc: 'Algorithmic Recency, Frequency, and Monetary (RFM) clustering to target VIPs, at-risk buyers, and regulars on WhatsApp.', color: 'from-purple-600 to-indigo-700', tag: 'RFM Clusters', pillar: 'Data Science' },
-        { icon: '🏷️', title: 'OLS Price Elasticity Optimizer', desc: 'Econometric demand elasticity model identifying inelastic goods where you can safely increase markup without losing volume.', color: 'from-amber-600 to-orange-600', tag: 'Margin Booster', pillar: 'Data Science' },
-        { icon: '📷', title: 'Visual Photo Search & Cart Copilot', desc: 'Search marketplace inventory by uploading photos, and recover 25%+ of abandoned buyers via AI WhatsApp discount sweeteners.', color: 'from-cyan-600 to-blue-700', tag: 'Commerce AI', pillar: 'Data Science' },
+        // Pillar 5: Smart Business Insights
+        { icon: '🧠', title: 'SmartScore™ (300–850) Readiness', desc: 'Internal financial readiness score summarizing your recorded sales consistency, debt recovery speed, and margin health.', color: 'from-indigo-600 to-purple-700', tag: 'Readiness', pillar: 'Smart Insights' },
+        { icon: '📈', title: 'Restock & Stockout Alerts', desc: 'Tracks sales velocity to warn you before fast-moving items run out ahead of busy market weekends.', color: 'from-blue-600 to-cyan-600', tag: 'Labs', pillar: 'Smart Insights' },
+        { icon: '🛡️', title: 'Cashier Till Audit Alerts', desc: 'Flags unusual voids, discounts, or petty cash spikes in daily shift logs so owners can review quickly.', color: 'from-rose-600 to-pink-700', tag: 'Labs', pillar: 'Smart Insights' },
+        { icon: '🎙️', title: 'Voice Note Sale Logger', desc: 'Speak a quick sale or expense in English or Pidgin to transcribe and log counter transactions faster.', color: 'from-pink-600 to-rose-600', tag: 'Labs', pillar: 'Smart Insights' },
+        { icon: '🧾', title: 'Receipt & Waybill Scanner', desc: 'Snap a photo of supplier receipts or waybills to extract line items and log restock costs quickly.', color: 'from-teal-600 to-emerald-700', tag: 'Labs', pillar: 'Smart Insights' },
+        { icon: '🎯', title: 'Customer Buying Groups', desc: 'Groups repeat buyers into VIP Champions, Regulars, and At-Risk tiers for targeted WhatsApp follow-ups.', color: 'from-purple-600 to-indigo-700', tag: 'Labs', pillar: 'Smart Insights' },
+        { icon: '🏷️', title: 'Smart Margin Pricing Guide', desc: 'Highlights products where small margin adjustments can boost profit without hurting customer demand.', color: 'from-amber-600 to-orange-600', tag: 'Labs', pillar: 'Smart Insights' },
+        { icon: '📷', title: 'Photo Search & Cart Recovery', desc: 'Search Market Square by photo and follow up on pending storefront checkout leads via WhatsApp.', color: 'from-cyan-600 to-blue-700', tag: 'Commerce AI', pillar: 'Smart Insights' },
     ];
 
-    // ── THE 6 MASTER FEATURE TABS ──
+    // ── THE 7 CORE PILLAR TABS ──
     const featureTabs = [
         {
             label: '⚡ Daily POS & Barcode Scanner',
-            headline: 'Phone Camera Barcode POS, Apprentice Lock & Offline Resilience',
-            subheadline: 'Zero Hardware Cost • The Operational Heartbeat of Nigerian Retail',
-            body: 'Run your retail store or supermarket directly from your phone. Scan barcodes with your smartphone camera with instant beep audio feedback, record sales in under 5 seconds across Cash, Card, and Bank Transfer, and lock the register with a 4-digit apprentice PIN to prevent staff theft. Works 100% offline in busy open markets.',
+            headline: 'Phone Camera Barcode POS, Staff Shift Lock & Offline Resilience',
+            subheadline: 'Zero Hardware Cost • Core Operational Wedge',
+            body: 'Run your retail store directly from your phone. Scan barcodes with your smartphone camera, record sales in seconds across Cash, Card, Bank Transfer, and Credit, and protect daily records with a supervisor security password. Built to keep working even when market data fluctuates.',
             bullets: [
                 '📱 Phone Camera Barcode & QR Scanner with instant audio beep confirmation',
-                '⚡ 5-second multi-tender checkout: Cash, POS Terminal, Bank Transfer & Debt',
-                '🛡️ Anti-Theft Apprentice Shift Mode with 4-digit supervisor PIN lock',
-                '📶 100% Open Market Offline PWA Mode — records sales without network & auto-syncs',
-                '⛽ Petty Cash & Generator Fuel expense tracker for true daily net profit',
-                '📲 1-click End-of-Day financial reconciliation sent directly to owner WhatsApp',
+                '⚡ Fast multi-tender checkout: Cash, POS Terminal, Bank Transfer & Credit',
+                '🛡️ Staff Shift Mode locked behind an Owner Security Password (6+ characters)',
+                '📶 Offline-Resilient Day-Book — saves sales locally during outages & syncs when online',
+                '⛽ Petty Cash & Generator Fuel expense tracker for accurate daily net profit',
+                '📲 1-click End-of-Day summary ready to share on owner WhatsApp',
             ],
             color: 'from-emerald-600 to-teal-700',
             mockup: 'pos',
@@ -194,7 +172,7 @@ const LandingPage: React.FC = () => {
             subheadline: 'Zero Professional Studio Costs • Ready-to-Post Social Copy',
             body: 'Capture your products on a counter or table and enhance them with clean commercial presentation backdrops. Generate compelling promotional captions for WhatsApp Status, Facebook, and Instagram in one tap, and publish directly to your online storefront.',
             bullets: [
-                '✨ Clean presentation backdrops with natural shadows and surface reflections',
+                '✨ Clean commercial backdrops with natural shadows and surface framing',
                 '🏷️ Promotional badge overlays for discounts, new arrivals, and special offers',
                 '💬 Auto-generated WhatsApp promotional sales copy with direct product links',
                 '📦 1-click Save to Inventory and instant showcase on your digital storefront',
@@ -206,15 +184,15 @@ const LandingPage: React.FC = () => {
         {
             label: '📒 Debt Ledger & WhatsApp Invoices',
             headline: 'Protect Working Capital: Recover Customer Debts & Send 1-Tap Invoices',
-            subheadline: 'Dual Receivables Ledger with Automated WhatsApp Reminders & Paystack',
-            body: 'Customer credit that goes uncollected kills small businesses. Track exactly who owes your business and who you owe. Send automated, respectful WhatsApp payment reminders with embedded Paystack card and bank transfer links so customers settle instantly from their phones.',
+            subheadline: 'Dual Receivables Ledger with WhatsApp Reminders & Paystack Links',
+            body: 'Uncollected customer credit chokes cashflow. Track exactly who owes your business and who you owe. Generate polite WhatsApp payment reminders with Paystack payment links and your bank transfer details so customers settle faster.',
             bullets: [
                 '📒 Dual Ledger: Track customer debts ("Who Dey Owe Me") & supplier payables ("Who I Owe")',
-                '🧾 1-Tap WhatsApp itemized invoices & official branded PDF receipts',
+                '🧾 1-Tap WhatsApp itemized invoices & printable PDF receipts (with optional VAT)',
                 '📢 3-Tier WhatsApp Escalation: Gentle Courtesy ➔ Due Notice ➔ Formal Settlement Notice',
                 '💳 Embedded Paystack payment links in reminders for instant mobile settlements',
-                '⚡ Real-time webhook payment confirmation & automatic ledger reconciliation',
-                '📲 Direct WhatsApp reminder dispatch powered by SmartBiz Cloud Bot',
+                '⚡ Real-time payment status tracking & partial repayment progress bars',
+                '📲 Direct WhatsApp click-to-chat reminders (0 credits) or Cloud Bot alerts',
             ],
             color: 'from-red-600 to-rose-700',
             mockup: 'debt',
@@ -222,131 +200,130 @@ const LandingPage: React.FC = () => {
         {
             label: '🏪 Central Market Square & Online Storefronts',
             headline: 'Your Personal Online Store + Nationwide Marketplace Across 36 States',
-            subheadline: 'Zero Listing Fees • Verified Badges • Paystack Escrow • Live Order Tracking',
-            body: 'Every business on SmartBiz Coach gets an instant public online store (/u/your-brand) and central placement in the Nigerian MSME Market Square. Showcase products to millions of shoppers with custom delivery fees per state, Paystack escrow card/transfer payments, WhatsApp instant checkout, real-time waybill tracking (/track/:code), and 100% verified buyer reviews.',
+            subheadline: 'Zero Listing Fees • Verified Badges • Direct Bank Payouts • Live Tracking',
+            body: 'Every business on SmartBiz Coach gets an instant public online store (/u/your-brand) and placement in the Nigerian MSME Market Square. Set state delivery fees, accept Paystack card/transfer payments or WhatsApp orders, and let buyers track deliveries (/track/:code).',
             bullets: [
                 '🏪 Personal Brand Storefront (/u/:slug) ready to put in your WhatsApp & Instagram bio',
-                '🇳🇬 Central Market Square (/market) connecting buyers across all 36 Nigerian states & FCT Abuja',
-                '🚚 Real-time Nationwide Delivery Calculator with custom delivery rates per state',
-                '🛡️ Paystack Escrow Protection & direct WhatsApp order routing (Zero commission cuts)',
-                '📦 Live Public Order Tracking (/track/:code) from dispatch to doorstep delivery',
-                '⭐ 100% Verified-Purchase Buyer Reviews & Seller Responses to build authentic trust',
-                '📣 AI WhatsApp Promo Assistant generating viral Status captions & sales broadcasts',
-                '⚡ Micro-Boosts starting at just 10 BizCredits (~₦100) with 50 Free Welcome Credits upon sign-up',
+                '🇳🇬 Central Market Square (/market) connecting buyers and sellers across Nigeria',
+                '🚚 Custom Delivery Quotes configured per state & FCT Abuja',
+                '🛡️ Direct Paystack Merchant Payouts & WhatsApp order routing (Zero listing fees)',
+                '📦 Public Order Tracking (/track/:code) from dispatch to buyer confirmation',
+                '⭐ Verified-Purchase Buyer Reviews & Seller Responses to build authentic trust',
+                '📣 AI WhatsApp Promo Assistant generating Status captions & broadcasts',
+                '⚡ Optional Micro-Boosts starting at 10 BizCredits (~₦100) for extra visibility',
             ],
             color: 'from-blue-600 to-indigo-700',
             mockup: 'market',
         },
         {
-            label: '⚖️ Tax Shield & CAC Desk',
-            headline: 'Section 23 CITA 0% Tax Exemption Memo & Accredited CAC Filing',
-            subheadline: 'Protect Your Business from Illegal Harassment & Formalize for Growth',
-            body: 'Stop getting harassed by rogue local tax agents. Under the Nigeria Tax Reform Act and Section 23/40 of the Companies Income Tax Act (CITA), small companies with annual turnover under ₦100,000,000 (formerly ₦25,000,000) are legally exempt from company income tax (0% rate). Download your customized formal legal Tax Exemption Shield Memo and access our accredited CAC desk for done-for-you registrations.',
+            label: '⚖️ Tax Guide & CAC Desk',
+            headline: 'Small Business Tax Guidance & Assisted CAC Formalization',
+            subheadline: 'Informational Compliance Checklists • Not Legal or Tax Advice',
+            body: 'Understand Nigeria’s MSME formalization rules without confusion. Review small-company CIT & VAT thresholds under Nigerian tax law (subject to entity structure, fixed-asset limits, exclusions for professional services, and mandatory annual NRS tax filings) and access our guided CAC registration desk.',
             bullets: [
-                '🛡️ Nigeria Tax Act & Section 23/40 CITA Legal Memo (0% Company Tax under ₦100M turnover)',
-                '🏛️ Accredited CAC Desk: Business Name (₦20,000), Limited Co (₦65,000), NGO/Trustee',
-                '📋 SCUML Anti-Money Laundering and NAFDAC compliance checklists',
+                '📋 Informational Small-Company CIT & VAT Guide (0% CIT applies only to qualifying incorporated small companies; annual returns remain mandatory)',
+                '🏛️ Assisted CAC Filing Desk: Business Name (from ₦20,000), Ltd Co (from ₦65,000), TIN & SCUML checklists',
+                '📝 Clear reminder: Corporate CIT exemptions do not replace valid state or local government permits',
                 '📑 Annual returns compliance calendar and statutory filing reminders',
-                '⚖️ 100% Free legal exemption memo generator for all registered merchants',
+                '⚖️ Free informational compliance summary generator (consult a licensed tax practitioner for formal filings)',
             ],
             color: 'from-emerald-700 to-teal-800',
             mockup: 'tax',
         },
         {
             label: '💰 Grants & BOI Business Plans',
-            headline: 'Access ₦Billions in Grants & Generate 3-Year Bankable Proposals',
-            subheadline: 'Built for BOI, SMEDAN, TEF, DBN, and Bank Loan Approvals',
-            body: 'SmartBiz Coach scans and matches your business against active government and international funding programs. Generate 3-year bank-grade business plans complete with Executive Summary, Market Analysis, 3-Year Cashflow Projections, Break-Even calculations, and CapEx breakdown formatted for official PDF download.',
+            headline: 'Discover Nigerian Grants & Draft 3-Year Bankable Proposals',
+            subheadline: 'Structured for LSETF, BOI, SMEDAN, TEF, and Bank Reviews',
+            body: 'SmartBiz Coach matches your business profile against active Nigerian funding and loan programs. Draft structured 3-year business plans complete with Executive Summary, Market Analysis, Cashflow Projections, and Break-Even tables formatted for PDF export.',
             bullets: [
-                '💰 Live matching for SMEDAN, BOI MSME Fund, Presidential Palliative, and TEF Grants',
-                '📄 3-Year Bank-Grade Business Plan Generator accepted by commercial banks',
+                '💰 Live matching for LSETF, SMEDAN, BOI MSME Fund, and TEF Grants with direct official portal links',
+                '📄 3-Year Structured Business Plan Generator formatted for lender reviews',
                 '📊 Comprehensive financial modeling: P&L, 3-year cashflow & break-even analysis',
-                '📥 Instant official PDF export formatted to institutional lender standards',
-                '🤝 Direct NGO and development agency cohort onboarding and impact tracking',
+                '📥 Instant PDF export for loan and grant applications',
+                '🤝 Cohort readiness tracking for chambers of commerce and NGO programs',
             ],
             color: 'from-amber-600 to-yellow-700',
             mockup: 'grants',
         },
         {
-            label: '🧠 ML Data Science & Credit Underwriting',
-            headline: 'FICO 300-850 Credit Risk Engine, Stockout Forecasting & Till Audit AI',
-            subheadline: 'Zero-Cost Scikit-Learn Machine Learning • Certified Bankable Dossier PDF',
-            body: 'Transform informal paper trade into institutional banking power. Our in-house machine learning engine trains on your live transaction velocity to compute your 300–850 Credit Health Score, predict exact stockout dates with Ridge time-series regression, detect cashier till theft with Isolation Forests, and export certified multi-page Underwriting Dossiers with tamper-evident SHA-256 digital verification hashes.',
+            label: '🧠 SmartScore™ & Business Insights',
+            headline: 'SmartScore™ 300–850 Readiness, Restock Alerts & Till Audit Insights',
+            subheadline: 'Built-In Business Intelligence • Exportable Financial Dossier PDF',
+            body: 'Turn daily sales records into clear, actionable insights. Track your internal SmartScore™ (300–850) based on sales consistency, debt collection speed, and profit margins, get early warnings before popular stock runs out, and spot unusual till adjustments.',
             bullets: [
-                '🏛️ FICO-style 300–850 Credit Risk Score accepted for BOI, SMEDAN & commercial bank loans',
-                '📈 Ridge Regression Time-Series Demand Forecasting with exact stockout runway dates',
-                '🛡️ Isolation Forest Unsupervised Till Anomaly Detection to catch apprentice cash theft',
-                '🎯 K-Means Customer RFM Segmentation to trigger targeted WhatsApp re-engagement',
-                '🏷️ OLS Price Elasticity of Demand analyzer to identify products where markups can safely rise',
-                '📄 1-Click Certified Institutional Underwriting Dossier (PDF) with SHA-256 cryptographic verification',
+                '🏛️ SmartScore™ 300–850 internal readiness gauge summarizing cashflow & repayment habits',
+                '📈 Early Restock Alerts estimating days of inventory left before fast sellers run out',
+                '🛡️ Cashier Till Audit Alerts highlighting unexpected voids or petty cash spikes',
+                '🎯 Customer Buying Groups separating VIP repeat buyers from dormant accounts',
+                '🏷️ Smart Margin Guide flagging products with room for healthier pricing',
+                '📄 1-Click Financial Readiness Dossier (PDF) summarizing recorded ledger metrics',
             ],
             color: 'from-indigo-700 to-purple-800',
             mockup: 'datascience',
         },
     ];
 
-    // ── 7-STEP DAILY OPERATING TIMELINE ──
+    // ── 6-STEP DAILY OPERATING TIMELINE ──
     const ecosystemSteps = [
-        { icon: '📱', label: 'Morning POS & Scan', desc: 'Phone camera barcode scan & PIN lock', color: 'bg-emerald-100 border-emerald-300 text-emerald-700' },
-        { icon: '📸', label: 'Catalog Studio', desc: 'Clean product photos & social copy', color: 'bg-violet-100 border-violet-300 text-violet-700' },
-        { icon: '🏪', label: 'Market Square Live', desc: '36 States showcase & online orders', color: 'bg-blue-100 border-blue-300 text-blue-700' },
-        { icon: '📒', label: 'Debt Recovery', desc: 'Automated WhatsApp payment nudges', color: 'bg-red-100 border-red-300 text-red-700' },
-        { icon: '⛽', label: 'Fuel & Expenses', desc: 'Log generator fuel & petty cash', color: 'bg-amber-100 border-amber-300 text-amber-700' },
-        { icon: '📊', label: 'Evening Close', desc: 'Daily profit & cash balance memo', color: 'bg-teal-100 border-teal-300 text-teal-700' },
-        { icon: '🧠', label: 'Financial Health', desc: 'Cashflow health & grant readiness', color: 'bg-indigo-100 border-indigo-300 text-indigo-700' },
+        { icon: '📱', label: 'Morning POS & Scan', desc: 'Barcode scan & staff PIN lock', color: 'bg-emerald-100 border-emerald-300 text-emerald-700' },
+        { icon: '📸', label: 'Catalog Studio', desc: 'Clean product photos & copy', color: 'bg-violet-100 border-violet-300 text-violet-700' },
+        { icon: '🏪', label: 'Market Square Live', desc: 'Storefront & online orders', color: 'bg-blue-100 border-blue-300 text-blue-700' },
+        { icon: '📒', label: 'Debt Recovery', desc: 'WhatsApp payment nudges', color: 'bg-red-100 border-red-300 text-red-700' },
+        { icon: '⛽', label: 'Fuel & Expenses', desc: 'Log fuel & petty cash', color: 'bg-amber-100 border-amber-300 text-amber-700' },
+        { icon: '📊', label: 'Evening Close & Score', desc: 'Daily profit & SmartScore™', color: 'bg-teal-100 border-teal-300 text-teal-700' },
     ];
 
     const testimonials = [
-        { name: 'Chidinma Obi', role: 'Fashion Designer & Boutique, Lagos', avatar: 'CO', color: 'bg-pink-500', text: 'The Product Studio transformed simple photos taken on my counter into professional catalog shots! My WhatsApp Status orders increased significantly.', stars: 5 },
-        { name: 'Chief Emeka Okonkwo', role: 'Building Materials Wholesaler, Onitsha', avatar: 'EO', color: 'bg-green-600', text: 'Apprentice Shift Mode solved attendant leakage in my stores. Staff cannot edit prices or delete sales without my 4-digit PIN. Every kobo is accounted for.', stars: 5 },
-        { name: 'Fatima Al-Hassan', role: 'Agro-Commodity Merchant, Kano', avatar: 'FA', color: 'bg-purple-500', text: 'The debt ledger recovered overdue customer balances using polite automated WhatsApp reminders with direct bank transfer details. It saves me hours of awkward calls.', stars: 5 },
-        { name: 'Tunde Adeyemi', role: 'Tech & CAC Consultant, Abuja', avatar: 'TA', color: 'bg-blue-500', text: 'The Section 23 CITA Tax Exemption memo saved my client from paying illegal local council levies. Confirmed 0% company tax because their turnover is under statutory limits.', stars: 5 },
-        { name: 'Ngozi Williams', role: 'Caterer & Events Manager, Port Harcourt', avatar: 'NW', color: 'bg-amber-500', text: 'The Day-Book POS is lightning fast. I record cash, transfers, and generator fuel expenses in real time, and get my daily profit on WhatsApp every night.', stars: 5 },
-        { name: 'Alhaji Bello', role: 'Poultry & Feed Producer, Kaduna', avatar: 'AB', color: 'bg-teal-600', text: 'I matched with a BOI agro funding program and generated the complete business plan on SmartBiz Coach. The structure was clean, professional, and well accepted.', stars: 5 },
+        { name: 'Chidinma Obi', role: 'Fashion Boutique Pilot User, Lagos', avatar: 'CO', color: 'bg-pink-500', text: 'The Product Studio turned simple counter photos into clean catalog shots for my WhatsApp Status and storefront without paying a studio.', stars: 5 },
+        { name: 'Chief Emeka Okonkwo', role: 'Building Materials Pilot User, Onitsha', avatar: 'EO', color: 'bg-green-600', text: 'Staff Shift Mode keeps my daily sales ledger protected. Attendants record sales quickly without editing prices or viewing total owner margins.', stars: 5 },
+        { name: 'Fatima Al-Hassan', role: 'Agro-Commodity Pilot User, Kano', avatar: 'FA', color: 'bg-purple-500', text: 'The debt ledger helps me follow up on overdue credit balances with polite WhatsApp reminders and direct bank details—saving hours of calls.', stars: 5 },
+        { name: 'Tunde Adeyemi', role: 'CAC & SME Advisor, Abuja', avatar: 'TA', color: 'bg-blue-500', text: 'The compliance checklist and tax threshold summaries make it easy to organize CAC, TIN, and annual turnover records before visiting a tax consultant.', stars: 5 },
+        { name: 'Ngozi Williams', role: 'Catering Business Pilot User, Port Harcourt', avatar: 'NW', color: 'bg-amber-500', text: 'The Day-Book POS is super fast. Recording cash, bank transfers, and generator fuel in one place gives me my true daily net profit every evening.', stars: 5 },
+        { name: 'Alhaji Bello', role: 'Poultry & Feed Pilot User, Kaduna', avatar: 'AB', color: 'bg-teal-600', text: 'The Grant Matcher surfaced active BOI and SMEDAN schemes for agro-processing, and the 3-year plan builder structured our cashflow tables cleanly.', stars: 5 },
     ];
 
     const packs = [
-        { name: 'Micro Pack', price: '₦500', credits: '50 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['50 BizCredits (Never Expire)', '25x Product Studio Shoots', 'Debt Recovery Workflows', 'Content & Script Posts', '1-Tap Paystack Instant Checkout', 'Standard Merchant Support'] },
-        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 BizCredits', '75x Product Studio Shoots', '1x AI Brand Identity Kit', '1x Central Market Square 7-Day Boost', 'Pricing & Margin Audits', 'WhatsApp & Priority Email Desk'] },
-        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 BizCredits', '2x BOI Bankable 3-Year Business Plans', '200x Product Studio Shoots', '4x Market Square 7-Day Boosts', 'Full AI Creative Suite', 'Priority Merchant Support'] },
-        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 BizCredits', '5x Bank-Grade 3-Year Business Plans', '500x Product Studio Shoots', '10x Market Square Priority Boosts', 'CAC & Grant Application Support', 'VIP Concierge Desk'] },
-        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Enterprise Dominance', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', '12x Bank-Grade Business Plans', '1,250x Product Studio Shoots', '25x Market Square Priority Boosts', 'Multi-Branch & Agency Ready', 'Dedicated 24/7 Account Director'] },
+        { name: 'Micro Pack', price: '₦500', credits: '50 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['50 BizCredits (Never Expire)', 'Up to 25 Studio Backdrop Edits', 'AI Promo Copy & Content Posts', '1-Tap Paystack Checkout', 'Standard Email Support'] },
+        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 BizCredits', 'Up to 75 Studio Backdrop Edits', '1x AI Brand Identity Kit', '1x Market Square 7-Day Boost', 'Pricing & Margin Prompts', 'WhatsApp & Email Support Desk'] },
+        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 BizCredits', '2x 3-Year Business Plans', 'Up to 200 Studio Backdrop Edits', '4x Market Square 7-Day Boosts', 'Full AI Content & Copy Suite', 'Priority Email & Chat Support'] },
+        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 BizCredits', '5x 3-Year Business Plans', 'Up to 500 Studio Backdrop Edits', '10x Market Square Priority Boosts', 'Guided CAC & Grant Checklists', 'Priority Support Queue'] },
+        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Best Credit Rate', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', '12x 3-Year Business Plans', 'Up to 1,250 Studio Backdrop Edits', '25x Market Square Priority Boosts', 'Multi-Store & Team Ready', 'Priority WhatsApp & Email Desk'] },
     ];
 
     // ── THE MSME ZERO-SURPRISE FAIR-USE GUARANTEE MATRIX ──
     const fairUseMatrix = [
         { feature: 'Phone Camera Barcode & QR Code POS Scanner', cost: '100% FREE FOREVER (0 Credits)', type: 'Smart Retail', icon: '📱' },
         { feature: 'Daily Day-Book & 5-Second POS Checkout', cost: '100% FREE FOREVER (0 Credits)', type: 'Core Utility', icon: '⚡' },
-        { feature: 'Anti-Theft Apprentice Shift Lock (4-Digit PIN)', cost: '100% FREE FOREVER (0 Credits)', type: 'Shop Security', icon: '🛡️' },
-        { feature: 'Open Market Offline PWA Mode (0% Network)', cost: '100% FREE FOREVER (0 Credits)', type: 'Offline Resilience', icon: '📶' },
+        { feature: 'Staff Shift Lock (Owner Security Password)', cost: '100% FREE FOREVER (0 Credits)', type: 'Shop Security', icon: '🛡️' },
+        { feature: 'Offline-Resilient Day-Book Mode', cost: '100% FREE FOREVER (0 Credits)', type: 'Offline Resilience', icon: '📶' },
         { feature: 'Petty Cash & Generator Fuel Expense Tracker', cost: '100% FREE FOREVER (0 Credits)', type: 'Expense Logger', icon: '⛽' },
-        { feature: 'Payment Fraud Shield (Fake Transfer Checklist)', cost: '100% FREE FOREVER (0 Credits)', type: 'Fraud Defense', icon: '🔒' },
-        { feature: 'Debt Ledger & Automated WhatsApp Reminders', cost: '100% FREE FOREVER (0 Credits)', type: 'Cashflow Protection', icon: '📒' },
-        { feature: '1-Tap WhatsApp Invoicing & Receipts (PDF)', cost: '100% FREE FOREVER (0 Credits)', type: 'Instant Billing', icon: '🧾' },
-        { feature: 'Central MSME Market Square (36 States Trade Hub)', cost: '100% FREE FOREVER (0 Credits)', type: 'Nationwide Trade', icon: '🏪' },
-        { feature: 'Section 23 CITA 0% Tax Exemption Memo', cost: '100% FREE FOREVER (0 Credits)', type: 'Legal Shield', icon: '⚖️' },
-        { feature: 'Credit Health & Bankable Financial Dossier', cost: '100% FREE FOREVER (0 Credits)', type: 'Financial Health', icon: '🧠' },
-        { feature: 'Stockout Prediction & Inventory Velocity', cost: '100% FREE FOREVER (0 Credits)', type: 'Predictive Inventory', icon: '📈' },
-        { feature: 'Till Audit & Cashier Anomaly Detection', cost: '100% FREE FOREVER (0 Credits)', type: 'Anti-Theft AI', icon: '🛡️' },
+        { feature: 'Payment Fraud Shield (Transfer Verification Checklist)', cost: '100% FREE FOREVER (0 Credits)', type: 'Fraud Defense', icon: '🔒' },
+        { feature: 'Debt Ledger & WhatsApp Click-to-Chat Reminders (wa.me)', cost: '100% FREE FOREVER (0 Credits)', type: 'Cashflow Protection', icon: '📒' },
+        { feature: '1-Tap WhatsApp Invoicing & Printable PDF Receipts', cost: '100% FREE FOREVER (0 Credits)', type: 'Instant Billing', icon: '🧾' },
+        { feature: 'Personal Web Storefront & Market Square Listings', cost: '100% FREE FOREVER (0 Credits)', type: 'Nationwide Trade', icon: '🏪' },
+        { feature: 'Small Business Tax & CAC Readiness Guide', cost: '100% FREE FOREVER (0 Credits)', type: 'Compliance Guide', icon: '⚖️' },
+        { feature: 'SmartScore™ Readiness & Financial Summary PDF', cost: '100% FREE FOREVER (0 Credits)', type: 'Readiness Score', icon: '🧠' },
+        { feature: 'Inventory Stockout & Restock Alerts', cost: '100% FREE FOREVER (0 Credits)', type: 'Inventory Alerts', icon: '📈' },
+        { feature: 'Cashier Till Anomaly Review', cost: '100% FREE FOREVER (0 Credits)', type: 'Audit Alerts', icon: '🛡️' },
         { feature: 'Micro-Boost Trial (24-Hour Spotlight)', cost: '10 BizCredits (~₦100)', type: 'Marketplace Growth', icon: '⚡' },
         { feature: 'AI WhatsApp Promo Pack (Status & Broadcast)', cost: '2 BizCredits', type: 'Marketing Copy', icon: '📣' },
-        { feature: 'Voice Note POS Ingestion & Paper Receipt OCR', cost: '2 BizCredits per audio/photo', type: 'Multimodal AI', icon: '🎙️' },
-        { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits (~₦500)', type: 'National VIP', icon: '🚀' },
-        { feature: 'Product Studio Clean Backgrounds', cost: '2 BizCredits per image', type: 'Visual Studio', icon: '📸' },
-        { feature: 'BOI-Compliant 3-Year Business Plan (PDF)', cost: '200 BizCredits', type: 'Financial Engine', icon: '📄' },
+        { feature: 'Voice Note Sale Ingestion & Receipt Scanner', cost: '2 BizCredits per audio/photo', type: 'AI Assistant', icon: '🎙️' },
+        { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits (~₦500)', type: 'Store Visibility', icon: '🚀' },
+        { feature: 'Product Studio Clean Backdrops', cost: '2 BizCredits per image', type: 'Visual Studio', icon: '📸' },
+        { feature: '3-Year Structured Business Plan (PDF)', cost: '200 BizCredits', type: 'Planning Engine', icon: '📄' },
     ];
 
     const faqs = [
-        { q: 'Are the Daily POS, Phone Barcode Scanner, and Day-Book really 100% free forever?', a: 'YES. We believe no Nigerian entrepreneur should ever be locked out of their daily sales records or bookkeeping. The Daily 5-Second POS, Phone Camera Barcode/QR Scanner (zero hardware needed), Apprentice Shift Lock, Petty Cash & Fuel Tracker, Debt Book, Central Market Square basic listings, 1-Tap WhatsApp Invoicing, Section 23 CITA Tax Exemption Memo, and Credit Scoring require 0 credits and are 100% free for life.' },
-        { q: 'How does the Credit Risk Engine and Financial Health Dossier work without extra fees?', a: 'Traditional commercial banks demand heavy collateral that 95% of small business owners do not possess. SmartBiz Coach includes a data intelligence engine that analyzes your live sales consistency, customer debt recovery, and inventory turnover to compute a practical Credit Health Score and generate bank-ready financial dossiers at zero cost.' },
-        { q: 'How does the Phone Camera Barcode & QR Scanner work?', a: 'You do not need to buy an expensive Bluetooth or USB barcode reader. Simply open POS checkout on your smartphone, tap "Scan Barcode", and point your camera at any item barcode or QR code. The scanner reads it instantly with audio beep feedback, adjusts inventory, and adds the item to the active bill in milliseconds.' },
-        { q: 'What is the Central MSME Market Square and how does my personal online store work?', a: 'Every registered merchant gets a dedicated personal web store (smartbizcoach.com.ng/u/your-brand) and public marketplace listing on /market. Buyers across all 36 Nigerian states can browse products, see automated delivery quotes based on their state, and checkout securely via Paystack escrow protection or order on WhatsApp. Orders include live parcel tracking (/track/:code) and verified customer reviews.' },
-        { q: 'How does the Anti-Theft Apprentice Shift Mode protect my shop?', a: 'When you activate Apprentice Mode, the cashier/attendant screen is locked behind a 4-digit supervisor PIN. Attendants can rapidly record sales, but they CANNOT edit prices, delete previous sales, backdate transactions, or see your total profit margins. At the end of the shift, the system generates a reconciliation report comparing physical cash to recorded sales.' },
-        { q: 'Does the POS Day-Book work when there is no internet / network is down?', a: 'Yes! SmartBiz Coach features an Open Market Offline-First engine specifically engineered for crowded hubs like Alaba International, Balogun, and Computer Village. If your data runs out or cell towers disconnect, you can record sales, scan barcodes, and issue offline receipts. As soon as you are reconnected, all data syncs automatically to the cloud.' },
-        { q: 'How does the Product Studio work on smartphone photos?', a: 'You do not need an expensive photography studio. Simply take a photo of your product on your counter or table. SmartBiz Coach enhances the presentation with clean commercial studio environments like Luxury Marble, Clean Sunlight, African Raffia, or Warm Oak, and writes promotional sales captions ready to post on WhatsApp and Instagram.' },
-        { q: 'How does the Section 23 CITA Tax Exemption Shield protect me?', a: 'Under the Nigeria Tax Act and CITA Sections 23 and 40, small businesses and companies with an annual gross turnover below ₦100,000,000 are legally subject to a 0% corporate income tax rate. SmartBiz Coach generates a customized, formal legal memo citing these exact statutory provisions to protect your business against unlawful harassment by local tax task forces.' },
-        { q: 'How do customers pay me through debt reminders and WhatsApp invoices?', a: 'When you send an automated polite WhatsApp reminder or 1-tap invoice, it automatically includes an encrypted Paystack payment link and your direct bank transfer details. Your customer can tap the link and pay instantly using their debit card, bank transfer, or USSD, or transfer directly to your bank account.' },
-        { q: 'How do I get the 50 Free Welcome Credits and how do top-ups work?', a: 'Every new merchant gets 50 Free Welcome Credits upon creating an account. You can use them right away to boost products, generate AI promotional copy, or enhance catalog photos. When you need more compute, credit packs start at just ₦500 for 50 credits via Paystack. Credits never expire and all core store management tools stay 100% free forever.' },
+        { q: 'Are the Daily POS, Phone Barcode Scanner, and Day-Book really 100% free forever?', a: 'YES. Core daily bookkeeping should never be locked behind a paywall. The Daily 5-Second POS, Phone Camera Barcode/QR Scanner, Staff Shift Lock, Petty Cash & Fuel Tracker, Gbege Debt Book, Personal Storefront, 1-Tap Invoicing, and SmartScore™ Readiness summary require 0 credits and remain free forever.' },
+        { q: 'How does the SmartScore™ 300–850 Readiness Score work?', a: 'Traditional banks often require landed collateral that many small businesses do not have. SmartBiz Coach calculates an internal 300–850 readiness score from your live recorded sales consistency, debt recovery rate, and margin health so you can export clean financial summaries when applying for loans or grants.' },
+        { q: 'How does the Phone Camera Barcode & QR Scanner work?', a: 'You do not need to buy a Bluetooth or USB barcode reader. Open POS checkout on your smartphone, tap "Scan Barcode", and point your camera at an item barcode or QR code. It detects the code, adjusts inventory, and adds the item to the active bill.' },
+        { q: 'What is the Central MSME Market Square and how does my personal online store work?', a: 'Every registered merchant gets a dedicated personal web store (smartbizcoach.com.ng/u/your-brand) and optional listing on /market. Buyers can browse products, see state delivery rates, and order via WhatsApp or Paystack checkout with live parcel tracking (/track/:code).' },
+        { q: 'How does the Staff Shift Mode protect my shop?', a: 'When you activate Staff Shift Mode, cashier screens are locked behind your Owner Security Password (6+ characters). Attendants can record sales rapidly, but cannot delete previous sales, backdate entries, or view your owner profit margins.' },
+        { q: 'Does the POS Day-Book work when there is no internet / network is down?', a: 'Yes. Sales and expenses logged during temporary network drops are saved locally on your device and synced automatically once your connection returns. We also recommend keeping periodic cloud backups when back online.' },
+        { q: 'How does the Product Studio work on smartphone photos?', a: 'Take a photo of your product on your counter or table, choose a clean commercial backdrop (Marble, Sunlight, African Raffia, or Warm Oak), and generate promotional captions ready to post on WhatsApp and Instagram.' },
+        { q: 'What does the Small Business Tax Guidance cover—is it legal advice?', a: 'No—it is strictly an informational guide and compliance checklist, not formal legal or tax advice. Under Nigeria’s small-company tax rules (Companies Income Tax Act / Nigeria Tax Act provisions), qualifying incorporated small companies below statutory turnover and fixed-asset caps (excluding professional services) may qualify for 0% corporate income tax, while annual tax returns with the Nigeria Revenue Service (NRS) and valid state/local government permits remain mandatory. Always consult a licensed tax practitioner for formal filings.' },
+        { q: 'How do customers pay me through debt reminders and WhatsApp invoices?', a: 'When you send a WhatsApp reminder or 1-tap invoice via wa.me (0 credits), it automatically embeds your Paystack settlement link and your configured bank transfer details so customers can pay by card, bank transfer, or USSD.' },
+        { q: 'How do I claim the 50 Free Welcome Credits and how do top-ups work?', a: 'After creating your account and verifying your email address, 50 Free Welcome Credits are credited to your wallet to try AI product studio edits, business plans, or marketplace boosts. Optional credit packs start at ₦500 (or Growth Merchant Pro subscriptions at ₦3,500/month on /pricing). Core store management tools stay free forever.' },
     ];
 
     const stats = [
@@ -606,14 +583,14 @@ const LandingPage: React.FC = () => {
                                         <span className="text-[10px] font-black text-slate-500 uppercase">Market Square</span>
                                     </div>
                                     <div className="text-sm font-bold text-slate-900">36 States Reach</div>
-                                    <div className="text-[10px] text-blue-600 font-bold">CAC & SMEDAN Verified ✓</div>
+                                    <div className="text-[10px] text-blue-600 font-bold">Tiered ID & CAC Badges</div>
                                 </motion.div>
 
                                 <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
                                     className="absolute bottom-8 -right-6 bg-slate-900 rounded-2xl shadow-2xl p-3.5 border border-slate-700 w-48">
-                                    <div className="text-[10px] font-black text-teal-400 uppercase tracking-wider mb-1">Section 23 CITA</div>
-                                    <div className="text-xl font-black text-white">0% Tax Rate</div>
-                                    <div className="text-[10px] text-emerald-400 font-semibold">MSME Legal Exemption</div>
+                                    <div className="text-[10px] font-black text-teal-400 uppercase tracking-wider mb-1">Formalization Desk</div>
+                                    <div className="text-xl font-black text-white">CAC & Tax Ready</div>
+                                    <div className="text-[10px] text-emerald-400 font-semibold">MSME Guidance & Checklists</div>
                                 </motion.div>
                             </div>
                         </motion.div>
@@ -860,7 +837,7 @@ const LandingPage: React.FC = () => {
             <section id="features" className="py-24 bg-slate-50 border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-black tracking-widest uppercase mb-4 border border-green-200">The 6 Core Pillars</span>
+                        <span className="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-black tracking-widest uppercase mb-4 border border-green-200">The 7 Core Pillars</span>
                         <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Complete Operating Infrastructure for MSMEs</h2>
                         <p className="text-lg text-slate-500 max-w-2xl mx-auto">Explore every structural component that keeps your shop profitable, protected, and funded.</p>
                     </motion.div>
@@ -940,20 +917,20 @@ const LandingPage: React.FC = () => {
                                     {tab.mockup === 'studio' && (
                                         <div className="relative z-10 space-y-3">
                                             <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between">
-                                                <span>📸 Snap-to-Studio 2.0</span>
-                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">16 Scenes</span>
+                                                <span>📸 Product Catalog Studio</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">16 Backdrops</span>
                                             </div>
                                             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3.5 border border-white/30 space-y-2">
-                                                <div className="text-white text-xs font-black">Input: Raw Photo on Bedspread</div>
-                                                <div className="text-[10px] text-emerald-200">➔ Output: 4K Luxury Marble & Fluted Wood Set</div>
-                                                <div className="text-[10px] text-white/80 bg-black/20 p-2 rounded-lg">Ambient Shadows: Rendered ✓ • Reflections: Active ✓ • Gold Badge Added ✓</div>
+                                                <div className="text-white text-xs font-black">Input: Raw Counter Photo</div>
+                                                <div className="text-[10px] text-emerald-200">➔ Output: Clean Luxury Marble & Warm Oak Set</div>
+                                                <div className="text-[10px] text-white/80 bg-black/20 p-2 rounded-lg">Backdrop Composite ✓ • Storefront Ready ✓ • Promo Badge Added ✓</div>
                                             </div>
                                             <div className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 text-[10px]">
                                                 <div className="font-bold mb-0.5">💬 WhatsApp Status Copy Generated:</div>
-                                                <div className="text-white/80 italic text-[9px]">"Exclusive Luxury Edition now in stock. Nationwide delivery within 24 hours. Tap to order now!"</div>
+                                                <div className="text-white/80 italic text-[9px]">"Exclusive Luxury Edition now in stock. Nationwide delivery available. Tap to order now!"</div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <div className="flex-1 bg-white text-purple-900 rounded-xl py-2 text-[10px] font-black text-center shadow">Download 4K Photo</div>
+                                                <div className="flex-1 bg-white text-purple-900 rounded-xl py-2 text-[10px] font-black text-center shadow">Download Studio Photo</div>
                                                 <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">Post to Status</div>
                                             </div>
                                         </div>
@@ -1013,17 +990,17 @@ const LandingPage: React.FC = () => {
                                     {tab.mockup === 'tax' && (
                                         <div className="relative z-10 space-y-3">
                                             <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between">
-                                                <span>⚖️ Legal Compliance Shield</span>
-                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">CITA Section 23/40</span>
+                                                <span>⚖️ Tax & Formalization Guide</span>
+                                                <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">Informational Only</span>
                                             </div>
                                             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 border border-white/30 space-y-2">
-                                                <div className="text-white font-black text-xs">Section 23 CITA Exemption Memo ✓</div>
-                                                <div className="text-[10px] text-emerald-200">Statutory Tax Rate: 0% (Turnover &lt; ₦25,000,000)</div>
-                                                <div className="text-[9px] text-white/80 leading-relaxed">Official legal certificate confirming immunity from company income tax for micro & small enterprises in Nigeria.</div>
+                                                <div className="text-white font-black text-xs">Small-Company Tax Readiness Summary</div>
+                                                <div className="text-[10px] text-emerald-200">Qualifying Incorporated Small Companies: 0% CIT (Annual NRS Return Still Mandatory)</div>
+                                                <div className="text-[9px] text-white/80 leading-relaxed">Informational checklist covering turnover/asset caps, exclusions, and local permit reminders. Consult a licensed tax adviser for filings.</div>
                                             </div>
                                             <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20 text-[10px] space-y-1">
-                                                <div className="font-bold text-amber-300">🏛️ Accredited CAC Filing Desk</div>
-                                                <div className="text-white/80">Business Name (₦27.5k) • Ltd Co (₦68k) • SCUML • 3-7 Days Delivery</div>
+                                                <div className="font-bold text-amber-300">🏛️ Assisted CAC Filing Desk</div>
+                                                <div className="text-white/80">Business Name (from ₦20k) • Ltd Co (from ₦65k) • TIN & SCUML Checklists</div>
                                             </div>
                                         </div>
                                     )}
@@ -1059,13 +1036,13 @@ const LandingPage: React.FC = () => {
                                     {tab.mockup === 'datascience' && (
                                         <div className="relative z-10 space-y-2.5">
                                             <div className="text-white/90 text-xs font-black uppercase tracking-wider flex justify-between items-center">
-                                                <span>🧠 Scikit-Learn Underwriting Hub</span>
-                                                <span className="bg-emerald-400 text-emerald-950 font-black px-2 py-0.5 rounded-full text-[9px]">FICO 742 / 850 • Prime A+</span>
+                                                <span>🧠 SmartScore™ Readiness Hub</span>
+                                                <span className="bg-emerald-400 text-emerald-950 font-black px-2 py-0.5 rounded-full text-[9px]">SmartScore 742 / 850</span>
                                             </div>
                                             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 border border-white/30 space-y-2">
                                                 <div className="flex justify-between items-center text-xs">
-                                                    <span className="font-bold">Algorithmic Credit Grade: 87.3% Bankable</span>
-                                                    <span className="text-emerald-300 font-black text-[10px]">BOI & TEF Certified ✓</span>
+                                                    <span className="font-bold">Internal Readiness Grade: 87.3%</span>
+                                                    <span className="text-emerald-300 font-black text-[10px]">Lender-Ready Summary ✓</span>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2 text-[9px] text-white/90">
                                                     <div className="bg-black/20 p-2 rounded-lg">
@@ -1073,31 +1050,31 @@ const LandingPage: React.FC = () => {
                                                         <strong className="text-emerald-300 text-[10px]">94% (Stable Daily)</strong>
                                                     </div>
                                                     <div className="bg-black/20 p-2 rounded-lg">
-                                                        <span className="text-white/60 block">Debt Recovery Velocity</span>
+                                                        <span className="text-white/60 block">Debt Recovery Speed</span>
                                                         <strong className="text-amber-300 text-[10px]">4.2 Days Avg</strong>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 border border-white/20 space-y-1 text-[9px]">
                                                 <div className="flex justify-between items-center font-bold">
-                                                    <span className="text-amber-300">📈 Stockout Forecast: Indomie Cartons</span>
-                                                    <span className="text-rose-300 font-mono">Runway: 4.8 Days</span>
+                                                    <span className="text-amber-300">📈 Restock Alert: Indomie Cartons</span>
+                                                    <span className="text-rose-300 font-mono">Est. 4.8 Days Left</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-white/80">
-                                                    <span>🛡️ Till Audit (Isolation Forest):</span>
+                                                    <span>🛡️ Cashier Till Audit:</span>
                                                     <span className="text-emerald-300 font-bold">0 Anomalies • Clean Till ✓</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-white/80">
-                                                    <span>🏷️ OLS Price Elasticity:</span>
-                                                    <span className="text-purple-200 font-bold">+4.5% Safe Margin Window</span>
+                                                    <span>🏷️ Margin Pricing Guide:</span>
+                                                    <span className="text-purple-200 font-bold">+4.5% Suggested Margin</span>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2 pt-0.5">
                                                 <div className="flex-1 bg-white text-indigo-950 rounded-xl py-2 text-[10px] font-black text-center shadow">
-                                                    📄 Export Dossier PDF (SHA-256)
+                                                    📄 Export Financial Dossier PDF
                                                 </div>
                                                 <div className="flex-1 bg-white/20 text-white rounded-xl py-2 text-[10px] font-black text-center border border-white/30">
-                                                    Audit Cash Register
+                                                    Review Till Audit
                                                 </div>
                                             </div>
                                         </div>
@@ -1109,13 +1086,13 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ ALL 26 PLATFORM FEATURES GRID ═══════════ */}
+            {/* ═══════════ FULL PLATFORM CAPABILITIES GRID ═══════════ */}
             <section className="py-24 bg-white border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Full Architectural Suite</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">26 Powerful Modules. Zero Missing Pieces.</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From offline Day-Book POS and apprentice anti-theft protection to product presentation, automated debt recovery, and digital storefronts — everything a modern MSME needs.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-black tracking-widest uppercase mb-4 border border-slate-200">Core Wedge &amp; Advanced Suite</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Complete Operating Tools. Built for Daily Reliability.</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Start with our battle-tested core — offline Day-Book POS, staff shift lock, debt recovery, and your web storefront — and unlock optional AI &amp; planning tools as you grow.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -1271,8 +1248,8 @@ const LandingPage: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
                             { num: '01', icon: '🚀', title: 'Create Free Account', desc: 'Sign up in 60 seconds. No credit card. No setup fees. Free lifetime access to core POS and bookkeeping.' },
-                            { num: '02', icon: '🏢', title: 'Set Up Your Shop', desc: 'Add your business name, set your 4-digit apprentice shift PIN, and enter your opening cash balance.' },
-                            { num: '03', icon: '⚡', title: 'Sell, Snap & Collect', desc: 'Check out sales in 5 seconds, turn raw bedsheet photos into 4K studio sets, and log customer debts.' },
+                            { num: '02', icon: '🏢', title: 'Set Up Your Shop', desc: 'Add your business name, set your Owner Security Password, and enter your opening cash balance.' },
+                            { num: '03', icon: '⚡', title: 'Sell, Snap & Collect', desc: 'Check out sales in 5 seconds, turn phone photos into clean studio sets, and log customer debts.' },
                             { num: '04', icon: '📈', title: 'Get Funded & Grow', desc: 'Receive WhatsApp daily profit summaries, match government grants, and download BOI business plans.' },
                         ].map((s, i) => (
                             <motion.div key={i} className="relative" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
@@ -1293,9 +1270,9 @@ const LandingPage: React.FC = () => {
             <section className="py-24 bg-slate-50 border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-amber-100 text-amber-800 text-xs font-black tracking-widest uppercase mb-4 border border-amber-200">Merchant Voices</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Real Feedback from Nigerian Business Owners & Pilot Merchants</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">From Alaba and Balogun to Onitsha Main Market and Kano Kurmi, here is how Nigerian merchants win with SmartBiz Coach.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-amber-100 text-amber-800 text-xs font-black tracking-widest uppercase mb-4 border border-amber-200">Pilot Feedback</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Pilot Merchant Stories &amp; Workflow Scenarios</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Illustrative feedback from pilot users and trade workflows across Nigerian retail, wholesale, and agro businesses.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1327,9 +1304,9 @@ const LandingPage: React.FC = () => {
             <section id="pricing" className="py-24 bg-white border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-14" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-purple-100 text-purple-700 text-xs font-black tracking-widest uppercase mb-4 border border-purple-200">Affordable AI Top-Ups</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Priced for Nigerian Reality. No Monthly Subscriptions.</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Core operating tools are 100% free. When you need heavy AI compute (commercial photoshoots, business plans), top up as you go starting at ₦500.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-purple-100 text-purple-700 text-xs font-black tracking-widest uppercase mb-4 border border-purple-200">Flexible Pricing</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Simple, Transparent Pricing. Core POS Free Forever.</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Core daily tools are 100% free. Top up pay-as-you-go BizCredits starting at ₦500 for AI compute, or choose Growth Merchant Pro monthly/annual plans on <Link to="/pricing" className="text-emerald-700 font-bold underline">our pricing page</Link>.</p>
                     </motion.div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
@@ -1376,17 +1353,17 @@ const LandingPage: React.FC = () => {
                                 Partner with SmartBiz Coach to Formalize & Empower Nigerian MSMEs
                             </h2>
                             <p className="text-slate-400 leading-relaxed text-sm">
-                                We collaborate with government agencies (SMEDAN, BOI), microfinance institutions, development partners, and NGOs to deliver digital bookkeeping, tax formalization, and financial inclusion to grassroots business clusters nationwide.
+                                Built to help MSME training programs, microfinance institutions, chambers of commerce, and NGOs equip businesses with audit-ready bookkeeping, tax &amp; CAC readiness checklists, and structured financial documentation aligned with SMEDAN, BOI, and development-finance standards.
                             </p>
 
                             <div className="grid grid-cols-2 gap-4 pt-2">
                                 <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700">
                                     <div className="text-2xl font-black text-emerald-400">100%</div>
-                                    <div className="text-xs text-slate-400">Audit-Ready POS & Ledger</div>
+                                    <div className="text-xs text-slate-400">Audit-Ready POS &amp; Ledger</div>
                                 </div>
                                 <div className="bg-slate-800/60 p-4 rounded-2xl border border-slate-700">
-                                    <div className="text-2xl font-black text-teal-400">Section 23</div>
-                                    <div className="text-xs text-slate-400">CITA Tax Legal Shield</div>
+                                    <div className="text-2xl font-black text-teal-400">Tax &amp; CAC</div>
+                                    <div className="text-xs text-slate-400">MSME Formalization Guides</div>
                                 </div>
                             </div>
 
@@ -1400,16 +1377,20 @@ const LandingPage: React.FC = () => {
                                         <div className="font-mono text-[11px] truncate mt-0.5">partners@smartbizcoach.com.ng</div>
                                     </a>
                                     <a href="mailto:support@smartbizcoach.com.ng" className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 transition-colors block">
-                                        <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">🛟 Support & Help</div>
+                                        <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">🛟 Support &amp; Help</div>
                                         <div className="font-mono text-[11px] truncate mt-0.5">support@smartbizcoach.com.ng</div>
                                     </a>
-                                    <a href="mailto:admin@smartbiz.com.ng" className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 transition-colors block">
+                                    <a href="mailto:admin@smartbizcoach.com.ng" className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-700/60 hover:border-emerald-500/50 text-slate-300 hover:text-emerald-300 transition-colors block">
                                         <div className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">⚙️ Platform Admin</div>
-                                        <div className="font-mono text-[11px] truncate mt-0.5">admin@smartbiz.com.ng</div>
+                                        <div className="font-mono text-[11px] truncate mt-0.5">admin@smartbizcoach.com.ng</div>
                                     </a>
                                 </div>
                                 <div className="text-[11px] text-slate-400 pt-1">
-                                    Official WhatsApp / Hotline: <strong className="text-emerald-300">09064556107</strong>
+                                    {getSupportDisplayPhone() ? (
+                                        <>Official Support Line / WhatsApp: <a href={getSupportWhatsAppUrl()} target="_blank" rel="noopener noreferrer" className="text-emerald-300 font-bold underline">{getSupportDisplayPhone()}</a></>
+                                    ) : (
+                                        <>Dedicated Support Desk: <Link to="/contact" className="text-emerald-300 font-bold underline">smartbizcoach.com.ng/contact</Link></>
+                                    )}
                                 </div>
                             </div>
                         </motion.div>
@@ -1424,11 +1405,10 @@ const LandingPage: React.FC = () => {
                                     <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
                                         Thank you, <strong className="text-white">{partnerName}</strong>. We received your <strong className="text-green-400">{partnerType}</strong> inquiry. We will reach out to <strong className="text-white">{partnerEmail}</strong> shortly.
                                     </p>
-                                    <a href={`https://wa.me/2349064556107?text=Hello%20Meshach,%20I%20just%20submitted%20a%20partnership%20proposal%20for%20SmartBiz%20Coach%20as%20a%20${encodeURIComponent(partnerType)}.`}
-                                        target="_blank" rel="noopener noreferrer"
+                                    <Link to="/contact"
                                         className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-extrabold px-6 py-3 rounded-xl text-sm transition-all shadow-md">
-                                        💬 Discuss on WhatsApp →
-                                    </a>
+                                        🛟 Visit Support Desk →
+                                    </Link>
                                 </motion.div>
                             ) : (
                                 <form onSubmit={handlePartnerSubmit} className="space-y-4">
@@ -1524,7 +1504,7 @@ const LandingPage: React.FC = () => {
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-300">world-class operating tools</span>
                         </h2>
                         <p className="text-xl text-green-100/80 mb-10 max-w-2xl mx-auto leading-relaxed">
-                            Join Nigerian entrepreneurs and pilot merchants using SmartBiz Coach to check out sales in 5 seconds, transform photos to 4K studio quality, recover debts, and formalize with ease.
+                            Join Nigerian entrepreneurs and pilot merchants using SmartBiz Coach to check out sales in 5 seconds, enhance product photos, recover debts, and formalize with ease.
                         </p>
                         <div className="flex flex-col sm:flex-row justify-center gap-4">
                             <button onClick={() => navigate('/register')} className="bg-white hover:bg-green-50 text-green-800 px-10 py-4 rounded-2xl text-lg font-extrabold transition-all shadow-2xl hover:-translate-y-1 hover:shadow-white/20">
@@ -1534,7 +1514,7 @@ const LandingPage: React.FC = () => {
                                 Already have an account? Sign In
                             </button>
                         </div>
-                        <p className="text-green-200/60 text-sm mt-8">No credit card required • 50 Free Welcome Credits 🎁 • Free core tools forever • Paystack secured 🔒 • NDPR Compliant</p>
+                        <p className="text-green-200/60 text-sm mt-8">No credit card required • 50 Welcome Credits after email verification 🎁 • Free core tools forever • Paystack secured 🔒 • NDPA 2023 Compliant</p>
                     </motion.div>
                 </div>
             </section>
@@ -1548,16 +1528,14 @@ const LandingPage: React.FC = () => {
                                 <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-white font-extrabold shadow-lg">S</div>
                                 <span className="font-bold text-xl text-white">SmartBiz<span className="text-green-500">Coach</span></span>
                             </div>
-                            <p className="text-slate-400 text-sm leading-relaxed max-w-sm mb-6">The complete AI Business Operating System for Nigerian MSMEs. Phone Camera Barcode POS, Apprentice Shift Lock, Snap-to-Studio 2.0, Central MSME Market Square, WhatsApp Debt Recovery, and Section 23 CITA Tax Shield.</p>
+                            <p className="text-slate-400 text-sm leading-relaxed max-w-sm mb-6">The practical Business Operating System for Nigerian MSMEs. Offline-capable POS Day-Book, Staff Shift Lock, Product Catalog Studio, Central MSME Market Square, WhatsApp Debt Recovery, and Tax &amp; CAC Readiness Guides.</p>
 
                             <div className="space-y-3">
-                                <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Follow Us</p>
+                                <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Follow &amp; Contact</p>
                                 <div className="flex flex-wrap items-center gap-2">
                                     {[
-                                        { href: 'https://www.facebook.com/profile.php?id=61580131486753', label: 'SmartBiz', color: 'hover:bg-[#1877F2]', icon: <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /> },
+                                        { href: 'https://www.facebook.com/profile.php?id=61580131486753', label: 'Facebook', color: 'hover:bg-[#1877F2]', icon: <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /> },
                                         { href: 'https://www.instagram.com/smartbizcoach1/', label: 'Instagram', color: 'hover:bg-gradient-to-r hover:from-[#833ab4] hover:via-[#fd1d1d] hover:to-[#fcb045]', icon: <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /> },
-                                        { href: 'https://www.linkedin.com/in/meshach-zachariah-5a578912a/', label: 'LinkedIn', color: 'hover:bg-[#0A66C2]', icon: <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /> },
-                                        { href: 'https://wa.me/2349064556107', label: 'WhatsApp', color: 'hover:bg-[#25D366]', icon: <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /> },
                                     ].map(({ href, label, color, icon }) => (
                                         <a key={label} href={href} target="_blank" rel="noopener noreferrer"
                                             className={`group flex items-center gap-2 px-3 py-2 bg-slate-900 ${color} rounded-xl border border-slate-800 hover:border-transparent transition-all duration-200`}>
@@ -1565,6 +1543,9 @@ const LandingPage: React.FC = () => {
                                             <span className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">{label}</span>
                                         </a>
                                     ))}
+                                    <Link to="/contact" className="flex items-center gap-2 px-3 py-2 bg-slate-900 hover:bg-emerald-600 rounded-xl border border-slate-800 hover:border-transparent transition-all duration-200 text-xs font-bold text-slate-400 hover:text-white">
+                                        🛟 Support Desk
+                                    </Link>
                                 </div>
                             </div>
                         </div>
@@ -1572,11 +1553,11 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Platform</h4>
                             <ul className="space-y-3">
-                                <li><a href="#features" className="text-sm text-slate-400 hover:text-green-400 transition-colors">6 Core Pillars</a></li>
-                                <li><span onClick={() => navigate('/marketplace')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Central Market Square</span></li>
+                                <li><a href="#features" className="text-sm text-slate-400 hover:text-green-400 transition-colors">7 Core Pillars</a></li>
+                                <li><Link to="/market" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Central Market Square</Link></li>
                                 <li><a href="#how-it-works" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Operating Timeline</a></li>
                                 <li><a href="#guarantee" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Free Tools Guarantee</a></li>
-                                <li><a href="#pricing" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Pricing Top-Ups</a></li>
+                                <li><Link to="/pricing" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Pricing &amp; Pro Plans</Link></li>
                                 <li><a href="#faq" className="text-sm text-slate-400 hover:text-green-400 transition-colors">FAQ</a></li>
                             </ul>
                         </div>
@@ -1584,20 +1565,21 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Resources</h4>
                             <ul className="space-y-3">
-                                <li><span onClick={() => navigate('/blog')} className="text-sm text-emerald-400 font-semibold hover:underline transition-colors cursor-pointer flex items-center gap-1.5">Impact & Partnership Blog <span className="text-[10px] bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">New</span></span></li>
-                                <li><span onClick={() => navigate('/help')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Help & Guides</span></li>
-                                <li><span onClick={() => navigate('/grants-guide')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Grant Matcher Guide</span></li>
-                                <li><span onClick={() => navigate('/cac-checklist')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">CAC Compliance Guide</span></li>
+                                <li><Link to="/blog" className="text-sm text-emerald-400 font-semibold hover:underline transition-colors flex items-center gap-1.5">Impact &amp; Partnership Blog <span className="text-[10px] bg-emerald-900/80 border border-emerald-500/40 text-emerald-300 px-1.5 py-0.5 rounded-full font-bold">New</span></Link></li>
+                                <li><Link to="/help" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Help &amp; Guides</Link></li>
+                                <li><Link to="/grants-guide" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Grant Matcher Guide</Link></li>
+                                <li><Link to="/cac-checklist" className="text-sm text-slate-400 hover:text-green-400 transition-colors">CAC Compliance Guide</Link></li>
                             </ul>
                         </div>
 
                         <div>
-                            <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Legal & Trust</h4>
+                            <h4 className="font-bold text-white mb-4 uppercase text-xs tracking-wider">Legal &amp; Trust</h4>
                             <ul className="space-y-3">
-                                <li><span onClick={() => navigate('/about')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">About SmartBiz</span></li>
+                                <li><Link to="/about" className="text-sm text-slate-400 hover:text-green-400 transition-colors">About SmartBiz</Link></li>
+                                <li><Link to="/contact" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Contact &amp; Support</Link></li>
                                 <li><a href="#partnership" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Institutional Partners</a></li>
-                                <li><span onClick={() => navigate('/privacy')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Privacy Policy (NDPA 2023)</span></li>
-                                <li><span onClick={() => navigate('/terms')} className="text-sm text-slate-400 hover:text-green-400 transition-colors cursor-pointer">Terms of Service</span></li>
+                                <li><Link to="/privacy" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Privacy Policy (NDPA 2023)</Link></li>
+                                <li><Link to="/terms" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Terms of Service</Link></li>
                             </ul>
                         </div>
                     </div>
@@ -1606,7 +1588,7 @@ const LandingPage: React.FC = () => {
                         <p>© {new Date().getFullYear()} SmartBiz Coach. All rights reserved. 🇳🇬 Made in Nigeria, for Nigerian MSMEs.</p>
                         <div className="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full">
                             <span className="text-green-400 text-xs">🔒</span>
-                            <span className="text-xs text-slate-400">Secured by Paystack · NDPA 2023 &amp; NDPR Compliant · NACCIMA/NYE MOU Ref: SBC/NYE/MOU/2026/V3.1 · CITA 0% Tax Verified · CBN Non-Custodial Gateway</span>
+                            <span className="text-xs text-slate-400">Secured by Paystack · NDPA 2023 Aligned · Built for Nigerian MSMEs</span>
                         </div>
                     </div>
                 </div>

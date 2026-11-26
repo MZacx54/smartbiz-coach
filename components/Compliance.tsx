@@ -617,15 +617,13 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
 
             {/* Direct Platform Owner WhatsApp Contact */}
             <a
-              href="https://wa.me/234906456107?text=Hello%20Meshach,%20I%20need%20assistance%20with%20CAC%20Business%20Registration/TIN%20for%20my%20business."
-              target="_blank"
-              rel="noopener noreferrer"
+              href="mailto:support@smartbizcoach.com.ng?subject=CAC%20Registration%20Support"
               className="flex items-center justify-between bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-3.5 rounded-xl font-bold text-xs hover:shadow-lg transition-all active:scale-95 group"
             >
               <div className="flex items-center gap-2.5">
-                <span className="text-lg">💬</span>
+                <span className="text-lg">🛟</span>
                 <div>
-                  <p className="font-extrabold text-white text-xs">Direct Platform Owner Concierge (CAC Desk)</p>
+                  <p className="font-extrabold text-white text-xs">SmartBiz Compliance &amp; CAC Helpdesk</p>
                   <p className="text-[10px] text-emerald-100 font-normal">Contact Meshach Zachariah for fast-track CAC & TIN filing</p>
                 </div>
               </div>
@@ -679,10 +677,10 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                 </span>
               </div>
               <h3 className="text-xl sm:text-2xl font-black font-heading mt-1 text-white">
-                Small Business Tax Exemption Shield
+                Small Business Tax Readiness Guide
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-                Statutory legal protection for Nigerian MSMEs earning under <strong>₦100,000,000</strong> annually under Nigeria Tax Act 2025 / 2026 and CITA Section 23/40 (0% CIT & VAT Exemption).
+                Informational overview of Nigerian small-company CIT &amp; VAT rules (subject to corporate structure, fixed-asset limits, and mandatory annual NRS tax returns).
               </p>
             </div>
           </div>
@@ -691,22 +689,22 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
             onClick={() => setShowExemptionModal(true)}
             className="shrink-0 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95"
           >
-            <ShieldCheck className="w-4 h-4" /> Generate Official Statutory Memo
+            <ShieldCheck className="w-4 h-4" /> View Tax Summary Memo
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 relative z-10">
           <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
-            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">0% Companies Income Tax</p>
-            <p className="text-xs text-slate-200 mt-1">Nigeria Tax Act 2025 / 2026 & Section 23 CITA Cap C21 LFN</p>
+            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">Small-Company CIT Rules</p>
+            <p className="text-xs text-slate-200 mt-1">Applies only to qualifying incorporated companies (excludes professional services; annual returns mandatory)</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
-            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">VAT Filing Exemption</p>
-            <p className="text-xs text-slate-200 mt-1">Section 15 VAT Act & Nigeria Tax Act 2025 (small business exempt)</p>
+            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">VAT Threshold Check</p>
+            <p className="text-xs text-slate-200 mt-1">Verify statutory turnover &amp; fixed-asset eligibility with a licensed tax adviser</p>
           </div>
           <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
-            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">Illegal Task Force Shield</p>
-            <p className="text-xs text-slate-200 mt-1">Stops illegal lockouts and arbitrary demands by local council touts</p>
+            <p className="text-[11px] font-black uppercase tracking-wider text-emerald-400">Informational Only</p>
+            <p className="text-xs text-slate-200 mt-1">Not formal tax/legal advice; state &amp; local business permits remain separately payable</p>
           </div>
         </div>
       </div>
@@ -879,10 +877,10 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900 font-heading">
-                    Statutory Tax Exemption Memo
+                    Informational Small-Company Tax Readiness Summary
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Official legal defense notice under Nigerian Finance Act 2019/2020
+                    Informational record-keeping summary only — not certified legal or tax advice
                   </p>
                 </div>
               </div>
@@ -953,63 +951,39 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                   Federal Republic of Nigeria
                 </div>
                 <h2 className="text-base sm:text-lg font-black tracking-tight text-emerald-950 font-heading">
-                  STATUTORY MEMORANDUM ON TAX EXEMPTION STATUS
+                  INFORMATIONAL SMALL BUSINESS TAX READINESS SUMMARY
                 </h2>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  Pursuant to Sections 23 & 40 of CITA (Cap C21 LFN 2004) & Section 15 of VAT Act
+                  Reference Summary — Companies Income Tax Act (CITA) &amp; Nigeria Tax Act Provisions
                 </p>
                 <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 pt-2">
-                  <span>REF: SBC/TX-SHIELD/{exemptionYear}/{Math.abs(exemptionBizName.split('').reduce((a, b) => a + b.charCodeAt(0), 1000))}</span>
+                  <span>REF: SBC/TAX-INFO/{exemptionYear}/{Math.abs(exemptionBizName.split('').reduce((a, b) => a + b.charCodeAt(0), 1000))}</span>
                   <span>DATE: {exemptionGeneratedDate}</span>
                 </div>
               </div>
 
               <div className="space-y-4 text-xs leading-relaxed text-slate-800">
-                <div>
-                  <p className="font-extrabold text-slate-900 uppercase text-[11px]">TO ALL CONCERNED REVENUE AUTHORITIES:</p>
-                  <p className="text-slate-600 italic text-[11px]">
-                    Federal Inland Revenue Service (FIRS), State Internal Revenue Services (SIRS), Joint Tax Board (JTB), and Authorized Local Government Revenue Task Forces.
-                  </p>
-                </div>
-
                 <div className="bg-white p-4 rounded-2xl border border-emerald-900/15 space-y-2">
                   <p className="font-bold text-slate-900">
-                    DECLARATION OF SMALL COMPANY / MICRO-ENTERPRISE STATUS:
+                    SELF-DECLARED ENTITY TURNOVER RECORD:
                   </p>
                   <p>
-                    This is to formally place on record that <strong>{exemptionBizName || 'The Designated Business'}</strong> (Entity: <strong>{exemptionRegType}</strong> {exemptionRegNumber ? `• Registration/TIN: ${exemptionRegNumber}` : ''}) operates with an assessed gross annual turnover of <strong>₦{Number(exemptionTurnover || 0).toLocaleString()}</strong> for the tax period <strong>{exemptionYear}</strong>.
+                    <strong>{exemptionBizName || 'The Designated Business'}</strong> (Entity: <strong>{exemptionRegType}</strong> {exemptionRegNumber ? `• Registration/TIN: ${exemptionRegNumber}` : ''}) records an estimated gross annual turnover of <strong>₦{Number(exemptionTurnover || 0).toLocaleString()}</strong> for <strong>{exemptionYear}</strong>.
                   </p>
                   <p>
-                    Having an annual gross turnover strictly under the statutory threshold of <strong>₦100,000,000.00 (One Hundred Million Naira)</strong>, the aforementioned entity is statutorily classified as a <strong>Small Company / Exempt Micro-Enterprise</strong> under the Nigeria Tax Act 2025/2026 and extant laws of the Federal Republic of Nigeria.
+                    <em>Important Statutory Scope:</em> Corporate small-company CIT relief applies only to qualifying incorporated companies (Ltd) meeting applicable statutory turnover and fixed-asset ceilings (excluding professional services), and does <strong>not</strong> waive mandatory annual Nigeria Revenue Service (NRS) tax filings or valid state/local business permits.
                   </p>
                 </div>
 
-                <div className="space-y-2.5">
-                  <p className="font-black text-emerald-950 uppercase text-[11px] tracking-wide">
-                    STATUTORY PROVISIONS & EXEMPTION BASES:
-                  </p>
-                  <div className="space-y-2 pl-3 border-l-2 border-emerald-600 text-[11px]">
-                    <p>
-                      <strong>1. 0% Companies Income Tax Rate:</strong> Under the <em>Nigeria Tax Act 2025 / 2026</em> and <em>Section 23 and Section 40 of the Companies Income Tax Act (CITA)</em>, qualifying small companies with gross turnover under ₦100,000,000 are subject to CIT at <strong>ZERO PERCENT (0%)</strong>.
-                    </p>
-                    <p>
-                      <strong>2. Exemption from VAT Registration & Charging:</strong> Under <em>Section 15 of the Value Added Tax (VAT) Act</em> and Nigeria Tax Act 2025, qualifying small enterprises are <strong>exempt from registering for, charging, collecting, or remitting Value Added Tax</strong>.
-                    </p>
-                    <p>
-                      <strong>3. Prohibition of Illegal Levies & Harassment:</strong> Under the <em>Taxes and Levies (Approved List for Collection) Act</em>, it is unlawful for unauthorized committees, touts, or agents to mount roadblocks, seal trade premises, or enforce unapproved levies on micro-enterprises.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] text-slate-500 leading-relaxed">
-                  <strong>DISCLAIMER:</strong> This memorandum is an informational statutory exemption summary generated for MSME record-keeping and administrative transparency under the Nigeria Tax Act 2025 / Finance Acts. It does not constitute certified legal, accounting, or formal tax clearance opinion. For formal corporate tax filings or audits, consult the FIRS / SIRS or an ICAN/CITN certified tax consultant.
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-[10px] text-rose-900 leading-relaxed">
+                  <strong>NON-LEGAL ADVICE DISCLAIMER:</strong> This summary is an informational record-keeping worksheet only. It is NOT a legal defense memo or official tax clearance certificate. Consult a licensed ICAN/CITN tax practitioner or the relevant tax authority for formal tax filings or assessments.
                 </div>
 
                 <div className="bg-emerald-900 text-white p-4 rounded-2xl flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Statutory Shield Verification</p>
-                    <p className="text-xs font-extrabold mt-0.5">Compliant & Fully Exempt (0% CIT Rate)</p>
-                    <p className="text-[10px] text-emerald-200 mt-0.5">SmartBiz Coach MSME Regulatory Shield Desk</p>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-emerald-300">Informational Record Summary</p>
+                    <p className="text-xs font-extrabold mt-0.5">Annual Turnover Worksheet</p>
+                    <p className="text-[10px] text-emerald-200 mt-0.5">SmartBiz Coach Formalization Tools</p>
                   </div>
                   <div className="w-12 h-12 rounded-full border-2 border-dashed border-emerald-400 flex items-center justify-center text-xl shrink-0">
                     ⚖️

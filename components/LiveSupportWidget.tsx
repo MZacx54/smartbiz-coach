@@ -3,6 +3,7 @@ import { chatWithSmartBiz } from '../services/geminiService';
 import VoiceInput from './VoiceInput';
 import FormattedMarkdown from './FormattedMarkdown';
 import { toast } from 'react-hot-toast';
+import { getSupportWhatsAppUrl } from '../utils/supportContact';
 
 interface ChatMessage {
   id: number;
@@ -21,7 +22,7 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { 
       id: 1, 
-      text: "Hello! 👋 I am your **SmartBiz AI Coach & Operations Strategist**.\n\nAsk me anything about scaling your business, your **FICO 300–850 Credit Health Score**, **Apprentice Till Theft audits**, **Snap-to-Studio 4K photography**, or **Section 23 CITA 0% tax shield**!", 
+      text: "Hello! 👋 I am your **SmartBiz AI Coach & Operations Strategist**.\n\nAsk me anything about scaling your business, your **SmartScore™ (300–850) Readiness Score**, **Cashier Till Audits**, **Product Catalog Studio**, or **CAC & Tax Checklists**!", 
       sender: 'bot' 
     }
   ]);
@@ -29,11 +30,11 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickPrompts = [
-    { label: "📊 FICO Credit Score", prompt: "How is my FICO 300–850 credit risk score calculated and how do I get a bankable PDF dossier for BOI?" },
-    { label: "🛡️ Till Theft Audit", prompt: "How does the Isolation Forest till fraud detector catch cashier theft and cash leaks?" },
-    { label: "🎙️ Voice Note POS", prompt: "How do I record counter sales and petrol expenses using the 5-second Voice Note POS?" },
-    { label: "⚖️ 0% Tax Exemption", prompt: "How do I get my Section 23 CITA official 0% tax exemption memo for small businesses?" },
-    { label: "📸 4K Studio Photos", prompt: "How does Snap-to-Studio 2.0 transform raw bedsheet photos into 4K luxury scenes?" },
+    { label: "📊 SmartScore™ & BOI Loans", prompt: "How is my SmartScore 300–850 readiness score calculated and how do I export a financial summary PDF?" },
+    { label: "🛡️ Cashier Till Audit", prompt: "How does the cashier till audit help catch cash discrepancies?" },
+    { label: "🎙️ Voice Note POS", prompt: "How do I record counter sales and petrol expenses using the Voice Note POS?" },
+    { label: "⚖️ Tax & CAC Checklist", prompt: "What small-company tax and CAC formalization steps should my business check?" },
+    { label: "📸 Product Studio", prompt: "How does Product Catalog Studio enhance my smartphone product photos?" },
   ];
 
   // Scroll to bottom on new message or typing state change
@@ -84,7 +85,12 @@ const LiveSupportWidget: React.FC<LiveSupportWidgetProps> = () => {
   };
 
   const handleOpenWhatsApp = () => {
-    window.open("https://wa.me/2349064556107?text=Hello%20SmartBiz%20Support", "_blank");
+    const url = getSupportWhatsAppUrl("Hello SmartBiz Coach Support");
+    if (url.startsWith('/')) {
+      window.open("mailto:support@smartbizcoach.com.ng?subject=SmartBiz%20Coach%20Support", "_blank");
+    } else {
+      window.open(url, "_blank");
+    }
   };
 
   return (

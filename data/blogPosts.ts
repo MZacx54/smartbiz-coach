@@ -181,7 +181,7 @@ export const BLOG_POSTS: BlogPost[] = [
             title: 'Deploy an Institutional Merchant Cohort with SmartBiz Coach',
             subtitle: 'Empower hundreds or thousands of Nigerian micro-enterprises with zero hardware costs and real-time impact monitoring.',
             buttonText: 'Request Institutional Cohort Pilot Demo →',
-            actionUrl: 'https://wa.me/2349064556107?text=Hello%20SmartBiz%20Coach%2C%20we%20are%20an%20NGO%2FDevelopment%20Agency%20interested%20in%20deploying%20a%20merchant%20cohort%20pilot.',
+            actionUrl: '/contact',
             type: 'cohort'
         }
     },
@@ -294,7 +294,7 @@ export const BLOG_POSTS: BlogPost[] = [
             title: 'Sponsor an Empowerment Cohort with SmartBiz Coach',
             subtitle: 'Deploy our proven digital operating stack to empower women and youth micro-enterprises across Nigeria.',
             buttonText: 'Request Institutional Cohort Proposal →',
-            actionUrl: 'https://wa.me/2349064556107?text=Hello%20SmartBiz%20Coach%2C%20we%20want%20to%20partner%20on%20a%20Youth%2FWomen%20Empowerment%20Cohort.',
+            actionUrl: '/contact',
             type: 'cohort'
         }
     },
@@ -401,7 +401,7 @@ export const BLOG_POSTS: BlogPost[] = [
             title: 'Equip Your Grant Program with Real-Time M&E Telemetry',
             subtitle: 'Schedule an institutional demonstration of our cohort analytics dashboard and impact reporting tools.',
             buttonText: 'Schedule M&E Consultation Demo →',
-            actionUrl: 'https://wa.me/2349064556107?text=Hello%20SmartBiz%20Coach%2C%20we%20want%20to%20discuss%20M%26E%20grant%20telemetry%20for%20our%20program.',
+            actionUrl: '/contact',
             type: 'cohort'
         }
     },
@@ -635,7 +635,7 @@ export const BLOG_POSTS: BlogPost[] = [
             title: 'Partner with SmartBiz Coach to De-Risk Your MSME Loan Portfolio',
             subtitle: 'Integrate verified daily POS cashflow data into your credit risk underwriting and eliminate non-performing loans.',
             buttonText: 'Request MFB Underwriting Partnership Demo →',
-            actionUrl: 'https://wa.me/2349064556107?text=Hello%20SmartBiz%20Coach%2C%20we%20are%20a%20Microfinance%20Bank%2FCooperative%20interested%20in%20credit%20underwriting%20data.',
+            actionUrl: '/contact',
             type: 'cohort'
         }
     },
@@ -973,11 +973,11 @@ export const BLOG_POSTS: BlogPost[] = [
         id: 'post-9',
         slug: 'machine-learning-credit-scoring-nigerian-msme',
         title: 'Democratizing Credit: How Pure Machine Learning Turns Informal Nigerian MSMEs Bankable Without Collateral or Cloud Costs',
-        seoTitle: 'Nigerian MSME Machine Learning & FICO Credit Underwriting Guide | SmartBiz Coach',
-        metaDescription: 'How Nigerian MSMEs leverage zero-cost Scikit-Learn algorithms, FICO 300-850 alternative credit scoring, and tamper-evident PDF dossiers to unlock BOI loans and bank capital.',
-        excerpt: 'Commercial banks reject over 90% of Nigerian MSME loan applications for lack of land titles (C-of-O) or audited records. Learn how in-house algorithmic credit scoring, Ridge stockout forecasting, and Isolation Forest till audits turn daily sales into certified bankable underwriting dossiers.',
+        seoTitle: 'Nigerian MSME Machine Learning & SmartScore Credit Underwriting Guide | SmartBiz Coach',
+        metaDescription: 'How Nigerian MSMEs leverage in-house scoring models, SmartScore 300-850 readiness ratings, and verifiable PDF dossiers to prepare for BOI loans and bank capital.',
+        excerpt: 'Commercial banks reject over 90% of Nigerian MSME loan applications for lack of land titles (C-of-O) or audited records. Learn how daily sales consistency, stock alerts, and till audits turn daily sales into organized financial dossiers.',
         category: 'Data Science & AI',
-        tags: ['Machine Learning', 'Credit Scoring', 'Alternative Underwriting', 'Bank of Industry', 'SMEDAN', 'Scikit-Learn', 'Financial Inclusion', 'MSME Loans', 'FICO Score'],
+        tags: ['Machine Learning', 'Credit Scoring', 'Alternative Underwriting', 'Bank of Industry', 'SMEDAN', 'SmartScore', 'Financial Inclusion', 'MSME Loans'],
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
@@ -992,7 +992,7 @@ export const BLOG_POSTS: BlogPost[] = [
             'Over 90% of Nigerian small business loan applications are rejected by traditional commercial banks due to impossible collateral requirements (land titles/C-of-O) and lack of audited 3-year financials.',
             'Alternative algorithmic credit underwriting replaces land collateral with operational velocity: daily sales consistency, invoice settlement speed, and stock turnover metrics.',
             'SmartBiz Coach deploys an in-house Scikit-Learn machine learning suite running locally with zero third-party cloud API costs, keeping institutional data science 100% free for MSMEs.',
-            'The engine computes an institutional FICO-equivalent 300–850 Credit Risk Score, predicts stockout runway with Ridge regression, and audits till honesty using Isolation Forests.',
+            'The engine computes an internal SmartScore™ 300–850 readiness rating, projects stockout runway, and flags till anomalies.',
             'Entrepreneurs can export a 1-click Certified Underwriting Dossier (PDF) with SHA-256 cryptographic verification hashes ready for BOI, SMEDAN, TEF, and commercial bank loan officers.'
         ],
         statutoryCitations: [
@@ -1037,13 +1037,13 @@ export const BLOG_POSTS: BlogPost[] = [
                 paragraphs: [
                     'Many modern AI startups build features by sending customer queries to expensive proprietary cloud APIs (charging $0.03 to $0.10 per call). For a Nigerian small business, such cost structures inevitably translate into monthly subscription paywalls that informal retailers cannot sustain.',
                     'SmartBiz Coach solved this dilemma through engineering elegance: we built our core data science engine directly on Python\'s battle-tested Scikit-Learn and NumPy libraries running serverlessly on our backend infrastructure. Because standard machine learning models execute deterministic mathematical linear algebra without external GPU token meters, the operational cost is near-zero.',
-                    'This enables us to offer the entire Data Science Hub—including FICO scoring, Ridge regression, and Isolation Forest fraud audits—completely free to every verified merchant.',
+                    'This enables us to offer the entire Data Science Hub—including SmartScore™ readiness scoring, restock forecasting, and till audits—completely free to every verified merchant.',
                     'Crucially, SmartBiz Coach bridges the gap between complex algorithms and busy market merchants through the new AI Lens Selector:',
                     '• 🏪 Merchant Money Actions (Plain English): Translates mathematics into immediate shop moves: products finishing in 2–3 days with a 1-click "WhatsApp Supplier to Reorder" button, generator fuel burn alerts (e.g. 18.5% of petty cash), and current pre-qualified credit limits (up to ₦3.5M).',
                     '• 🔬 Institutional Data Science View: Provides bank risk committees and auditors with deep Scikit-Learn kernels, Ridge regression weights, and Isolation Forest anomaly matrices.'
                 ],
                 list: [
-                    'FICO-Equivalent 300–850 Credit Risk Engine: Evaluates 5 weighted pillars: Turnover Consistency (35%), Debt Recovery Velocity (25%), Profit Margin Health (20%), Inventory Turnover (10%), and Legal Compliance/CAC Status (10%).',
+                    'SmartScore™ 300–850 Readiness Engine: Evaluates 5 weighted pillars: Turnover Consistency (35%), Debt Recovery Velocity (25%), Profit Margin Health (20%), Inventory Turnover (10%), and Legal Compliance/CAC Status (10%).',
                     'Ridge Regression Time-Series Forecaster: Models 30-day product velocity curves with L2 regularization to project exact stockout dates and optimal re-order quantities before peak market days.',
                     'Isolation Forest Cashier Anomaly Scanner: An unsupervised algorithm that inspects counter till transactions, identifying unusual float imbalances, suspicious after-hours discounts, and till leakage without human supervision.',
                     'Customer RFM Segmentation (K-Means): Clusters customers into Champions, Loyalists, At-Risk, and Dormant groups to trigger targeted WhatsApp recovery promotions.',
@@ -1066,7 +1066,7 @@ export const BLOG_POSTS: BlogPost[] = [
             },
             {
                 id: 'practical-steps-to-bankability',
-                heading: '5. Four Steps to Build an 800+ FICO Credit Score on SmartBiz Coach',
+                heading: '5. Four Steps to Build an 800+ SmartScore™ Readiness Rating on SmartBiz Coach',
                 paragraphs: [
                     'Building institutional creditworthiness does not require a finance degree. Any shop owner can elevate their score into the Prime Bankable range (720–850) by following these daily habits:'
                 ],
@@ -1099,7 +1099,7 @@ export const BLOG_POSTS: BlogPost[] = [
         relatedSlugs: ['ngos-msme-digital-bookkeeping', 'nigerian-msme-digital-playbook-market-square', 'stop-apprentice-theft-cash-leakage-nigerian-retail'],
         primaryCta: {
             title: 'Audit Your Business Credit Score Today',
-            subtitle: 'Turn your counter sales into a certified 300–850 FICO credit score and bankable PDF underwriting report.',
+            subtitle: 'Turn your counter sales into a 300–850 SmartScore™ readiness rating and downloadable PDF summary report.',
             buttonText: 'Open Data Science Hub →',
             actionUrl: '/analytics',
             type: 'underwrite'

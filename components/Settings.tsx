@@ -549,7 +549,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
   const isAdminUser = Boolean(
     (user as any)?.is_staff ||
     (user as any)?.is_superuser ||
-    ['meshachzax@gmail.com', 'admin@smartbiz.com.ng', 'admin@smartbizcoach.com.ng', 'partners@smartbizcoach.com.ng', 'info@smartbizcoach.com.ng', 'mzacs54@gmail.com'].includes(((user?.email || '') as string).toLowerCase().trim())
+    ['meshachzax@gmail.com', 'admin@smartbizcoach.com.ng', 'partners@smartbizcoach.com.ng', 'info@smartbizcoach.com.ng', 'mzacs54@gmail.com'].includes(((user?.email || '') as string).toLowerCase().trim())
   );
 
   if (isAdminUser) {

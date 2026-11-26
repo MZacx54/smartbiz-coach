@@ -676,9 +676,9 @@ const PublicStorefront: React.FC = () => {
                 <span>📞</span>
                 <span>{brand.phone || 'No phone listed'}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span>✉️</span>
-                <span>{brand.email || 'No email listed'}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="shrink-0">✉️</span>
+                <span className="break-all min-w-0">{brand.email || 'No email listed'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span>📍</span>

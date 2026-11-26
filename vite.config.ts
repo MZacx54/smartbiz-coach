@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'import.meta.env.VITE_WA_DIRECT_SUPPORT': JSON.stringify(
+      process.env.VITE_WA_DIRECT_SUPPORT || process.env.WA_DIRECT_SUPPORT || ''
+    ),
+  },
   build: {
     target: 'es2020',
     cssCodeSplit: true,

@@ -234,12 +234,12 @@ const PublicDebtorSettlement: React.FC = () => {
   const handleNotifyMerchantWhatsApp = () => {
     if (!debtor) return;
     const cleanPhone = (debtor.merchantPhone || '').replace(/\D/g, '');
-    const phoneToUse = cleanPhone.startsWith('0') ? '234' + cleanPhone.slice(1) : (cleanPhone || '2349064556107');
+    const phoneToUse = cleanPhone.startsWith('0') ? '234' + cleanPhone.slice(1) : cleanPhone;
     const text = paymentSuccess
       ? `Hello ${debtor.merchantName} 👋! I have just settled my balance of *₦${debtor.outstanding.toLocaleString()}* for *${debtor.itemsBought}* via online card/transfer payment.\n\nTransaction Reference: *${paymentRef}*\nKindly verify and confirm receipt. Thank you!`
       : `Hello ${debtor.merchantName} 👋! Regarding my balance of *₦${debtor.outstanding.toLocaleString()}* for *${debtor.itemsBought}*:\nI have initiated a direct bank transfer. Please check your bank app and acknowledge payment once received. Thank you!`;
 
-    window.open(`https://wa.me/${phoneToUse}?text=${encodeURIComponent(text)}`, '_blank');
+    window.open(phoneToUse ? `https://wa.me/${phoneToUse}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   if (loading) {

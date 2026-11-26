@@ -19,7 +19,7 @@ const SEO: React.FC<SEOProps> = ({
   type = 'website',
   image = 'https://www.smartbizcoach.com.ng/logo-horizontal.png',
   url = 'https://www.smartbizcoach.com.ng',
-  keywords = 'SmartBiz Coach, AI business operating system, Nigerian SME, FICO credit score Nigeria, MSME alternative credit underwriting, BOI business plan generator, till theft detection, Scikit-learn demand forecasting, Snap-to-Studio 2.0, Gbege Book WhatsApp debt recovery, Section 23 CITA tax shield, CAC checklist Nigeria, SME grants 2026',
+  keywords = 'SmartBiz Coach, Nigerian MSME POS, offline day-book, apprentice shift lock, SmartScore readiness score, BOI business plan generator, Gbege Book debt recovery, Paystack storefront Nigeria, CAC checklist Nigeria, SME grants 2026',
   schema
 }) => {
   const fullTitle = title.includes('SmartBiz Coach') ? title : `${title} | SmartBiz Coach`;
@@ -33,49 +33,43 @@ const SEO: React.FC<SEOProps> = ({
         '@id': 'https://www.smartbizcoach.com.ng/#webapp',
         'name': 'SmartBiz Coach',
         'url': 'https://www.smartbizcoach.com.ng',
-        'applicationCategory': 'BusinessApplication, FinancialApplication',
+        'applicationCategory': 'BusinessApplication',
         'operatingSystem': 'All (Web & Mobile, PWA)',
-        'description': 'The complete AI Business Operating System & Credit Underwriting platform built specifically for Nigerian SMEs. Features 5-second counter POS, FICO 300-850 credit risk scoring, Ridge stockout forecasting, till fraud Isolation Forest, 4K Snap-to-Studio 2.0, WhatsApp debt recovery, Section 23 CITA tax shield, and BOI 5-year business plans.',
+        'description': 'The practical Business Operating System built for Nigerian MSMEs. Features offline-capable counter POS, SmartScore 300-850 readiness metrics, Product Catalog Studio, WhatsApp debt recovery, digital storefronts, tax & CAC guides, and 3-year business plans.',
         'image': 'https://www.smartbizcoach.com.ng/logo-square.png',
-        'aggregateRating': {
-          '@type': 'AggregateRating',
-          'ratingValue': '4.9',
-          'ratingCount': '12850',
-          'bestRating': '5'
-        },
         'offers': [
           {
             '@type': 'Offer',
-            'name': 'Core Free Tier (POS, Day-Book, FICO Score, Unlimited Market Listings)',
+            'name': 'Core Free Tier (POS, Day-Book, Debt Ledger, Personal Storefront)',
             'price': '0',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Pocket Pack (50 BizCredits)',
+            'name': 'Micro Pack (50 BizCredits)',
             'price': '500',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Starter Pack (110 BizCredits)',
-            'price': '1000',
+            'name': 'Starter Pack (150 BizCredits)',
+            'price': '1500',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Grower Pack (300 BizCredits)',
-            'price': '2500',
+            'name': 'Grower Pack (400 BizCredits)',
+            'price': '3500',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
           {
             '@type': 'Offer',
-            'name': 'Vendor Pro Pack (700 BizCredits)',
-            'price': '5000',
+            'name': 'Vendor Pro Pack (1,000 BizCredits)',
+            'price': '7500',
             'priceCurrency': 'NGN',
             'availability': 'https://schema.org/InStock'
           },
@@ -89,7 +83,7 @@ const SEO: React.FC<SEOProps> = ({
         ]
       },
       {
-        '@type': ['Organization', 'FinancialService'],
+        '@type': 'Organization',
         '@id': 'https://www.smartbizcoach.com.ng/#organization',
         'name': 'SmartBiz Coach',
         'url': 'https://www.smartbizcoach.com.ng',
@@ -118,8 +112,7 @@ const SEO: React.FC<SEOProps> = ({
             '@type': 'ContactPoint',
             'contactType': 'customer support',
             'email': 'support@smartbizcoach.com.ng',
-            'telephone': '+2349064556107',
-            'url': 'https://wa.me/2349064556107',
+            'url': 'https://www.smartbizcoach.com.ng/contact',
             'areaServed': 'NG',
             'availableLanguage': ['English', 'Pidgin']
           },
@@ -127,24 +120,21 @@ const SEO: React.FC<SEOProps> = ({
             '@type': 'ContactPoint',
             'contactType': 'partnerships',
             'email': 'partners@smartbizcoach.com.ng',
-            'telephone': '+2349064556107',
+            'url': 'https://www.smartbizcoach.com.ng/contact',
             'areaServed': 'NG',
             'availableLanguage': ['English']
           },
           {
             '@type': 'ContactPoint',
             'contactType': 'administrative',
-            'email': 'admin@smartbiz.com.ng',
-            'telephone': '+2349064556107',
+            'email': 'admin@smartbizcoach.com.ng',
             'areaServed': 'NG',
             'availableLanguage': ['English']
           }
         ],
         'sameAs': [
           'https://www.facebook.com/profile.php?id=61580131486753',
-          'https://www.instagram.com/smartbizcoach1/',
-          'https://www.linkedin.com/in/meshach-zachariah-5a578912a/',
-          'https://wa.me/2349064556107'
+          'https://www.instagram.com/smartbizcoach1/'
         ]
       }
     ]
@@ -165,8 +155,8 @@ const SEO: React.FC<SEOProps> = ({
       <link rel="canonical" href={url} />
 
       {/* GEO (Generative Engine Optimization) Meta Tags */}
-      <meta name="ai-entity-definition" content="SmartBiz Coach is Nigeria's premier AI Business Operating System and Alternative Credit Underwriting Suite for MSMEs. Core capabilities include Scikit-Learn FICO 300-850 credit risk scoring, Ridge regression stockout forecasting, till fraud Isolation Forest, 4K Snap-to-Studio 2.0 photography, Gbege Book debt recovery via WhatsApp, BOI 5-year business plan generation, CAC registration desk, and Section 23 CITA 0% tax shield." />
-      <meta name="ai-content-declarations" content="AI Business Operating System, Scikit-Learn Financial Intelligence, Multimodal Computer Vision" />
+      <meta name="ai-entity-definition" content="SmartBiz Coach is a Business Operating System and Digital Storefront platform for Nigerian MSMEs. Core tools include an offline-capable Day-Book POS, staff shift lock, Product Catalog Studio, Gbege Book debt recovery via WhatsApp, BOI-ready 3-year business plans, CAC formalization guides, and SmartScore 300-850 readiness metrics." />
+      <meta name="ai-content-declarations" content="MSME Business Operating System, POS & Inventory Management, Digital Commerce" />
       <meta name="geo.region" content="NG-LA" />
       <meta name="geo.placename" content="Lagos, Nigeria" />
       <meta name="geo.position" content="6.5244;3.3792" />

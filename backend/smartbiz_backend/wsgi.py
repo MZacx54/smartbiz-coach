@@ -28,7 +28,6 @@ try:
     User = get_user_model()
     admin_emails = [
         "meshachzax@gmail.com",
-        "admin@smartbiz.com.ng",
         "admin@smartbizcoach.com.ng",
         "partners@smartbizcoach.com.ng",
     ]

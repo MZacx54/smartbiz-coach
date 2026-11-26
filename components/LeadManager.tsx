@@ -16,6 +16,14 @@ interface Lead {
     created_at: string;
 }
 
+const sanitizeWaNumber = (raw?: string): string => {
+    const digits = (raw || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('0') && digits.length === 11) return '234' + digits.slice(1);
+    if (digits.length === 10 && /^[789]/.test(digits)) return '234' + digits;
+    return digits;
+};
+
 const LeadManager: React.FC = () => {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -165,7 +173,7 @@ const LeadManager: React.FC = () => {
                                     <a href={`tel:${lead.customer_contact}`} className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-all">
                                         <Phone className="w-3.5 h-3.5" /> Call
                                     </a>
-                                    <a href={`https://wa.me/${lead.customer_contact}`} target="_blank" className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-xl text-xs font-bold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all">
+                                    <a href={sanitizeWaNumber(lead.customer_contact) ? `https://wa.me/${sanitizeWaNumber(lead.customer_contact)}` : `https://wa.me/`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-xl text-xs font-bold text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all">
                                         <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                                     </a>
                                     {/* Cutting-Edge AI Feature: Smart WhatsApp Cart Recovery Copilot */}

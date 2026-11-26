@@ -318,7 +318,16 @@ class GlobalMarketplaceListView(generics.ListAPIView):
         return queryset
 
     def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
+        queryset = self.filter_queryset(self.get_queryset())
+        limit_param = request.query_params.get('limit')
+        if limit_param:
+            try:
+                limit_val = max(1, min(100, int(limit_param)))
+                queryset = queryset[:limit_val]
+            except (ValueError, TypeError):
+                pass
+        serializer = self.get_serializer(queryset, many=True)
+        response = Response(serializer.data)
         # Fast caching: 60 seconds client cache, 120 seconds edge CDN
         response['Cache-Control'] = 'public, max-age=60, s-maxage=120'
         return response
@@ -674,7 +683,7 @@ class AdminVerificationListView(views.APIView):
 
     def get(self, request):
         ADMIN_EMAILS = [
-            'meshachzax@gmail.com', 'admin@smartbiz.com.ng', 'admin@smartbizcoach.com.ng',
+            'meshachzax@gmail.com', 'admin@smartbizcoach.com.ng',
             'partners@smartbizcoach.com.ng', 'info@smartbizcoach.com.ng', 'mzacs54@gmail.com'
         ]
         u = request.user
@@ -711,7 +720,7 @@ class AdminVerificationActionView(views.APIView):
     def post(self, request, pk):
         u = request.user
         is_staff = bool(u.is_staff or u.is_superuser or (getattr(u, 'email', '') or '').lower() in [
-            'meshachzax@gmail.com', 'admin@smartbiz.com.ng', 'admin@smartbizcoach.com.ng',
+            'meshachzax@gmail.com', 'admin@smartbizcoach.com.ng',
             'partners@smartbizcoach.com.ng', 'info@smartbizcoach.com.ng', 'mzacs54@gmail.com'
         ])
         if not is_staff:

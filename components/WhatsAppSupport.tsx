@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { chatWithSmartBiz } from '../services/geminiService';
 import VoiceInput from './VoiceInput';
 import FormattedMarkdown from './FormattedMarkdown';
+import { getSupportWhatsAppUrl } from '../utils/supportContact';
 
 interface ChatMessage {
   id: number;
@@ -20,7 +21,7 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { 
       id: 1, 
-      text: "Welcome to SmartBiz AI Operations & Growth Hub! 🚀 I am your **SmartBiz AI Coach & Data Science Strategist**.\n\nAsk me anything about your **FICO 300–850 Credit Risk Score**, **Bankable PDF Underwriting Dossiers for BOI/Banks**, **Till Fraud & Cash Theft audits**, **5-Second POS & Barcode Scanner**, **Snap-to-Studio 4K luxury photography**, or **Section 23 CITA 0% tax exemptions**!", 
+      text: "Welcome to SmartBiz AI Operations & Growth Hub! 🚀 I am your **SmartBiz AI Coach & Operations Strategist**.\n\nAsk me anything about your **SmartScore™ (300–850) Readiness Score**, **Financial Summary PDFs**, **Cashier Till Audits**, **5-Second POS & Barcode Scanner**, **Product Studio**, or **CAC & Tax Readiness Checklists**!", 
       sender: 'bot' 
     }
   ]);
@@ -28,11 +29,11 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickPrompts = [
-    { label: "📊 FICO Credit Score & BOI Loans", prompt: "How is my FICO 300–850 credit risk score calculated and how do I get a bankable PDF dossier for BOI?" },
-    { label: "🛡️ Cashier Till Theft Audit", prompt: "How does the Isolation Forest till fraud detector catch cashier theft and cash leaks?" },
-    { label: "🎙️ Voice Note POS", prompt: "How do I record counter sales and petrol expenses using the 5-second Voice Note POS?" },
-    { label: "⚖️ 0% Tax Exemption Memo", prompt: "How do I get my Section 23 CITA official 0% tax exemption memo for small businesses?" },
-    { label: "📈 Stockout Forecaster", prompt: "How does Ridge regression predict my exact stockout date and re-order timing?" },
+    { label: "📊 SmartScore™ & BOI Loans", prompt: "How is my SmartScore 300–850 readiness score calculated and how do I export a financial summary PDF?" },
+    { label: "🛡️ Cashier Till Audit", prompt: "How does the cashier till audit help catch cash discrepancies?" },
+    { label: "🎙️ Voice Note POS", prompt: "How do I record counter sales and petrol expenses using the Voice Note POS?" },
+    { label: "⚖️ Tax & CAC Checklist", prompt: "What small-company tax and CAC formalization steps should my business check?" },
+    { label: "📈 Restock Alerts", prompt: "How do restock alerts estimate my stockout dates and reorder timing?" },
   ];
 
   // Scroll to bottom on new message
@@ -84,7 +85,12 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
   };
 
   const handleOpenWhatsApp = () => {
-    window.open("https://wa.me/2349064556107?text=Hello%20SmartBiz%20Support", "_blank");
+    const url = getSupportWhatsAppUrl("Hello SmartBiz Coach Support");
+    if (url.startsWith('/')) {
+      window.open("mailto:support@smartbizcoach.com.ng?subject=SmartBiz%20Coach%20Support", "_blank");
+    } else {
+      window.open(url, "_blank");
+    }
   };
 
   return (

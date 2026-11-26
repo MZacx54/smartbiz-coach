@@ -31,9 +31,9 @@ const isCacheableGet = (url?: string): boolean => {
     url.includes('marketplace/daily-expenses') ||
     url.includes('marketplace/daily-summary') ||
     url.includes('marketplace/daily-trends') ||
-    url.includes('auth/profile') ||
-    url.includes('auth/stats') ||
-    url.includes('auth/actions') ||
+    url.includes('users/profile') ||
+    url.includes('users/stats') ||
+    url.includes('users/actions') ||
     url.includes('brands/') ||
     url.includes('billing/transactions') ||
     url.includes('analytics/')
@@ -95,6 +95,11 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    // Do not failover or serve offline cache for intentionally cancelled/aborted requests
+    if (axios.isCancel(error) || error?.code === 'ERR_CANCELED') {
+      return Promise.reject(error);
+    }
+
     const config = error?.config;
     const method = (config?.method || '').toLowerCase();
     const url = config?.url || '';

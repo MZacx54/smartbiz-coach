@@ -200,7 +200,7 @@ const PublicAuditReport: React.FC = () => {
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 block mb-1">
-                  Scikit-Learn Algorithmic Credit Rating (FICO 300–850 Scale)
+                  SmartScore™ Business Readiness Rating (300–850 Scale)
                 </span>
                 <div className="flex items-baseline gap-3">
                   <span className="text-5xl font-black font-mono text-emerald-400">{smartScore}</span>

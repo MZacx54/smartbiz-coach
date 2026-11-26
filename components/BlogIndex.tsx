@@ -95,8 +95,9 @@ const BlogIndex: React.FC = () => {
         } catch (err) {
             console.warn("Backend cohort logging notice:", err);
         }
-        const whatsappMsg = `Hello SmartBiz Coach! I represent ${encodeURIComponent(orgName || 'our organization')}. We are interested in partnering to deploy a digital bookkeeping cohort of ${encodeURIComponent(cohortSize)}. Contact email: ${encodeURIComponent(orgEmail)}.`;
-        window.open(`https://wa.me/2349064556107?text=${whatsappMsg}`, '_blank');
+        const mailSubject = encodeURIComponent(`MSME Cohort Inquiry: ${orgName || 'Partner Organization'}`);
+        const mailBody = encodeURIComponent(`Organization: ${orgName}\nCohort Size: ${cohortSize}\nEmail: ${orgEmail}`);
+        window.open(`mailto:partners@smartbizcoach.com.ng?subject=${mailSubject}&body=${mailBody}`, '_blank');
         setCohortFormSubmitted(true);
     };
 
@@ -559,13 +560,13 @@ const BlogIndex: React.FC = () => {
                                         <MessageSquare className="w-3.5 h-3.5" /> Connect on WhatsApp Partner Desk
                                     </button>
                                     <div className="pt-2 text-[10px] text-slate-300 space-y-1 text-center">
-                                        <div>Official Partnership Hotlines: <span className="text-emerald-300 font-bold">09064556107</span></div>
+                                        <div>Support &amp; Partnerships Desk: <span className="text-emerald-300 font-bold">smartbizcoach.com.ng/contact</span></div>
                                         <div className="text-slate-400 flex flex-wrap justify-center items-center gap-x-2 gap-y-0.5">
                                             <span>🤝 <a href="mailto:partners@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">partners@smartbizcoach.com.ng</a></span>
                                             <span>•</span>
                                             <span>🛟 <a href="mailto:support@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">support@smartbizcoach.com.ng</a></span>
                                             <span>•</span>
-                                            <span>⚙️ <a href="mailto:admin@smartbiz.com.ng" className="text-emerald-300 hover:underline">admin@smartbiz.com.ng</a></span>
+                                            <span>⚙️ <a href="mailto:admin@smartbizcoach.com.ng" className="text-emerald-300 hover:underline">admin@smartbizcoach.com.ng</a></span>
                                         </div>
                                     </div>
                                 </form>

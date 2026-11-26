@@ -6,8 +6,29 @@ from django.conf import settings
 from django.utils.html import strip_tags
 
 # Exact WhatsApp VIP Community link
-WA_COMMUNITY_LINK = "https://chat.whatsapp.com/LMGlpUWATmVE2t98iKIcY4"
-WA_DIRECT_SUPPORT = "https://wa.me/2349064556107?text=Hi%20SmartBiz%20Coach%2C%20I%20just%20signed%20up%20and%20want%20to%20join%20the%20community!"
+WA_COMMUNITY_LINK = os.getenv("WA_COMMUNITY_LINK", "https://chat.whatsapp.com/LMGlpUWATmVE2t98iKIcY4").strip()
+
+
+def _resolve_wa_direct_support():
+    raw = (os.getenv("WA_DIRECT_SUPPORT", "") or "").strip()
+    if not raw:
+        return "https://www.smartbizcoach.com.ng/contact", "support@smartbizcoach.com.ng"
+    if raw.startswith("http"):
+        m = re.search(r"wa\.me/(\d+)", raw, re.I)
+        label = f"+{m.group(1)}" if m else "WhatsApp Support"
+        return raw, label
+    digits = "".join(c for c in raw if c.isdigit())
+    if digits.startswith("0") and len(digits) == 11:
+        digits = "234" + digits[1:]
+    if not digits:
+        return "https://www.smartbizcoach.com.ng/contact", "support@smartbizcoach.com.ng"
+    return (
+        f"https://wa.me/{digits}?text=Hi%20SmartBiz%20Coach%2C%20I%20need%20support.",
+        f"+{digits}",
+    )
+
+
+WA_DIRECT_SUPPORT, WA_DIRECT_SUPPORT_LABEL = _resolve_wa_direct_support()
 
 
 def get_brevo_api_key():
@@ -247,7 +268,7 @@ def send_welcome_email(user):
         return False
 
     name = user.get_full_name() or user.business_name or user.username or "Entrepreneur"
-    subject = f"Welcome to SmartBiz Coach, {name}! 🚀 (200 Free BizCredits Inside)"
+    subject = f"Welcome to SmartBiz Coach, {name}! 🚀 (Verify Your Email for 50 Free BizCredits)"
     dashboard_url = "https://www.smartbizcoach.com.ng/dashboard"
     
     html_content = f"""
@@ -338,7 +359,7 @@ def send_welcome_email(user):
               SmartBiz Coach • The AI Business Operating System for Nigerian MSMEs
             </p>
             <p style="color: #94A3B8; font-size: 11px; margin: 0;">
-              Join our WhatsApp Community: <a href="{WA_COMMUNITY_LINK}" style="color: #059669; font-weight: bold; text-decoration: underline;">Click Here</a> | Support: <a href="{WA_DIRECT_SUPPORT}" style="color: #4F46E5; text-decoration: underline;">+234 906 455 6107</a>
+              Join our WhatsApp Community: <a href="{WA_COMMUNITY_LINK}" style="color: #059669; font-weight: bold; text-decoration: underline;">Click Here</a> | Support: <a href="{WA_DIRECT_SUPPORT}" style="color: #4F46E5; text-decoration: underline;">{WA_DIRECT_SUPPORT_LABEL}</a>
             </p>
           </td>
         </tr>
@@ -347,6 +368,44 @@ def send_welcome_email(user):
     </html>
     """
 
+    success, _ = _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz Coach")
+    return success
+
+
+def send_email_verification_code(user, code):
+    """
+    Sends a 6-digit email verification OTP to unlock the 50 Welcome BizCredits.
+    """
+    recipient_email = getattr(user, 'email', '').strip()
+    if not recipient_email or '@' not in recipient_email:
+        return False
+
+    name = user.get_full_name() or user.business_name or user.username or "Entrepreneur"
+    subject = f"Verify Your SmartBiz Coach Email — Code: {code}"
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; padding: 30px 15px;">
+      <table align="center" width="100%" style="max-width: 560px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden;">
+        <tr>
+          <td style="background-color: #059669; padding: 28px; text-align: center;">
+            <h1 style="color: #FFFFFF; font-size: 22px; margin: 0;">Verify Your Email Address</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 30px; color: #1E293B; font-size: 14px; line-height: 1.6;">
+            <p>Hello <strong>{name}</strong>,</p>
+            <p>Enter this 6-digit verification code on your SmartBiz Coach dashboard to confirm your email and unlock your <strong>50 Free Welcome BizCredits</strong>:</p>
+            <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 18px; text-align: center; margin: 22px 0;">
+              <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #065F46;">{code}</span>
+            </div>
+            <p style="font-size: 12px; color: #64748B;">This code expires in 24 hours. Core POS and bookkeeping tools remain 100% free forever.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """
     success, _ = _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz Coach")
     return success
 
@@ -403,7 +462,7 @@ def send_password_reset_email(user, code):
             </p>
 
             <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #F1F5F9; font-size: 12px; color: #94A3B8;">
-              Need help? Contact our WhatsApp Support at <a href="{WA_DIRECT_SUPPORT}" style="color: #059669; font-weight: bold; text-decoration: none;">+234 906 455 6107</a>
+              Need help? Contact our Support Desk at <a href="mailto:support@smartbizcoach.com.ng" style="color: #059669; font-weight: bold; text-decoration: none;">support@smartbizcoach.com.ng</a>
             </div>
           </td>
         </tr>

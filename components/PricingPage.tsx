@@ -37,8 +37,8 @@ const FAQS = [
     a: 'Chamber coordinators and association executives can upload member rosters via CSV to provision verified MSME accounts in bulk. Each member receives 100 welcome BizCredits and their chapter dashboard tracks adoption in real time.'
   },
   {
-    q: 'Is my commercial transaction data safe and NDPR compliant?',
-    a: 'Yes. SmartBiz Coach operates in strict compliance with the Nigeria Data Protection Regulation (NDPR) and the Nigeria Data Protection Act (NDPA 2023). We never sell your sales or customer debt books to third parties.'
+    q: 'Is my commercial transaction data safe and NDPA 2023 compliant?',
+    a: 'Yes. SmartBiz Coach operates in compliance with the Nigeria Data Protection Act (NDPA 2023). We never sell your sales or customer debt books to third parties.'
   },
   {
     q: 'What payment methods do you accept for credit packs?',

@@ -836,14 +836,14 @@ const LearningHub: React.FC<LearningHubProps> = ({ onNavigate }) => {
             <span>Need personalized business mentoring or platform guidance?</span>
           </h3>
           <p className="text-xs text-slate-300 leading-relaxed font-medium max-w-xl">
-            Connect directly with Meshach Zachariah (Platform Creator & Accredited CAC Concierge) via WhatsApp for 1-on-1 strategy sessions.
+            Connect with the SmartBiz Support Desk for business setup guidance and onboarding support.
           </p>
         </div>
         <button 
-          onClick={() => window.open('https://wa.me/234906456107?text=Hello%20Meshach,%20I%20am%20learning%20on%20SmartBiz%20Academy%20and%20need%20personal%20mentoring.', '_blank')}
+          onClick={() => window.open('/contact', '_blank')}
           className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-6 py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 whitespace-nowrap active:scale-95 border-0 cursor-pointer relative z-10 shrink-0"
         >
-          <span>Connect via WhatsApp</span>
+          <span>Visit Support Desk</span>
           <ExternalLink className="w-3.5 h-3.5" />
         </button>
       </div>

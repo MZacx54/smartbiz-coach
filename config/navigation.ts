@@ -115,7 +115,6 @@ export const OWNER_ONLY_VIEWS: AppView[] = [
 
 const ADMIN_EMAILS = [
   'meshachzax@gmail.com',
-  'admin@smartbiz.com.ng',
   'admin@smartbizcoach.com.ng',
   'partners@smartbizcoach.com.ng',
   'info@smartbizcoach.com.ng',

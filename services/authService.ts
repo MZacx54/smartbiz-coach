@@ -226,13 +226,100 @@ export const securityLockService = {
     }
 };
 
+export const clearAllTenantLocalState = (preservePreferences = true) => {
+    const explicitKeys = [
+        'sb_auth_token',
+        'sb_active_user_id',
+        'sb_user',
+        'sb_cached_user',
+        'sb_brand',
+        'sb_content_history',
+        'sb_cart',
+        'sb_transactions',
+        'sb_user_stats',
+        'sb_user_actions',
+        'sb_shift_mode',
+        'sb_cashier_mode',
+        'sb_has_owner_passcode',
+        'sb_owner_passcode_hash',
+        'sb_owner_pin',
+        'sb_pin_failed_attempts',
+        'sb_pin_lockout_until',
+        'sb_debtors',
+        'sb_supplier_payables',
+        'sb_invoices_detailed',
+        'sb_invoices',
+        'sb_idice_transaction_logs',
+        'sb_idice_products',
+        'sb_cached_products',
+        'sb_inventory',
+        'sb_offline_sales',
+        'sb_offline_expenses',
+        'sb_local_leads',
+        'sb_bank_payout',
+        'sb_ml_overview_cache',
+        'sb_analytics_ml_cache',
+        'sb_health_score_data',
+        'sb_home_trends',
+        'sb_cached_trends',
+        'sb_saved_photo_projects',
+        'sb_saved_plan',
+        'sb_plan_data',
+        'sb_checklist_dismissed',
+        'sb_activation_dismissed',
+        'sb_store_shared',
+        'sb_completed_daily_tasks_data',
+        'sb_onboarding_roadmap_v2',
+        'sb_academy_completed_modules',
+        'sb_idice_traction_mode',
+        'sb_active_trend',
+        'sb_gov_charter_approved',
+        'smartbiz_products',
+        'smartbiz_whatsapp_phone',
+    ];
+    explicitKeys.forEach((k) => {
+        try { localStorage.removeItem(k); } catch {}
+    });
+
+    const prefixDeletes = [
+        'sb_api_cache_v2:',
+        'sb_cached_sales_',
+        'sb_cached_expenses_',
+        'sb_cached_summary_',
+        'sb_home_summary_',
+        'sb_opening_till_',
+        'sb_actual_till_',
+        'sb_day_approved_',
+        'sb_marketplace_cache_',
+        'sb_usage_',
+    ];
+    try {
+        const allKeys = Object.keys(localStorage);
+        allKeys.forEach((key) => {
+            if (prefixDeletes.some((p) => key.startsWith(p))) {
+                localStorage.removeItem(key);
+            }
+        });
+    } catch {}
+
+    if (!preservePreferences) {
+        try { localStorage.removeItem('sb_voice_lang'); } catch {}
+    }
+    try { sessionStorage.clear(); } catch {}
+};
+
 export const authService = {
     login: async (credentials: any) => {
         const response = await api.post('users/login/', credentials);
+        // Clear any prior tenant's cached ledgers, debtors, invoices, and API caches before setting new session
+        clearAllTenantLocalState();
         if (response.data.token) {
             localStorage.setItem('sb_auth_token', response.data.token);
         }
         if (response.data.user) {
+            if (response.data.user.id) {
+                localStorage.setItem('sb_active_user_id', String(response.data.user.id));
+            }
             securityLockService.syncFromUserOrBrand(response.data.user);
         }
         return response.data;
@@ -240,10 +327,15 @@ export const authService = {
 
     register: async (userData: any) => {
         const response = await api.post('users/register/', userData);
+        // Clear any prior tenant's cached ledgers, debtors, invoices, and API caches before setting new session
+        clearAllTenantLocalState();
         if (response.data.token) {
             localStorage.setItem('sb_auth_token', response.data.token);
         }
         if (response.data.user) {
+            if (response.data.user.id) {
+                localStorage.setItem('sb_active_user_id', String(response.data.user.id));
+            }
             securityLockService.syncFromUserOrBrand(response.data.user);
         }
         return response.data;
@@ -266,22 +358,7 @@ export const authService = {
     },
 
     logout: () => {
-        const keysToRemove = [
-            'sb_auth_token',
-            'sb_user',
-            'sb_cached_user',
-            'sb_brand',
-            'sb_invoices_detailed',
-            'sb_debtors',
-            'sb_inventory',
-            'sb_transactions',
-            'sb_analytics_ml_cache',
-            'sb_health_score_data'
-        ];
-        keysToRemove.forEach(k => {
-            try { localStorage.removeItem(k); } catch {}
-        });
-        try { sessionStorage.clear(); } catch {}
+        clearAllTenantLocalState();
     },
 
     getStats: async () => {
@@ -301,6 +378,16 @@ export const authService = {
 
     resetPassword: async (data: any) => {
         const response = await api.post('users/reset-password/', data);
+        return response.data;
+    },
+
+    verifyEmail: async (code: string) => {
+        const response = await api.post('users/verify-email/', { code });
+        return response.data;
+    },
+
+    resendVerification: async () => {
+        const response = await api.post('users/resend-verification/');
         return response.data;
     }
 };

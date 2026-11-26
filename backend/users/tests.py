@@ -118,6 +118,52 @@ class BulkOnboardingTests(TestCase):
         # Ensure user is deleted
         self.assertFalse(User.objects.filter(email='delete_me@test.com').exists())
 
+
+class EmailVerificationCreditGateTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_register_grants_zero_credits_until_verified(self):
+        url = reverse('register')
+        payload = {
+            'username': 'newmerchant@myshop.com.ng',
+            'email': 'newmerchant@myshop.com.ng',
+            'password': 'StrongPassword123!',
+            'first_name': 'Chidi',
+            'business_name': 'Chidi Electronics',
+            'phone': '08055551234',
+            'location': 'Lagos',
+        }
+        res = self.client.post(url, payload, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['user']['credits'], 0)
+        self.assertFalse(res.data['user']['is_email_verified'])
+
+        from users.models import EmailVerificationCode
+        u = User.objects.get(email='newmerchant@myshop.com.ng')
+        code_obj = EmailVerificationCode.objects.filter(user=u, is_used=False).first()
+        self.assertIsNotNone(code_obj)
+
+        # Verify wrong code rejected
+        self.client.force_authenticate(user=u)
+        bad_res = self.client.post(reverse('verify-email'), {'code': '000000'}, format='json')
+        if code_obj.code != '000000':
+            self.assertEqual(bad_res.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Verify valid code unlocks 50 credits once
+        ok_res = self.client.post(reverse('verify-email'), {'code': code_obj.code}, format='json')
+        self.assertEqual(ok_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(ok_res.data['credits_awarded'], 50)
+        self.assertEqual(ok_res.data['user']['credits'], 50)
+        self.assertTrue(ok_res.data['user']['is_email_verified'])
+
+        # Re-submitting does not double credit
+        repeat_res = self.client.post(reverse('verify-email'), {'code': code_obj.code}, format='json')
+        self.assertEqual(repeat_res.data['credits_awarded'], 0)
+        u.refresh_from_db()
+        self.assertEqual(u.credits, 50)
+
+
     def test_dynamic_blog_post_api(self):
         from users.models import BlogPost
         post = BlogPost.objects.create(

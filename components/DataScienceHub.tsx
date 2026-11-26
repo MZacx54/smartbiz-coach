@@ -622,7 +622,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
       doc.setTextColor(52, 211, 153);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text("2. ALGORITHMIC SMARTSCORE™ (FICO STANDARDS 300 - 850)", 20, 107);
+      doc.text("2. ALGORITHMIC SMARTSCORE™ (300 - 850 READINESS SCALE)", 20, 107);
 
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(32);
@@ -1562,7 +1562,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
             exit={{ opacity: 0 }}
             className="space-y-6"
           >
-            {/* FICO Gauge Hero */}
+            {/* SmartScore Gauge Hero */}
             <div className="bg-slate-950 text-white rounded-[32px] p-6 sm:p-8 border border-indigo-950/50 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/15 rounded-full filter blur-3xl pointer-events-none" />
               

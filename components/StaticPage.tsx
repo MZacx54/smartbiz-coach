@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, MapPin, CheckCircle, Shield, FileText, HelpCircle, Award, BookOpen, Send, Lock, Scale, Building, Database, AlertCircle, ExternalLink, Download, Check, Sparkles } from 'lucide-react';
 import SEO from './SEO';
 import api from '../services/api';
+import { getSupportDisplayPhone, getSupportWhatsAppUrl } from '../utils/supportContact';
 
 interface StaticPageProps {
   pageType: 'about' | 'contact' | 'privacy' | 'terms' | 'help' | 'grants' | 'cac';
@@ -46,13 +47,13 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
   };
 
   const pageMeta = {
-    about: { title: "About Us | SmartBiz Coach", desc: "Nigeria's #1 AI Business Operating System empowering MSMEs with daily POS, Snap-to-Studio, Central Market Square, and funding readiness." },
-    contact: { title: "Contact Us | SmartBiz Coach", desc: "Get in touch with our team. Phone/WhatsApp: 09064556107, Email: support@smartbizcoach.com.ng" },
-    privacy: { title: "Privacy Policy & Statutory Data Protection Notice | SmartBiz Coach", desc: "Official data protection notice under NDPA 2023, NDPR, Multi-Tier Partner Ecosystem Governance Framework (SBC/NEP/GOV/2026/V4.2), and CBN non-custodial standards." },
-    terms: { title: "Terms of Service & Merchant Operational Agreement | SmartBiz Coach", desc: "Binding terms of service, fair-use lifetime free tools guarantee, BizCredits billing rules, Market Square guidelines, and Multi-Partner Ecosystem Framework." },
+    about: { title: "About Us | SmartBiz Coach", desc: "Practical Business Operating System for Nigerian MSMEs: daily POS, Product Studio, Central Market Square, and funding readiness." },
+    contact: { title: "Contact Us | SmartBiz Coach", desc: "Get in touch with our team via our Contact Desk or Email: support@smartbizcoach.com.ng" },
+    privacy: { title: "Privacy Policy & Statutory Data Protection Notice | SmartBiz Coach", desc: "Official data protection notice under Nigeria Data Protection Act (NDPA 2023) and NDPC standards." },
+    terms: { title: "Terms of Service & Merchant Operational Agreement | SmartBiz Coach", desc: "Binding terms of service, free core tools guarantee, BizCredits billing rules, and Market Square guidelines." },
     help: { title: "Help Center & FAQs | SmartBiz Coach", desc: "Find tutorials, credit costs, fair-use guarantees, and quick answers to how our platform works." },
     grants: { title: "SME Grants & Funding Guide | SmartBiz Coach", desc: "Master guide to qualifying for BOI loans, SMEDAN grants, TEF, and bank financing in Nigeria." },
-    cac: { title: "CAC Registration & Compliance Guide | SmartBiz Coach", desc: "The official step-by-step checklist to register your business, get a TIN, SCUML, and Section 23 CITA tax shield." },
+    cac: { title: "CAC Registration & Compliance Guide | SmartBiz Coach", desc: "Step-by-step checklist to register your business, obtain a TIN, and understand small-company tax rules in Nigeria." },
   };
 
   const currentMeta = pageMeta[pageType] || { title: "SmartBiz Coach", desc: "AI Business Partner for Nigerian MSMEs" };
@@ -91,38 +92,38 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <h1 className="text-3xl font-extrabold text-slate-900 font-heading">About SmartBiz Coach</h1>
               </div>
               <p className="text-slate-600 leading-relaxed mb-6">
-                SmartBiz Coach is Nigeria's #1 AI-powered Business Operating System built specifically for Micro, Small, and Medium Enterprises (MSMEs). Our platform delivers essential digital infrastructure that protects counter cashflow from leakages, elevates raw product photos into luxury commercial visual assets, automates debt collection, connects merchants with buyers nationwide on Central Market Square, and prepares businesses for bank loans and government grants.
+                SmartBiz Coach is a practical Business Operating System built specifically for Nigerian Micro, Small, and Medium Enterprises (MSMEs). Our platform delivers digital infrastructure that helps track daily cashflow, prepare clean product catalog photos, automate debt reminders, connect merchants with buyers nationwide on Central Market Square, and organize records for loans and grants.
               </p>
 
               <h2 className="text-xl font-bold text-slate-900 mt-8 mb-4 font-heading">Our Core Mission</h2>
               <p className="text-slate-600 leading-relaxed mb-6">
-                To simplify and formalize everyday trade for African entrepreneurs. In Nigeria, over 90% of business failures stem from unrecorded cash leakage, attendant theft, uncollected customer debt, and lack of bankable documentation. SmartBiz Coach solves these operational bottlenecks with zero-hardware phone tools, offline-first PWA resilience, and fair-use access where core daily tools remain 100% free forever.
+                To simplify everyday trade for Nigerian entrepreneurs. Across Nigeria, many small businesses struggle with unrecorded cash leakage, staff price tampering, uncollected customer debt, and missing documentation. SmartBiz Coach solves these operational bottlenecks with zero-hardware smartphone tools, offline-resilient logging, and free core daily bookkeeping.
               </p>
 
-              <h2 className="text-xl font-bold text-slate-900 mt-8 mb-4 font-heading">The 4 Operating Pillars Powering Every Merchant</h2>
+              <h2 className="text-xl font-bold text-slate-900 mt-8 mb-4 font-heading">The Core Pillars Powering Every Merchant</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
                   <div className="text-emerald-700 font-bold text-sm mb-1">⚡ Pillar 1: Daily Retail & Operations</div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Phone camera barcode & QR POS scanner (zero hardware cost), 5-second multi-tender day-book, 4-digit apprentice shift PIN lock, generator fuel & petty cash tracker, and 100% offline-first open market PWA mode.
+                    Phone camera barcode &amp; QR POS scanner (zero hardware cost), 5-second multi-tender day-book, supervisor password shift lock, generator fuel &amp; petty cash tracker, and offline-resilient mode.
                   </p>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                  <div className="text-purple-700 font-bold text-sm mb-1">📸 Pillar 2: AI Creative & Commercial Studio</div>
+                  <div className="text-purple-700 font-bold text-sm mb-1">📸 Pillar 2: Creative & Commercial Studio</div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Snap-to-Studio 2.0 (raw bedsheet photos transformed into 16 luxury commercial 4K sets with reflections and shadows), AI Brand Kit builder, viral WhatsApp Status copywriters, and video teleprompter suite.
+                    Product Catalog Studio (clean presentation backdrops), AI Brand Kit builder, WhatsApp Status copywriters, and product video teleprompter.
                   </p>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                  <div className="text-blue-700 font-bold text-sm mb-1">🏪 Pillar 3: Central Market Square & Debt Recovery</div>
+                  <div className="text-blue-700 font-bold text-sm mb-1">🏪 Pillar 3: Market Square & Debt Recovery</div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Central MSME Market Square showcasing products across 36 Nigerian states with CAC/SMEDAN badges, Gbege Book debt recovery ledger with automated WhatsApp Paystack payment links, and 1-tap itemized WhatsApp invoicing.
+                    Central MSME Market Square across Nigeria with tiered ID/CAC verification badges, Gbege Book debt recovery ledger with WhatsApp Paystack payment links, and 1-tap itemized WhatsApp invoicing.
                   </p>
                 </div>
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                  <div className="text-amber-700 font-bold text-sm mb-1">⚖️ Pillar 4: Governance, Tax & Capital</div>
+                  <div className="text-amber-700 font-bold text-sm mb-1">⚖️ Pillar 4: Formalization, Grants &amp; SmartScore™</div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Section 23 CITA 0% tax exemption memo generator (turnover &lt; ₦25M), accredited Done-For-You CAC registration desk, BOI-compliant 5-year bankable business plan generator, and SME grant matching engine.
+                    Informational small-company tax readiness checklists, assisted CAC registration desk, 3-year structured business plan builder, SmartScore™ 300–850 readiness metrics, and SME grant matching.
                   </p>
                 </div>
               </div>
@@ -130,7 +131,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 mt-8">
                 <h3 className="font-bold text-emerald-950 mb-2">Claim 50 Free Welcome Credits Today</h3>
                 <p className="text-xs text-emerald-800 mb-4">
-                  Sign up for free in 60 seconds with zero credit card required. Instantly receive 50 welcome credits and lifetime free access to core POS, barcode scanning, offline mode, and debt tracking.
+                  Sign up in 60 seconds with zero credit card required. Verify your email address to unlock 50 welcome credits plus lifetime free access to core POS, barcode scanning, offline logging, and debt tracking.
                 </p>
                 <button onClick={() => navigate('/register')} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-md">
                   Create Your Free Account →
@@ -156,8 +157,13 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   <div className="flex items-start gap-4">
                     <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600"><Phone className="w-4 h-4" /></div>
                     <div>
-                      <h4 className="font-bold text-slate-900 text-sm">Phone & WhatsApp Support</h4>
-                      <p className="text-sm text-slate-600 mt-1">09064556107</p>
+                      <h4 className="font-bold text-slate-900 text-sm">Support Desk Hours &amp; Line</h4>
+                      <p className="text-sm text-slate-600 mt-1">
+                        {getSupportDisplayPhone() ? (
+                          <>WhatsApp / Support Line: <a href={getSupportWhatsAppUrl()} target="_blank" rel="noopener noreferrer" className="text-emerald-700 font-bold underline">{getSupportDisplayPhone()}</a> · </>
+                        ) : null}
+                        Submit a ticket below or email support@smartbizcoach.com.ng (Mon–Sat, 8 AM – 6 PM WAT)
+                      </p>
                     </div>
                   </div>
 
@@ -175,8 +181,8 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                           <a href="mailto:support@smartbizcoach.com.ng" className="text-blue-600 hover:underline font-mono text-xs">support@smartbizcoach.com.ng</a>
                         </div>
                         <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                          <span className="font-bold text-slate-800 text-[11px] block">⚙️ Platform Administration & Governance</span>
-                          <a href="mailto:admin@smartbiz.com.ng" className="text-slate-700 hover:underline font-mono text-xs">admin@smartbiz.com.ng</a>
+                          <span className="font-bold text-slate-800 text-[11px] block">⚙️ Platform Administration, DPO &amp; Governance</span>
+                          <a href="mailto:admin@smartbizcoach.com.ng" className="text-slate-700 hover:underline font-mono text-xs">admin@smartbizcoach.com.ng</a>
                         </div>
                       </div>
                     </div>
@@ -210,7 +216,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                         >
                           <option value="support">🛟 Customer & Merchant Support (support@smartbizcoach.com.ng)</option>
                           <option value="partnership">🤝 Strategic Partnerships, Donors & NGOs (partners@smartbizcoach.com.ng)</option>
-                          <option value="admin">⚙️ Platform Admin & Executive Matters (admin@smartbiz.com.ng)</option>
+                          <option value="admin">⚙️ Platform Admin & Executive Matters (admin@smartbizcoach.com.ng)</option>
                         </select>
                       </div>
                       <div>
@@ -275,13 +281,10 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
               <div className="border-b border-slate-200 pb-6">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
                   <span className="bg-blue-100 text-blue-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                    <Shield className="w-3 h-3" /> NDPA 2023 &amp; NDPR Compliant
-                  </span>
-                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                    <Building className="w-3 h-3" /> Multi-Partner Ecosystem Protocol: SBC/NEP/GOV/2026/V4.2
+                    <Shield className="w-3 h-3" /> NDPA 2023 Aligned
                   </span>
                   <span className="bg-amber-100 text-amber-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> CBN Non-Custodial Gateway
+                    <Lock className="w-3 h-3" /> Paystack Secured Payments
                   </span>
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-heading tracking-tight">
@@ -1190,7 +1193,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     Paystack payments normally credit within 5 seconds. In rare cases where your bank network delays the webhook notification, simply wait 2-3 minutes and refresh your dashboard.
                   </p>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    If credits are still missing, take a screenshot of your bank debit or Paystack receipt and WhatsApp our 24/7 Merchant Support Desk at <strong>09064556107</strong>. We verify the transaction reference and credit your account immediately.
+                    If credits are still missing, take a screenshot of your bank debit or Paystack receipt and email our Support Desk at <strong>support@smartbizcoach.com.ng</strong> (or submit a message on our Contact page). We verify the transaction reference and credit your account promptly.
                   </p>
                 </div>
               </div>
@@ -1243,9 +1246,9 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="flex items-start gap-3">
                       <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs flex-shrink-0">3</span>
                       <div>
-                        <strong className="text-slate-900 text-sm">Section 23 CITA Tax Exemption Shield & Valid TIN:</strong>
+                        <strong className="text-slate-900 text-sm">Small-Company Tax Readiness & Valid TIN:</strong>
                         <p className="text-xs text-slate-600 mt-1">
-                          Under Sections 23 and 40 of the Companies Income Tax Act (CITA), Nigerian MSMEs with annual gross turnover under ₦25,000,000 are legally subject to a 0% corporate tax rate. SmartBiz Coach generates an official legal exemption memo to present alongside your Tax Identification Number (TIN).
+                          Under Nigeria's small-company CIT &amp; VAT frameworks (subject to corporate structure, statutory turnover/fixed-asset limits, and professional-service exclusions), qualifying incorporated small companies may qualify for 0% corporate tax while still filing mandatory annual NRS returns. SmartBiz Coach provides an informational summary checklist alongside your TIN.
                         </p>
                       </div>
                     </div>
