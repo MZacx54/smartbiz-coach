@@ -9,7 +9,7 @@ gunicorn
 psycopg2-binary
 requests
 Pillow
-sentry-sdk[django]
+sentry-sdk[django]>=2.0.0,<3.0.0
 gTTS
 celery
 redis

@@ -249,18 +249,21 @@ STORAGES = {
 
 # Look for frontend build in 'dist' directory
 FRONTEND_DIST_DIR = BASE_DIR / 'dist'
+ROOT_DIST_DIR = BASE_DIR.parent / 'dist'
+ALT_DIST = Path('/dist')
 STATICFILES_DIRS = []
+
 if FRONTEND_DIST_DIR.exists():
     STATICFILES_DIRS.append(str(FRONTEND_DIST_DIR))
     print(f"Found frontend assets at {FRONTEND_DIST_DIR}")
+elif ROOT_DIST_DIR.exists():
+    STATICFILES_DIRS.append(str(ROOT_DIST_DIR))
+    print(f"Found frontend assets at {ROOT_DIST_DIR}")
+elif ALT_DIST.exists():
+    STATICFILES_DIRS.append(str(ALT_DIST))
+    print(f"Found frontend assets at {ALT_DIST}")
 else:
-    # During container build, it might be here
-    ALT_DIST = Path('/dist')
-    if ALT_DIST.exists():
-        STATICFILES_DIRS.append(str(ALT_DIST))
-        print(f"Found frontend assets at {ALT_DIST}")
-    else:
-        print(f"Warning: Frontend assets not found")
+    print(f"Warning: Frontend assets not found")
 
 
 if not DEBUG:
@@ -352,14 +355,17 @@ REST_FRAMEWORK = {
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 
 # ─── Sentry Error Tracking ────────────────────────────────────────────────────
-SENTRY_DSN = os.getenv('SENTRY_DSN', '')
+SENTRY_DSN = os.getenv('SENTRY_DSN', '').strip()
 if SENTRY_DSN:
-    import sentry_sdk
-    from sentry_sdk.integrations.django import DjangoIntegration
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        integrations=[DjangoIntegration()],
-        traces_sample_rate=0.1,
-        send_default_pii=False,
-        environment="production" if not DEBUG else "development",
-    )
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            traces_sample_rate=0.1,
+            environment="production" if not DEBUG else "development",
+        )
+        print("Sentry error tracking initialized successfully.")
+    except Exception as _sentry_err:
+        print(f"Warning: Sentry initialization bypassed: {_sentry_err}")
