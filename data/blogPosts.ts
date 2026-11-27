@@ -408,12 +408,12 @@ export const BLOG_POSTS: BlogPost[] = [
     {
         id: 'post-4',
         slug: 'section-23-cita-tax-exemption-msme',
-        title: 'Formalizing 40 Million Nigerian MSMEs: Why Section 23 CITA 0% Tax Exemption is the Key to National Economic Compliance',
-        seoTitle: 'Section 23 CITA 0% Tax Exemption Nigeria MSME Guide | SmartBiz Coach',
-        metaDescription: 'Understand Companies Income Tax Act (CITA) Section 23 & 40: Why Nigerian small businesses under ₦25M turnover pay 0% corporate tax and how to protect your shop from illegal local council harassment.',
-        excerpt: 'Millions of Nigerian business owners avoid CAC registration out of fear of arbitrary tax extortion. In reality, the law completely exempts small businesses under ₦25 Million turnover from Companies Income Tax. Here is how the legal shield works.',
+        title: 'Formalizing Nigerian MSMEs: Understanding Small-Company Tax Rules & CAC Registration Without the Myths',
+        seoTitle: 'Small-Company Tax Rules Nigeria (NTA 2025 / CITA) MSME Guide | SmartBiz Coach',
+        metaDescription: 'Understand small-company CIT & VAT thresholds under Nigeria Tax Act 2025 & CITA: turnover and ₦250M fixed-asset caps, exclusions, NRS filings, and why local permits still apply. Informational only.',
+        excerpt: 'Many Nigerian business owners hesitate to register with CAC out of tax confusion. Learn how incorporated small-company tax rules actually work—plus what local permits and annual NRS filings remain mandatory.',
         category: 'Tax & Compliance',
-        tags: ['Section 23 CITA', 'Tax Exemption', 'FIRS', 'CAC Registration', 'Nigerian Tax Law', 'MSME Compliance', 'Finance Act'],
+        tags: ['NTA 2025', 'Tax Compliance', 'NRS', 'CAC Registration', 'Nigerian Tax Law', 'MSME Compliance', 'CITA'],
         author: {
             name: 'Meshach Zachariah',
             role: 'Founder & Head of Product, SmartBiz Coach',
@@ -429,13 +429,13 @@ export const BLOG_POSTS: BlogPost[] = [
             'Under Sections 23 and 40 of the Companies Income Tax Act (CITA) Cap C21 LFN 2004 (as amended by Finance Acts), small companies with gross turnover below ₦25,000,000 are subject to a 0% corporate income tax rate.',
             'Furthermore, small companies are legally exempt from Tertiary Education Tax (TETFund) and Value Added Tax (VAT) collection thresholds if below statutory limits.',
             'The true risk for unformalized businesses is illegal task-force extortion, lack of access to commercial bank credit, and total disqualification from Federal MSME grants.',
-            'SmartBiz Coach automatically generates a personalized Section 23 CITA Legal Tax Exemption Memo with statutory citations that merchants can present to any inspecting authority.'
+            'SmartBiz Coach provides an informational compliance checklist summarizing small-company rules alongside a "Not Legal or Tax Advice" notice.'
         ],
         statutoryCitations: [
             {
-                title: 'Companies Income Tax Act (CITA) Cap C21 LFN 2004 (As Amended)',
-                section: 'Section 23 & Section 40: Small Company 0% Tax Rate',
-                body: 'Companies with a gross turnover of ₦25,000,000 or less per annum are classified as Small Companies and are subject to 0% Companies Income Tax.'
+                title: 'Companies Income Tax Act (CITA) & Nigeria Tax Act (NTA 2025)',
+                section: 'Small-Company CIT Criteria (Informational Reference)',
+                body: 'Small-company 0% CIT relief applies only to qualifying incorporated companies (Ltd) meeting statutory turnover and ₦250,000,000 fixed-asset caps, excluding professional services. Annual NRS returns remain mandatory.'
             },
             {
                 title: 'Tertiary Education Trust Fund Act (TETFund Act 2011)',
@@ -459,39 +459,38 @@ export const BLOG_POSTS: BlogPost[] = [
                 ],
                 callout: {
                     type: 'statutory',
-                    title: 'Statutory Reality Check: 0% Tax Rate',
-                    text: 'If your annual business turnover is under ₦25 Million, your legal Companies Income Tax rate in Nigeria is 0.00%. You owe zero kobo in corporate profit tax.'
+                    title: 'Important Disclaimer (Not Legal or Tax Advice)',
+                    text: 'Corporate small-company CIT relief applies only to qualifying incorporated entities (Ltd) within statutory turnover and ₦250M fixed-asset limits (excluding professional services). It does NOT waive annual NRS returns or valid Local Government council permits. Always consult a licensed tax practitioner.'
                 }
             },
             {
                 id: 'unraveling-cita-section-23',
-                heading: '2. Unraveling Section 23 & Section 40 of CITA',
+                heading: '2. Understanding Small-Company Corporate Tax Eligibility',
                 paragraphs: [
-                    'The Nigerian tax architecture establishes three distinct business tiers based on annual gross turnover:',
-                    '1. Small Companies: Turnover of ₦25,000,000 or less ➔ 0% Corporate Income Tax Rate.',
-                    '2. Medium Companies: Turnover between ₦25,000,001 and ₦100,000,000 ➔ 20% Corporate Income Tax Rate.',
-                    '3. Large Companies: Turnover exceeding ₦100,000,000 ➔ 30% Corporate Income Tax Rate.',
-                    'Under Section 23 of CITA, the profits of small companies are exempt from tax. Under Section 40, the applicable rate is formally legislated as nil (0%). In addition, small companies are explicitly exempt from the 3% Tertiary Education Tax (TETFund) levy that applies to medium and large corporate entities.',
-                    'This means that formalization does not bring a heavy tax burden; instead, formalization gives the entrepreneur legal standing and statutory immunity against arbitrary assessments.'
+                    'Eligibility for small-company corporate tax relief depends on legal entity type, gross turnover, fixed-asset ceiling (₦250M under NTA 2025), and excluded professional-service activities:',
+                    '1. Incorporated Limited Liability Companies (Ltd): May qualify for 0% Corporate Income Tax if below the statutory turnover and ₦250M fixed-asset caps and not engaged in excluded professional services.',
+                    '2. Sole Proprietorships & Business Names: Assessed under Personal Income Tax rules by State Internal Revenue Services rather than corporate income tax.',
+                    '3. Mandatory Obligations: Annual tax returns to the Nigeria Revenue Service (NRS) and valid state/local business premises or market permits remain compulsory.',
+                    'Disclaimer: This summary is strictly informational and does not constitute formal legal or tax advice.'
                 ]
             },
             {
                 id: 'stopping-illegal-extortion',
-                heading: '3. How to Stop Illegal Task-Force Extortion with SmartBiz Coach',
+                heading: '3. Keeping Clean Audit-Ready Records With SmartBiz Coach',
                 paragraphs: [
-                    'While federal law is clear, local government revenue committees and unofficial task forces frequently harass high-street shop owners with bogus "business premises demand notices" demanding ₦50,000 to ₦200,000 on the spot.',
-                    'To protect Nigerian entrepreneurs from these predatory practices, SmartBiz Coach built the Section 23 CITA Legal Tax Exemption Shield directly into the application.'
+                    'Keeping clean, chronological digital bookkeeping helps business owners track real turnover and work constructively with licensed accountants and tax advisers.',
+                    'SmartBiz Coach provides an informational Tax Readiness Checklist so merchants understand what records to maintain.'
                 ],
                 list: [
-                    'Personalized Legal Exemption Memo: Input your business details and turnover range to generate a formal legal advisory memo citing CITA Section 23, Section 40, and the Finance Act.',
-                    'Digital Daily Cashbook Audit Trail: A clear, organized record of your daily sales and petty expenses that proves your actual turnover sits below the ₦25M threshold.',
-                    'Official PDF Export: Print the laminated memo and keep it at your cash counter to hand to visiting inspection agents.',
-                    'Accredited CAC Fast-Track Desk: Ready to formalize? Submit your Business Name or Limited Company registration directly to accredited CAC legal counsel in 3-7 business days.'
+                    'Informational Tax Readiness Summary: Summarizes your self-declared turnover against statutory small-company criteria alongside clear NRS filing and local permit reminders.',
+                    'Digital Daily Cashbook Audit Trail: A clear, organized record of daily sales and petty expenses to share with your accountant.',
+                    'CSV / PDF Bookkeeping Export: Download clean transaction summaries for formal tax preparation.',
+                    'Guided CAC Desk Checklist: Prepare Business Name or Limited Company filings cleanly (processing timelines depend on the CAC portal).'
                 ],
                 callout: {
                     type: 'tip',
                     title: 'Best Practice for Nigerian Merchants',
-                    text: 'Never argue verbally with visiting revenue agents. Politely present your SmartBiz Coach Section 23 Legal Exemption Memo alongside your digital POS summary. Knowledge of the exact section of the law shuts down 95% of unlawful extortion attempts.'
+                    text: 'Always obtain official government demand receipts, pay only statutory state/local levies through authorized channels, and consult a qualified tax consultant for formal tax disputes.'
                 }
             },
             {
@@ -524,9 +523,9 @@ export const BLOG_POSTS: BlogPost[] = [
         ],
         relatedSlugs: ['ngos-msme-digital-bookkeeping', 'derisking-msme-lending-microfinance-pos-cashbook', 'secure-boi-smedan-matching-grants-2026-guide'],
         primaryCta: {
-            title: 'Protect Your Business with the Section 23 CITA Tax Shield',
-            subtitle: 'Generate your free legal tax exemption memo and register your CAC business name with accredited legal counsel.',
-            buttonText: 'Generate Free Tax Exemption Memo →',
+            title: 'Organize Your Business Tax & CAC Checklist',
+            subtitle: 'Generate an informational small-company compliance summary (not legal advice) and review our CAC formalization guide.',
+            buttonText: 'Open Compliance Guide →',
             actionUrl: '/dashboard/compliance',
             type: 'tax_memo'
         }
@@ -957,7 +956,7 @@ export const BLOG_POSTS: BlogPost[] = [
             },
             {
                 q: 'How do customers pay me on Central Market Square?',
-                a: 'Buyers click directly to chat with you on WhatsApp or can pay you through Paystack escrow-enabled payment links generated in your SmartBiz Coach dashboard.'
+                a: 'Buyers click directly to chat with you on WhatsApp or pay via Paystack payment links configured in your SmartBiz Coach dashboard.'
             }
         ],
         relatedSlugs: ['ngos-msme-digital-bookkeeping', 'section-23-cita-tax-exemption-msme', 'stop-apprentice-theft-cash-leakage-nigerian-retail'],
@@ -1088,8 +1087,8 @@ export const BLOG_POSTS: BlogPost[] = [
                 a: 'No. Because our algorithms run on in-house Scikit-Learn mathematical models rather than commercial cloud API tokens, the Credit Scoring, Stockout Forecaster, Isolation Forest Till Scanner, and PDF Underwriting Dossier are 100% free forever for all merchants.'
             },
             {
-                q: 'Will Bank of Industry (BOI) and commercial banks accept this Underwriting Dossier?',
-                a: 'Yes. The Underwriting Dossier is formatted specifically to meet institutional SME lending criteria for programs like the BOI MSME Growth Fund, SMEDAN matching funds, and Tony Elumelu Foundation. Each report features a tamper-evident SHA-256 digital verification hash that loan officers can verify in seconds.'
+                q: 'Will Bank of Industry (BOI) and commercial banks guarantee loan approval with this report?',
+                a: 'No platform can guarantee third-party loan approval. SmartScore™ and our PDF financial summary help organize your recorded POS and cashflow figures clearly, while banks and DFIs make independent underwriting decisions under their own policies.'
             },
             {
                 q: 'How long do I need to use the POS before I can export a bankable credit score?',

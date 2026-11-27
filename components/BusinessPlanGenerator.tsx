@@ -320,7 +320,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
     doc.setTextColor(245, 158, 11); // Amber
-    doc.text("SMARTBIZ COACH AI • VERIFIED ENTERPRISE DOSSIER", 105, 18, { align: "center" });
+    doc.text("SMARTBIZ COACH • BUSINESS PLAN & CASHFLOW SUMMARY", 105, 18, { align: "center" });
     
     // Enterprise Title
     doc.setFont("helvetica", "bold");
@@ -374,11 +374,11 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
 
     const todayStr = new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' });
     const cacNumber = brand?.cacNumber || 'RC / BN - Registered Enterprise';
-    const tinNumber = brand?.tin || brand?.tinNumber || 'TIN-2026-JTB-VERIFIED';
-    const smedanNum = brand?.smedanNumber || 'SUIN-MSME-NIGERIA-ACTIVE';
+    const tinNumber = brand?.tin || brand?.tinNumber || 'TIN (Optional / Pending)';
+    const smedanNum = brand?.smedanNumber || 'SMEDAN SUIN (Optional / Pending)';
     const entityType = brand?.corporateEntityType || 'Private Commercial Enterprise / MSME';
     const promoterTitle = brand?.businessName ? 'Managing Director / Lead Promoter' : 'Managing Director';
-    const phoneContact = brand?.phone || '+234 800 SMARTBIZ';
+    const phoneContact = brand?.phone || 'On File';
 
     drawMetaCell(24, c1Y, "LEGAL ENTERPRISE NAME", name);
     drawMetaCell(24, c1Y + 13, "CAC REGISTRATION (RC / BN)", cacNumber);
@@ -398,21 +398,21 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     drawMetaCell(c2X, c2Y + 39, "FACILITY TENOR / TERMS", "36 Months (with 3-6 mo Moratorium)");
     drawMetaCell(c2X, c2Y + 52, "CONCESSIONARY BENCHMARK", "9.0% - 12.0% p.a. (BOI / DBN Window)");
     drawMetaCell(c2X, c2Y + 65, "PRIMARY REPAYMENT SOURCE", "Operating Cashflow & POS Settlement");
-    drawMetaCell(c2X, c2Y + 78, "TAX EXEMPTION STATUS", "CITA Section 23 (0% CIT Turnover < NGN 25M)");
+    drawMetaCell(c2X, c2Y + 78, "TAX GUIDANCE NOTE", "Informational only (NTA 2025/CITA — confirm with tax adviser)");
     drawMetaCell(c2X, c2Y + 91, "APPRAISAL / COMPILED DATE", todayStr);
 
-    // Bottom Security Strip on Cover
+    // Bottom Strip on Cover
     doc.setDrawColor(203, 213, 225);
     doc.line(18, 258, 192, 258);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
     doc.setTextColor(71, 85, 105);
-    doc.text("CRYPTOGRAPHIC VERIFICATION SEAL: SHA256: 7F4A-98C2-B01D-5E39-A488-82CE-71BD-2026", 105, 264, { align: "center" });
+    doc.text("PLANNING DOCUMENT SUMMARY • FOR LENDER & MANAGEMENT REVIEW", 105, 264, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
-    doc.text("Compliant with Central Bank of Nigeria (CBN) MSME Credit Standards • Bank of Industry (BOI) • DBN • SMEDAN", 105, 271, { align: "center" });
-    doc.text("SmartBiz Coach AI OS • Verified Document Portal: https://smartbizcoach.com.ng/verify", 105, 277, { align: "center" });
+    doc.text("Not Legal, Accounting, or Tax Advice. Independently verify figures prior to institutional submission.", 105, 271, { align: "center" });
+    doc.text("SmartBiz Coach OS • smartbizcoach.com.ng", 105, 277, { align: "center" });
 
     // -------------------------------------------------------------
     // Page 2: Table of Contents & Regulatory Dossier Index
@@ -485,12 +485,12 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(30, 58, 138);
-    doc.text("INSTITUTIONAL REGULATORY & TAX COMPLIANCE NOTICE", margin + 7, 206);
+    doc.text("DISCLAIMER & INFORMATIONAL TAX NOTICE (NOT LEGAL OR TAX ADVICE)", margin + 7, 206);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    const noticeText = "This Strategic Business Plan dossier has been compiled using standardized financial appraisal methodologies aligned with the Bank of Industry (BOI), Development Bank of Nigeria (DBN), Small and Medium Enterprises Development Agency of Nigeria (SMEDAN), and Nigeria Tax Act 2025/2026 small business relief provisions (0% Corporate Income Tax for qualifying small enterprises with gross annual turnover up to NGN 100,000,000). All projections, unit economics, and debt service coverage metrics are formulated in accordance with Central Bank of Nigeria (CBN) MSME Credit Evaluation standards.";
+    const noticeText = "This Business Plan draft is an operational planning aid prepared by the business promoter and does not constitute legal, accounting, or tax advice, nor guarantee credit approval by BOI, DBN, SMEDAN, or commercial banks. Small-company 0% CIT under Nigerian tax law (NTA 2025 / CITA) applies only to qualifying incorporated companies meeting statutory turnover and NGN 250M fixed-asset caps (excluding professional services), requires mandatory annual Nigeria Revenue Service (NRS) filings, and does not waive local council or state permits.";
     const splitNotice = doc.splitTextToSize(noticeText, contentWidth - 12);
     doc.text(splitNotice, margin + 7, 213);
 

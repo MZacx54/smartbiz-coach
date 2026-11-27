@@ -74,19 +74,26 @@ from .commerce_orders import OrderCreateView  # noqa: E402,F401  (moved: Commerc
 class PaystackWebhookView(views.APIView):
     """
     Webhook handler for Paystack automated payment settlement notifications.
-    Processes charge.success events, validates transaction, and confirms order fulfillment.
+    Processes charge.success events, validates HMAC-SHA512 signature, and confirms order fulfillment atomically.
     """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         import hashlib, hmac
         from django.conf import settings as dj_settings
+        from django.db import transaction
+
         secret = getattr(dj_settings, 'PAYSTACK_SECRET_KEY', None)
-        if secret:
-            sig = request.META.get('HTTP_X_PAYSTACK_SIGNATURE', '')
-            expected = hmac.new(secret.encode(), request.body, hashlib.sha512).hexdigest()
-            if not hmac.compare_digest(sig, expected):
-                return Response({'error': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
+        if not secret:
+            return Response({'error': 'Paystack gateway secret is not configured.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        sig = request.headers.get('x-paystack-signature') or request.META.get('HTTP_X_PAYSTACK_SIGNATURE', '')
+        if not sig:
+            return Response({'error': 'Missing x-paystack-signature header'}, status=status.HTTP_400_BAD_REQUEST)
+
+        expected = hmac.new(secret.encode('utf-8'), request.body, hashlib.sha512).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return Response({'error': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
 
         payload = request.data or {}
         event = payload.get('event', '')
@@ -113,9 +120,10 @@ class PaystackWebhookView(views.APIView):
             if leads.exists():
                 leads.update(status='WON')
 
-            # Phase 5: a signed charge.success confirms payment for the matching orders
-            from .models import Order
-            Order.objects.filter(reference=reference).update(payment_verified=True)
+            with transaction.atomic():
+                # Phase 5: a signed charge.success confirms payment for the matching orders idempotently
+                from .models import Order
+                Order.objects.select_for_update().filter(reference=reference, payment_verified=False).update(payment_verified=True)
 
             return Response({
                 "status": "success",
@@ -820,7 +828,7 @@ class DailySaleListCreateView(generics.ListCreateAPIView):
         from django.utils import timezone
         import datetime
 
-        qs = DailySale.objects.filter(user=self.request.user)
+        qs = DailySale.objects.filter(user=self.request.user, is_voided=False)
         params = self.request.query_params
 
         # 1. Flexible Date / Period Filters
@@ -961,6 +969,26 @@ class DailySaleListCreateView(generics.ListCreateAPIView):
             product.stock_count = max(0, product.stock_count - sale.quantity)
             product.save(update_fields=['stock_count'])
 
+        try:
+            from .models import LedgerAuditLog
+            from users.views import is_user_apprentice_locked
+            LedgerAuditLog.objects.create(
+                user=self.request.user,
+                entry_type='SALE',
+                object_id=sale.pk,
+                action='CREATE',
+                actor_mode='APPRENTICE' if is_user_apprentice_locked(self.request.user) else 'OWNER',
+                snapshot={
+                    'item_name': sale.item_name,
+                    'quantity': sale.quantity,
+                    'total_amount': float(sale.total_amount),
+                    'payment_method': sale.payment_method,
+                },
+                note='Sale recorded'
+            )
+        except Exception:
+            pass
+
 
 class DailyExpenseListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -975,7 +1003,7 @@ class DailyExpenseListCreateView(generics.ListCreateAPIView):
         from django.utils import timezone
         import datetime
 
-        qs = DailyExpense.objects.filter(user=self.request.user)
+        qs = DailyExpense.objects.filter(user=self.request.user, is_voided=False)
         params = self.request.query_params
 
         date_str = params.get('date')
@@ -1091,12 +1119,12 @@ class DailySummaryView(views.APIView):
             try:
                 target_date = datetime.date.fromisoformat(date_str)
             except ValueError:
-                target_date = timezone.now().date()
+                target_date = timezone.localdate()
         else:
-            target_date = timezone.now().date()
+            target_date = timezone.localdate()
 
-        sales = DailySale.objects.filter(user=request.user, created_at__date=target_date)
-        expenses = DailyExpense.objects.filter(user=request.user, created_at__date=target_date)
+        sales = DailySale.objects.filter(user=request.user, is_voided=False, created_at__date=target_date)
+        expenses = DailyExpense.objects.filter(user=request.user, is_voided=False, created_at__date=target_date)
 
         total_sales_revenue = float(sales.aggregate(total=Sum('total_amount'))['total'] or 0.00)
         cash_sales = float(sales.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.00)
@@ -1162,8 +1190,8 @@ class DailyTrendsView(views.APIView):
         today = timezone.localdate()
         start = today - datetime.timedelta(days=days - 1)
 
-        sales = list(DailySale.objects.filter(user=request.user, created_at__date__gte=start))
-        expenses = list(DailyExpense.objects.filter(user=request.user, created_at__date__gte=start))
+        sales = list(DailySale.objects.filter(user=request.user, is_voided=False, created_at__date__gte=start))
+        expenses = list(DailyExpense.objects.filter(user=request.user, is_voided=False, created_at__date__gte=start))
 
         per_day = {(start + datetime.timedelta(days=i)).isoformat(): {'revenue': 0.0, 'expenses': 0.0, 'cogs': 0.0}
                    for i in range(days)}
@@ -1199,7 +1227,7 @@ class DailyTrendsView(views.APIView):
         total_exp = sum(d['expenses'] for d in series)
         active = [d for d in series if d['revenue'] > 0]
         best = max(active, key=lambda d: d['revenue']) if active else None
-        outstanding = DailySale.objects.filter(user=request.user, is_debt=True, payment_method='CREDIT') \
+        outstanding = DailySale.objects.filter(user=request.user, is_voided=False, is_debt=True, payment_method='CREDIT') \
             .aggregate(total=Sum('total_amount'), n=Count('id'))
 
         return Response({
@@ -1225,13 +1253,48 @@ class DailySaleDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         from .models import DailySale
-        return DailySale.objects.filter(user=self.request.user)
+        return DailySale.objects.filter(user=self.request.user, is_voided=False)
+
+    def _check_owner_unlock(self, request):
+        from users.views import is_user_apprentice_locked
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Apprentice / Cashier Mode is locked. Owner verification is required to edit or void entries.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+
+    def update(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().destroy(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         from django.utils import timezone
+        from .models import LedgerAuditLog
         instance = self.get_object()
         old_qty = instance.quantity
         old_product = instance.product
+        prev_snapshot = {
+            'item_name': instance.item_name,
+            'quantity': instance.quantity,
+            'total_amount': float(instance.total_amount),
+            'payment_method': instance.payment_method,
+            'is_debt': instance.is_debt,
+        }
 
         updated_sale = serializer.save(is_edited=True, edited_at=timezone.now())
 
@@ -1243,11 +1306,48 @@ class DailySaleDetailView(generics.RetrieveUpdateDestroyAPIView):
                     updated_sale.product.stock_count = max(0, (updated_sale.product.stock_count or 0) - qty_diff)
                     updated_sale.product.save(update_fields=['stock_count'])
 
+        LedgerAuditLog.objects.create(
+            user=self.request.user,
+            entry_type='SALE',
+            object_id=updated_sale.pk,
+            action='EDIT',
+            actor_mode='OWNER',
+            snapshot={
+                'before': prev_snapshot,
+                'after': {
+                    'item_name': updated_sale.item_name,
+                    'quantity': updated_sale.quantity,
+                    'total_amount': float(updated_sale.total_amount),
+                    'payment_method': updated_sale.payment_method,
+                    'is_debt': updated_sale.is_debt,
+                }
+            },
+            note='Owner edited sale entry'
+        )
+
     def perform_destroy(self, instance):
+        from django.utils import timezone
+        from .models import LedgerAuditLog
         if instance.product and instance.quantity > 0:
             instance.product.stock_count = (instance.product.stock_count or 0) + instance.quantity
             instance.product.save(update_fields=['stock_count'])
-        instance.delete()
+        instance.is_voided = True
+        instance.voided_at = timezone.now()
+        instance.save(update_fields=['is_voided', 'voided_at'])
+        LedgerAuditLog.objects.create(
+            user=self.request.user,
+            entry_type='SALE',
+            object_id=instance.pk,
+            action='VOID',
+            actor_mode='OWNER',
+            snapshot={
+                'item_name': instance.item_name,
+                'quantity': instance.quantity,
+                'total_amount': float(instance.total_amount),
+                'payment_method': instance.payment_method,
+            },
+            note='Soft-voided by owner (append-only audit trail preserved)'
+        )
 
 
 class DailyExpenseDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -1259,34 +1359,95 @@ class DailyExpenseDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         from .models import DailyExpense
-        return DailyExpense.objects.filter(user=self.request.user)
+        return DailyExpense.objects.filter(user=self.request.user, is_voided=False)
+
+    def _check_owner_unlock(self, request):
+        from users.views import is_user_apprentice_locked
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Apprentice / Cashier Mode is locked. Owner verification is required to edit or void expenses.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+
+    def update(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().destroy(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         from django.utils import timezone
-        serializer.save(is_edited=True, edited_at=timezone.now())
+        from .models import LedgerAuditLog
+        instance = self.get_object()
+        prev_snapshot = {'title': instance.title, 'amount': float(instance.amount), 'category': instance.category}
+        updated = serializer.save(is_edited=True, edited_at=timezone.now())
+        LedgerAuditLog.objects.create(
+            user=self.request.user,
+            entry_type='EXPENSE',
+            object_id=updated.pk,
+            action='EDIT',
+            actor_mode='OWNER',
+            snapshot={'before': prev_snapshot, 'after': {'title': updated.title, 'amount': float(updated.amount), 'category': updated.category}},
+            note='Owner edited expense entry'
+        )
+
+    def perform_destroy(self, instance):
+        from django.utils import timezone
+        from .models import LedgerAuditLog
+        instance.is_voided = True
+        instance.voided_at = timezone.now()
+        instance.save(update_fields=['is_voided', 'voided_at'])
+        LedgerAuditLog.objects.create(
+            user=self.request.user,
+            entry_type='EXPENSE',
+            object_id=instance.pk,
+            action='VOID',
+            actor_mode='OWNER',
+            snapshot={'title': instance.title, 'amount': float(instance.amount), 'category': instance.category},
+            note='Soft-voided by owner (append-only audit trail preserved)'
+        )
 
 
 class DailyAIInsightsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'ai'
 
     def post(self, request):
         from django.db.models import Sum
         from django.utils import timezone
         import datetime
         from smartbiz_backend import gemini_utils
+        from billing.utils import reserve_ai_credits, refund_ai_credits
         from .models import DailySale, DailyExpense
+
+        allowed, remaining, reserved = reserve_ai_credits(request.user, 1, 'Daily AI Insights Brief')
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits (requires 1 credit).", "credits": remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         date_str = request.data.get('date') or request.query_params.get('date')
         if date_str:
             try:
                 target_date = datetime.date.fromisoformat(date_str)
             except ValueError:
-                target_date = timezone.now().date()
+                target_date = timezone.localdate()
         else:
-            target_date = timezone.now().date()
+            target_date = timezone.localdate()
 
-        sales = DailySale.objects.filter(user=request.user, created_at__date=target_date)
-        expenses = DailyExpense.objects.filter(user=request.user, created_at__date=target_date)
+        sales = DailySale.objects.filter(user=request.user, is_voided=False, created_at__date=target_date)
+        expenses = DailyExpense.objects.filter(user=request.user, is_voided=False, created_at__date=target_date)
 
         total_sales_revenue = float(sales.aggregate(total=Sum('total_amount'))['total'] or 0.00)
         cash_sales = float(sales.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.00)
@@ -1364,9 +1525,13 @@ Return ONLY valid JSON.
         try:
             ai_data = gemini_utils.generate_json_content(prompt)
             if isinstance(ai_data, dict) and 'executiveSummary' in ai_data:
+                ai_data['credits'] = remaining
+                ai_data['credits_deducted_server'] = True
                 return Response(ai_data)
         except Exception as e:
             print(f"Daily AI Insights notice: {e}")
+
+        refund_ai_credits(request.user, reserved, 'Daily AI Insights Fallback')
 
         # Zero-fail fallback
         grade = "A" if net_profit > 15000 else "B" if net_profit > 0 else "C" if total_sales_revenue > 0 else "D"
@@ -1452,17 +1617,23 @@ class DailyAIAskView(views.APIView):
     stock movements, profit margins, cash vs transfers, debtors, and expenses.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'ai'
 
     def post(self, request):
         from django.db.models import Sum, Count
         from django.utils import timezone
         import datetime
         from smartbiz_backend import gemini_utils
+        from billing.utils import reserve_ai_credits, refund_ai_credits
         from .models import DailySale, DailyExpense, Product
 
         question = str(request.data.get('question') or '').strip()
         if not question:
             return Response({"error": "Please provide a question about your sales."}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed, remaining, reserved = reserve_ai_credits(request.user, 1, 'Day-Book AI Assistant Query')
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits (requires 1 credit).", "credits": remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         # 1. Determine Date Range
         scope = request.data.get('scope', 'today').lower()
@@ -1474,8 +1645,8 @@ class DailyAIAskView(views.APIView):
         today = timezone.localdate()
         period_label = "Today"
 
-        sales_qs = DailySale.objects.filter(user=request.user)
-        expenses_qs = DailyExpense.objects.filter(user=request.user)
+        sales_qs = DailySale.objects.filter(user=request.user, is_voided=False)
+        expenses_qs = DailyExpense.objects.filter(user=request.user, is_voided=False)
 
         if scope == 'yesterday':
             target_date = today - datetime.timedelta(days=1)
@@ -1651,10 +1822,16 @@ GUIDELINES:
 """
 
         ai_answer = ""
+        ai_ok = False
         try:
             ai_answer = gemini_utils.generate_text_content(prompt)
+            if ai_answer and len(ai_answer.strip()) >= 10 and not ai_answer.strip().startswith("Error:"):
+                ai_ok = True
         except Exception as e:
             print(f"Daily AI Ask exception: {e}")
+
+        if not ai_ok:
+            remaining = refund_ai_credits(request.user, reserved, 'Day-Book AI Assistant Fallback')
 
         # Deterministic Intelligent Fallback if Gemini fails or is offline
         if not ai_answer or len(ai_answer.strip()) < 10 or ai_answer.strip().startswith("Error:"):
@@ -1744,6 +1921,8 @@ GUIDELINES:
             "question": question,
             "period_label": period_label,
             "answer": ai_answer,
+            "credits": remaining,
+            "credits_deducted_server": ai_ok,
             "metrics": {
                 "total_revenue": total_revenue,
                 "sales_count": sales_count,
@@ -1765,15 +1944,16 @@ from .voice_pos import VoicePOSIngestView, VoicePOSConfirmView  # noqa: E402,F40
 
 class PaperReceiptOCRView(views.APIView):
     """
-    Cutting-Edge AI Feature: Paper Receipt & Supplier Waybill OCR Scanner.
-    Allows merchants to snap photos of physical paper ledger pages or supplier waybills.
-    Gemini Vision extracts items, quantities, and cost prices, updating inventory and logging purchases.
+    Paper Receipt & Supplier Waybill OCR Scanner.
+    Atomically reserves 1 BizCredit before calling Gemini Vision and refunds on failure.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'ai'
 
     def post(self, request):
         import base64
         from smartbiz_backend import gemini_utils
+        from billing.utils import reserve_ai_credits, refund_ai_credits
 
         img_file = request.FILES.get('receipt_image')
         img_b64 = request.data.get('image_base64') or request.data.get('receipt_image')
@@ -1787,6 +1967,10 @@ class PaperReceiptOCRView(views.APIView):
 
         if not img_b64:
             return Response({"error": "No receipt or ledger image provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed, remaining, reserved = reserve_ai_credits(request.user, 1, 'Paper Receipt OCR Scan')
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits (requires 1 credit).", "credits": remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         prompt = """
         You are an institutional OCR & Financial Document Vision AI for Nigerian trade receipts and handwritten shop ledger notes.
@@ -1821,27 +2005,19 @@ class PaperReceiptOCRView(views.APIView):
             )
 
             if not isinstance(parsed, dict) or "line_items" not in parsed:
-                return Response({
-                    "supplier_or_store": "Local Wholesale Supplier",
-                    "receipt_date": "Today",
-                    "total_receipt_amount": 45000,
-                    "line_items": [
-                        {
-                            "item_name": "Wholesale Stock Restock",
-                            "quantity": 10,
-                            "unit_cost": 4500,
-                            "total_line_amount": 45000,
-                            "category": "General Goods"
-                        }
-                    ],
-                    "document_type": "RECEIPT",
-                    "confidence_score": 88
-                })
+                refund_ai_credits(request.user, reserved, 'Paper Receipt OCR Invalid Response')
+                return Response(
+                    {"error": "Could not clearly read receipt line items. Please take a brighter, clearer photo and try again."},
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
 
+            parsed['credits'] = remaining
+            parsed['credits_deducted_server'] = True
             return Response(parsed, status=status.HTTP_200_OK)
 
         except Exception as err:
-            return Response({"error": f"Failed to parse receipt image: {str(err)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            refund_ai_credits(request.user, reserved, 'Paper Receipt OCR Failure')
+            return Response({"error": f"Failed to parse receipt image: {str(err)}"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class VisualSearchProductView(views.APIView):
@@ -1989,18 +2165,16 @@ class PublicDebtorSettlementView(views.APIView):
 
         sale = None
         if debtor_id:
-            # 1. Look up by notes tag, e.g. "Gbege Book Debtor #<debtor_id>"
-            sale = DailySale.objects.filter(
+            sale = DailySale.objects.filter(is_voided=False).filter(
                 Q(notes__icontains=f"#{debtor_id}") |
                 Q(notes__icontains=str(debtor_id))
             ).first()
 
-            # 2. Or by primary key if debtor_id is a numeric id
             if not sale and str(debtor_id).isdigit():
-                sale = DailySale.objects.filter(pk=int(debtor_id)).first()
+                sale = DailySale.objects.filter(pk=int(debtor_id), is_voided=False).first()
 
         if not sale:
-            return Response({"found": False}, status=status.HTTP_200_OK)
+            return Response({"found": False}, status=status.HTTP_404_NOT_FOUND)
 
         user = sale.user
         vendor = VendorVerification.objects.filter(user=user).first()
@@ -2046,28 +2220,69 @@ class PublicDebtorSettlementView(views.APIView):
         }, status=status.HTTP_200_OK)
 
     def post(self, request, debtor_id):
-        """Allow marking debt settled upon confirmed Paystack reference."""
-        from .models import DailySale
+        """Mark debt settled ONLY after server-side Paystack verification of both status and paid amount."""
+        from decimal import Decimal
+        from django.db import transaction
         from django.db.models import Q
+        from .commerce_orders import verify_paystack
+        from .models import DailySale, LedgerAuditLog
 
-        reference = request.data.get('reference', '')
-        sale = None
-        if debtor_id:
-            sale = DailySale.objects.filter(
-                Q(notes__icontains=f"#{debtor_id}") |
-                Q(notes__icontains=str(debtor_id))
-            ).first()
+        reference = str(request.data.get('reference') or '').strip()
+        if not reference:
+            return Response({"error": "Verified Paystack reference is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if not sale and str(debtor_id).isdigit():
-                sale = DailySale.objects.filter(pk=int(debtor_id)).first()
+        # Prevent replay of the same payment reference across multiple debts
+        if DailySale.objects.filter(notes__icontains=f"Paystack (Ref: {reference})").exists():
+            return Response({"success": True, "idempotent": True, "message": "Debt settlement already recorded for this reference."})
 
-        if sale:
+        outcome, paid_amount = verify_paystack(reference)
+        if outcome != 'success' or paid_amount is None:
+            return Response(
+                {"error": "Payment reference could not be verified with Paystack."},
+                status=status.HTTP_402_PAYMENT_REQUIRED
+            )
+
+        with transaction.atomic():
+            sale = None
+            if debtor_id:
+                sale = DailySale.objects.select_for_update().filter(is_voided=False).filter(
+                    Q(notes__icontains=f"#{debtor_id}") |
+                    Q(notes__icontains=str(debtor_id))
+                ).first()
+
+                if not sale and str(debtor_id).isdigit():
+                    sale = DailySale.objects.select_for_update().filter(pk=int(debtor_id), is_voided=False).first()
+
+            if not sale:
+                return Response({"error": "Debt record not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            if not sale.is_debt:
+                return Response({"success": True, "idempotent": True, "message": "Debt is already marked settled."})
+
+            if paid_amount + Decimal('1') < sale.total_amount:
+                return Response(
+                    {"error": f"Verified Paystack amount (₦{paid_amount:,.2f}) is less than outstanding debt (₦{sale.total_amount:,.2f})."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             sale.is_debt = False
             sale.notes = (sale.notes or "") + f" | Settled via 1-Tap Paystack (Ref: {reference})"
             sale.save(update_fields=['is_debt', 'notes'])
-            return Response({"success": True, "message": "Debt settled and reconciled successfully."})
 
-        return Response({"success": True, "message": "Acknowledged."})
+            LedgerAuditLog.objects.create(
+                user=sale.user,
+                entry_type='SALE',
+                object_id=sale.pk,
+                action='SETTLE',
+                actor_mode='PUBLIC_PAYSTACK',
+                snapshot={
+                    'reference': reference,
+                    'paid_amount': float(paid_amount),
+                    'debt_amount': float(sale.total_amount),
+                },
+                note=f'Verified Paystack settlement {reference}'
+            )
+            return Response({"success": True, "message": "Debt settled and reconciled successfully."})
 
 
 

@@ -1,5 +1,5 @@
-// SmartBiz Coach Service Worker - High-Speed Offline-First PWA (v4)
-const CACHE_NAME = 'smartbiz-cache-v4';
+// SmartBiz Coach Service Worker - High-Speed Offline-First PWA (v5)
+const CACHE_NAME = 'smartbiz-cache-v5';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

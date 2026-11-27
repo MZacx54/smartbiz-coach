@@ -27,7 +27,7 @@ except ImportError:
 
 class CreditScoringService:
     """
-    SmartScore™ Alternative MSME Credit Risk & Bankability Engine (FICO-style 300 to 850 scale)
+    SmartScore™ Alternative MSME Credit Risk & Bankability Engine (300 to 850 scale)
     Evaluates:
       1. Cashflow Velocity & Consistency (35% -> up to 192 pts)
       2. Debtor Recovery Rate / Gbege Turnaround (25% -> up to 138 pts)
@@ -313,7 +313,7 @@ class CreditScoringService:
             raw_pd = float(1.0 / (1.0 + math.exp(-logit)))
             ml_risk_engine = "Logistic Sigmoid IFRS-9 Actuarial Kernel"
 
-        # Calibrate PD% to FICO/SmartScore band (1.2% for 820+ up to 48% for <450)
+        # Calibrate PD% to SmartScore band (1.2% for 820+ up to 48% for <450)
         score_pd_anchor = max(0.012, min(0.48, (860.0 - final_score) / 1100.0))
         pd_probability = round(((raw_pd * 0.45) + (score_pd_anchor * 0.55)) * 100.0, 2)
         lgd_pct = 32.0 if prod_count >= 5 else 45.0

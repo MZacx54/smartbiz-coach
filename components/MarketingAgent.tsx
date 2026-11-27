@@ -704,10 +704,10 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
                     <div className="text-[11px] font-bold text-slate-600 mb-1">2. WhatsApp Group Export / Phone List</div>
                     <pre className="text-xs font-mono text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 overflow-x-auto">
 {`Country Code,Phone Number,Public Display Name,Group Name
-234,+2349064556107,Meshach,Smartbiz Coach
-234,+2348154004068,Zechariah,Smartbiz Coach
-+233 24 953 0086
-+260 975766351`}
+234,+2348000000001,Adaobi,Retail VIPs
+234,+2348000000002,Tunde,Wholesale Buyers
++233 24 000 0001
++260 97 0000001`}
                     </pre>
                   </div>
                 </div>

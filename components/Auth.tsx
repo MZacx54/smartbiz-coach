@@ -91,7 +91,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         return;
       }
       if (!agreedToNdpr) {
-        toast.error("Please accept the Terms of Service and NDPA 2023 & NDPR Data Processing to register.");
+        toast.error("Please accept the Terms of Service and NDPA 2023 Privacy Policy to register.");
         return;
       }
     }
@@ -188,7 +188,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         {/* Left Side - Visual (Emerald Green Gradient Theme) */}
         <div className="hidden md:flex flex-col justify-center items-center bg-gradient-to-br from-emerald-800 via-emerald-950 to-slate-950 text-white p-12 w-1/2 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-green-500/20 via-transparent to-transparent pointer-events-none"></div>
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.28) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
 
           <div className="relative z-10 text-center max-w-md">
             <img src="/logo-square.png" alt="SmartBiz Coach" className="w-20 h-20 rounded-2xl mx-auto object-cover shadow-2xl mb-8 border border-white/20" />
@@ -199,16 +199,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
             <div className="mt-12 grid grid-cols-3 gap-6 text-center border-t border-emerald-800/40 pt-8">
               <div>
-                <p className="text-2xl font-black text-green-400">10k+</p>
-                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Users</p>
+                <p className="text-2xl font-black text-green-400">100%</p>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Offline POS</p>
               </div>
               <div>
-                <p className="text-2xl font-black text-green-400">99.9%</p>
-                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Uptime</p>
+                <p className="text-2xl font-black text-green-400">5-Sec</p>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Sale Entry</p>
               </div>
               <div>
-                <p className="text-2xl font-black text-green-400">24/7</p>
-                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Support</p>
+                <p className="text-2xl font-black text-green-400">Free</p>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-widest mt-1">Core Ledger</p>
               </div>
             </div>
           </div>
@@ -465,7 +465,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                   required
                 />
                 <label htmlFor="ndpr_consent" className="text-xs text-slate-600 leading-tight select-none cursor-pointer">
-                  I accept the <a href="/terms" target="_blank" className="text-green-600 underline font-bold">Terms of Service</a> and confirm lawful <a href="/privacy" target="_blank" className="text-green-600 underline font-bold">NDPA 2023 &amp; NDPR Data Processing</a>.
+                  I accept the <a href="/terms" target="_blank" className="text-green-600 underline font-bold">Terms of Service</a> and confirm lawful <a href="/privacy" target="_blank" className="text-green-600 underline font-bold">NDPA 2023 Data Processing</a>.
                 </label>
               </div>
             )}

@@ -101,8 +101,6 @@ const mockInvoices: Invoice[] = [
 ];
 
 const InvoiceGenerator: React.FC = () => {
-  const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
-
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [step, setStep] = useState<'LIST' | 'EDIT' | 'PREVIEW'>('LIST');
   const [invoiceFilter, setInvoiceFilter] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
@@ -151,23 +149,13 @@ const InvoiceGenerator: React.FC = () => {
   const loadInvoices = () => {
     const saved = localStorage.getItem('sb_invoices_detailed');
     let parsed: Invoice[] = saved ? JSON.parse(saved) : [];
-
-    if (isTractionMode && parsed.length === 0) {
-      // In-memory demo data only — do not pollute real localStorage keys
-      parsed = mockInvoices.map(inv => ({
-        ...inv,
-        note: (inv.note || '') + ' [DEMO DATA]'
-      }));
-    } else if (!isTractionMode) {
-      // Purge any leaked demo mock invoices from real mode
-      parsed = parsed.filter(inv => !['INV-2024-001', 'INV-2024-002', 'INV-2026-001', 'INV-2026-002', 'INV-2026-003', 'INV-2026-004'].includes(inv.id));
-    }
+    parsed = parsed.filter(inv => !['INV-2024-001', 'INV-2024-002', 'INV-2026-001', 'INV-2026-002', 'INV-2026-003', 'INV-2026-004'].includes(inv.id));
     setInvoices(parsed);
   };
 
   useEffect(() => {
     loadInvoices();
-  }, [isTractionMode]);
+  }, []);
 
   const saveInvoicesToStore = (newInvoices: Invoice[]) => {
     localStorage.setItem('sb_invoices_detailed', JSON.stringify(newInvoices));

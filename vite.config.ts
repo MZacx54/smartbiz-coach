@@ -6,7 +6,13 @@ export default defineConfig({
   plugins: [react()],
   define: {
     'import.meta.env.VITE_WA_DIRECT_SUPPORT': JSON.stringify(
-      process.env.VITE_WA_DIRECT_SUPPORT || process.env.WA_DIRECT_SUPPORT || ''
+      process.env.VITE_WA_DIRECT_SUPPORT ||
+      process.env.WA_DIRECT_SUPPORT ||
+      process.env.VITE_SUPPORT_WHATSAPP ||
+      process.env.SUPPORT_WHATSAPP ||
+      process.env.VITE_SUPPORT_PHONE ||
+      process.env.SUPPORT_PHONE ||
+      ''
     ),
   },
   build: {

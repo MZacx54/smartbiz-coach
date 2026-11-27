@@ -58,7 +58,7 @@ const CircularProgress = ({ percentage, color }: { percentage: number; color: st
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, credits, onUpdateCredits }) => {
-  const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
+  const isTractionMode = false;
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null);
   const [seasonalAlert, setSeasonalAlert] = useState<SeasonalAlert | null>(null);
 
@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
 
   useEffect(() => {
     const loadData = async () => {
-      const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
+      const isTractionMode = false;
       if (isTractionMode) {
         setEcosystemStats({
           ecosystem_value: 8450000,

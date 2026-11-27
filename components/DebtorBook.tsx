@@ -726,8 +726,10 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
         debtor.dueDate
       );
       
-      // Only charge credits / increment usage if successful
-      if (deduct) {
+      // Only charge credits on client if server did not already deduct atomically
+      if (result && (result as any).credits_deducted_server && typeof (result as any).credits === 'number') {
+        if (onUpdateCredits) onUpdateCredits((result as any).credits);
+      } else if (deduct) {
         const billingResponse = await billingService.deductCredits(cost, 'AI Debt Reminder');
         if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
       } else {

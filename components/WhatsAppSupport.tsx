@@ -175,7 +175,7 @@ const WhatsAppSupport: React.FC<WhatsAppSupportProps> = () => {
           <input
             type="text"
             className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-            placeholder="Ask about FICO credit scores, till audits, grants, or marketing..."
+            placeholder="Ask about SmartScore™ readiness, till audits, grants, or marketing..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />

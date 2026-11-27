@@ -188,7 +188,22 @@ class DailySaleSerializer(serializers.ModelSerializer):
         from .models import DailySale
         model = DailySale
         fields = '__all__'
-        read_only_fields = ['user', 'created_at']
+        read_only_fields = ['user', 'created_at', 'is_voided', 'voided_at']
+
+    def validate_quantity(self, value):
+        if value is not None and value <= 0:
+            raise serializers.ValidationError("Quantity must be greater than zero.")
+        return value
+
+    def validate_unit_price(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Unit price cannot be negative.")
+        return value
+
+    def validate_total_amount(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Total amount cannot be negative.")
+        return value
 
 
 class DailyExpenseSerializer(serializers.ModelSerializer):
@@ -196,4 +211,9 @@ class DailyExpenseSerializer(serializers.ModelSerializer):
         from .models import DailyExpense
         model = DailyExpense
         fields = '__all__'
-        read_only_fields = ['user', 'created_at']
+        read_only_fields = ['user', 'created_at', 'is_voided', 'voided_at']
+
+    def validate_amount(self, value):
+        if value is not None and value < 0:
+            raise serializers.ValidationError("Expense amount cannot be negative.")
+        return value

@@ -19,7 +19,12 @@ WA_COMMUNITY_LINK = os.getenv("WA_COMMUNITY_LINK", "https://chat.whatsapp.com/LM
 
 
 def _resolve_wa_direct_support():
-    raw = (os.getenv("WA_DIRECT_SUPPORT", "") or "").strip()
+    raw = (
+        os.getenv("WA_DIRECT_SUPPORT")
+        or os.getenv("SUPPORT_WHATSAPP")
+        or os.getenv("SUPPORT_PHONE")
+        or ""
+    ).strip()
     if not raw:
         return "https://www.smartbizcoach.com.ng/contact", "support@smartbizcoach.com.ng"
     if raw.startswith("http"):
@@ -374,7 +379,7 @@ def send_welcome_email(user):
               <div style="font-size: 28px; margin-bottom: 6px;">💬</div>
               <h3 style="color: #065F46; font-size: 17px; margin: 0 0 8px 0; font-weight: 700;">Join Our WhatsApp VIP Traders Community</h3>
               <p style="color: #047857; font-size: 13px; margin: 0 0 16px 0; line-height: 1.5;">
-                Connect directly with fellow Nigerian merchants, receive weekly grant alerts (BOI/iDICE/TEF), and get instant 24/7 technical support.
+                Connect directly with fellow Nigerian merchants, receive funding updates, and get prompt technical support during business hours.
               </p>
               <a href="{WA_COMMUNITY_LINK}" target="_blank" style="display: inline-block; background-color: #059669; color: #FFFFFF; text-decoration: none; font-size: 13px; font-weight: bold; padding: 12px 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);">
                 👉 Join WhatsApp VIP Community Now

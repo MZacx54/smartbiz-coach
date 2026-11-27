@@ -250,8 +250,8 @@ class ResendVerificationEmailView(views.APIView):
 
 class ProfileView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
-        # NDPR Compliance (Right to Erasure): Permanently purge user profile
-        print(f"NDPR Right to Erasure executed for user {instance.email}")
+        # NDPA 2023 Compliance (Right to Erasure): Permanently purge user profile
+        print(f"NDPA Right to Erasure executed for user {instance.email}")
         instance.delete()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -329,7 +329,7 @@ class UserStatsView(views.APIView):
         has_sales = False
         try:
             from marketplace.models import DailySale
-            has_sales = DailySale.objects.filter(brand__user=user).exists()
+            has_sales = DailySale.objects.filter(user=user, is_voided=False).exists()
         except Exception:
             pass
 
@@ -399,7 +399,7 @@ class UserActionsView(views.APIView):
         has_sales = False
         try:
             from marketplace.models import DailySale
-            has_sales = DailySale.objects.filter(brand__user=user).exists()
+            has_sales = DailySale.objects.filter(user=user, is_voided=False).exists()
         except Exception:
             pass
 
@@ -972,12 +972,31 @@ class PartnershipInquiryView(views.APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+def is_user_apprentice_locked(user) -> bool:
+    """Server-side check whether the owner has Apprentice / Cashier Lock enabled."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    try:
+        from brand.models import BrandIdentity
+        brand = BrandIdentity.objects.filter(user=user).only('policies').first()
+        if brand and isinstance(brand.policies, dict):
+            vault = brand.policies.get('__security_vault__')
+            if isinstance(vault, dict):
+                return bool(vault.get('is_apprentice_mode', False))
+    except Exception:
+        pass
+    return False
+
+
+LOCK_MAX_FAILED_ATTEMPTS = 5
+LOCK_COOLDOWN_SECONDS = 300
+
+
 class SecurityLockView(views.APIView):
     """
     Cloud-synced Apprentice / Cashier Mode & Robust Owner Security Password Vault.
-    Ensures logging into the same account on any phone/device enforces Apprentice Mode
-    and requires the Owner's Security Password (or SmartBiz Account Password) to unlock
-    the Petty Cash Log, Profit Metrics, or Owner Dashboard.
+    Enforces server-side brute-force lockout (5 failed attempts -> 5 minute cooldown)
+    and requires Owner's Security Password (or SmartBiz Account Password) to unlock.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1048,12 +1067,41 @@ class SecurityLockView(views.APIView):
             })
 
         if action in ('UNLOCK', 'VERIFY'):
-            passcode = str(request.data.get('passcode') or '').strip()
-            if not self._verify_owner_secret(request.user, vault, passcode):
+            from django.core.cache import cache
+            fail_key = f"sb_lock_fail:{request.user.pk}"
+            lock_key = f"sb_lock_until:{request.user.pk}"
+            locked_until = cache.get(lock_key)
+            now_ts = int(timezone.now().timestamp())
+            if locked_until and int(locked_until) > now_ts:
+                remaining_sec = int(locked_until) - now_ts
                 return Response({
                     'verified': False,
+                    'locked_out': True,
+                    'retry_after_seconds': remaining_sec,
+                    'error': f'Too many failed attempts. Try again in {max(1, remaining_sec)} seconds.'
+                }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+            passcode = str(request.data.get('passcode') or '').strip()
+            if not self._verify_owner_secret(request.user, vault, passcode):
+                attempts = int(cache.get(fail_key) or 0) + 1
+                cache.set(fail_key, attempts, timeout=LOCK_COOLDOWN_SECONDS)
+                if attempts >= LOCK_MAX_FAILED_ATTEMPTS:
+                    cache.set(lock_key, now_ts + LOCK_COOLDOWN_SECONDS, timeout=LOCK_COOLDOWN_SECONDS)
+                    return Response({
+                        'verified': False,
+                        'locked_out': True,
+                        'attempts_remaining': 0,
+                        'retry_after_seconds': LOCK_COOLDOWN_SECONDS,
+                        'error': 'Maximum 5 failed PIN/password attempts reached. Locked for 5 minutes.'
+                    }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+                return Response({
+                    'verified': False,
+                    'attempts_remaining': max(0, LOCK_MAX_FAILED_ATTEMPTS - attempts),
                     'error': 'Incorrect Owner Security Password. Enter your Owner Security Password or your SmartBiz Account Login Password.'
                 }, status=status.HTTP_403_FORBIDDEN)
+
+            cache.delete(fail_key)
+            cache.delete(lock_key)
 
             if action == 'UNLOCK':
                 vault['is_apprentice_mode'] = False
@@ -1339,11 +1387,16 @@ class BulkOnboardingView(views.APIView):
 
 class CohortDashboardView(views.APIView):
     """
-    Returns aggregated metrics and cohort roster for NACCIMA chapter administrators.
+    Returns aggregated metrics and cohort roster for authorized administrators only.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
+        if not (getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False)):
+            return Response(
+                {'error': 'Administrator privileges required to access cohort roster data.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         slug = request.query_params.get('cohort')
         if slug:
             cohorts = Cohort.objects.filter(slug=slug)

@@ -441,8 +441,65 @@ export const DailyCashbook: React.FC = () => {
     }
   };
 
-  // Network listener & periodic auto-sync
+  // Network listener & periodic auto-sync + IndexedDB recovery hydration on reload
   useEffect(() => {
+    let active = true;
+    const hydrateFromIndexedDB = async () => {
+      try {
+        const [idbSales, idbExpenses] = await Promise.all([
+          offlineStorage.getAllSales(),
+          offlineStorage.getAllExpenses(),
+        ]);
+        if (!active) return;
+
+        let hydrated = false;
+        if (idbSales.length > 0) {
+          const existingSales = getOfflineSales();
+          const seenIds = new Set(existingSales.map((s) => String(s.id)));
+          const mergedSales = [...existingSales];
+          for (const row of idbSales) {
+            if (!seenIds.has(String(row.id))) {
+              mergedSales.push(row);
+              hydrated = true;
+            }
+          }
+          if (hydrated) {
+            localStorage.setItem('sb_offline_sales', JSON.stringify(mergedSales));
+          }
+        }
+
+        let expHydrated = false;
+        if (idbExpenses.length > 0) {
+          const existingExps = getOfflineExpenses();
+          const seenExpIds = new Set(existingExps.map((e) => String(e.id)));
+          const mergedExps = [...existingExps];
+          for (const row of idbExpenses) {
+            if (!seenExpIds.has(String(row.id))) {
+              mergedExps.push(row);
+              expHydrated = true;
+            }
+          }
+          if (expHydrated) {
+            localStorage.setItem('sb_offline_expenses', JSON.stringify(mergedExps));
+          }
+        }
+
+        if (hydrated || expHydrated) {
+          const merged = buildMergedRecordsForDate(
+            selectedDate,
+            getCachedSalesForDate(selectedDate),
+            getCachedExpensesForDate(selectedDate)
+          );
+          setSales(merged.mergedSales);
+          setExpenses(merged.mergedExpenses);
+          updatePendingCount();
+        }
+      } catch {
+        // Ignore IndexedDB unavailability
+      }
+    };
+    void hydrateFromIndexedDB();
+
     const handleOnline = () => {
       setIsOnline(true);
       toast.success('Internet restored! Syncing offline records...', { icon: '📶' });
@@ -467,6 +524,7 @@ export const DailyCashbook: React.FC = () => {
     }, 15000);
 
     return () => {
+      active = false;
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.clearInterval(interval);

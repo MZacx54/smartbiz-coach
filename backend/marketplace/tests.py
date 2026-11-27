@@ -139,3 +139,157 @@ class VoicePOSFlowTests(APITestCase):
         r = self.client.get('/api/marketplace/daily-trends/?days=7')
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.data['series']), 7)
+
+
+class Phase3And4SecurityTests(APITestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create_user(
+            username='owner@mart.ng', email='owner@mart.ng', password='OwnerPassword123!', credits=50
+        )
+        self.attacker = User.objects.create_user(
+            username='attacker@mart.ng', email='attacker@mart.ng', password='AttackerPassword123!', credits=0
+        )
+        self.brand = BrandIdentity.objects.create(user=self.owner, business_name='Mart A')
+        self.product = Product.objects.create(
+            brand=self.brand, name='Garri Bag', price=Decimal('15000'), stock_count=10, product_type='PHYSICAL'
+        )
+        self.owner_client = APIClient()
+        self.owner_client.force_authenticate(self.owner)
+        self.attacker_client = APIClient()
+        self.attacker_client.force_authenticate(self.attacker)
+
+    def test_cross_tenant_idor_isolation(self):
+        sale = DailySale.objects.create(
+            user=self.owner, product=self.product, item_name='Garri Bag',
+            quantity=1, unit_price=15000, total_amount=15000, payment_method='CASH'
+        )
+        exp = DailyExpense.objects.create(user=self.owner, title='Diesel', amount=3000)
+
+        self.assertEqual(self.attacker_client.get(f'/api/marketplace/daily-sales/{sale.id}/').status_code, 404)
+        self.assertEqual(self.attacker_client.patch(f'/api/marketplace/daily-sales/{sale.id}/', {'item_name': 'Hacked'}, format='json').status_code, 404)
+        self.assertEqual(self.attacker_client.delete(f'/api/marketplace/daily-sales/{sale.id}/').status_code, 404)
+        self.assertEqual(self.attacker_client.get(f'/api/marketplace/daily-expenses/{exp.id}/').status_code, 404)
+        self.assertEqual(self.attacker_client.delete(f'/api/marketplace/products/{self.product.id}/').status_code, 404)
+
+    def test_apprentice_lock_blocks_mutation_and_void_preserves_audit_log(self):
+        from marketplace.models import LedgerAuditLog
+        create_res = self.owner_client.post('/api/marketplace/daily-sales/', {
+            'product': self.product.id,
+            'item_name': 'Garri Bag',
+            'quantity': 2,
+            'unit_price': '15000.00',
+            'total_amount': '30000.00',
+            'payment_method': 'CASH'
+        }, format='json')
+        self.assertEqual(create_res.status_code, 201)
+        sale_id = create_res.data['id']
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_count, 8)
+
+        self.owner_client.post('/api/users/security-lock/', {
+            'action': 'SET_PASSCODE', 'new_passcode': '749201', 'lock_immediately': True
+        }, format='json')
+
+        blocked_edit = self.owner_client.patch(f'/api/marketplace/daily-sales/{sale_id}/', {'item_name': 'Edited'}, format='json')
+        blocked_del = self.owner_client.delete(f'/api/marketplace/daily-sales/{sale_id}/')
+        self.assertEqual(blocked_edit.status_code, 403)
+        self.assertEqual(blocked_del.status_code, 403)
+
+        unlock = self.owner_client.post('/api/users/security-lock/', {'action': 'UNLOCK', 'passcode': '749201'}, format='json')
+        self.assertEqual(unlock.status_code, 200)
+
+        void_res = self.owner_client.delete(f'/api/marketplace/daily-sales/{sale_id}/')
+        self.assertEqual(void_res.status_code, 204)
+
+        sale_obj = DailySale.objects.get(pk=sale_id)
+        self.assertTrue(sale_obj.is_voided)  # Append-only soft-void, NOT silent delete
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_count, 10)  # Stock restored
+        self.assertTrue(LedgerAuditLog.objects.filter(user=self.owner, object_id=sale_id, action='VOID').exists())
+
+        listed = self.owner_client.get('/api/marketplace/daily-sales/')
+        rows = listed.data if isinstance(listed.data, list) else listed.data['results']
+        self.assertEqual(len(rows), 0)
+
+    def test_public_debtor_settlement_requires_verified_paystack_and_exact_amount(self):
+        from marketplace.models import LedgerAuditLog
+        debt = DailySale.objects.create(
+            user=self.owner, item_name='Cement', quantity=1, unit_price=5000, total_amount=5000,
+            payment_method='CREDIT', customer_name='Kola', is_debt=True
+        )
+        anon = APIClient()
+
+        no_ref = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {}, format='json')
+        self.assertEqual(no_ref.status_code, 400)
+
+        with mock.patch('marketplace.commerce_orders.verify_paystack', return_value=('failed', None)):
+            bad_ref = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {'reference': 'FAKE123'}, format='json')
+            self.assertEqual(bad_ref.status_code, 402)
+
+        with mock.patch('marketplace.commerce_orders.verify_paystack', return_value=('success', Decimal('1000'))):
+            short_pay = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {'reference': 'SHORT123'}, format='json')
+            self.assertEqual(short_pay.status_code, 400)
+
+        with mock.patch('marketplace.commerce_orders.verify_paystack', return_value=('success', Decimal('5000'))):
+            ok = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {'reference': 'OKPAY123'}, format='json')
+            self.assertEqual(ok.status_code, 200)
+
+        debt.refresh_from_db()
+        self.assertFalse(debt.is_debt)
+        self.assertTrue(LedgerAuditLog.objects.filter(user=self.owner, object_id=debt.id, action='SETTLE').exists())
+
+    def test_ai_credits_atomic_and_refund_on_upstream_failure(self):
+        # 0-credit attacker gets HTTP 402 before any Gemini call
+        res_voice = self.attacker_client.post('/api/marketplace/voice-pos-ingest/', {'text_transcript': 'sold rice 5000'}, format='json')
+        res_ocr = self.attacker_client.post('/api/marketplace/receipt-ocr/', {'image_base64': 'abc'}, format='json')
+        res_debt = self.attacker_client.post('/api/content/generate-debt-reminder/', {'name': 'Bola', 'amount': 2000}, format='json')
+        self.assertEqual(res_voice.status_code, 402)
+        self.assertEqual(res_ocr.status_code, 402)
+        self.assertEqual(res_debt.status_code, 402)
+
+        # Owner with 50 credits gets refunded automatically when upstream Gemini fails
+        with mock.patch('smartbiz_backend.gemini_utils.generate_json_content', side_effect=RuntimeError('Gemini down')):
+            ocr_fail = self.owner_client.post('/api/marketplace/receipt-ocr/', {'image_base64': 'abc'}, format='json')
+        self.assertEqual(ocr_fail.status_code, 503)
+        self.owner.refresh_from_db()
+        self.assertEqual(self.owner.credits, 50)
+
+    def test_offline_pos_sync_idempotency_across_payment_methods(self):
+        entries = [
+            {'offline_id': 'off-1', 'item_name': 'Milk', 'quantity': 1, 'unit_price': '1000.00', 'total_amount': '1000.00', 'payment_method': 'CASH'},
+            {'offline_id': 'off-2', 'item_name': 'Bread', 'quantity': 2, 'unit_price': '1500.00', 'total_amount': '3000.00', 'payment_method': 'TRANSFER'},
+            {'offline_id': 'off-3', 'item_name': 'Sugar', 'quantity': 1, 'unit_price': '2500.00', 'total_amount': '2500.00', 'payment_method': 'CREDIT', 'customer_name': 'Sadiq', 'is_debt': True},
+        ]
+        # Replay each offline item twice (e.g. flaky retry)
+        for item in entries + entries:
+            r = self.owner_client.post('/api/marketplace/daily-sales/', item, format='json')
+            self.assertIn(r.status_code, (200, 201))
+
+        self.assertEqual(DailySale.objects.filter(user=self.owner, is_voided=False).count(), 3)
+        summary = self.owner_client.get('/api/marketplace/daily-summary/').data
+        self.assertEqual(summary['total_sales_revenue'], 6500.0)
+        self.assertEqual(summary['cash_sales'], 1000.0)
+        self.assertEqual(summary['transfer_sales'], 3000.0)
+        self.assertEqual(summary['credit_sales'], 2500.0)
+
+    def test_marketplace_paystack_webhook_requires_valid_hmac_signature(self):
+        import hmac, hashlib, json
+        from django.conf import settings
+        from marketplace.models import Order
+
+        settings.PAYSTACK_SECRET_KEY = 'sk_test_mkt_secret'
+        order = Order.objects.create(reference='ORD-WH-1', brand=self.brand, buyer_name='Tunde', total_amount=5000, payment_verified=False)
+        body = json.dumps({'event': 'charge.success', 'data': {'reference': 'ORD-WH-1', 'amount': 500000}}).encode('utf-8')
+        anon = APIClient()
+
+        bad = anon.post('/api/marketplace/webhook/paystack/', data=body, content_type='application/json',
+                        HTTP_X_PAYSTACK_SIGNATURE='invalid')
+        self.assertEqual(bad.status_code, 401)
+
+        sig = hmac.new(settings.PAYSTACK_SECRET_KEY.encode('utf-8'), body, hashlib.sha512).hexdigest()
+        good = anon.post('/api/marketplace/webhook/paystack/', data=body, content_type='application/json',
+                         HTTP_X_PAYSTACK_SIGNATURE=sig)
+        self.assertEqual(good.status_code, 200)
+        order.refresh_from_db()
+        self.assertTrue(order.payment_verified)

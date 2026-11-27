@@ -6,6 +6,7 @@ import { PWAInstallButton } from './PWAInstallPrompt';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { getSupportDisplayPhone, getSupportWhatsAppUrl } from '../utils/supportContact';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 
 // --- Static SSR-Safe Metric Display (eliminates 0 / mid-animation glitches) ---
 const AnimatedCounter: React.FC<{ target: string; duration?: number }> = ({ target }) => {
@@ -28,6 +29,10 @@ const LandingPage: React.FC = () => {
     const [marketCategory, setMarketCategory] = useState<string>('');
 
     useEffect(() => {
+        if (!FEATURE_FLAGS.marketSquareDirectory) {
+            setMarketLoading(false);
+            return;
+        }
         let cancelled = false;
         const loadFeaturedMarket = async () => {
             setMarketLoading(true);
@@ -273,13 +278,10 @@ const LandingPage: React.FC = () => {
         { icon: '📊', label: 'Evening Close & Score', desc: 'Daily profit & SmartScore™', color: 'bg-teal-100 border-teal-300 text-teal-700' },
     ];
 
-    const testimonials = [
-        { name: 'Chidinma Obi', role: 'Fashion Boutique Pilot User, Lagos', avatar: 'CO', color: 'bg-pink-500', text: 'The Product Studio turned simple counter photos into clean catalog shots for my WhatsApp Status and storefront without paying a studio.', stars: 5 },
-        { name: 'Chief Emeka Okonkwo', role: 'Building Materials Pilot User, Onitsha', avatar: 'EO', color: 'bg-green-600', text: 'Staff Shift Mode keeps my daily sales ledger protected. Attendants record sales quickly without editing prices or viewing total owner margins.', stars: 5 },
-        { name: 'Fatima Al-Hassan', role: 'Agro-Commodity Pilot User, Kano', avatar: 'FA', color: 'bg-purple-500', text: 'The debt ledger helps me follow up on overdue credit balances with polite WhatsApp reminders and direct bank details—saving hours of calls.', stars: 5 },
-        { name: 'Tunde Adeyemi', role: 'CAC & SME Advisor, Abuja', avatar: 'TA', color: 'bg-blue-500', text: 'The compliance checklist and tax threshold summaries make it easy to organize CAC, TIN, and annual turnover records before visiting a tax consultant.', stars: 5 },
-        { name: 'Ngozi Williams', role: 'Catering Business Pilot User, Port Harcourt', avatar: 'NW', color: 'bg-amber-500', text: 'The Day-Book POS is super fast. Recording cash, bank transfers, and generator fuel in one place gives me my true daily net profit every evening.', stars: 5 },
-        { name: 'Alhaji Bello', role: 'Poultry & Feed Pilot User, Kaduna', avatar: 'AB', color: 'bg-teal-600', text: 'The Grant Matcher surfaced active BOI and SMEDAN schemes for agro-processing, and the 3-year plan builder structured our cashflow tables cleanly.', stars: 5 },
+    const pilotProgramTracks = [
+        { badge: 'Open Cohort · Retail & Mini-Marts', title: 'Fast Counter POS & Staff Lock', desc: 'Test 5-second Cash, Transfer, and Credit sales with offline local persistence and owner-password shift protection.', icon: '⚡' },
+        { badge: 'Open Cohort · Wholesale & Trade', title: 'Gbege Book & WhatsApp Reminders', desc: 'Track partial repayments in real time and send polite click-to-chat WhatsApp payment reminders with bank details.', icon: '📒' },
+        { badge: 'Open Cohort · Fashion & Services', title: 'Personal Storefront (/u/your-brand)', desc: 'Publish live inventory to your own shareable web store and receive structured WhatsApp & Paystack orders in Leads Inbox.', icon: '🏪' },
     ];
 
     const packs = [
@@ -604,7 +606,8 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ LIVE PUBLIC MARKET SQUARE SHOWCASE (NO LOGIN REQUIRED) ═══════════ */}
+            {/* ═══════════ LIVE PUBLIC MARKET SQUARE SHOWCASE (FEATURE-GATED) ═══════════ */}
+            {FEATURE_FLAGS.marketSquareDirectory && (
             <section id="live-marketplace" className="py-16 bg-gradient-to-b from-white via-emerald-50/30 to-white border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -800,6 +803,7 @@ const LandingPage: React.FC = () => {
                     </div>
                 </div>
             </section>
+            )}
 
             {/* ═══════════ 6-STEP DAILY OPERATING TIMELINE ═══════════ */}
             <section className="py-20 bg-white">
@@ -966,7 +970,7 @@ const LandingPage: React.FC = () => {
                                                 <span className="bg-emerald-400/30 text-emerald-200 border border-emerald-400/40 px-2 py-0.5 rounded-full text-[9px] font-bold">⭐ 4.9 (58 Reviews)</span>
                                             </div>
                                             {[
-                                                { icon: '📦', title: 'Live Order #SB-8921', sub: 'In Transit via GIG Logistics • Track at /track/SB-8921', badge: 'Paid (Paystack Escrow)' },
+                                                { icon: '📦', title: 'Live Order #SB-8921', sub: 'In Transit via Dispatch • Track at /track/SB-8921', badge: 'Paid (Paystack Direct)' },
                                                 { icon: '🚚', title: 'Nationwide Delivery Quotes', sub: 'Lagos ₦1,500 • Abuja ₦2,500 • Rivers ₦2,500', badge: '36 States' },
                                                 { icon: '📣', title: 'AI WhatsApp Promo Pack', sub: '1-Click viral Status & Broadcast captions in Pidgin/English', badge: '2 Credits' },
                                                 { icon: '⚡', title: '24-Hour Spotlight Boost', sub: 'Promoted to #1 in Market Square Fashion Category', badge: '10 Credits' },
@@ -1202,7 +1206,7 @@ const LandingPage: React.FC = () => {
                                 </div>
                             </div>
                             <p className="text-slate-500 text-xs leading-relaxed border-t border-slate-700 pt-6">
-                                Estimates are based on average MSME outcomes reported by SmartBiz Coach merchants across Lagos, Onitsha, Kano, Abuja, and Port Harcourt.
+                                Illustrative planning estimates based on your slider inputs above. Actual time savings and collections vary by business volume and operations.
                             </p>
                         </motion.div>
 
@@ -1266,34 +1270,30 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ TESTIMONIALS ═══════════ */}
+            {/* ═══════════ PILOT MERCHANT PROGRAM ═══════════ */}
             <section className="py-24 bg-slate-50 border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <motion.div className="text-center mb-16" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <span className="inline-block py-1 px-3 rounded-full bg-amber-100 text-amber-800 text-xs font-black tracking-widest uppercase mb-4 border border-amber-200">Pilot Feedback</span>
-                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Pilot Merchant Stories &amp; Workflow Scenarios</h2>
-                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">Illustrative feedback from pilot users and trade workflows across Nigerian retail, wholesale, and agro businesses.</p>
+                        <span className="inline-block py-1 px-3 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black tracking-widest uppercase mb-4 border border-emerald-200">Pilot Merchant Program</span>
+                        <h2 className="text-4xl font-extrabold text-slate-900 mb-4">Join Our Open Pilot for Nigerian MSMEs</h2>
+                        <p className="text-lg text-slate-500 max-w-2xl mx-auto">We are onboarding real Nigerian shops to test our core daily workflow—offline POS, apprentice lock, debt ledger, and web storefront—with direct founder support.</p>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {testimonials.map((t, i) => (
-                            <motion.div key={i} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {pilotProgramTracks.map((track, i) => (
+                            <motion.div key={i} className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
                                 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
                                 <div>
-                                    <div className="flex items-center gap-1 text-amber-400 mb-4">
-                                        {[...Array(t.stars)].map((_, si) => <span key={si}>★</span>)}
+                                    <div className="flex items-center justify-between gap-2 mb-4">
+                                        <span className="text-2xl">{track.icon}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{track.badge}</span>
                                     </div>
-                                    <p className="text-slate-600 text-sm leading-relaxed italic mb-6">"{t.text}"</p>
+                                    <h3 className="text-base font-extrabold text-slate-900 mb-2">{track.title}</h3>
+                                    <p className="text-slate-600 text-sm leading-relaxed mb-6">{track.desc}</p>
                                 </div>
-                                <div className="flex items-center gap-3 pt-4 border-t border-slate-50">
-                                    <div className={`w-10 h-10 ${t.color} text-white rounded-full flex items-center justify-center font-black text-sm flex-shrink-0`}>
-                                        {t.avatar}
-                                    </div>
-                                    <div>
-                                        <div className="font-bold text-slate-900 text-sm">{t.name}</div>
-                                        <div className="text-xs text-slate-400">{t.role}</div>
-                                    </div>
-                                </div>
+                                <button onClick={() => navigate('/register')} className="text-left text-xs font-black text-emerald-700 hover:text-emerald-800 cursor-pointer">
+                                    Reserve a Pilot Spot →
+                                </button>
                             </motion.div>
                         ))}
                     </div>
@@ -1580,6 +1580,7 @@ const LandingPage: React.FC = () => {
                                 <li><a href="#partnership" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Institutional Partners</a></li>
                                 <li><Link to="/privacy" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Privacy Policy (NDPA 2023)</Link></li>
                                 <li><Link to="/terms" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Terms of Service</Link></li>
+                                <li><Link to="/refund-policy" className="text-sm text-slate-400 hover:text-green-400 transition-colors">Refund Policy</Link></li>
                             </ul>
                         </div>
                     </div>

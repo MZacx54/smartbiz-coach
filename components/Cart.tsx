@@ -235,7 +235,7 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
           <span>
             {vendorSubaccount 
               ? 'Direct Bank Settlement: Payments route directly to vendor verified bank account.' 
-              : 'Secured via Paystack Escrow Protection.'}
+              : 'Non-custodial Paystack checkout (no card data stored on SmartBiz servers).'}
           </span>
         </div>
 

@@ -188,3 +188,44 @@ class EmailVerificationCreditGateTests(TestCase):
         detail_resp = self.client.get(detail_url)
         self.assertEqual(detail_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(detail_resp.data['title'], 'NACCIMA MSME Digital Inclusion 2026')
+
+
+class SecurityHardeningTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='lockowner@shop.ng',
+            email='lockowner@shop.ng',
+            password='OwnerStrongPassword123!',
+            business_name='Lock Shop'
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_security_lock_bruteforce_lockout_after_5_attempts(self):
+        from django.core.cache import cache
+        cache.clear()
+        set_res = self.client.post('/api/users/security-lock/', {
+            'action': 'SET_PASSCODE',
+            'new_passcode': '482917',
+            'lock_immediately': True
+        }, format='json')
+        self.assertEqual(set_res.status_code, status.HTTP_200_OK)
+
+        for _ in range(4):
+            bad = self.client.post('/api/users/security-lock/', {'action': 'UNLOCK', 'passcode': 'wrong1'}, format='json')
+            self.assertEqual(bad.status_code, status.HTTP_403_FORBIDDEN)
+
+        fifth = self.client.post('/api/users/security-lock/', {'action': 'UNLOCK', 'passcode': 'wrong1'}, format='json')
+        self.assertEqual(fifth.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertTrue(fifth.data.get('locked_out'))
+
+        # Even valid passcode is rate-limited during active lockout window
+        blocked_valid = self.client.post('/api/users/security-lock/', {'action': 'UNLOCK', 'passcode': '482917'}, format='json')
+        self.assertEqual(blocked_valid.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_cohort_dashboard_and_debug_models_reject_regular_user(self):
+        res_cohort = self.client.get(reverse('cohort-dashboard'))
+        self.assertEqual(res_cohort.status_code, status.HTTP_403_FORBIDDEN)
+
+        res_debug = self.client.get('/api/content/debug/models/')
+        self.assertEqual(res_debug.status_code, status.HTTP_403_FORBIDDEN)

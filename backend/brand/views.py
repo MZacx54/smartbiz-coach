@@ -63,7 +63,7 @@ class GenerateBrandView(views.APIView):
             "coreValues": ["Integrity", "Excellence", "Customer Commitment", "Accountability"],
             "executiveBio": "A 2-3 sentence executive profile of the principal promoter / founder highlighting domain leadership and operational discipline.",
             "slaPolicy": "Formal Service Level Agreement stating response time (within 2 hours), delivery benchmarks (24-48 hrs), and service fulfillment standards.",
-            "ndprCompliance": "Official data privacy, confidential transaction processing, and NDPR/customer data protection commitment statement.",
+            "ndprCompliance": "Official data privacy, confidential transaction processing, and NDPA 2023 customer data protection commitment statement.",
             "corporateEntityType": "{corporate_entity_type}",
             "logoPrompt": "Detailed prompt for an AI icon generator based on this corporate brand",
             "policies": {{ "payment": "...", "delivery": "...", "refund": "..." }},
@@ -144,7 +144,7 @@ class GenerateBrandView(views.APIView):
         default_vision = f"To be the foremost and most trusted {niche} commercial brand in West Africa, scaling sustainable SME operations and driving digital trade."
         default_bio = f"{name} was established to bridge critical quality and reliability gaps in the {niche} sector. Directed by visionary entrepreneurship with a deep commitment to regulatory compliance and client satisfaction."
         default_sla = "Official SLA: Inquiries acknowledged within 120 minutes. Order verification and dispatch within 24 hours. Formal dispute escalation resolved within 24 business hours."
-        default_ndpr = "NDPR Privacy Statement: Customer personal records, transaction communications, and payment confirmations are processed strictly under Nigerian Data Protection Regulation (NDPR) confidentiality standards."
+        default_ndpr = "NDPA 2023 Privacy Statement: Customer personal records, transaction communications, and payment confirmations are processed strictly under Nigeria Data Protection Act (NDPA 2023) confidentiality standards."
 
         # Helper to get value with fallback case-insensitively
         def get_val(keys, default):

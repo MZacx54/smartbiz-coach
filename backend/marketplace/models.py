@@ -273,6 +273,8 @@ class DailySale(models.Model):
     notes = models.TextField(blank=True, default='')
     is_edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
+    is_voided = models.BooleanField(default=False, db_index=True)
+    voided_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -301,6 +303,8 @@ class DailyExpense(models.Model):
     notes = models.TextField(blank=True, default='')
     is_edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
+    is_voided = models.BooleanField(default=False, db_index=True)
+    voided_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -442,3 +446,24 @@ class ListingReport(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class LedgerAuditLog(models.Model):
+    """Append-only audit trail for sales and expense creation, edits, voids, and settlements."""
+    ENTRY_TYPES = [('SALE', 'Daily Sale'), ('EXPENSE', 'Daily Expense')]
+    ACTIONS = [('CREATE', 'Created'), ('EDIT', 'Edited'), ('VOID', 'Voided'), ('SETTLE', 'Debt Settled')]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ledger_audit_logs')
+    entry_type = models.CharField(max_length=12, choices=ENTRY_TYPES)
+    object_id = models.PositiveIntegerField(db_index=True)
+    action = models.CharField(max_length=12, choices=ACTIONS)
+    actor_mode = models.CharField(max_length=24, default='OWNER')
+    snapshot = models.JSONField(default=dict, blank=True)
+    note = models.CharField(max_length=300, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.entry_type}#{self.object_id} {self.action} ({self.created_at:%Y-%m-%d %H:%M})"

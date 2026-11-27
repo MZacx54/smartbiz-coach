@@ -95,324 +95,12 @@ const PRICE_BUCKETS = [
   { id: '100000-99999999', label: '₦100k+', min: '100000', max: '99999999' },
 ];
 
-// Production-ready verified Nigerian starter listings across all 4 pillars
+// Empty fallback (real listings come exclusively from /api/marketplace/global/)
 const SEED_MARKETPLACE_LISTINGS: Record<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B2B', UnifiedItem[]> = {
-  PHYSICAL: [
-    {
-      id: 9001,
-      name: "Premium Ankara Textile - 6 Yards",
-      description: "Authentic 100% cotton African wax print fabric, colorfast and suitable for traditional wedding and bespoke tailoring.",
-      price: 12500,
-      compare_at_price: 16000,
-      deal_active: true,
-      discount_percent: 22,
-      avg_rating: 4.9,
-      review_count: 28,
-      image_url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80",
-      category: "Fashion",
-      product_type: "PHYSICAL",
-      location: "Balogun Market, Lagos",
-      metadata: { brand: "Vibrant Wax" },
-      brand_name: "Adeola Fabrics & Fashion",
-      brand_slug: "adeola-fabrics",
-      brand_niche: "Fashion & Textiles",
-      cac_number: "BN-3498211",
-      smedan_number: "SU/2026/0889",
-      is_public: true,
-      is_promoted: true,
-      is_vendor_verified: true,
-      stock_count: 45,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9002,
-      name: "1kVA Pure Sine Wave Solar Power Inverter Kit",
-      description: "Reliable solar power kit for small business shops, POS kiosks, and barber salons. Includes lithium battery and auto-switchover.",
-      price: 145000,
-      compare_at_price: 175000,
-      deal_active: true,
-      discount_percent: 17,
-      avg_rating: 4.8,
-      review_count: 14,
-      image_url: "https://images.unsplash.com/photo-1508873696983-2df5293cb395?auto=format&fit=crop&w=600&q=80",
-      category: "Electronics",
-      product_type: "PHYSICAL",
-      location: "Alaba International, Lagos",
-      metadata: { brand: "GreenPower NG" },
-      brand_name: "Alaba Solar World Ltd",
-      brand_slug: "alaba-solar-world",
-      brand_niche: "Renewable Energy & Tech",
-      cac_number: "RC-1849204",
-      smedan_number: "SU/2026/1102",
-      is_public: true,
-      is_promoted: true,
-      is_vendor_verified: true,
-      stock_count: 12,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9003,
-      name: "Handcrafted Men's Italian Leather Loafers",
-      description: "Durable genuine leather loafers hand-stitched by certified master artisans in Aba. Built for comfort and long-lasting style.",
-      price: 28000,
-      compare_at_price: 35000,
-      deal_active: true,
-      discount_percent: 20,
-      avg_rating: 4.9,
-      review_count: 39,
-      image_url: "https://images.unsplash.com/photo-1533867617858-e7b97e060509?auto=format&fit=crop&w=600&q=80",
-      category: "Fashion",
-      product_type: "PHYSICAL",
-      location: "Aba Ariaria Market, Abia",
-      metadata: { brand: "Ariaria Classics" },
-      brand_name: "Kalu Master Craft Footwear",
-      brand_slug: "kalu-master-craft",
-      brand_niche: "Footwear & Leather",
-      cac_number: "BN-2938102",
-      smedan_number: "SU/2026/3419",
-      is_public: true,
-      is_promoted: false,
-      is_vendor_verified: true,
-      stock_count: 24,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9004,
-      name: "Pure Natural Honey & Unrefined Shea Butter Set",
-      description: "100% natural wild-harvested honey (1L) and raw unrefined shea butter (500g) sourced directly from certified organic farms.",
-      price: 8500,
-      avg_rating: 5.0,
-      review_count: 19,
-      image_url: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=600&q=80",
-      category: "Groceries",
-      product_type: "PHYSICAL",
-      location: "Wuse 2, Abuja",
-      metadata: { brand: "Savannah Organics" },
-      brand_name: "Savannah Agro Exports",
-      brand_slug: "savannah-agro",
-      brand_niche: "Organic Foods & Agro",
-      cac_number: "RC-1729384",
-      smedan_number: "SU/2026/4102",
-      is_public: true,
-      is_promoted: false,
-      is_vendor_verified: true,
-      stock_count: 60,
-      whatsapp_number: "2349064556107"
-    }
-  ],
-  SERVICE: [
-    {
-      id: 9101,
-      name: "CAC Business Name & Limited Company Registration",
-      description: "Complete formalization service by an accredited agent. Includes name reservation, CAC status certificate, and Federal Tax Identification Number (TIN).",
-      price: 35000,
-      avg_rating: 5.0,
-      review_count: 42,
-      image_url: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80",
-      category: "Legal",
-      product_type: "SERVICE",
-      location: "Ikeja, Lagos",
-      metadata: { duration: "3-5 Business Days", billingType: "Fixed Fee Package" },
-      brand_name: "LexApex Corporate Advisory",
-      brand_slug: "lexapex-advisory",
-      brand_niche: "Legal & Regulatory Compliance",
-      cac_number: "RC-1658493",
-      smedan_number: "SU/2026/9021",
-      is_public: true,
-      is_promoted: true,
-      is_vendor_verified: true,
-      stock_count: 999,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9102,
-      name: "SME Brand Identity & Luxury Packaging Design",
-      description: "Custom vector logos, packaging bag prints, social media templates, and business stationery designed to elevate your brand presence.",
-      price: 25000,
-      avg_rating: 4.9,
-      review_count: 31,
-      image_url: "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&w=600&q=80",
-      category: "Branding",
-      product_type: "SERVICE",
-      location: "Yaba, Lagos",
-      metadata: { duration: "48-72 Hours", billingType: "Full Identity Suite" },
-      brand_name: "Studio 247 Digital Agency",
-      brand_slug: "studio-247-digital",
-      brand_niche: "Creative & Branding",
-      cac_number: "BN-3029184",
-      smedan_number: "SU/2026/7821",
-      is_public: true,
-      is_promoted: false,
-      is_vendor_verified: true,
-      stock_count: 999,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9103,
-      name: "Commercial Smartphone & POS Terminal Hardware Repair",
-      description: "Diagnostic screen, charging port, battery, and motherboard repair for POS terminals and enterprise smartphones with 90-day warranty.",
-      price: 8500,
-      avg_rating: 4.8,
-      review_count: 23,
-      image_url: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
-      category: "Repairs",
-      product_type: "SERVICE",
-      location: "Computer Village, Lagos",
-      metadata: { duration: "Same-Day Turnaround", billingType: "Diagnostic & Part Cost" },
-      brand_name: "FixPoint Tech Services",
-      brand_slug: "fixpoint-tech",
-      brand_niche: "Hardware Engineering",
-      cac_number: "BN-2849102",
-      smedan_number: "SU/2026/6512",
-      is_public: true,
-      is_promoted: false,
-      is_vendor_verified: true,
-      stock_count: 999,
-      whatsapp_number: "2349064556107"
-    }
-  ],
-  PROPERTY: [
-    {
-      id: 9201,
-      name: "Prime Ground Floor Lock-Up Shop (Balogun Market)",
-      description: "High-footfall ground floor commercial retail shop inside a secured modern shopping plaza with 24/7 security, backup generator, and fire suppression.",
-      price: 850000,
-      avg_rating: 4.9,
-      review_count: 8,
-      image_url: "https://images.unsplash.com/photo-1582037928769-181f2644ecb7?auto=format&fit=crop&w=600&q=80",
-      category: "Commercial",
-      product_type: "PROPERTY",
-      location: "Balogun, Lagos",
-      metadata: { bedrooms: 0, propertyType: "Lock-Up Shop", size: "24 sqm" },
-      brand_name: "Balogun Plaza Management",
-      brand_slug: "balogun-plaza",
-      brand_niche: "Commercial Real Estate",
-      cac_number: "RC-1928492",
-      smedan_number: "SU/2026/5102",
-      is_public: true,
-      is_promoted: true,
-      is_vendor_verified: true,
-      stock_count: 2,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9202,
-      name: "Serviced 2-Room Office Suite & Meeting Hub",
-      description: "Fully furnished executive office suite with dedicated high-speed fiber internet, AC, uninterrupted power supply, and shared boardroom access.",
-      price: 1200000,
-      avg_rating: 5.0,
-      review_count: 11,
-      image_url: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80",
-      category: "Office",
-      product_type: "PROPERTY",
-      location: "Garki 2, Abuja",
-      metadata: { bedrooms: 2, propertyType: "Serviced Office", size: "65 sqm" },
-      brand_name: "Capital Hub Properties",
-      brand_slug: "capital-hub",
-      brand_niche: "Office Leasing",
-      cac_number: "RC-1748291",
-      smedan_number: "SU/2026/8912",
-      is_public: true,
-      is_promoted: false,
-      is_vendor_verified: true,
-      stock_count: 1,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9203,
-      name: "500sqm Industrial Distribution Warehouse",
-      description: "Spacious dry warehouse facility with wide trailer access bays, reinforced concrete flooring, CCTV perimeter monitoring, and 3-phase commercial electricity.",
-      price: 3500000,
-      avg_rating: 4.8,
-      review_count: 6,
-      image_url: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80",
-      category: "Warehouse",
-      product_type: "PROPERTY",
-      location: "Ikeja Industrial Estate, Lagos",
-      metadata: { bedrooms: 0, propertyType: "Industrial Warehouse", size: "500 sqm" },
-      brand_name: "PrimeLogistics Properties",
-      brand_slug: "primelogistics-properties",
-      brand_niche: "Industrial Real Estate",
-      cac_number: "RC-1628394",
-      smedan_number: "SU/2026/3012",
-      is_public: true,
-      is_promoted: false,
-      is_vendor_verified: true,
-      stock_count: 1,
-      whatsapp_number: "2349064556107"
-    }
-  ],
-  B2B: [
-    {
-      id: 9301,
-      name: "Bulk Raw Cashew Nuts (50kg Export Bags)",
-      description: "High-yield raw cashew nuts with low moisture content and high KOR ratio. Sourced directly from certified farmers in northern agricultural belts.",
-      price: 95000,
-      avg_rating: 5.0,
-      review_count: 17,
-      image_url: "https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&w=600&q=80",
-      category: "RAW_MATERIALS",
-      product_type: "B2B",
-      location: "Kantin Kwari, Kano",
-      metadata: { moq: "10 Bags", packaging: "50kg Jute Sacks" },
-      brand_name: "Arewa Agro Commodities Ltd",
-      brand_slug: "arewa-agro-commodities",
-      brand_niche: "Agricultural Commodities",
-      cac_number: "RC-1582910",
-      smedan_number: "SU/2026/2201",
-      is_public: true,
-      is_promoted: true,
-      is_vendor_verified: true,
-      stock_count: 500,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9302,
-      name: "Custom Branded E-Commerce Courier Mailers (500 Pcs)",
-      description: "Tear-resistant, tamper-evident courier poly mailers with your custom business logo, contact details, and social handles in vibrant flexo print.",
-      price: 38000,
-      avg_rating: 4.9,
-      review_count: 29,
-      image_url: "https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=600&q=80",
-      category: "WHOLESALE",
-      product_type: "B2B",
-      location: "Shomolu, Lagos",
-      metadata: { moq: "500 Pieces", turnaround: "3 Days" },
-      brand_name: "ExpressPack Nigeria Ltd",
-      brand_slug: "expresspack-nigeria",
-      brand_niche: "Packaging & Print Manufacturing",
-      cac_number: "RC-1749281",
-      smedan_number: "SU/2026/8410",
-      is_public: true,
-      is_promoted: true,
-      is_vendor_verified: true,
-      stock_count: 10000,
-      whatsapp_number: "2349064556107"
-    },
-    {
-      id: 9303,
-      name: "Inter-State Haulage & 5-Ton Truck Dispatch Fleet",
-      description: "Dedicated inter-state cargo haulage across Lagos, Ibadan, Onitsha, Kano, Abuja, and Port Harcourt with GPS live tracking and transit goods insurance.",
-      price: 180000,
-      avg_rating: 4.8,
-      review_count: 16,
-      image_url: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=600&q=80",
-      category: "LOGISTICS",
-      product_type: "B2B",
-      location: "Lagos / Nationwide",
-      metadata: { vehicleType: "5-Ton Enclosed Truck", moq: "1 Trip" },
-      brand_name: "TransNational Freight & Fleet",
-      brand_slug: "transnational-freight",
-      brand_niche: "Commercial Logistics",
-      cac_number: "RC-1492048",
-      smedan_number: "SU/2026/6710",
-      is_public: true,
-      is_promoted: false,
-      is_vendor_verified: true,
-      stock_count: 8,
-      whatsapp_number: "2349064556107"
-    }
-  ]
+  PHYSICAL: [],
+  SERVICE: [],
+  PROPERTY: [],
+  B2B: []
 };
 
 // Client-side in-memory cache for instant tab switching (2 minutes TTL)
@@ -647,14 +335,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
         quoted_price: (Number(rfqItem.price) || 0) * (Number(rfqQuantity) || 1)
       });
 
-      const rawNum = rfqItem.whatsapp_number || '2349064556107';
+      const rawNum = rfqItem.whatsapp_number || '';
       const cleanNum = rawNum.replace(/\D/g, '');
-      const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
+      const waNum = !cleanNum
+        ? ''
+        : cleanNum.startsWith('0') && cleanNum.length === 11
+          ? '234' + cleanNum.slice(1)
+          : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
       
       const text = encodeURIComponent(
         `Hello ${rfqItem.brand_name || 'Vendor'}! 💼\n\nI am requesting a B2B quotation for:\n📦 "${rfqItem.name}"\n• Quantity Needed: ${rfqQuantity} units\n• Destination: ${rfqLocation}\n• Notes: ${rfqNotes || 'Please share wholesale pricing & delivery schedule'}\n\nSent via SmartBiz Marketplace.`
       );
-      window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
+      if (waNum) {
+        window.open(`https://wa.me/${waNum}?text=${text}`, '_blank');
+      }
 
       toast.success('B2B Quote Request Sent! Opening WhatsApp chat...');
       setRfqItem(null);
@@ -726,9 +420,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
     <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 pb-24 px-3 sm:px-6 overflow-touch">
       <SEO
         title="Nigerian MSME Market Square — Buy from Verified Local Businesses across 36 States"
-        description="The central digital marketplace for Nigerian MSMEs. Discover authentic local fashion, electronics, beauty, groceries, and services from CAC verified sellers across all 36 states and Abuja. Pay via Paystack escrow or order directly on WhatsApp."
+        description="The central digital marketplace for Nigerian MSMEs. Discover local fashion, electronics, beauty, groceries, and services from Nigerian businesses across all 36 states and Abuja. Pay via Paystack or order on WhatsApp."
         url={marketplaceUrl}
-        keywords="Nigerian marketplace, MSME market square, buy local Nigeria, Lagos fashion, Computer Village phones, Abuja wholesale, Nigerian small business directory, Paystack escrow checkout"
+        keywords="Nigerian marketplace, MSME market square, buy local Nigeria, Lagos fashion, Computer Village phones, Abuja wholesale, Nigerian small business directory, Paystack checkout"
         schema={marketplaceSchema}
       />
       {/* Public Top Navigation Bar when accessed at /market or market.smartbizcoach.com.ng */}
@@ -1340,9 +1034,17 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                     {/* Instant Direct WhatsApp Order & Chat */}
                     <button
                       onClick={() => {
-                        const rawNum = item.whatsapp_number || '2349064556107';
+                        const rawNum = item.whatsapp_number || '';
                         const cleanNum = rawNum.replace(/\D/g, '');
-                        const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
+                        const waNum = !cleanNum
+                          ? ''
+                          : cleanNum.startsWith('0') && cleanNum.length === 11
+                            ? '234' + cleanNum.slice(1)
+                            : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
+                        if (!waNum) {
+                          toast.error('Seller has not provided a WhatsApp number yet. View their storefront instead.');
+                          return;
+                        }
                         const text = encodeURIComponent(
                           `Hello ${item.brand_name || 'Vendor'}! I saw your listing "${item.name}" (₦${Number(item.price).toLocaleString()}) on SmartBiz Market Square and would like to order / make an inquiry.`
                         );
@@ -1663,9 +1365,17 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
 
                         <button 
                           onClick={() => {
-                            const rawNum = selectedItem.whatsapp_number || '2349064556107';
+                            const rawNum = selectedItem.whatsapp_number || '';
                             const cleanNum = rawNum.replace(/\D/g, '');
-                            const waNum = cleanNum.startsWith('0') && cleanNum.length === 11 ? '234' + cleanNum.slice(1) : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
+                            const waNum = !cleanNum
+                              ? ''
+                              : cleanNum.startsWith('0') && cleanNum.length === 11
+                                ? '234' + cleanNum.slice(1)
+                                : cleanNum.startsWith('234') ? cleanNum : '234' + cleanNum;
+                            if (!waNum) {
+                              toast.error('Seller has not provided a WhatsApp number yet.');
+                              return;
+                            }
                             const text = encodeURIComponent(
                               `Hello ${selectedItem.brand_name || 'Vendor'}! I saw your listing "${selectedItem.name}" (₦${Number(selectedItem.price).toLocaleString()}) on SmartBiz Market Square and would like to order/negotiate.`
                             );

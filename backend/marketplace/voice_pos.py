@@ -261,14 +261,16 @@ class VoicePOSIngestView(views.APIView):
     """
     STEP 1 - PREVIEW. Takes audio (multipart 'audio') or typed text ('text_transcript'),
     optional 'language' hint (auto|english|pidgin|hausa|yoruba|igbo).
-    Returns the transcript and structured rows for the merchant to review. Saves NOTHING.
+    Atomically reserves 1 BizCredit before calling AI and refunds on failure/empty extraction.
     """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    throttle_scope = 'ai'
 
     def post(self, request):
         from smartbiz_backend import gemini_utils
         from smartbiz_backend.gemini_utils import GeminiUnavailableError
+        from billing.utils import reserve_ai_credits, refund_ai_credits
 
         lang_key = str(request.data.get('language') or 'auto').lower()
         lang = LANGUAGE_HINTS.get(lang_key, LANGUAGE_HINTS['auto'])
@@ -277,6 +279,9 @@ class VoicePOSIngestView(views.APIView):
         audio_b64 = request.data.get('audio_base64')
         text_in = (request.data.get('text_transcript') or '').strip()
         mime_type = normalize_mime(request.data.get('mimeType'))
+
+        reserved = 0
+        remaining = getattr(request.user, 'credits', 0)
 
         try:
             if audio_file:
@@ -288,6 +293,13 @@ class VoicePOSIngestView(views.APIView):
                     return Response({'error': 'Recording was too short. Hold the mic and speak, then tap again to finish.', 'code': 'too_short'}, status=422)
                 audio_b64 = base64.b64encode(raw).decode('utf-8')
 
+            if not audio_b64 and not text_in:
+                return Response({'error': 'Provide an audio recording or text transcript.', 'code': 'missing_input'}, status=400)
+
+            allowed, remaining, reserved = reserve_ai_credits(request.user, 1, 'Voice POS Note Parsing')
+            if not allowed:
+                return Response({'error': 'Insufficient BizCredits (requires 1 credit).', 'credits': remaining}, status=402)
+
             if audio_b64 and not text_in:
                 transcript = gemini_utils.transcribe_audio_strict(
                     audio_b64, mime_type, TRANSCRIBE_PROMPT.format(lang=lang))
@@ -295,6 +307,7 @@ class VoicePOSIngestView(views.APIView):
                 transcript = text_in
 
             if not transcript or transcript.strip().upper().startswith('[UNCLEAR]'):
+                refund_ai_credits(request.user, reserved, 'Voice POS Unclear Audio')
                 return Response({
                     'error': "I couldn't hear anything clear. Please speak closer to the phone in a quieter place, or type it instead.",
                     'code': 'unclear'}, status=422)
@@ -308,6 +321,7 @@ class VoicePOSIngestView(views.APIView):
                 parsed.get('sales'), parsed.get('expenses'), products)
 
             if not sales and not expenses:
+                refund_ai_credits(request.user, reserved, 'Voice POS Nothing Extracted')
                 return Response({
                     'error': "I heard you, but found no sale or expense. Try: \"I sold 2 bags of rice for 180,000 cash\".",
                     'transcript': transcript, 'code': 'nothing_found'}, status=422)
@@ -322,18 +336,23 @@ class VoicePOSIngestView(views.APIView):
                 'expenses': expenses,
                 'warnings': warnings,
                 'needs_review': bool(warnings),
+                'credits': remaining,
+                'credits_deducted_server': True,
             })
         except GeminiUnavailableError as exc:
+            refund_ai_credits(request.user, reserved, 'Voice POS AI Unavailable')
             print(f'[VoicePOS] AI unavailable: {exc}')
             return Response({
                 'error': 'The AI is busy right now. Please try again in a moment, or type your sales instead.',
                 'code': 'ai_unavailable'}, status=503)
         except (ValueError, KeyError) as exc:
+            refund_ai_credits(request.user, reserved, 'Voice POS Bad AI Output')
             print(f'[VoicePOS] bad AI output: {exc}')
             return Response({
                 'error': "I couldn't understand that clearly. Please try again, speaking a bit slower.",
                 'code': 'bad_output'}, status=502)
         except Exception as exc:  # noqa
+            refund_ai_credits(request.user, reserved, 'Voice POS Error')
             print(f'[VoicePOS] unexpected error: {exc}')
             return Response({'error': 'Something went wrong. Please try again.', 'code': 'server_error'}, status=500)
 

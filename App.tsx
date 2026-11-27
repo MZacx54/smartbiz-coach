@@ -66,6 +66,7 @@ import api from "./services/api";
 import { authService, securityLockService, clearAllTenantLocalState } from "./services/authService";
 import { brandService } from "./services/brandService";
 import { billingService } from "./services/billingService";
+import { FEATURE_FLAGS } from "./config/featureFlags";
 
 const normalizeUser = (backendUser: any): User | null => {
   if (!backendUser) return null;
@@ -751,6 +752,11 @@ const App: React.FC = () => {
           </Suspense>
         } />
         <Route path="/terms-of-service" element={<Navigate to="/terms" replace />} />
+        <Route path="/refund-policy" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+            <StaticPage pageType="refund" />
+          </Suspense>
+        } />
         <Route path="/help" element={
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
             <StaticPage pageType="help" />
@@ -816,9 +822,11 @@ const App: React.FC = () => {
         } />
 
         <Route path="/partner-portal" element={
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-white"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
-            <PartnerPortal />
-          </Suspense>
+          FEATURE_FLAGS.partnerPortal ? (
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-white"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
+              <PartnerPortal />
+            </Suspense>
+          ) : <Navigate to="/" replace />
         } />
 
         <Route path="/login" element={
@@ -844,6 +852,7 @@ const App: React.FC = () => {
             </Suspense>
           )
         } />
+        <Route path="/signup" element={<Navigate to="/register" replace />} />
 
         <Route path="/dashboard/*" element={
           !user ? <Navigate to="/login" replace /> : (
@@ -903,40 +912,40 @@ const App: React.FC = () => {
                       setUserStats((prev) => ({ ...prev, bizCredits: newCredits }));
                     }
                   }} />} />
-                  <Route path="insights" element={
+                  <Route path="insights" element={FEATURE_FLAGS.businessInsightsLegacy ? (
                     <div className="space-y-3">
                       <button onClick={() => navigate('/dashboard')} className="min-h-[44px] px-3 rounded-xl text-sm font-bold text-emerald-700 hover:bg-emerald-50 cursor-pointer">← Back to Home</button>
                       <Dashboard userStats={userStats} actions={actions} onNavigate={handleNavigate} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />
                     </div>
-                  } />
-                  <Route path="ai-studio" element={<AIStudio initialTab="brand" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
-                  <Route path="brand" element={<AIStudio initialTab="brand" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
-                  <Route path="content" element={<AIStudio initialTab="content" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
-                  <Route path="business-plan" element={<BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="grants" element={<GrantMatcher businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="learning" element={<LearningHub onNavigate={handleNavigate} />} />
+                  ) : <Navigate to="/dashboard" replace />} />
+                  <Route path="ai-studio" element={FEATURE_FLAGS.aiStudio ? <AIStudio initialTab="brand" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="brand" element={FEATURE_FLAGS.aiStudio ? <AIStudio initialTab="brand" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="content" element={FEATURE_FLAGS.aiStudio ? <AIStudio initialTab="content" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="business-plan" element={FEATURE_FLAGS.grantsAndPlans ? <BusinessPlanGenerator brand={savedBrand} businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="grants" element={FEATURE_FLAGS.grantsAndPlans ? <GrantMatcher businessName={user.businessName} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="learning" element={FEATURE_FLAGS.learningAndRoadmap ? <LearningHub onNavigate={handleNavigate} /> : <Navigate to="/dashboard" replace />} />
                   <Route path="inventory" element={<ProductManager credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="debtor" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="debtors" element={<DebtorBook credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
                   <Route path="invoices" element={<InvoiceGenerator />} />
                   <Route path="cashbook" element={<DailyCashbook />} />
-                  <Route path="marketplace" element={<Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" />} />
-                  <Route path="hub" element={<Navigate to="/dashboard/marketplace?tab=B2B" replace />} />
-                  <Route path="cart" element={<Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} />} />
-                  <Route path="compliance" element={<Compliance brand={savedBrand} user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="roadmap" element={<DigitalRoadmap onNavigate={handleNavigate} />} />
+                  <Route path="marketplace" element={FEATURE_FLAGS.marketSquareDirectory ? <Marketplace onAddToCart={handleAddToCart} initialType="PHYSICAL" /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="hub" element={FEATURE_FLAGS.marketSquareDirectory ? <Navigate to="/dashboard/marketplace?tab=B2B" replace /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="cart" element={FEATURE_FLAGS.marketSquareDirectory ? <Cart items={cartItems} onRemove={handleRemoveFromCart} onClear={handleClearCart} onCheckout={handleCheckout} onBack={() => handleNavigate(AppView.MARKETPLACE)} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="compliance" element={FEATURE_FLAGS.grantsAndPlans ? <Compliance brand={savedBrand} user={user} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="roadmap" element={FEATURE_FLAGS.learningAndRoadmap ? <DigitalRoadmap onNavigate={handleNavigate} /> : <Navigate to="/dashboard" replace />} />
                   <Route path="support" element={<WhatsAppSupport credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="sales-assistant" element={<AIStudio initialTab="sales" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
+                  <Route path="sales-assistant" element={FEATURE_FLAGS.aiStudio ? <AIStudio initialTab="sales" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} /> : <Navigate to="/dashboard" replace />} />
                   <Route path="settings" element={<Settings user={user} userStats={userStats} onLogout={handleLogout} onUpdateUser={handleUpdateUser} onTopUpSuccess={handleUpdateCredits} />} />
-                  <Route path="order-gen" element={<OrderGenerator />} />
+                  <Route path="order-gen" element={FEATURE_FLAGS.orderSlipsStub ? <OrderGenerator /> : <Navigate to="/dashboard" replace />} />
             <Route path="orders" element={<OrderInbox user={user} />} />
                   <Route path="leads" element={<LeadManager />} />
                   <Route path="store-preview" element={<PublicStorefront />} />
-                  <Route path="pricing-assistant" element={<PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} />} />
-                  <Route path="marketing" element={<AIStudio initialTab="marketing" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} />} />
-                  <Route path="analytics" element={<DataScienceHub onNavigate={handleNavigate} />} />
+                  <Route path="pricing-assistant" element={FEATURE_FLAGS.pricingHelper ? <PricingAssistant credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="marketing" element={FEATURE_FLAGS.aiStudio ? <AIStudio initialTab="marketing" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="analytics" element={FEATURE_FLAGS.dataScienceLabs ? <DataScienceHub onNavigate={handleNavigate} /> : <Navigate to="/dashboard" replace />} />
                   <Route path="audit" element={<PublicAuditReport />} />
-                  <Route path="partner-portal" element={<PartnerPortal />} />
+                  <Route path="partner-portal" element={FEATURE_FLAGS.partnerPortal ? <PartnerPortal /> : <Navigate to="/dashboard" replace />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>

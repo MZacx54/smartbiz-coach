@@ -6,7 +6,7 @@ import api from '../services/api';
 import { getSupportDisplayPhone, getSupportWhatsAppUrl } from '../utils/supportContact';
 
 interface StaticPageProps {
-  pageType: 'about' | 'contact' | 'privacy' | 'terms' | 'help' | 'grants' | 'cac';
+  pageType: 'about' | 'contact' | 'privacy' | 'terms' | 'refund' | 'help' | 'grants' | 'cac';
 }
 
 const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
@@ -51,6 +51,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
     contact: { title: "Contact Us | SmartBiz Coach", desc: "Get in touch with our team via our Contact Desk or Email: support@smartbizcoach.com.ng" },
     privacy: { title: "Privacy Policy & Statutory Data Protection Notice | SmartBiz Coach", desc: "Official data protection notice under Nigeria Data Protection Act (NDPA 2023) and NDPC standards." },
     terms: { title: "Terms of Service & Merchant Operational Agreement | SmartBiz Coach", desc: "Binding terms of service, free core tools guarantee, BizCredits billing rules, and Market Square guidelines." },
+    refund: { title: "Refund, Dispute & Chargeback Policy | SmartBiz Coach", desc: "Transparent refund policy for BizCredits digital utility tokens, failed AI jobs, and non-custodial Market Square purchases." },
     help: { title: "Help Center & FAQs | SmartBiz Coach", desc: "Find tutorials, credit costs, fair-use guarantees, and quick answers to how our platform works." },
     grants: { title: "SME Grants & Funding Guide | SmartBiz Coach", desc: "Master guide to qualifying for BOI loans, SMEDAN grants, TEF, and bank financing in Nigeria." },
     cac: { title: "CAC Registration & Compliance Guide | SmartBiz Coach", desc: "Step-by-step checklist to register your business, obtain a TIN, and understand small-company tax rules in Nigeria." },
@@ -308,12 +309,10 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                       Our Constitutional Commitment to Nigerian MSME Data Sovereignty
                     </h4>
                     <p>
-                      SmartBiz Coach Technologies Limited (&ldquo;SmartBiz Coach&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates in strict conformity with the 
-                      <strong> Nigeria Data Protection Act 2023 (NDPA)</strong>, the <strong>Nigeria Data Protection Regulation 2019 (NDPR)</strong>, and directives of the 
+                      SmartBiz Coach Technologies Limited (&ldquo;SmartBiz Coach&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates in accordance with the 
+                      <strong> Nigeria Data Protection Act 2023 (NDPA 2023)</strong> and directives of the 
                       <strong> Nigeria Data Protection Commission (NDPC)</strong>. Your sales records, supplier margins, customer contacts, and debtor ledgers 
-                      remain your <strong>100% private, sovereign commercial property</strong>. Under our standardized National Ecosystem Partner Framework 
-                      (Document Ref: <code className="bg-white/80 px-1 py-0.5 rounded font-mono text-blue-900">SBC/NEP/GOV/2026/V4.2</code>), 
-                      neither partner aggregators, business chambers, credit institutions, nor government agencies can inspect your individual counter records without your explicit, affirmative, in-app written consent.
+                      remain your <strong>100% private, sovereign commercial property</strong>. Neither aggregators, business chambers, credit institutions, nor third parties can inspect your individual counter records without your explicit, affirmative, in-app consent.
                     </p>
                   </div>
                 </div>
@@ -336,10 +335,9 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     This policy is formulated in direct compliance with:
                   </p>
                   <ul className="list-disc list-inside mt-2 space-y-1.5 text-xs text-slate-700 pl-2">
-                    <li><strong>The Nigeria Data Protection Act (NDPA) 2023</strong> enacted by the National Assembly of Nigeria.</li>
-                    <li><strong>The Nigeria Data Protection Regulation (NDPR) 2019</strong> and statutory guidelines issued by the NDPC.</li>
-                    <li><strong>Central Bank of Nigeria (CBN) Consumer Protection Framework</strong> &amp; Payment Service Provider guidelines.</li>
-                    <li><strong>The National Multi-Tier Partner Ecosystem Protocol</strong> (Ref: <span className="font-mono text-slate-900">SBC/NEP/GOV/2026/V4.2</span>) establishing strict data boundaries across all partner categories.</li>
+                    <li><strong>The Nigeria Data Protection Act (NDPA) 2023</strong> enacted by the National Assembly of Nigeria, and directives issued by the <strong>NDPC</strong>.</li>
+                    <li><strong>Applicable Nigerian Payment &amp; Consumer Standards</strong> for licensed third-party payment gateways.</li>
+                    <li><strong>Data Minimization &amp; Tenant Isolation</strong> establishing strict data boundaries across accounts.</li>
                     <li>International best practices on cross-border data processing, confidentiality, and data minimization.</li>
                   </ul>
                 </section>
@@ -666,7 +664,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-900 font-bold text-base mb-3">
                     <span className="w-7 h-7 bg-slate-100 text-slate-800 rounded-lg flex items-center justify-center text-xs font-mono">11</span>
-                    <h3>Your Statutory Rights under NDPA 2023 &amp; NDPR</h3>
+                    <h3>Your Statutory Rights under NDPA 2023</h3>
                   </div>
                   <p className="mb-3">
                     Under Sections 34 through 40 of the Nigeria Data Protection Act 2023, you enjoy comprehensive, enforceable rights regarding your personal and business data:
@@ -821,7 +819,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     </div>
                     <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
                       <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
-                      <span>CITA Section 23/40 0% Small Company Tax Memo</span>
+                      <span>Small-Company CIT &amp; VAT Readiness Checklist (Informational Only)</span>
                     </div>
                   </div>
                   <p className="text-xs text-slate-500 mt-3">
@@ -916,7 +914,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     </div>
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
                       <strong className="text-slate-900 block mb-1">3. Government &amp; Regulatory Partners (Endorsement &amp; Compliance):</strong>
-                      <span>Compliance support tools (e.g. CAC preparation guides, Section 23/40 CITA tax exemption memos) are educational aids designed to assist regulatory formalization. Merchants remain responsible for authentic statutory filings with relevant regulatory bodies.</span>
+                      <span>Compliance support tools (e.g. CAC preparation guides and small-company tax checklists) are informational aids only and do not constitute legal or tax advice. Merchants remain responsible for statutory filings with relevant regulatory bodies (including annual NRS tax returns and local permits).</span>
                     </div>
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
                       <strong className="text-slate-900 block mb-1">4. Fintech &amp; Infrastructure Rails (APIs &amp; Payment Settlements):</strong>
@@ -937,9 +935,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   </div>
                   <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-slate-700 leading-relaxed mb-3">
                     <strong className="text-amber-950 block mb-1">Critical Regulatory Notice Regarding Loan Approvals</strong>
-                    In accordance with our National Ecosystem Partner Framework (Ref: <code className="font-mono text-amber-900">SBC/NEP/GOV/2026/V4.2</code>), SmartScore™ (300 to 850) and our generated 
-                    cryptographic audit dossiers (<code>PublicAuditReport</code>) are <strong>diagnostic operational indicators</strong> reflecting your recorded cash turnover regularity, 
-                    till integrity, and debtor collection efficiency.
+                    <strong>Diagnostic Readiness Summary:</strong> SmartScore™ (300 to 850) and downloadable summary dossiers (<code>PublicAuditReport</code>) are <strong>internal operational diagnostics</strong> reflecting your self-recorded cash turnover regularity, till entries, and debtor recovery efficiency.
                   </div>
                   <p className="text-xs text-slate-600 mb-2">
                     SmartBiz Coach is an enterprise software provider, not a regulated bank, microfinance institution, or licensed money lender. 
@@ -1021,6 +1017,62 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
             </div>
           )}
 
+          {/* REFUND POLICY PAGE */}
+          {pageType === 'refund' && (
+            <div className="space-y-8">
+              <div className="border-b border-slate-200 pb-6">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <Shield className="w-3 h-3" /> Transparent Billing &amp; Disputes
+                  </span>
+                  <span className="bg-blue-100 text-blue-800 text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                    <Scale className="w-3 h-3" /> Paystack Protected
+                  </span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 font-heading tracking-tight">
+                  Refund, Cancellation &amp; Dispute Policy
+                </h1>
+                <p className="text-slate-500 text-xs mt-2">
+                  Effective Date: November 2026 · Governing Jurisdiction: Federal Republic of Nigeria
+                </p>
+              </div>
+
+              <div className="space-y-6 text-sm text-slate-600 leading-relaxed">
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-900 mb-2">1. BizCredits Digital Utility Top-Ups</h2>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Purchased BizCredits never expire while your account remains active. Because BizCredits are digital utility credits provisioned instantly upon verified Paystack confirmation, completed top-ups are generally non-refundable once credits are consumed.
+                  </p>
+                  <ul className="list-disc list-inside mt-3 space-y-1.5 text-xs text-slate-700">
+                    <li><strong>Duplicate Charges:</strong> Verified duplicate debits caused by bank or gateway retries are refunded in full within 5–7 business days via Paystack reversal.</li>
+                    <li><strong>Uncredited Payments:</strong> If your bank account was debited and credits did not arrive, submit your Paystack payment reference to <a href="mailto:support@smartbizcoach.com.ng" className="text-emerald-700 font-bold underline">support@smartbizcoach.com.ng</a> for verification and immediate credit or reversal.</li>
+                    <li><strong>Upstream AI / Tool Failure:</strong> If a paid generation endpoint fails upstream due to a server or model error, deducted credits are automatically rolled back to your account balance.</li>
+                  </ul>
+                </section>
+
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-900 mb-2">2. Growth Subscriptions (Cancellations)</h2>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    You may cancel any optional monthly or annual subscription at any time in <strong>Settings &rarr; Billing</strong>. Cancellation stops future renewals while preserving access through the end of your current paid billing cycle. Core daily POS, Debt Book, Inventory, and Storefront tools remain free with 0 credits.
+                  </p>
+                </section>
+
+                <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <h2 className="text-base font-bold text-slate-900 mb-2">3. Market Square &amp; Direct Merchant Orders</h2>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    SmartBiz Coach is non-custodial and charges 0% commission on direct sales; buyer payments go to the merchant via direct transfer/WhatsApp or configured Paystack subaccounts. Physical item returns, damaged goods, or delivery delays are handled directly with the selling merchant first. If a merchant fails to respond within 48 hours, report the order code via <a href="mailto:support@smartbizcoach.com.ng" className="text-emerald-700 font-bold underline">support@smartbizcoach.com.ng</a> so our compliance team can intervene and suspend unverified accounts.
+                  </p>
+                </section>
+
+                <section className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-xs text-slate-700 space-y-1.5">
+                  <p><strong>Support &amp; Billing Disputes:</strong> <a href="mailto:support@smartbizcoach.com.ng" className="text-emerald-700 font-bold underline">support@smartbizcoach.com.ng</a></p>
+                  <p><strong>Governance &amp; Legal Escalations:</strong> <a href="mailto:admin@smartbizcoach.com.ng" className="text-slate-900 font-bold underline">admin@smartbizcoach.com.ng</a></p>
+                  <p><strong>Data Protection Officer (NDPA 2023):</strong> <a href="mailto:dpo@smartbizcoach.com.ng" className="text-blue-700 font-bold underline">dpo@smartbizcoach.com.ng</a></p>
+                </section>
+              </div>
+            </div>
+          )}
+
           {/* HELP CENTER PAGE */}
           {pageType === 'help' && (
             <div>
@@ -1097,8 +1149,8 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-start gap-2.5">
                       <span className="text-base">📸</span>
                       <div>
-                        <strong>Snap-to-Studio 2.0:</strong> 5 credits per set
-                        <p className="text-[11px] text-slate-500 mt-0.5">Raw bedsheet photo ➔ 16 luxury commercial 4K studio backdrops.</p>
+                        <strong>Snap-to-Studio 2.0:</strong> 2 credits per edit
+                        <p className="text-[11px] text-slate-500 mt-0.5">Clean commercial studio backdrops for everyday counter photos.</p>
                       </div>
                     </div>
                   </div>
@@ -1125,7 +1177,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="flex items-center gap-2"><span>✓</span> <strong>Gbege Debt Recovery Ledger</strong> (Who owes me & who I owe)</div>
                     <div className="flex items-center gap-2"><span>✓</span> <strong>1-Tap WhatsApp Invoicing</strong> (Instant customer receipts)</div>
                     <div className="flex items-center gap-2"><span>✓</span> <strong>Central Market Square Storefront</strong> (Public directory listing)</div>
-                    <div className="flex items-center gap-2"><span>✓</span> <strong>Section 23 CITA Tax Exemption Memo</strong> (0% tax legal shield)</div>
+                    <div className="flex items-center gap-2"><span>✓</span> <strong>Small Business Tax Checklist</strong> (Informational guide; not legal advice)</div>
                   </div>
                 </div>
 
@@ -1183,7 +1235,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
                   <h3 className="font-bold text-slate-950 text-sm mb-2">How do I showcase and sell on the Central MSME Market Square?</h3>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Inside your Product Manager, toggle <strong>Showcase on Market Square</strong>. Your listing is broadcast across all 36 Nigerian states and Abuja in the Central Trade Directory. You can link your CAC registration and SMEDAN number for an official <strong>Verified Merchant Trust Badge</strong>, share pre-designed product cards directly to your WhatsApp Status, and receive inbound buyer inquiries straight to your WhatsApp with zero middleman deductions.
+                    Inside your Product Manager, toggle <strong>Showcase on Market Square</strong>. Your listing appears across Nigeria in the trade directory, where buyers can order directly via WhatsApp or Paystack. You can optionally apply for tiered ID/CAC verification in Settings.
                   </p>
                 </div>
 
@@ -1272,7 +1324,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                       <div>
                         <strong className="text-slate-900 text-sm">Digital Commercial Presence & Verified Market Standing:</strong>
                         <p className="text-xs text-slate-600 mt-1">
-                          Evaluators visit your storefront or digital footprint. Having luxury 4K studio product photography (Snap-to-Studio 2.0) and a verified listing on the Central MSME Market Square proves you are actively selling in the real economy.
+                          Evaluators visit your storefront or digital footprint. Having clean studio product photography and a live storefront on Market Square demonstrates real trading activity.
                         </p>
                       </div>
                     </div>
@@ -1382,9 +1434,9 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="flex items-start gap-3">
                       <span className="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-xs flex-shrink-0">4</span>
                       <div>
-                        <strong className="text-slate-900 text-sm">TIN Activation & Section 23 CITA Tax Shield:</strong>
+                        <strong className="text-slate-900 text-sm">TIN Activation &amp; Small-Company Tax Guidance (Not Legal Advice):</strong>
                         <p className="text-xs text-slate-600 mt-1">
-                          Your Tax Identification Number (TIN) is generated via the Joint Tax Board (JTB). Use SmartBiz Coach's <strong>Section 23 CITA Exemption Memo Generator</strong> to legally claim your 0% corporate tax rate (valid for turnover under ₦25,000,000) and avoid illegal local harassment.
+                          Your Tax Identification Number (TIN) is issued upon tax enrollment. Use SmartBiz Coach's <strong>Informational Tax Checklist</strong> to review small-company CIT provisions under Nigerian tax law (subject to incorporated status, NTA 2025 turnover and ₦250M fixed-asset caps, professional-services exclusions, and mandatory annual NRS returns — valid Local Government council permits still apply).
                         </p>
                       </div>
                     </div>
@@ -1415,7 +1467,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
                       <div className="font-bold text-slate-900">Business Name (BN)</div>
                       <div className="text-emerald-600 font-extrabold text-sm mt-0.5">₦27,500</div>
-                      <p className="text-[11px] text-slate-500 mt-1">Completed in 3-5 working days. Includes official Status Report & Certificate.</p>
+                      <p className="text-[11px] text-slate-500 mt-1">Timelines depend on CAC portal processing. Includes Status Report &amp; Certificate.</p>
                     </div>
                     <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
                       <div className="font-bold text-slate-900">Private Limited Company (Ltd)</div>

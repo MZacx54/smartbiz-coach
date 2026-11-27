@@ -1,5 +1,6 @@
 import api from './api';
 import { User } from '../types';
+import { offlineStorage } from '../utils/offlineStorage';
 
 const WEAK_PASSCODES = new Set([
     '0000', '1234', '1111', '2222', '5555', '9999',
@@ -306,6 +307,7 @@ export const clearAllTenantLocalState = (preservePreferences = true) => {
         try { localStorage.removeItem('sb_voice_lang'); } catch {}
     }
     try { sessionStorage.clear(); } catch {}
+    try { void offlineStorage.clearAll(); } catch {}
 };
 
 export const authService = {

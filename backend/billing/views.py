@@ -103,13 +103,14 @@ class VerifyPaymentView(APIView):
                     is_pro_subscription = False
                     subscription_desc = ""
 
+                    # Server-side price enforcement: never trust client-submitted plan/amount without verified kobo amount
                     # 1. Pro Annual Subscription (₦35,000)
-                    if abs(paystack_amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and (billing_cycle == 'annual' or abs(paystack_amount_naira - 35000) < 10)):
+                    if paystack_amount_naira >= 34990 and (abs(paystack_amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and billing_cycle == 'annual')):
                         is_pro_subscription = True
                         credits_purchased = 5000  # 5,000 BizCredits for Annual Pro (400/mo * 12 + 200 bonus)
                         subscription_desc = "Growth Merchant Pro (Annual) - 5,000 BizCredits Included"
                     # 2. Pro Monthly Subscription (₦3,500)
-                    elif requested_plan in ('pro', 'growth_pro', 'growth merchant') or (abs(paystack_amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro'):
+                    elif paystack_amount_naira >= 3495 and ((requested_plan in ('pro', 'growth_pro', 'growth merchant') and abs(paystack_amount_naira - 3500) < 10) or (abs(paystack_amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro')):
                         is_pro_subscription = True
                         credits_purchased = 450   # 400 credits + 50 bonus
                         subscription_desc = "Growth Merchant Pro (Monthly) - 450 BizCredits Included"
@@ -160,19 +161,16 @@ class VerifyPaymentView(APIView):
                         update_fields.append('plan')
                     user.save(update_fields=update_fields)
 
-                    # If Pro plan activated, automatically mark vendor profile as verified
+                    # Ensure vendor profile record exists on Pro activation without bypassing KYC verification
                     if is_pro_subscription:
                         try:
                             from marketplace.models import VendorVerification
-                            vendor, _ = VendorVerification.objects.get_or_create(
+                            VendorVerification.objects.get_or_create(
                                 user=user,
                                 defaults={'business_name': getattr(user, 'business_name', '') or getattr(user, 'username', '')}
                             )
-                            if not vendor.is_verified:
-                                vendor.is_verified = True
-                                vendor.save(update_fields=['is_verified'])
                         except Exception as v_err:
-                            logger.warning("Could not auto-verify vendor on Pro upgrade: %s", v_err)
+                            logger.warning("Could not ensure vendor profile on Pro upgrade: %s", v_err)
 
                     # Record in CreditLedger
                     CreditLedger.objects.create(
@@ -541,11 +539,11 @@ class PaystackWebhookView(APIView):
                 is_pro_subscription = False
                 subscription_desc = ""
 
-                if abs(amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and (billing_cycle == 'annual' or abs(amount_naira - 35000) < 10)):
+                if amount_naira >= 34990 and (abs(amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and billing_cycle == 'annual')):
                     is_pro_subscription = True
                     credits_purchased = 5000
                     subscription_desc = "Growth Merchant Pro (Annual) - 5,000 BizCredits Included"
-                elif requested_plan in ('pro', 'growth_pro', 'growth merchant') or (abs(amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro'):
+                elif amount_naira >= 3495 and ((requested_plan in ('pro', 'growth_pro', 'growth merchant') and abs(amount_naira - 3500) < 10) or (abs(amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro')):
                     is_pro_subscription = True
                     credits_purchased = 450
                     subscription_desc = "Growth Merchant Pro (Monthly) - 450 BizCredits Included"

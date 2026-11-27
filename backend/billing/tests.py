@@ -177,3 +177,71 @@ class BillingTests(TestCase):
         # Verify credits only updated once (50 + 110 = 160)
         self.user.refresh_from_db()
         self.assertEqual(self.user.credits, 160)
+
+    @patch('requests.get')
+    def test_cannot_upgrade_to_pro_by_forging_plan_on_100_naira_payment(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "status": True,
+            "data": {"status": "success", "amount": 10000, "reference": "tamper-pro-100"}
+        }
+        res = self.client.post('/api/billing/verify-payment/', {
+            "reference": "tamper-pro-100",
+            "amount": 100,
+            "plan": "Pro",
+            "billing_cycle": "monthly"
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.plan, "Free")
+        self.assertEqual(self.user.credits, 60)  # 50 + 10 (100/10), NOT 450 Pro credits
+
+    @patch('requests.get')
+    def test_pro_upgrade_does_not_auto_verify_kyc(self, mock_get):
+        from marketplace.models import VendorVerification
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "status": True,
+            "data": {"status": "success", "amount": 350000, "reference": "pro-no-kyc-001"}
+        }
+        res = self.client.post('/api/billing/verify-payment/', {
+            "reference": "pro-no-kyc-001",
+            "amount": 3500,
+            "plan": "Pro",
+            "billing_cycle": "monthly"
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        vendor = VendorVerification.objects.get(user=self.user)
+        self.assertFalse(vendor.is_verified)
+
+    def test_paystack_webhook_signature_and_idempotency(self):
+        import hmac, hashlib
+        anon = APIClient()
+        payload = json.dumps({
+            "event": "charge.success",
+            "data": {
+                "reference": "wh-ref-001",
+                "amount": 50000,
+                "customer": {"email": self.user.email},
+                "metadata": {"user_id": self.user.id}
+            }
+        }).encode('utf-8')
+
+        bad = anon.post('/api/billing/webhook/paystack/', data=payload, content_type='application/json',
+                        HTTP_X_PAYSTACK_SIGNATURE='deadbeef')
+        self.assertEqual(bad.status_code, status.HTTP_400_BAD_REQUEST)
+
+        sig = hmac.new(settings.PAYSTACK_SECRET_KEY.encode('utf-8'), payload, hashlib.sha512).hexdigest()
+        ok1 = anon.post('/api/billing/webhook/paystack/', data=payload, content_type='application/json',
+                        HTTP_X_PAYSTACK_SIGNATURE=sig)
+        self.assertEqual(ok1.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.credits, 100)  # 50 + 50 pocket pack
+
+        # Replay must be idempotent
+        ok2 = anon.post('/api/billing/webhook/paystack/', data=payload, content_type='application/json',
+                        HTTP_X_PAYSTACK_SIGNATURE=sig)
+        self.assertEqual(ok2.status_code, status.HTTP_200_OK)
+        self.assertEqual(ok2.data['status'], 'already_processed')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.credits, 100)

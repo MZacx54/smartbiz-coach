@@ -4,6 +4,7 @@
  * generated from this list, per role and language.
  */
 import { AppView, User } from '../types';
+import { FeatureFlags, isFeatureEnabled } from './featureFlags';
 
 export type NavRole = 'OWNER' | 'ATTENDANT';
 
@@ -17,6 +18,8 @@ export interface NavLeaf {
   aliases?: string[];
   /** Visible to apprentices / cashiers (everything else is owner-only) */
   attendant?: boolean;
+  /** Optional feature flag gating partial/non-core modules */
+  featureFlag?: keyof FeatureFlags;
 }
 
 export interface NavSection {
@@ -55,7 +58,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Invoices & Receipts', labelPcm: 'Receipt & Invoice', route: 'invoices', view: AppView.INVOICE_GENERATOR, icon: '🧾', attendant: true },
       { label: 'Online Store', labelPcm: 'Online Shop', route: 'store-preview', view: AppView.STOREFRONT, icon: '🔗', attendant: true },
       { label: 'Online Orders', labelPcm: 'Online Orders', route: 'orders', view: AppView.ORDER_INBOX, icon: '📦', aliases: ['order-inbox'] },
-      { label: 'Order Slips', labelPcm: 'Order Slip', route: 'order-gen', view: AppView.ORDER_GENERATOR, icon: '📦' },
+      { label: 'Order Slips', labelPcm: 'Order Slip', route: 'order-gen', view: AppView.ORDER_GENERATOR, icon: '📦', featureFlag: 'orderSlipsStub' },
       { label: 'Leads Inbox', labelPcm: 'Customer Leads', route: 'leads', view: AppView.LEAD_MANAGER, icon: '📬' },
     ],
   },
@@ -66,10 +69,10 @@ export const NAV_SECTIONS: NavSection[] = [
     icon: '💰',
     children: [
       { label: 'Debtors (Gbege)', labelPcm: 'Gbege Book (Debt)', route: 'debtor', view: AppView.DEBTOR_BOOK, icon: '📒', aliases: ['debtors'], attendant: true },
-      { label: 'Find Funding', labelPcm: 'Grants & Loans', route: 'grants', view: AppView.GRANT_MATCHER, icon: '💰' },
-      { label: 'Business Plan', labelPcm: 'Business Plan', route: 'business-plan', view: AppView.BUSINESS_PLAN, icon: '📈' },
-      { label: 'Pricing Helper', labelPcm: 'Check Price', route: 'pricing-assistant', view: AppView.PRICING_ASSISTANT, icon: '🏷️' },
-      { label: 'Money Insights', labelPcm: 'Money Sense', route: 'analytics', view: AppView.DATA_SCIENCE_HUB, icon: '📊' },
+      { label: 'Find Funding', labelPcm: 'Grants & Loans', route: 'grants', view: AppView.GRANT_MATCHER, icon: '💰', featureFlag: 'grantsAndPlans' },
+      { label: 'Business Plan', labelPcm: 'Business Plan', route: 'business-plan', view: AppView.BUSINESS_PLAN, icon: '📈', featureFlag: 'grantsAndPlans' },
+      { label: 'Pricing Helper', labelPcm: 'Check Price', route: 'pricing-assistant', view: AppView.PRICING_ASSISTANT, icon: '🏷️', featureFlag: 'pricingHelper' },
+      { label: 'Money Insights', labelPcm: 'Money Sense', route: 'analytics', view: AppView.DATA_SCIENCE_HUB, icon: '📊', featureFlag: 'dataScienceLabs' },
     ],
   },
   {
@@ -79,7 +82,7 @@ export const NAV_SECTIONS: NavSection[] = [
     icon: '📦',
     children: [
       { label: 'Inventory', labelPcm: 'Shop Goods', route: 'inventory', view: AppView.PRODUCT_MANAGER, icon: '📦', attendant: true },
-      { label: 'Market Square', labelPcm: 'Market Square', route: 'marketplace', view: AppView.MARKETPLACE, icon: '🏛️', aliases: ['hub'] },
+      { label: 'Market Square', labelPcm: 'Market Square', route: 'marketplace', view: AppView.MARKETPLACE, icon: '🏛️', aliases: ['hub'], featureFlag: 'marketSquareDirectory' },
     ],
   },
   {
@@ -95,10 +98,11 @@ export const NAV_SECTIONS: NavSection[] = [
         view: AppView.BRAND_BUILDER,
         icon: '🤖',
         aliases: ['content', 'marketing', 'sales-assistant', 'ai-studio'],
+        featureFlag: 'aiStudio',
       },
-      { label: 'Growth Roadmap', labelPcm: 'Growth Map', route: 'roadmap', view: AppView.DIGITAL_ROADMAP, icon: '🗺️' },
-      { label: 'Learning Hub', labelPcm: 'Learn Work', route: 'learning', view: AppView.LEARNING_HUB, icon: '🎓' },
-      { label: 'Compliance', labelPcm: 'CAC & Tax', route: 'compliance', view: AppView.COMPLIANCE, icon: '⚖️' },
+      { label: 'Growth Roadmap', labelPcm: 'Growth Map', route: 'roadmap', view: AppView.DIGITAL_ROADMAP, icon: '🗺️', featureFlag: 'learningAndRoadmap' },
+      { label: 'Learning Hub', labelPcm: 'Learn Work', route: 'learning', view: AppView.LEARNING_HUB, icon: '🎓', featureFlag: 'learningAndRoadmap' },
+      { label: 'Compliance', labelPcm: 'CAC & Tax', route: 'compliance', view: AppView.COMPLIANCE, icon: '⚖️', featureFlag: 'grantsAndPlans' },
     ],
   },
 ];
@@ -128,7 +132,8 @@ export const isAdminOrPartnerUser = (user?: User | null): boolean => {
   return ADMIN_EMAILS.includes(email);
 };
 
-export const leafVisible = (leaf: NavLeaf, role: NavRole) => role === 'OWNER' || !!leaf.attendant;
+export const leafVisible = (leaf: NavLeaf, role: NavRole) =>
+  isFeatureEnabled(leaf.featureFlag) && (role === 'OWNER' || !!leaf.attendant);
 
 export const sectionsForRole = (role: NavRole): NavSection[] =>
   NAV_SECTIONS.map((s) => ({ ...s, children: s.children.filter((c) => leafVisible(c, role)) })).filter(

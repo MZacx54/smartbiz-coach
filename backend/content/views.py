@@ -25,10 +25,11 @@ CREDIT_COSTS = {
 }
 
 def deduct_credits(user, action_key):
-    """Deduct credits and return (success, remaining). Returns True even if 0 credits (dev-friendly)."""
-    # Credits are managed and deducted on successful response by the frontend React client.
-    # This prevent double-charging and billing users for failed AI generations.
-    return True, user.credits
+    """Atomically deduct credits on the server using select_for_update()."""
+    from billing.utils import reserve_ai_credits
+    cost = CREDIT_COSTS.get(action_key, 1)
+    allowed, remaining, _ = reserve_ai_credits(user, cost, f"AI {action_key}")
+    return allowed, remaining
 
 def get_brand_context(user):
     """Fetch and format dynamic, hyper-personalized brand & catalog identity for AI context."""
@@ -970,13 +971,13 @@ class ChatWithSmartBizView(views.APIView):
                 "   - AI Brand Builder: Creates logos, color palettes, taglines, and brand elevator pitches.\n"
                 "   - Content Studio: Viral WhatsApp Status copy, Instagram reels scripts, and commercial product flyers.\n"
                 "4. COMMERCE, MARKETPLACE & DEBT RECOVERY (/market, /debtors, /invoicing):\n"
-                "   - Central MSME Market Square: Nationwide trade directory across all 36 Nigerian states with verified CAC and SMEDAN badges, 0% sales commission, visual camera search, and direct WhatsApp orders.\n"
-                "   - Gbege Book Debt Recovery: Dual ledger tracking 'Who Dey Owe Me' with automated WhatsApp nudges and embedded Paystack payment links.\n"
-                "   - Smart WhatsApp Cart Recovery: 1-click discount recovery link to win back abandoned leads.\n"
+                "   - Central MSME Market Square: Trade directory across Nigeria with 0% sales commission on direct WhatsApp orders and optional ID/CAC verification.\n"
+                "   - Gbege Book Debt Recovery: Dual ledger tracking 'Who Dey Owe Me' with WhatsApp click-to-chat nudges and Paystack payment links.\n"
+                "   - Smart WhatsApp Cart Recovery: 1-click recovery link to win back abandoned leads.\n"
                 "5. GOVERNANCE, TAX & CAPITAL (/compliance, /grants, /business-plan):\n"
-                "   - Section 23 CITA Tax Shield: Custom legal certificate proving 0% corporate tax exemption under Nigerian law for MSMEs under ₦25M turnover.\n"
-                "   - Accredited CAC Desk: Business Name (₦27,500), Limited Company (₦68,000), SCUML registration in 3-7 days.\n"
-                "   - BOI & Grant Matcher: Scans active Nigerian funding programs and generates bank-grade 5-year business plan PDFs.\n"
+                "   - Small Business Tax Guidance (Not Legal/Tax Advice): Informational summary of NTA 2025 / CITA small-company provisions (turnover + ₦250M fixed-asset cap, professional-service exclusion, mandatory annual NRS filing; local council permits still apply).\n"
+                "   - Guided CAC Desk: Formalization checklists for Business Name and Limited Company registration (timelines depend on CAC processing).\n"
+                "   - Grant Matcher & Plan Builder: Lists public Nigerian funding programs with official links and exports structured 3-year business plans.\n"
                 "Always provide direct, empowering, highly practical advice tailored to the entrepreneur's question."
             )
             messages.append({
@@ -1354,13 +1355,22 @@ JSON STRUCTURE:
     "pidgin": "WhatsApp message in Nigerian Pidgin"
 }}"""
 
+        from billing.utils import reserve_ai_credits, refund_ai_credits
+        allowed, remaining, reserved = reserve_ai_credits(request.user, CREDIT_COSTS.get('debt_reminder', 1), 'AI Debt Reminder')
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits for AI Debt Reminder.", "credits": remaining}, status=402)
+
         try:
             result = gemini_utils.generate_json_content(prompt)
             if isinstance(result, dict) and result.get('english') and result.get('pidgin'):
-                deduct_credits(request.user, 'debt_reminder')
+                result['credits'] = remaining
+                result['credits_deducted_server'] = True
                 return Response(result)
         except Exception as e:
             pass
+
+        refund_ai_credits(request.user, reserved, 'AI Debt Reminder Fallback')
+        remaining_after = getattr(request.user, 'credits', remaining)
 
         # High quality tone-specific fallbacks
         if tone == 'STRICT':
@@ -1379,13 +1389,17 @@ JSON STRUCTURE:
             fallback_english = f"Hello {name}, trust you are having a wonderful week. This is a gentle reminder regarding your outstanding balance of ₦{formatted_amount}{items_phrase} with {business_name}. Kindly arrange for the settlement at your earliest convenience and share the receipt so we can update your ledger. Thank you for your partnership!"
             fallback_pidgin = f"Good day {name}, hope work dey go well. Na quick friendly reminder on top the ₦{formatted_amount}{items_phrase} balance with {business_name}. Abeg kindly help us do the transfer make we update your account record. Thank you for your continued patronage!"
 
-        deduct_credits(request.user, 'debt_reminder')
         return Response({
             'english': fallback_english,
-            'pidgin': fallback_pidgin
+            'pidgin': fallback_pidgin,
+            'credits': remaining_after,
+            'credits_deducted_server': True
         })
+
+
 class ListModelsView(views.APIView):
-    permission_classes = [IsAuthenticated]
+    from rest_framework.permissions import IsAdminUser
+    permission_classes = [IsAdminUser]
     
     def get(self, request):
         api_key = gemini_utils.get_gemini_api_key()

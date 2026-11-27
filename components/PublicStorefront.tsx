@@ -39,7 +39,7 @@ const sanitizeWhatsAppNumber = (raw?: string): string => {
 };
 
 const PublicStorefront: React.FC = () => {
-  const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
+  const isTractionMode = false;
 
   const { slug } = useParams<{ slug: string }>();
   const [brand, setBrand] = useState<BrandIdentity | null>(null);

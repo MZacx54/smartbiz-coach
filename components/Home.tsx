@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import api from '../services/api';
 import { authService } from '../services/authService';
 import { storeShareUrl } from '../services/commerceService';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 import { useOwnerLock } from '../hooks/useOwnerLock';
 import { Card, Button, StatTile, Skeleton, PageHeader, useLanguage } from './ui';
 
@@ -159,7 +160,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUserVerified }) => {
     });
   }
   const score = readCache<any>('sb_ml_overview_cache')?.credit?.credit_score;
-  if (score && !isStaff) {
+  if (score && !isStaff && FEATURE_FLAGS.grantsAndPlans) {
     suggestions.push({
       id: 'score', icon: '💰', tone: 'blue',
       title: t(`Your SmartScore is ${score}`, `Your SmartScore na ${score}`),
@@ -445,7 +446,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUserVerified }) => {
             ))}
           </div>
         )}
-        {!isStaff && (
+        {!isStaff && FEATURE_FLAGS.businessInsightsLegacy && (
           <button
             onClick={() => navigate('/dashboard/insights')}
             className="mt-3 w-full min-h-[44px] rounded-xl text-sm font-bold text-emerald-700 hover:bg-emerald-50 cursor-pointer"
@@ -489,16 +490,18 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUserVerified }) => {
             >
               📦 {t('Online Orders', 'Online Orders')}
             </button>
-            <button
-              onClick={() => onNavigate(AppView.MARKETPLACE)}
-              className="px-4 min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-sm cursor-pointer"
-            >
-              🏪 {t('Open Market Square →', 'Enter Market Square →')}
-            </button>
+            {FEATURE_FLAGS.marketSquareDirectory && (
+              <button
+                onClick={() => onNavigate(AppView.MARKETPLACE)}
+                className="px-4 min-h-[40px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-sm cursor-pointer"
+              >
+                🏪 {t('Open Market Square →', 'Enter Market Square →')}
+              </button>
+            )}
           </div>
         </div>
 
-        {featuredMarket.length > 0 && (
+        {FEATURE_FLAGS.marketSquareDirectory && featuredMarket.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
             {featuredMarket.map((item) => (
               <div

@@ -88,11 +88,13 @@ export const MerchantProfileDrawer: React.FC<MerchantProfileDrawerProps> = ({
 
   if (!isOpen || !merchant) return null;
 
-  const rawPhone = merchant.whatsapp_number || '2349064556107';
+  const rawPhone = merchant.whatsapp_number || '';
   const cleanPhone = rawPhone.replace(/\D/g, '');
-  const waPhone = cleanPhone.startsWith('0') && cleanPhone.length === 11 
-    ? '234' + cleanPhone.slice(1) 
-    : cleanPhone.startsWith('234') ? cleanPhone : '234' + cleanPhone;
+  const waPhone = !cleanPhone
+    ? ''
+    : cleanPhone.startsWith('0') && cleanPhone.length === 11
+      ? '234' + cleanPhone.slice(1)
+      : cleanPhone.startsWith('234') ? cleanPhone : '234' + cleanPhone;
 
   return (
     <AnimatePresence>
@@ -177,18 +179,18 @@ export const MerchantProfileDrawer: React.FC<MerchantProfileDrawerProps> = ({
                   </div>
                   <div className="bg-white/80 p-2.5 rounded-xl border border-indigo-50/60">
                     <span className="text-[9px] font-bold text-slate-400 block uppercase">
-                      {merchant.vendor_verification_tier === 'TIER_3_NACCIMA' ? 'Chamber Partner' : 'SMEDAN Status'}
+                      {merchant.vendor_verification_tier === 'TIER_3_NACCIMA' ? 'Chamber Partner' : 'Verification Status'}
                     </span>
                     <strong className="text-slate-800 font-extrabold text-[10px] block truncate">
                       {merchant.vendor_verification_tier === 'TIER_3_NACCIMA' 
-                        ? (merchant.vendor_chamber || 'NACCIMA Accredited')
-                        : (merchant.smedan_number ? `SMEDAN: ${merchant.smedan_number}` : 'MSME Certified')}
+                        ? (merchant.vendor_chamber || 'Chamber Member')
+                        : (merchant.is_vendor_verified ? 'Verified Account' : 'Unverified / Pending')}
                     </strong>
                   </div>
                 </div>
 
                 <p className="text-[10px] text-slate-500 leading-tight pt-1 border-t border-indigo-100/60 italic">
-                  🛡️ SmartBiz & NACCIMA verified. Verified badges are awarded strictly via regulatory identity audit and cannot be purchased.
+                  Verification badges reflect seller documents submitted for review; always inspect goods and confirm terms before payment.
                 </p>
 
                 {(merchant.brand_address || merchant.location) && (
@@ -203,14 +205,20 @@ export const MerchantProfileDrawer: React.FC<MerchantProfileDrawerProps> = ({
 
               {/* Action Buttons: WhatsApp & Direct Storefront */}
               <div className="grid grid-cols-2 gap-2.5">
-                <a
-                  href={`https://wa.me/${waPhone}?text=${encodeURIComponent(`Hello ${merchant.brand_name}! I found your business profile on the SmartBiz Nigerian Market Square and would like to make an inquiry.`)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer text-center"
-                >
-                  <MessageCircle className="w-4 h-4" /> WhatsApp Chat
-                </a>
+                {waPhone ? (
+                  <a
+                    href={`https://wa.me/${waPhone}?text=${encodeURIComponent(`Hello ${merchant.brand_name}! I found your business profile on the SmartBiz Nigerian Market Square and would like to make an inquiry.`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer text-center"
+                  >
+                    <MessageCircle className="w-4 h-4" /> WhatsApp Chat
+                  </a>
+                ) : (
+                  <span className="flex items-center justify-center gap-1.5 bg-slate-100 text-slate-400 font-bold text-xs py-3 px-4 rounded-xl text-center">
+                    No WhatsApp Listed
+                  </span>
+                )}
 
                 {merchant.brand_slug ? (
                   <a

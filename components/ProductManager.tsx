@@ -115,7 +115,7 @@ interface ProductManagerProps {
 }
 
 const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCredits }) => {
-  const isTractionMode = localStorage.getItem('sb_idice_traction_mode') === 'true';
+  const isTractionMode = false;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -77,7 +77,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       setLocalBrandData(updated);
       onSave(updated);
     }
-    toast.success("✅ Corporate Governance Charter formally approved & certified for BOI and Bank review!", { icon: '🏛️', duration: 4000 });
+    toast.success("Corporate Governance Summary saved to your brand profile.", { icon: '🏛️', duration: 4000 });
   };
 
   // Inline editing state
@@ -661,7 +661,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
               ${localBrandData.mission ? `<div><strong>Mission:</strong> ${localBrandData.mission}</div>` : ''}
               ${localBrandData.vision ? `<div><strong>Vision:</strong> ${localBrandData.vision}</div>` : ''}
               ${localBrandData.slaPolicy ? `<div><strong>Service Level Agreement (SLA):</strong> ${localBrandData.slaPolicy}</div>` : ''}
-              ${localBrandData.ndprCompliance ? `<div><strong>Data Protection (NDPR):</strong> ${localBrandData.ndprCompliance}</div>` : ''}
+              ${localBrandData.ndprCompliance ? `<div><strong>Data Protection (NDPA 2023):</strong> ${localBrandData.ndprCompliance}</div>` : ''}
             </div>
           </div>
 
@@ -1169,7 +1169,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             <p>
               {letterBody || (
                 brand?.mission
-                  ? `Our commercial mandate is rooted in our mission: "${brand.mission}". Guided by our core commitment to operational excellence and customer trust, we ensure stringent Service Level Agreements (SLA), transparent financial accounting, and regulatory compliance under the Nigerian Data Protection Regulation (NDPR).`
+                  ? `Our commercial mandate is rooted in our mission: "${brand.mission}". Guided by our commitment to operational excellence and customer trust, we maintain clear Service Level Agreements (SLA), transparent financial records, and data protection aligned with the Nigeria Data Protection Act (NDPA 2023).`
                   : `This official instrument confirms our institutional capability for credit assessment, corporate banking onboarding, statutory vendor pre-qualification, and institutional partnership.`
               )}
             </p>
@@ -1227,9 +1227,9 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
             </div>
             <div className="text-right">
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full border border-emerald-300">
-                ✓ Bank Pre-Qualified
+                Profile Summary Ready
               </span>
-              <p className="text-[10px] text-gray-400 mt-1 font-mono">KYC Grade: Tier-1 SME</p>
+              <p className="text-[10px] text-gray-400 mt-1 font-mono">MSME Self-Prepared</p>
             </div>
           </div>
 
@@ -1329,29 +1329,29 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
               </div>
             </div>
 
-            {/* SLA & NDPR Compliance */}
+            {/* SLA & NDPA Compliance */}
             <div className="p-4 rounded-xl border border-gray-200 bg-white shadow-sm">
               <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 mb-2 flex items-center gap-1.5">
-                <span>🛡️</span> Compliance & SLA Policy
+                <span>🛡️</span> Compliance &amp; SLA Policy
               </h4>
               <p className="text-[11px] text-gray-600 line-clamp-3">
-                <strong>SLA:</strong> {brand?.slaPolicy || brand?.policies?.delivery || 'Standard turnaround within 24–48 hours with verified quality assurance.'}
+                <strong>SLA:</strong> {brand?.slaPolicy || brand?.policies?.delivery || 'Standard turnaround within 24–48 hours.'}
               </p>
               <p className="text-[11px] text-emerald-700 font-medium mt-1">
-                <strong>NDPR:</strong> {brand?.ndprCompliance || 'Adheres strictly to Nigeria Data Protection Regulation (NDPR 2023) standards.'}
+                <strong>NDPA 2023:</strong> {brand?.ndprCompliance || 'Aligned with Nigeria Data Protection Act (NDPA 2023) data privacy principles.'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Verification Footer */}
+        {/* Footer */}
         <div className="pt-4 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
           <div>
             <p className="font-bold text-gray-800">{regAddress}</p>
-            <p className="text-[10px] text-gray-400">Verified for Commercial Banking, Bank of Industry (BOI), SMEDAN & TEF Applications</p>
+            <p className="text-[10px] text-gray-400">Prepared for business profile and grant/loan application readiness</p>
           </div>
           <div className="text-right">
-            <span className="font-mono font-bold text-gray-900 text-sm">₦ CREDIT READY</span>
+            <span className="font-mono font-bold text-gray-900 text-sm">PROFILE SUMMARY</span>
           </div>
         </div>
       </div>
@@ -2231,13 +2231,13 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase mb-1">NDPR / Data Privacy Clause</label>
+                      <label className="block text-xs font-bold text-gray-700 uppercase mb-1">NDPA 2023 / Data Privacy Clause</label>
                       <textarea
                         rows={2}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-400 outline-none resize-none"
                         value={localBrandData.ndprCompliance || ''}
                         onChange={(e) => updateField('ndprCompliance', e.target.value)}
-                        placeholder="Customer data privacy protection, NDPR compliance statement..."
+                        placeholder="Customer data privacy protection, NDPA 2023 compliance statement..."
                       />
                     </div>
                   </div>
@@ -2298,7 +2298,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                         <div>Corporate Mission: {localBrandData?.mission ? '✓ Filled (+15%)' : '✕ Missing'}</div>
                         <div>Strategic Vision: {localBrandData?.vision ? '✓ Filled (+15%)' : '✕ Missing'}</div>
                         <div>SLA Policy: {localBrandData?.slaPolicy ? '✓ Filled (+15%)' : '✕ Missing'}</div>
-                        <div>NDPR Privacy: {localBrandData?.ndprCompliance ? '✓ Filled (+10%)' : '✕ Missing'}</div>
+                        <div>NDPA Privacy: {localBrandData?.ndprCompliance ? '✓ Filled (+10%)' : '✕ Missing'}</div>
                       </div>
                     </div>
                   )}
@@ -2310,12 +2310,12 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
                           🏛️
                         </div>
                         <div>
-                          <h5 className="text-xs font-black text-white">GOVERNANCE CHARTER OFFICIALLY CERTIFIED</h5>
-                          <p className="text-[10px] text-emerald-300">Formally approved and signed off for Commercial Bank Credit Appraisal & BOI Evaluation.</p>
+                          <h5 className="text-xs font-black text-white">GOVERNANCE SUMMARY SAVED</h5>
+                          <p className="text-[10px] text-emerald-300">Self-prepared governance checklist saved (not a regulatory certification).</p>
                         </div>
                       </div>
                       <span className="text-[10px] bg-emerald-500 text-slate-950 font-black px-2.5 py-1 rounded-lg shrink-0">
-                        SEAL ACTIVE
+                        SAVED
                       </span>
                     </div>
                   )}

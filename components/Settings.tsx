@@ -1660,19 +1660,19 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-red-100/40 p-4 rounded-2xl border border-red-200">
                 <div>
-                  <p className="text-xs font-bold text-red-900">Permanent Account Erasure (NDPR Right to Erasure)</p>
-                  <p className="text-[10px] text-red-700 mt-0.5">Permanently delete your profile, vendor verification, cloud ledger, and all personal data under the Nigeria Data Protection Act.</p>
+                  <p className="text-xs font-bold text-red-900">Permanent Account Erasure (NDPA 2023 Right to Erasure)</p>
+                  <p className="text-[10px] text-red-700 mt-0.5">Permanently delete your profile, vendor verification, cloud ledger, and all personal data under the Nigeria Data Protection Act (NDPA 2023).</p>
                 </div>
                 <button
                   onClick={async () => {
-                    const conf = prompt("?? PERMANENT ACCOUNT ERASURE (NDPR RIGHT TO ERASURE)\n\nThis will permanently delete your account, business profile, POS ledger, and all cloud records.\n\nType DELETE to confirm permanent erasure:");
+                    const conf = prompt("⚠️ PERMANENT ACCOUNT ERASURE (NDPA 2023 RIGHT TO ERASURE)\n\nThis will permanently delete your account, business profile, POS ledger, and all cloud records.\n\nType DELETE to confirm permanent erasure:");
                     if (conf !== "DELETE") { toast("Account erasure cancelled."); return; }
                     try {
                       toast.loading("Purging your account and records...");
                       await api.delete("/api/users/profile/");
                       localStorage.clear();
                       toast.dismiss();
-                      toast.success("Your account and personal data have been permanently erased per NDPR requirements.");
+                      toast.success("Your account and personal data have been permanently erased per NDPA 2023 requirements.");
                       if (onLogout) { onLogout(); } else { window.location.href = "/"; }
                     } catch (err: any) {
                       toast.dismiss();

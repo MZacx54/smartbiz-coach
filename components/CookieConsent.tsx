@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export const CookieConsent: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     try {
@@ -32,10 +33,11 @@ export const CookieConsent: React.FC = () => {
     setIsVisible(false);
   };
 
-  if (!isVisible) return null;
+  const onAuthOrAppRoute = /^\/(login|register|signup|dashboard)/.test(location.pathname);
+  if (!isVisible || onAuthOrAppRoute) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-[100] animate-in fade-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-30 animate-in fade-in slide-in-from-bottom-5 duration-300">
       <div className="bg-slate-900/95 backdrop-blur-md text-white p-5 rounded-3xl shadow-2xl border border-slate-800 flex flex-col gap-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -43,7 +45,7 @@ export const CookieConsent: React.FC = () => {
               <ShieldCheck className="w-5 h-5" />
             </span>
             <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
-              NDPR & Privacy Compliance
+              NDPA 2023 &amp; Privacy Notice
             </span>
           </div>
           <button
@@ -56,7 +58,7 @@ export const CookieConsent: React.FC = () => {
         </div>
 
         <p className="text-xs text-slate-300 leading-relaxed">
-          SmartBiz Coach uses local device storage and essential security cookies to preserve your day-book sales offline, manage POS receipts, and comply with the Nigeria Data Protection Regulation (NDPR). We do not sell your commercial data.
+          SmartBiz Coach uses local device storage and essential security cookies to preserve your day-book sales offline, manage POS receipts, and align with the Nigeria Data Protection Act (NDPA 2023). We do not sell your commercial data.
         </p>
 
         <div className="flex items-center gap-2 pt-1 flex-wrap">

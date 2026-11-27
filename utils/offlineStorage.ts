@@ -10,6 +10,27 @@ const DB_VERSION = 1;
 const STORE_SALES = 'offline_sales';
 const STORE_EXPENSES = 'offline_expenses';
 
+function getActiveScopeUserId(): string {
+  try {
+    return localStorage.getItem('sb_active_user_id') || 'anon';
+  } catch {
+    return 'anon';
+  }
+}
+
+function withTenantScope(record: any) {
+  const userId = record?.__userId || getActiveScopeUserId();
+  return { ...record, __userId: String(userId) };
+}
+
+function requestPersistentStorageBestEffort() {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage && typeof navigator.storage.persist === 'function') {
+      navigator.storage.persist().catch(() => {});
+    }
+  } catch {}
+}
+
 function openDB(): Promise<IDBDatabase | null> {
   return new Promise((resolve) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
@@ -42,14 +63,20 @@ function openDB(): Promise<IDBDatabase | null> {
 
 export const offlineStorage = {
   /**
-   * Persist an offline sale to IndexedDB and mirror to localStorage
+   * Persist an offline sale to IndexedDB and mirror to localStorage scoped by active userId
    */
   async saveSale(sale: any): Promise<void> {
+    const scopedSale = withTenantScope(sale);
+    requestPersistentStorageBestEffort();
     try {
       const db = await openDB();
       if (db) {
-        const tx = db.transaction(STORE_SALES, 'readwrite');
-        tx.objectStore(STORE_SALES).put(sale);
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction(STORE_SALES, 'readwrite');
+          tx.objectStore(STORE_SALES).put(scopedSale);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
       }
     } catch (e) {
       console.warn('IndexedDB saveSale notice:', e);
@@ -58,20 +85,26 @@ export const offlineStorage = {
     // Mirror to localStorage
     try {
       const existing = JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
-      const filtered = existing.filter((s: any) => String(s.id) !== String(sale.id));
-      localStorage.setItem('sb_offline_sales', JSON.stringify([sale, ...filtered]));
+      const filtered = existing.filter((s: any) => String(s.id) !== String(scopedSale.id));
+      localStorage.setItem('sb_offline_sales', JSON.stringify([scopedSale, ...filtered]));
     } catch {}
   },
 
   /**
-   * Persist an offline expense to IndexedDB and mirror to localStorage
+   * Persist an offline expense to IndexedDB and mirror to localStorage scoped by active userId
    */
   async saveExpense(expense: any): Promise<void> {
+    const scopedExpense = withTenantScope(expense);
+    requestPersistentStorageBestEffort();
     try {
       const db = await openDB();
       if (db) {
-        const tx = db.transaction(STORE_EXPENSES, 'readwrite');
-        tx.objectStore(STORE_EXPENSES).put(expense);
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction(STORE_EXPENSES, 'readwrite');
+          tx.objectStore(STORE_EXPENSES).put(scopedExpense);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
       }
     } catch (e) {
       console.warn('IndexedDB saveExpense notice:', e);
@@ -80,8 +113,26 @@ export const offlineStorage = {
     // Mirror to localStorage
     try {
       const existing = JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]');
-      const filtered = existing.filter((ex: any) => String(ex.id) !== String(expense.id));
-      localStorage.setItem('sb_offline_expenses', JSON.stringify([expense, ...filtered]));
+      const filtered = existing.filter((ex: any) => String(ex.id) !== String(scopedExpense.id));
+      localStorage.setItem('sb_offline_expenses', JSON.stringify([scopedExpense, ...filtered]));
+    } catch {}
+  },
+
+  /**
+   * Clear all IndexedDB offline stores (called on logout / account switch)
+   */
+  async clearAll(): Promise<void> {
+    try {
+      const db = await openDB();
+      if (db) {
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction([STORE_SALES, STORE_EXPENSES], 'readwrite');
+          tx.objectStore(STORE_SALES).clear();
+          tx.objectStore(STORE_EXPENSES).clear();
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
+      }
     } catch {}
   },
 
@@ -124,9 +175,12 @@ export const offlineStorage = {
   },
 
   /**
-   * Load all offline sales from IndexedDB (or fallback to localStorage)
+   * Load all offline sales from IndexedDB (scoped to active userId, or fallback to localStorage)
    */
   async getAllSales(): Promise<any[]> {
+    const scopeId = getActiveScopeUserId();
+    const filterScoped = (rows: any[]) =>
+      rows.filter((r: any) => !r?.__userId || String(r.__userId) === String(scopeId));
     try {
       const db = await openDB();
       if (db) {
@@ -135,27 +189,29 @@ export const offlineStorage = {
           const req = tx.objectStore(STORE_SALES).getAll();
           req.onsuccess = () => {
             if (req.result && req.result.length > 0) {
-              resolve(req.result);
+              resolve(filterScoped(req.result));
             } else {
-              // Fallback to localStorage
-              resolve(JSON.parse(localStorage.getItem('sb_offline_sales') || '[]'));
+              resolve(filterScoped(JSON.parse(localStorage.getItem('sb_offline_sales') || '[]')));
             }
           };
-          req.onerror = () => resolve(JSON.parse(localStorage.getItem('sb_offline_sales') || '[]'));
+          req.onerror = () => resolve(filterScoped(JSON.parse(localStorage.getItem('sb_offline_sales') || '[]')));
         });
       }
     } catch {}
     try {
-      return JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
+      return filterScoped(JSON.parse(localStorage.getItem('sb_offline_sales') || '[]'));
     } catch {
       return [];
     }
   },
 
   /**
-   * Load all offline expenses from IndexedDB (or fallback to localStorage)
+   * Load all offline expenses from IndexedDB (scoped to active userId, or fallback to localStorage)
    */
   async getAllExpenses(): Promise<any[]> {
+    const scopeId = getActiveScopeUserId();
+    const filterScoped = (rows: any[]) =>
+      rows.filter((r: any) => !r?.__userId || String(r.__userId) === String(scopeId));
     try {
       const db = await openDB();
       if (db) {
@@ -164,17 +220,17 @@ export const offlineStorage = {
           const req = tx.objectStore(STORE_EXPENSES).getAll();
           req.onsuccess = () => {
             if (req.result && req.result.length > 0) {
-              resolve(req.result);
+              resolve(filterScoped(req.result));
             } else {
-              resolve(JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]'));
+              resolve(filterScoped(JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]')));
             }
           };
-          req.onerror = () => resolve(JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]'));
+          req.onerror = () => resolve(filterScoped(JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]')));
         });
       }
     } catch {}
     try {
-      return JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]');
+      return filterScoped(JSON.parse(localStorage.getItem('sb_offline_expenses') || '[]'));
     } catch {
       return [];
     }

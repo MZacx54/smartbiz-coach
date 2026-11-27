@@ -68,13 +68,13 @@ const PublicAuditReport: React.FC = () => {
     }
   })();
 
-  const businessName = brand?.businessName || savedUser?.businessName || 'SmartBiz Coach Solutions Ltd';
-  const location = brand?.location || savedUser?.location || 'Abuja (FCT) & Lagos, Nigeria';
-  const cacNumber = brand?.cacNumber || 'RC-1849204';
-  const tinNumber = brand?.tin || 'TIN-9284102-001';
-  const niche = brand?.tagline || 'AI-Enabled MSME Commerce & Operations';
+  const businessName = brand?.businessName || savedUser?.businessName || 'My Business';
+  const location = brand?.location || savedUser?.location || 'Nigeria';
+  const cacNumber = brand?.cacNumber || 'Not Provided';
+  const tinNumber = brand?.tin || 'Not Provided';
+  const niche = brand?.tagline || 'MSME Commerce & Operations';
 
-  const isTractionMode = typeof window !== 'undefined' && localStorage.getItem('sb_idice_traction_mode') === 'true';
+  const isTractionMode = false;
   const hasRealData = Boolean(
     mlData?.credit?.metrics?.total_sales_logged &&
     mlData.credit.metrics.total_sales_logged > 0 &&

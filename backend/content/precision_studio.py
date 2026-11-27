@@ -248,6 +248,7 @@ class PrecisionPhotoStudioView(views.APIView):
     throttle_classes = [ImageEditThrottle]
 
     def post(self, request):
+        from billing.utils import reserve_ai_credits, refund_ai_credits
         image_base64 = request.data.get('image_base64') or request.data.get('image') or request.data.get('image_base_64')
         theme = request.data.get('theme') or request.data.get('scene_id') or 'pure_white'
         relight_mode = request.data.get('relight_mode', 'auto')
@@ -264,6 +265,10 @@ class PrecisionPhotoStudioView(views.APIView):
 
         if not image_base64:
             return Response({'error': 'No product image provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        allowed, remaining, reserved = reserve_ai_credits(request.user, 5, 'Precision Photo Studio Segmentation')
+        if not allowed:
+            return Response({'error': 'Insufficient BizCredits (requires 5 credits).', 'credits': remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         try:
             clean_b64 = image_base64.split(',')[1] if ',' in image_base64 else image_base64
@@ -327,8 +332,6 @@ class PrecisionPhotoStudioView(views.APIView):
             cutout.save(cutout_buf, format="PNG")
             cutout_b64 = base64.b64encode(cutout_buf.getvalue()).decode('utf-8')
 
-            credits_rem = getattr(request.user, 'credits', 100)
-
             return Response({
                 "success": True,
                 "product_title": meta.get("product_title", "Commercial Product"),
@@ -340,10 +343,13 @@ class PrecisionPhotoStudioView(views.APIView):
                 "image_base64": f"data:{mime_out};base64,{studio_b64}",
                 "transparent_cutout_base64": f"data:image/png;base64,{cutout_b64}",
                 "transparent_image_base64": f"data:image/png;base64,{cutout_b64}",
-                "credits_remaining": credits_rem
+                "credits_remaining": remaining,
+                "credits": remaining,
+                "credits_deducted_server": True
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'Precision Photo Studio Failure')
             logger.error(f"PrecisionPhotoStudioView failed: {e}")
             return Response({"error": f"Failed to process studio image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

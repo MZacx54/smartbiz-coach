@@ -337,10 +337,10 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
                   'Dedicated Chapter Admin & Activation Dashboard',
                   'Bank of Industry (BOI) & DBN Underwriting Export',
                   '100 Welcome BizCredits pre-allocated per member',
-                  'NACCIMA Co-branded Chamber Portal variant',
-                  'WhatsApp Cloud Conversational Ledger Integration',
-                  'Dedicated Technical Support & Training Sessions',
-                  'NDPR Certified Data Custody & Encryption'
+                  'Institutional Chamber Portal variant',
+                  'WhatsApp Cloud & Click-to-Chat Ledger Integration',
+                  'Dedicated Onboarding Support & Training Sessions',
+                  'NDPA 2023 Aligned Data Isolation & Encryption'
                 ].map((feat, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />

@@ -109,7 +109,7 @@ const BlogIndex: React.FC = () => {
                 '@type': 'Blog',
                 '@id': 'https://www.smartbizcoach.com.ng/blog#blog',
                 'name': 'SmartBiz Coach MSME Impact & Partnership Hub',
-                'description': 'Authoritative articles on Nigerian MSME digital inclusion, institutional NGO partnerships, Section 23 CITA tax exemption compliance, and retail modernization.',
+                'description': 'Practical articles on Nigerian MSME digital inclusion, cohort onboarding, small-company tax awareness, and retail modernization.',
                 'url': 'https://www.smartbizcoach.com.ng/blog',
                 'publisher': {
                     '@type': 'Organization',
@@ -152,9 +152,9 @@ const BlogIndex: React.FC = () => {
         <div className="min-h-screen bg-slate-50 font-sans selection:bg-green-200">
             <SEO
                 title="Impact & MSME Intelligence Blog | SmartBiz Coach Nigeria"
-                description="Authoritative insights on Nigerian MSME digitization, NGO bulk cohort onboarding, Section 23 CITA tax exemption, and modern retail operating systems."
+                description="Practical insights on Nigerian MSME digitization, cohort onboarding, small-company tax guidance, and modern retail operating systems."
                 url="https://www.smartbizcoach.com.ng/blog"
-                keywords="NGO MSME partnership Nigeria, bulk merchant onboarding, Section 23 CITA tax exemption, SMEDAN digital bookkeeping, financial inclusion Nigeria, POS barcode scanner app"
+                keywords="NGO MSME partnership Nigeria, bulk merchant onboarding, Nigeria Tax Act MSME, SMEDAN digital bookkeeping, financial inclusion Nigeria, POS barcode scanner app"
                 schema={blogIndexSchema}
             />
 
@@ -225,7 +225,7 @@ const BlogIndex: React.FC = () => {
                     </h1>
 
                     <p className="text-slate-300 text-base sm:text-lg max-w-3xl mx-auto leading-relaxed mb-8">
-                        Practical frameworks for donor agencies, NGOs, microfinance institutions, and growing entrepreneurs to deploy zero-hardware bookkeeping, claim Section 23 statutory tax relief, and unlock national commerce.
+                        Practical frameworks for donor agencies, NGOs, microfinance institutions, and growing entrepreneurs to deploy zero-hardware bookkeeping, organize tax readiness records, and unlock digital commerce.
                     </p>
 
                     {/* Search Bar */}
@@ -585,7 +585,7 @@ const BlogIndex: React.FC = () => {
                             <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-bold">Nigeria #1 AI MSME OS</span>
                         </div>
                         <p className="text-slate-500 max-w-sm">
-                            Empowering Nigerian MSMEs with zero-hardware daily POS, Section 23 CITA tax defense, and nationwide trade.
+                            Empowering Nigerian MSMEs with zero-hardware daily POS, clean recordkeeping, and nationwide trade.
                         </p>
                     </div>
 
@@ -594,8 +594,9 @@ const BlogIndex: React.FC = () => {
                         <button onClick={() => navigate('/about')} className="hover:text-emerald-400 transition-colors">About</button>
                         <button onClick={() => navigate('/grants-guide')} className="hover:text-emerald-400 transition-colors">Grants Guide</button>
                         <button onClick={() => navigate('/cac-checklist')} className="hover:text-emerald-400 transition-colors">CAC Guide</button>
-                        <button onClick={() => navigate('/privacy')} className="hover:text-emerald-400 transition-colors">Privacy (NDPR)</button>
+                        <button onClick={() => navigate('/privacy')} className="hover:text-emerald-400 transition-colors">Privacy (NDPA 2023)</button>
                         <button onClick={() => navigate('/terms')} className="hover:text-emerald-400 transition-colors">Terms</button>
+                        <button onClick={() => navigate('/refund-policy')} className="hover:text-emerald-400 transition-colors">Refund Policy</button>
                     </div>
 
                     <div className="text-slate-500 text-center md:text-right">

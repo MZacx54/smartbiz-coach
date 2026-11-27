@@ -296,10 +296,10 @@ Total Capital Base: {capital}
 | **Operating EBITDA** | **₦5,180,000** | **₦13,860,000** | **₦30,600,000** | **EBITDA Margin: 28.0% -> 36.0%** |
 | Depreciation & Amortization | (₦180,000) | (₦220,000) | (₦260,000) | Straight-line asset depreciation |
 | **Net Operating Profit Before Tax** | **₦5,000,000** | **₦13,640,000** | **₦30,340,000** | **Robust Cashflow for Debt Service** |
-| Corporate Income Tax (CIT) | ₦0 | ₦0 | (₦6,068,000) | **0% CIT under CITA Section 23 (Turnover < ₦25M)** |
+| Corporate Income Tax (CIT) | ₦0 | ₦0 | (₦6,068,000) | **Estimated CIT (consult tax adviser on NTA 2025 small-company eligibility)** |
 | **Net Retained Earnings** | **₦5,000,000** | **₦13,640,000** | **₦24,272,000** | **Net Profit Margin: 27.0% -> 28.5%** |
 
-*Note: In accordance with Section 23 of the Companies Income Tax Act (CITA), small enterprises with annual turnover below ₦25,000,000 are subject to 0% Corporate Income Tax.*
+*Note (Not Legal or Tax Advice): Under NTA 2025 / CITA provisions, small-company 0% CIT applies only to qualifying incorporated companies (Ltd) meeting statutory turnover and ₦250M fixed-asset caps (excluding professional services); mandatory annual Nigeria Revenue Service (NRS) filings and valid local/state permits still apply.*
 
 5.3 12-MONTH PROJECTED CASHFLOW TRAJECTORY (YEAR 1)
 
@@ -393,7 +393,7 @@ Total Capital Base: {capital}
 | **Credit Facility Type** | Term Loan / Equipment Asset Financing & Working Capital Line | Matched to high-velocity stock procurement and power continuity infrastructure |
 | **Target Principal Amount** | {capital} | Structured to scale enterprise capacity and secure volume manufacturer discounts |
 | **Tenor / Amortization** | 24 - 36 Months | Optimizes cash retention while ensuring predictable monthly principal clearance |
-| **Interest Benchmark** | Concessionary 9.0% - 12.0% p.a. (BOI / DBN Intervention Rate) | Complies with Central Bank of Nigeria (CBN) MSME development funding terms |
+| **Interest Benchmark** | Illustrative 9.0% - 12.0% p.a. | Subject to lender underwriting terms (BOI / DBN / commercial banks) |
 | **Principal Moratorium** | 3 - 6 Months Grace Period | Allows enterprise to complete procurement and achieve operational breakeven |
 | **Repayment Source** | Daily Digital Operating Cashflow via Corporate Bank Account | Monitored through verified digital sales ledger and POS reconciliation |
 
@@ -426,9 +426,9 @@ I/We, the undersigned Principal Promoter(s) and Authorized Executive(s) of {name
 
 9.2 STATUTORY COMPLIANCE ACKNOWLEDGEMENT
 - **Corporate Affairs Commission (CAC)**: Registered business enterprise operating in full compliance with CAMA 2020 statutory filing mandates.
-- **Tax Identification Number (TIN)**: Enrolled in the Joint Tax Board (JTB) / FIRS national database; compliant with Section 23 of CITA (0% CIT threshold for small businesses with turnover < ₦25,000,000).
-- **SMEDAN SUIN Verification**: Duly indexed under the National MSME Database maintained by the Small and Medium Enterprises Development Agency of Nigeria.
-- **Financial Institutions Act (BOFI Act)**: Fully aligned with Central Bank of Nigeria anti-money laundering (AML/CFT) and Know-Your-Customer (KYC) standards.
+- **Tax Identification Number (TIN)**: Annual tax filings remain mandatory with the Nigeria Revenue Service (NRS); verify NTA 2025 small-company CIT criteria (incorporated status, turnover + ₦250M fixed-asset cap, non-professional services) with a tax practitioner. Not legal or tax advice.
+- **MSME Registry & Permits**: Maintain valid state and local government business permits alongside federal registrations.
+- **Anti-Money Laundering (AML/KYC)**: Subject to standard commercial bank onboarding and KYC checks.
 
 9.3 CORPORATE EXECUTION & ATTESTATION SEAL
 Executed on this _____ day of __________________, 2026 for and on behalf of {name}:

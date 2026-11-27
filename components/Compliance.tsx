@@ -202,26 +202,26 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
   const [exemptionGeneratedDate] = useState(() => new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }));
 
   const handleShareExemptionWhatsApp = () => {
-    const text = `🏛️ *STATUTORY SMALL BUSINESS TAX EXEMPTION NOTICE*\n` +
-      `*Pursuant to Nigeria Tax Act 2025/2026 & Finance Act CITA Section 23/40*\n\n` +
-      `📋 *Entity Name:* ${exemptionBizName || 'Designated Micro-Enterprise'}\n` +
+    const text = `🏛️ *INFORMATIONAL SMALL-COMPANY TAX SUMMARY (NOT LEGAL OR TAX ADVICE)*\n` +
+      `*Reference: Nigeria Tax Act 2025 / CITA Small-Company Provisions*\n\n` +
+      `📋 *Entity Name:* ${exemptionBizName || 'Designated Enterprise'}\n` +
       `📑 *Category:* ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\n` +
       `📅 *Tax Period:* ${exemptionYear}\n` +
-      `💰 *Declared Gross Turnover:* ₦${Number(exemptionTurnover || 0).toLocaleString()} (Within Small Enterprise ₦100M Statutory Threshold)\n\n` +
-      `⚖️ *STATUTORY GROUNDS FOR ZERO-TAX EXEMPTION:*\n` +
-      `1. *0% Companies Income Tax (CIT):* Under the Nigeria Tax Act 2025 / 2026 and CITA Section 23 & 40 (as amended by Finance Acts), small companies with annual turnover under ₦100,000,000 are subject to ZERO PERCENT (0%) CIT.\n` +
-      `2. *VAT Exemption:* Under Section 15 of the VAT Act & Nigeria Tax Act 2025, qualifying small enterprises are exempt from charging, collecting, and remitting VAT.\n` +
-      `3. *Protection Against Harassment:* Taxes & Levies Act prohibits illegal road blocks, arbitrary demands, and unlawful distraint of micro-enterprises.\n\n` +
-      `⚠️ *Disclaimer:* Informational statutory summary generated for MSME compliance transparency; not a certified tax audit certificate.\n\n` +
-      `_Issued via SmartBiz Coach Compliance & Regulatory Shield Desk_ 🛡️`;
+      `💰 *Self-Declared Gross Turnover:* ₦${Number(exemptionTurnover || 0).toLocaleString()}\n\n` +
+      `⚖️ *KEY STATUTORY SCOPE REMINDERS:*\n` +
+      `1. *0% Corporate Income Tax (CIT) Criteria:* Small-company CIT relief applies only to qualifying incorporated companies (Ltd) meeting both the statutory turnover threshold and the ₦250,000,000 fixed-asset cap, and excludes professional services.\n` +
+      `2. *Mandatory Annual NRS Filings:* Eligible small companies must still file annual tax returns with the Nigeria Revenue Service (NRS).\n` +
+      `3. *State & Local Government Permits Still Apply:* Federal CIT exemptions do NOT waive valid Local Government council permits, state business premises levies, or sector licenses.\n\n` +
+      `⚠️ *Disclaimer:* Informational checklist only — NOT legal, accounting, or tax advice. Consult a licensed tax practitioner or NRS desk.\n\n` +
+      `_Prepared via SmartBiz Coach Compliance Guide_`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleCopyNotice = () => {
-    const text = `STATUTORY SMALL BUSINESS TAX EXEMPTION NOTICE\nPursuant to Nigeria Tax Act 2025/2026 & Finance Act CITA Section 23/40\n\nEntity Name: ${exemptionBizName || 'Designated Micro-Enterprise'}\nCategory: ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\nTax Period: ${exemptionYear}\nDeclared Gross Turnover: ₦${Number(exemptionTurnover || 0).toLocaleString()} (Within Small Enterprise ₦100M Statutory Threshold)\n\nSTATUTORY GROUNDS FOR ZERO-TAX EXEMPTION:\n1. 0% Companies Income Tax (CIT): Under the Nigeria Tax Act 2025 / 2026 and CITA Section 23 & 40, small companies with annual turnover under ₦100,000,000 are subject to ZERO PERCENT (0%) CIT.\n2. VAT Exemption: Under Section 15 of VAT Act & Nigeria Tax Act 2025, qualifying micro-enterprises are exempt from charging, collecting, and remitting VAT.\n3. Protection Against Harassment: Taxes & Levies Act prohibits illegal road blocks, arbitrary demands, and unlawful distraint of micro-enterprises.\n\nDisclaimer: Informational statutory summary for MSME compliance transparency.\n\nIssued via SmartBiz Coach Compliance & Regulatory Shield Desk.`;
+    const text = `INFORMATIONAL SMALL-COMPANY TAX SUMMARY (NOT LEGAL OR TAX ADVICE)\nReference: Nigeria Tax Act 2025 / CITA Small-Company Provisions\n\nEntity Name: ${exemptionBizName || 'Designated Enterprise'}\nCategory: ${exemptionRegType} ${exemptionRegNumber ? `(Reg: ${exemptionRegNumber})` : ''}\nTax Period: ${exemptionYear}\nSelf-Declared Gross Turnover: ₦${Number(exemptionTurnover || 0).toLocaleString()}\n\nKEY STATUTORY SCOPE REMINDERS:\n1. 0% Corporate Income Tax (CIT) Criteria: Small-company CIT relief applies only to qualifying incorporated companies (Ltd) meeting both the statutory turnover threshold and the ₦250,000,000 fixed-asset cap, and excludes professional services.\n2. Mandatory Annual NRS Filings: Eligible small companies must still file annual tax returns with the Nigeria Revenue Service (NRS).\n3. State & Local Government Permits Still Apply: Federal CIT exemptions do NOT waive valid Local Government council permits, state business premises levies, or sector licenses.\n\nDisclaimer: Informational checklist only — NOT legal, accounting, or tax advice. Consult a licensed tax practitioner or NRS desk.\n\nPrepared via SmartBiz Coach Compliance Guide.`;
     navigator.clipboard.writeText(text);
-    toast.success('Statutory Exemption Notice copied to clipboard!');
+    toast.success('Informational tax checklist summary copied to clipboard!');
   };
 
   // Load persisted compliance status on mount
@@ -971,7 +971,7 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                     <strong>{exemptionBizName || 'The Designated Business'}</strong> (Entity: <strong>{exemptionRegType}</strong> {exemptionRegNumber ? `• Registration/TIN: ${exemptionRegNumber}` : ''}) records an estimated gross annual turnover of <strong>₦{Number(exemptionTurnover || 0).toLocaleString()}</strong> for <strong>{exemptionYear}</strong>.
                   </p>
                   <p>
-                    <em>Important Statutory Scope:</em> Corporate small-company CIT relief applies only to qualifying incorporated companies (Ltd) meeting applicable statutory turnover and fixed-asset ceilings (excluding professional services), and does <strong>not</strong> waive mandatory annual Nigeria Revenue Service (NRS) tax filings or valid state/local business permits.
+                    <em>Important Statutory Scope:</em> Corporate small-company CIT relief applies only to qualifying incorporated companies (Ltd) meeting applicable statutory turnover and ₦250M fixed-asset ceilings (excluding professional services), and does <strong>not</strong> waive mandatory annual Nigeria Revenue Service (NRS) tax filings or valid state/local business permits.
                   </p>
                 </div>
 
