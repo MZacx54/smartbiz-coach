@@ -111,7 +111,7 @@ Return a valid JSON object matching this structure EXACTLY:
 6.5 Strategic Action Matrix (Markdown Table with Strategy Type | Strategic Initiative | Execution Horizon | Expected Business Impact)",
     "riskMitigation": "Robust Risk Mitigation & Institutional Compliance containing:
 7.1 Inflation & Currency Devaluation Shielding Protocol
-7.2 Regulatory & Tax Compliance Roadmap (CAC, TIN, FIRS, State IRS, CITA Section 23)
+7.2 Regulatory & Tax Compliance Roadmap (CAC, TIN, NRS / State IRS, NTA 2025 Small-Company Provisions)
 7.3 Supply Disruption & Critical Inventory Buffer Strategy
 7.4 Business Continuity & Emergency Protocols
 7.5 Grant & Institutional Funding Alignment (iDICE, BOI, LSETF, TEF readiness)",
@@ -122,7 +122,7 @@ Return a valid JSON object matching this structure EXACTLY:
 8.4 Socio-Economic Multiplier & Direct Employment Generation (Direct/Indirect jobs created)",
     "promoterDeclaration": "Promoter Statutory Attestation & Execution containing:
 9.1 Statutory Declaration of Veracity and Solvency under CAMA 2020
-9.2 Legal & Tax Compliance Attestation (CITA Section 23 Small Business Exemption, JTB/FIRS TIN, SMEDAN SUIN)
+9.2 Legal & Tax Compliance Attestation (NTA 2025 / CITA Small-Company Provisions, JTB/NRS TIN, SMEDAN SUIN)
 9.3 Corporate Seal & Execution Sign-Off Block"
 }}}}
 
@@ -130,7 +130,15 @@ CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NE
 """
         
         try:
-            plan = gemini_utils.generate_json_content(prompt, user=request.user, feature='business_plan')
+            plan = gemini_utils.generate_json_content(
+                prompt,
+                user=request.user,
+                feature='business_plan',
+                max_output_tokens=16384,
+                timeout=75,
+            )
+            if isinstance(plan, list) and plan and isinstance(plan[0], dict):
+                plan = plan[0]
             if isinstance(plan, dict) and 'error' not in plan:
                 normalized_plan = {
                     'executiveSummary': plan.get('executiveSummary') or plan.get('executive_summary') or plan.get('ExecutiveSummary') or "",

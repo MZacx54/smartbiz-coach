@@ -219,7 +219,7 @@ class GeminiBudgetExceededError(GeminiUnavailableError):
     """Raised when the monthly Gemini API spending limit has been reached."""
 
 
-def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7, strict=False, model_cascade=None, timeout=25, user=None, feature="general"):
+def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7, strict=False, model_cascade=None, timeout=25, user=None, feature="general", max_output_tokens=4096):
     # 0. Monthly Spend Guardrail Check (Phase 0)
     spend_summary = get_monthly_ai_spend_summary(user=user)
     if spend_summary.get("is_budget_exceeded"):
@@ -333,7 +333,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     # Set up generation config (JSON mode, temperature, bounded maxOutputTokens)
     gen_config = {
         "temperature": temperature,
-        "maxOutputTokens": 4096,
+        "maxOutputTokens": max(256, int(max_output_tokens or 4096)),
     }
     
     # If JSON response requested
@@ -787,7 +787,7 @@ def clean_json_response(text):
     cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
     return cleaned.strip()
 
-def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, audio_base64=None, mime_type=None, user=None, feature="general", strict=False, max_output_tokens=4096):
+def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, audio_base64=None, mime_type=None, user=None, feature="general", strict=False, max_output_tokens=8192, timeout=45):
     """
     Generates JSON content using Google Gemini.
     Supports optional image or audio base64 for multimodal vision and audio tasks.
@@ -832,6 +832,8 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None,
             strict=True,
             user=user,
             feature=feature,
+            max_output_tokens=max_output_tokens,
+            timeout=timeout,
         )
         cleaned_text = clean_json_response(response_text)
         return json.loads(cleaned_text)

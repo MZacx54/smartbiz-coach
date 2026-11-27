@@ -118,6 +118,7 @@ export const generateBusinessPlan = async (params: {
     details: string;
     startupCapital?: string;
     employeesCount?: string;
+    location?: string;
     revenueModel?: string;
 }) => {
     const response = await api.post('/api/business/generate-plan/', params);

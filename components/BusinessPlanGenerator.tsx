@@ -155,7 +155,8 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
         details: additionalDetails,
         startupCapital,
         employeesCount,
-        revenueModel
+        revenueModel,
+        location,
       });
       
       if (!result || result.error || (!result.executiveSummary && !result.marketAnalysis)) {
@@ -183,7 +184,10 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       
       setStep('RESULT');
     } catch (e: any) {
-      setError(e?.message || e?.response?.data?.error || 'Failed to generate business plan. Please try again.');
+      if (typeof e?.response?.data?.credits === 'number') {
+        onUpdateCredits(e.response.data.credits);
+      }
+      setError(e?.response?.data?.error || e?.message || 'Failed to generate business plan. Please try again.');
       setStep('INPUT');
     }
   };
