@@ -1,3 +1,9 @@
+from datetime import timedelta
+from decimal import Decimal, InvalidOperation
+import os
+import uuid
+import urllib.parse
+from django.utils import timezone
 from rest_framework import views, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,11 +13,76 @@ from django.contrib.auth import get_user_model
 import requests
 import json
 import logging
-from .models import Transaction, CreditLedger
+from .models import Transaction, CreditLedger, PaymentReferenceLedger
 from .serializers import TransactionSerializer, CreditLedgerSerializer
+from .catalog import CREDIT_PACKS, LEGACY_TOPUP_CREDITS, PRO_PLANS, AI_CREDIT_COSTS
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+def _resolve_purchase(amount_naira: Decimal, requested_plan: str, billing_cycle: str, pack_id: str):
+    """Canonical server-side credit & subscription resolution from verified Naira amount + explicit intent."""
+    req_plan = (requested_plan or '').strip().lower()
+    cycle = (billing_cycle or '').strip().lower()
+    pid = (pack_id or '').strip().lower()
+
+    is_pro_intent = (
+        pid in ('pro_monthly', 'pro_annual')
+        or req_plan in ('pro', 'growth_pro', 'growth merchant')
+    )
+
+    if amount_naira >= Decimal('34990') and (abs(amount_naira - Decimal('35000')) < Decimal('10') or (is_pro_intent and cycle == 'annual')):
+        return True, 365, 'annual', PRO_PLANS['pro_annual']['credits'], PRO_PLANS['pro_annual']['label']
+
+    if is_pro_intent and amount_naira >= Decimal('3495') and abs(amount_naira - Decimal('3500')) < Decimal('10'):
+        return True, 30, 'monthly', PRO_PLANS['pro_monthly']['credits'], PRO_PLANS['pro_monthly']['label']
+
+    # Credit Packs (never accidentally upgrade Pro)
+    for pack in CREDIT_PACKS.values():
+        if abs(amount_naira - pack['price_ngn']) < Decimal('5'):
+            return False, 0, '', pack['credits'], f"{pack['label']} ({pack['credits']} BizCredits)"
+
+    for legacy_price, legacy_credits in LEGACY_TOPUP_CREDITS.items():
+        if abs(amount_naira - Decimal(str(legacy_price))) < Decimal('5'):
+            return False, 0, '', legacy_credits, f"Credit Top-up ({legacy_credits} BizCredits)"
+
+    fallback_credits = max(1, int(amount_naira / Decimal('10')))
+    return False, 0, '', fallback_credits, f"Credit Top-up ({fallback_credits} BizCredits)"
+
+
+class BillingCatalogView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        packs = [
+            {
+                'id': p['id'],
+                'label': p['label'],
+                'price': float(p['price_ngn']),
+                'credits': p['credits'],
+                'bonusCredits': p['bonus_credits'],
+                'desc': p['desc'],
+                'popular': bool(p.get('popular', False)),
+            }
+            for p in CREDIT_PACKS.values()
+        ]
+        plans = {
+            k: {
+                'id': v['id'],
+                'label': v['label'],
+                'billingCycle': v['billing_cycle'],
+                'price': float(v['price_ngn']),
+                'credits': v['credits'],
+                'durationDays': v['duration_days'],
+            }
+            for k, v in PRO_PLANS.items()
+        }
+        return Response({
+            'packs': packs,
+            'plans': plans,
+            'aiCreditCosts': AI_CREDIT_COSTS,
+        })
 
 class TransactionListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -33,11 +104,13 @@ class CreditPurchaseView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        amount = request.data.get('amount')
-        if not amount or amount <= 0:
+        try:
+            amount = Decimal(str(request.data.get('amount') or '0'))
+        except (InvalidOperation, ValueError, TypeError):
+            amount = Decimal('0')
+        if amount <= 0:
             return Response({"error": "Invalid amount specified"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # In production this creates a pending Transaction
         tx = Transaction.objects.create(
             user=request.user,
             amount=amount,
@@ -45,7 +118,7 @@ class CreditPurchaseView(APIView):
             provider="PAYSTACK",
             type="CREDIT_TOPUP",
             status="PENDING",
-            reference=f"T_{request.user.id}_{Transaction.objects.count() + 1}"
+            reference=f"T_{request.user.id}_{uuid.uuid4().hex[:12].upper()}"
         )
 
         return Response({
@@ -54,13 +127,12 @@ class CreditPurchaseView(APIView):
             "amount": tx.amount
         }, status=status.HTTP_201_CREATED)
 
+
 class VerifyPaymentView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        reference = request.data.get('reference')
-        amount = request.data.get('amount')
-
+        reference = str(request.data.get('reference') or '').strip()
         if not reference:
             return Response({"error": "Reference is required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -74,94 +146,96 @@ class VerifyPaymentView(APIView):
         }
 
         try:
-            url = f"https://api.paystack.co/transaction/verify/{reference}"
+            url = f"https://api.paystack.co/transaction/verify/{urllib.parse.quote(reference)}"
             response = requests.get(url, headers=headers, timeout=15)
             response_data = response.json()
 
             if response.status_code == 200 and response_data.get('status') and response_data.get('data', {}).get('status') == 'success':
                 data = response_data['data']
                 paystack_amount_kobo = data.get('amount')
-                paystack_amount_naira = paystack_amount_kobo / 100
+                if paystack_amount_kobo is None:
+                    return Response({"error": "Invalid amount in payment verification response"}, status=status.HTTP_400_BAD_REQUEST)
+                paystack_amount_naira = Decimal(str(paystack_amount_kobo)) / Decimal('100')
+
+                meta = data.get('metadata') or {}
+                if not isinstance(meta, dict):
+                    meta = {}
+                # Reject cross-account or non-billing Paystack reference replay
+                meta_uid = meta.get('user_id')
+                if meta_uid is not None and str(meta_uid) != '' and str(meta_uid) != str(request.user.id):
+                    return Response({"error": "Payment reference belongs to a different account."}, status=status.HTTP_403_FORBIDDEN)
+                meta_purpose = str(meta.get('purpose') or '').upper()
+                if meta_purpose in ('STOREFRONT_ORDER', 'DEBT_SETTLEMENT', 'CAC_HIRE'):
+                    return Response({"error": "Payment reference belongs to another checkout flow."}, status=status.HTTP_403_FORBIDDEN)
 
                 with transaction.atomic():
                     user = User.objects.select_for_update().get(id=request.user.id)
 
+                    # Reject reference already claimed for a different flow or different user
+                    claimed = PaymentReferenceLedger.objects.select_for_update().filter(reference=reference).first()
+                    if claimed:
+                        if claimed.purpose not in ('BILLING_TOPUP', 'SUBSCRIPTION') or (claimed.user_id and claimed.user_id != user.id):
+                            return Response({"error": "Payment reference has already been claimed by another flow or account."}, status=status.HTTP_409_CONFLICT)
+
                     # Check for idempotency: if transaction reference already processed
                     existing_tx = Transaction.objects.filter(reference=reference, status='SUCCESS').first()
                     if existing_tx:
+                        if existing_tx.user_id and existing_tx.user_id != user.id:
+                            return Response({"error": "Payment reference belongs to a different account."}, status=status.HTTP_403_FORBIDDEN)
                         return Response({
                             "message": "Payment already verified",
                             "credits": user.credits,
-                            "plan": getattr(user, 'plan', 'Free'),
-                            "is_pro": getattr(user, 'plan', '') == 'Pro'
+                            "plan": getattr(user, 'effective_plan', getattr(user, 'plan', 'Free')),
+                            "is_pro": getattr(user, 'has_active_pro', False),
                         }, status=status.HTTP_200_OK)
 
-                    # Extract requested plan / billing cycle intent
-                    requested_plan = str(request.data.get('plan') or '').strip().lower()
-                    billing_cycle = str(request.data.get('billing_cycle') or '').strip().lower()
+                    requested_plan = str(request.data.get('plan') or meta.get('plan') or '').strip().lower()
+                    billing_cycle = str(request.data.get('billing_cycle') or meta.get('billing_cycle') or '').strip().lower()
+                    pack_id = str(request.data.get('pack_id') or meta.get('pack_id') or '').strip().lower()
 
-                    is_pro_subscription = False
-                    subscription_desc = ""
+                    is_pro_subscription, duration_days, cycle_label, credits_purchased, subscription_desc = _resolve_purchase(
+                        paystack_amount_naira, requested_plan, billing_cycle, pack_id
+                    )
 
-                    # Server-side price enforcement: never trust client-submitted plan/amount without verified kobo amount
-                    # 1. Pro Annual Subscription (₦35,000)
-                    if paystack_amount_naira >= 34990 and (abs(paystack_amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and billing_cycle == 'annual')):
-                        is_pro_subscription = True
-                        credits_purchased = 5000  # 5,000 BizCredits for Annual Pro (400/mo * 12 + 200 bonus)
-                        subscription_desc = "Growth Merchant Pro (Annual) - 5,000 BizCredits Included"
-                    # 2. Pro Monthly Subscription (₦3,500)
-                    elif paystack_amount_naira >= 3495 and ((requested_plan in ('pro', 'growth_pro', 'growth merchant') and abs(paystack_amount_naira - 3500) < 10) or (abs(paystack_amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro')):
-                        is_pro_subscription = True
-                        credits_purchased = 450   # 400 credits + 50 bonus
-                        subscription_desc = "Growth Merchant Pro (Monthly) - 450 BizCredits Included"
-                    # 3. Pay-As-You-Go Credit Packs:
-                    elif abs(paystack_amount_naira - 500) < 5:
-                        credits_purchased = 50    # 50 Credits Pocket Pack
-                    elif abs(paystack_amount_naira - 1000) < 5:
-                        credits_purchased = 110   # 110 Credits Starter (+10 Bonus)
-                    elif abs(paystack_amount_naira - 1500) < 5:
-                        credits_purchased = 175   # 175 Credits Starter Pack
-                    elif abs(paystack_amount_naira - 2500) < 5:
-                        credits_purchased = 300   # 300 Credits Growth (+50 Bonus)
-                    elif abs(paystack_amount_naira - 3500) < 5:
-                        credits_purchased = 450   # 450 Credits Grower Pack (Pay-as-you-go)
-                    elif abs(paystack_amount_naira - 5000) < 5:
-                        credits_purchased = 700   # 700 Credits Oga Pack (+200 Bonus)
-                    elif abs(paystack_amount_naira - 7500) < 5:
-                        credits_purchased = 1100  # 1,100 Credits Vendor Pro
-                    elif abs(paystack_amount_naira - 15000) < 5:
-                        credits_purchased = 2500  # 2,500 Credits Mogul
-                    else:
-                        # Fallback: 10 Naira = 1 Credit
-                        credits_purchased = max(1, int(paystack_amount_naira / 10))
+                    if not claimed:
+                        PaymentReferenceLedger.objects.create(
+                            reference=reference,
+                            purpose='SUBSCRIPTION' if is_pro_subscription else 'BILLING_TOPUP',
+                            user=user,
+                            amount_ngn=paystack_amount_naira,
+                            target_id=str(user.id),
+                        )
 
                     tx, created = Transaction.objects.get_or_create(
                         reference=reference,
                         defaults={
                             'user': user,
                             'amount': paystack_amount_naira,
-                            'description': subscription_desc or f"Credit Top-up ({credits_purchased} BizCredits)",
+                            'description': subscription_desc,
                             'provider': "PAYSTACK",
                             'type': "PURCHASE" if is_pro_subscription else "CREDIT_TOPUP",
                             'status': "SUCCESS"
                         }
                     )
                     if not created:
+                        tx.user = user
                         tx.status = 'SUCCESS'
                         tx.amount = paystack_amount_naira
-                        tx.description = subscription_desc or f"Credit Top-up ({credits_purchased} BizCredits)"
+                        tx.description = subscription_desc
                         tx.type = "PURCHASE" if is_pro_subscription else "CREDIT_TOPUP"
-                        tx.save(update_fields=['status', 'amount', 'description', 'type'])
+                        tx.save(update_fields=['user', 'status', 'amount', 'description', 'type'])
 
-                    # Update user credits and plan
                     update_fields = ['credits']
                     user.credits += credits_purchased
                     if is_pro_subscription:
+                        now = timezone.now()
+                        base_dt = user.plan_expires_at if (user.plan_expires_at and user.plan_expires_at > now) else now
                         user.plan = 'Pro'
-                        update_fields.append('plan')
+                        user.plan_expires_at = base_dt + timedelta(days=duration_days)
+                        user.plan_billing_cycle = cycle_label
+                        update_fields.extend(['plan', 'plan_expires_at', 'plan_billing_cycle'])
                     user.save(update_fields=update_fields)
 
-                    # Ensure vendor profile record exists on Pro activation without bypassing KYC verification
                     if is_pro_subscription:
                         try:
                             from marketplace.models import VendorVerification
@@ -172,19 +246,19 @@ class VerifyPaymentView(APIView):
                         except Exception as v_err:
                             logger.warning("Could not ensure vendor profile on Pro upgrade: %s", v_err)
 
-                    # Record in CreditLedger
                     CreditLedger.objects.create(
                         user=user,
                         amount=credits_purchased,
-                        activity=subscription_desc or f"Purchased BizCredits ({credits_purchased} credits)"
+                        activity=subscription_desc
                     )
 
                     return Response({
                         "message": "Welcome to Growth Merchant Pro! Your account and wallet have been upgraded." if is_pro_subscription else "Payment verified successfully",
                         "credits": user.credits,
                         "added": credits_purchased,
-                        "plan": user.plan,
-                        "is_pro": user.plan == 'Pro'
+                        "plan": getattr(user, 'effective_plan', user.plan),
+                        "plan_expires_at": user.plan_expires_at.isoformat() if user.plan_expires_at else None,
+                        "is_pro": getattr(user, 'has_active_pro', user.plan == 'Pro'),
                     }, status=status.HTTP_200_OK)
             else:
                 return Response({
@@ -374,14 +448,14 @@ class AdminTransactionsView(APIView):
                 "created_at": c.created_at.isoformat() if c.created_at else ''
             })
 
-        # 5. POS Retail Day-Book & Cashflow
-        total_sales_volume = float(DailySale.objects.aggregate(total=Sum('total_amount'))['total'] or 0)
-        total_sales_count = DailySale.objects.count()
-        cash_sales_volume = float(DailySale.objects.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0)
-        transfer_sales_volume = float(DailySale.objects.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('total_amount'))['total'] or 0)
-        credit_sales_volume = float(DailySale.objects.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0)
-        total_expenses_volume = float(DailyExpense.objects.aggregate(total=Sum('amount'))['total'] or 0)
-        total_expenses_count = DailyExpense.objects.count()
+        # 5. POS Retail Day-Book & Cashflow (exclude voided entries)
+        total_sales_volume = float(DailySale.objects.filter(is_voided=False).aggregate(total=Sum('total_amount'))['total'] or 0)
+        total_sales_count = DailySale.objects.filter(is_voided=False).count()
+        cash_sales_volume = float(DailySale.objects.filter(is_voided=False, payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0)
+        transfer_sales_volume = float(DailySale.objects.filter(is_voided=False, payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('total_amount'))['total'] or 0)
+        credit_sales_volume = float(DailySale.objects.filter(is_voided=False, payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0)
+        total_expenses_volume = float(DailyExpense.objects.filter(is_voided=False).aggregate(total=Sum('amount'))['total'] or 0)
+        total_expenses_count = DailyExpense.objects.filter(is_voided=False).count()
 
         pos_stats = {
             "total_sales_volume": total_sales_volume,
@@ -495,37 +569,47 @@ class PaystackWebhookView(APIView):
         data = event_data.get('data', {})
 
         if event == 'charge.success':
-            reference = data.get('reference')
-            amount_kobo = data.get('amount', 0)
-            amount_naira = amount_kobo / 100.0
-            customer_email = data.get('customer', {}).get('email', '')
-            metadata = data.get('metadata', {}) or {}
+            reference = str(data.get('reference') or '').strip()
+            amount_kobo = data.get('amount') or 0
+            amount_naira = Decimal(str(amount_kobo)) / Decimal('100')
+            customer_email = (data.get('customer') or {}).get('email', '')
+            metadata = data.get('metadata') or {}
+            if not isinstance(metadata, dict):
+                metadata = {}
 
             if not reference:
                 return Response({"status": "ignored", "reason": "No reference in payload"}, status=status.HTTP_200_OK)
 
+            meta_purpose = str(metadata.get('purpose') or '').upper()
+            if meta_purpose in ('STOREFRONT_ORDER', 'DEBT_SETTLEMENT', 'CAC_HIRE'):
+                return Response({"status": "ignored_non_billing_flow"}, status=status.HTTP_200_OK)
+
             with transaction.atomic():
-                # 1. Idempotency Check: if reference already fulfilled
+                # 1. Idempotency Check: if reference already fulfilled or claimed by non-billing flow
+                claimed = PaymentReferenceLedger.objects.select_for_update().filter(reference=reference).first()
+                if claimed and claimed.purpose not in ('BILLING_TOPUP', 'SUBSCRIPTION'):
+                    return Response({"status": "ignored_cross_flow"}, status=status.HTTP_200_OK)
                 existing_success = Transaction.objects.filter(reference=reference, status='SUCCESS').exists()
                 if existing_success:
-                    print(f"[WEBHOOK IDEMPOTENT] Reference {reference} already processed. Skipping duplicate fulfillment.")
                     return Response({"status": "already_processed"}, status=status.HTTP_200_OK)
 
-                # 2. Resolve matching User
+                # 2. Resolve matching User strictly by metadata.user_id first, or email only when metadata isn't storefront
                 user_id = metadata.get('user_id')
                 user = None
                 if user_id:
                     user = User.objects.select_for_update().filter(id=user_id).first()
-                if not user and customer_email:
+                if not user and customer_email and (metadata.get('pack_id') or metadata.get('plan') or metadata.get('billing_cycle')):
+                    user = User.objects.select_for_update().filter(email__iexact=customer_email).first()
+                if not user and customer_email and not metadata:
                     user = User.objects.select_for_update().filter(email__iexact=customer_email).first()
 
                 if not user:
-                    print(f"[WEBHOOK NOTE] Charge success for unlinked customer {customer_email} (Ref: {reference}, ₦{amount_naira})")
                     Transaction.objects.update_or_create(
                         reference=reference,
                         defaults={
+                            'user': None,
                             'amount': amount_naira,
-                            'description': f"Direct Storefront/Guest Payment (Ref: {reference})",
+                            'description': f"Unlinked Storefront/Guest Payment (Ref: {reference})",
                             'provider': "PAYSTACK",
                             'type': "PURCHASE",
                             'status': "SUCCESS"
@@ -533,46 +617,28 @@ class PaystackWebhookView(APIView):
                     )
                     return Response({"status": "recorded_unlinked"}, status=status.HTTP_200_OK)
 
-                # 3. Determine Plan or Credit Pack purchased
                 requested_plan = str(metadata.get('plan') or '').strip().lower()
                 billing_cycle = str(metadata.get('billing_cycle') or '').strip().lower()
-                is_pro_subscription = False
-                subscription_desc = ""
+                pack_id = str(metadata.get('pack_id') or '').strip().lower()
+                is_pro_subscription, duration_days, cycle_label, credits_purchased, subscription_desc = _resolve_purchase(
+                    amount_naira, requested_plan, billing_cycle, pack_id
+                )
 
-                if amount_naira >= 34990 and (abs(amount_naira - 35000) < 10 or (requested_plan in ('pro', 'growth_pro', 'growth merchant') and billing_cycle == 'annual')):
-                    is_pro_subscription = True
-                    credits_purchased = 5000
-                    subscription_desc = "Growth Merchant Pro (Annual) - 5,000 BizCredits Included"
-                elif amount_naira >= 3495 and ((requested_plan in ('pro', 'growth_pro', 'growth merchant') and abs(amount_naira - 3500) < 10) or (abs(amount_naira - 3500) < 5 and getattr(user, 'plan', '') != 'Pro')):
-                    is_pro_subscription = True
-                    credits_purchased = 450
-                    subscription_desc = "Growth Merchant Pro (Monthly) - 450 BizCredits Included"
-                elif abs(amount_naira - 500) < 5:
-                    credits_purchased = 50
-                elif abs(amount_naira - 1000) < 5:
-                    credits_purchased = 110
-                elif abs(amount_naira - 1500) < 5:
-                    credits_purchased = 175
-                elif abs(amount_naira - 2500) < 5:
-                    credits_purchased = 300
-                elif abs(amount_naira - 3500) < 5:
-                    credits_purchased = 450
-                elif abs(amount_naira - 5000) < 5:
-                    credits_purchased = 700
-                elif abs(amount_naira - 7500) < 5:
-                    credits_purchased = 1100
-                elif abs(amount_naira - 15000) < 5:
-                    credits_purchased = 2500
-                else:
-                    credits_purchased = max(1, int(amount_naira / 10))
+                if not claimed:
+                    PaymentReferenceLedger.objects.create(
+                        reference=reference,
+                        purpose='SUBSCRIPTION' if is_pro_subscription else 'BILLING_TOPUP',
+                        user=user,
+                        amount_ngn=amount_naira,
+                        target_id=str(user.id),
+                    )
 
-                # 4. Atomically persist Transaction & Credit Wallet
-                tx, _ = Transaction.objects.update_or_create(
+                Transaction.objects.update_or_create(
                     reference=reference,
                     defaults={
                         'user': user,
                         'amount': amount_naira,
-                        'description': subscription_desc or f"Credit Top-up ({credits_purchased} BizCredits)",
+                        'description': subscription_desc,
                         'provider': "PAYSTACK",
                         'type': "PURCHASE" if is_pro_subscription else "CREDIT_TOPUP",
                         'status': "SUCCESS"
@@ -582,8 +648,12 @@ class PaystackWebhookView(APIView):
                 update_fields = ['credits']
                 user.credits += credits_purchased
                 if is_pro_subscription:
+                    now = timezone.now()
+                    base_dt = user.plan_expires_at if (user.plan_expires_at and user.plan_expires_at > now) else now
                     user.plan = 'Pro'
-                    update_fields.append('plan')
+                    user.plan_expires_at = base_dt + timedelta(days=duration_days)
+                    user.plan_billing_cycle = cycle_label
+                    update_fields.extend(['plan', 'plan_expires_at', 'plan_billing_cycle'])
                 user.save(update_fields=update_fields)
 
                 CreditLedger.objects.create(
@@ -599,44 +669,54 @@ class PaystackWebhookView(APIView):
                             user=user,
                             defaults={'business_name': getattr(user, 'business_name', '') or getattr(user, 'username', '')}
                         )
-                    except Exception as ve:
-                        print(f"[WEBHOOK NOTE] VendorVerification auto-link notice: {ve}")
+                    except Exception:
+                        pass
 
-                print(f"[OK] Webhook fulfilled: +{credits_purchased} credits to {user.username} (Ref: {reference})")
+        elif event in ('subscription.disable', 'invoice.payment_failed'):
+            customer_email = (data.get('customer') or {}).get('email', '')
+            if customer_email:
+                with transaction.atomic():
+                    sub_user = User.objects.select_for_update().filter(email__iexact=customer_email).first()
+                    if sub_user and sub_user.plan == 'Pro':
+                        sub_user.plan = 'Free'
+                        sub_user.plan_expires_at = timezone.now()
+                        sub_user.save(update_fields=['plan', 'plan_expires_at'])
 
         return Response({"status": "processed"}, status=status.HTTP_200_OK)
 
 
 class SquadWebhookView(APIView):
     """
-    HabariPay / Squad Webhook Handler with signature verification & atomic idempotency.
+    HabariPay / Squad Webhook Handler with strict signature verification.
     """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         import hmac
         import hashlib
-        import json
 
         squad_secret = getattr(settings, 'SQUAD_SECRET_KEY', None) or os.getenv('SQUAD_SECRET_KEY', '')
+        if not squad_secret:
+            return Response({"error": "Squad gateway not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         squad_sig = request.headers.get('x-squad-signature') or request.META.get('HTTP_X_SQUAD_SIGNATURE', '')
+        if not squad_sig:
+            return Response({"error": "Signature required"}, status=status.HTTP_400_BAD_REQUEST)
 
         raw_body = request.body
-        if squad_secret and squad_sig:
-            computed_sig = hmac.new(
-                squad_secret.encode('utf-8'),
-                msg=raw_body,
-                digestmod=hashlib.sha512
-            ).hexdigest()
-            if not hmac.compare_digest(computed_sig, squad_sig):
-                return Response({"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
+        computed_sig = hmac.new(
+            squad_secret.encode('utf-8'),
+            msg=raw_body,
+            digestmod=hashlib.sha512
+        ).hexdigest()
+        if not hmac.compare_digest(computed_sig, squad_sig):
+            return Response({"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             payload = json.loads(raw_body.decode('utf-8'))
         except Exception:
             return Response({"error": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
 
-        event = payload.get('Event') or payload.get('event')
         data = payload.get('Body') or payload.get('data') or {}
         reference = data.get('transaction_ref') or data.get('reference')
 

@@ -18,11 +18,11 @@ interface SettingsProps {
 }
 
 const CREDIT_PACKS = [
-  { credits: 50, price: 500, label: 'Micro Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
-  { credits: 150, price: 1500, label: 'Starter Pack', desc: '150 🪙 for 7-day boost + photo AI' },
-  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 🪙 (+50 Bonus) for Studio Shoots & Marketplace Boosts', popular: true },
-  { credits: 1000, price: 7500, label: 'Vendor Pro Pack', desc: '1,000 🪙 (+250 Bonus) for 30-Day VIP + Full AI Studio' },
-  { credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 🪙 for continuous weekly boosts & business plans' },
+  { id: 'micro_50', credits: 50, price: 500, label: 'Micro Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
+  { id: 'starter_175', credits: 175, price: 1500, label: 'Starter Pack', desc: '175 🪙 (150 + 25 Bonus) for 7-day boost + photo AI' },
+  { id: 'grower_450', credits: 450, price: 3500, label: 'Grower Pack', desc: '450 🪙 (400 + 50 Bonus) for Studio Shoots & Marketplace Boosts', popular: true },
+  { id: 'vendor_pro_1250', credits: 1250, price: 7500, label: 'Vendor Pro Pack', desc: '1,250 🪙 (1,000 + 250 Bonus) for 30-Day VIP + Full AI Studio' },
+  { id: 'mogul_2500', credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 🪙 (2,000 + 500 Bonus) for continuous weekly boosts & business plans' },
 ];
 
 import { BankPayoutSetup } from './BankPayoutSetup';
@@ -394,7 +394,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
 
   const handlePaymentSuccess = async (reference: string) => {
     if (!selectedPack) return;
-    const isPlan = !!(selectedPack as any).isPlanUpgrade || selectedPack.price === 3500;
+    const isPlan = !!(selectedPack as any).isPlanUpgrade;
     setShowTopUp(false);
     setVerifyingPayment(true);
     try {
@@ -2190,6 +2190,12 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
           amount={selectedPack.price}
           description={`Top-Up: ${selectedPack.credits} BizCredits`}
           email={user.email}
+          metadata={{
+            user_id: user.id,
+            purpose: 'credit_topup',
+            pack_id: (selectedPack as any).id,
+            credits: selectedPack.credits,
+          }}
           onClose={() => setShowTopUp(false)}
           onSuccess={handlePaymentSuccess}
         />

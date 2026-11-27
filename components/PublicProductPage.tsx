@@ -123,11 +123,49 @@ const PublicProductPage: React.FC = () => {
 
   const unitPrice = parseFloat(product.price || '0') || 0;
   const compareAtPrice = parseFloat(product.compare_at_price || product.price_max || '0') || 0;
+  const isPhysicalProduct = (product.product_type || 'PHYSICAL').toUpperCase() === 'PHYSICAL';
+  const stockCount = Number(product.stock_count ?? 1);
+  const isOutOfStock = isPhysicalProduct && stockCount <= 0;
+  const maxOrderQty = isPhysicalProduct ? Math.max(0, stockCount) : 999;
   const subtotalAmount = unitPrice * quantity;
   const totalAmount = subtotalAmount + (checkoutMode === 'PAYSTACK' ? deliveryFee : 0);
   const storeSlug = product.brand_slug || slug || '';
   const storeUrl = storeSlug ? `/u/${storeSlug}` : '/market';
   const shareUrl = productShareUrl(product.id);
+
+  const handleAddToBag = () => {
+    if (isOutOfStock) {
+      toast.error('This item is currently out of stock.');
+      return;
+    }
+    try {
+      const existingRaw = localStorage.getItem('sb_cart');
+      const cart: any[] = existingRaw ? JSON.parse(existingRaw) : [];
+      const idx = cart.findIndex((item) => String(item.productId) === String(product.id));
+      if (idx >= 0) {
+        cart[idx].quantity = Math.min(maxOrderQty, (Number(cart[idx].quantity) || 1) + quantity);
+      } else {
+        cart.push({
+          id: Date.now().toString(),
+          productId: String(product.id),
+          title: product.name,
+          price: unitPrice,
+          image: product.image_url || '',
+          quantity,
+          vendorId: String(product.brand || product.brand_slug || product.brand_name || product.id),
+          vendorName: product.brand_name || 'Verified Merchant',
+          whatsapp: product.whatsapp_number || '',
+          paystack_subaccount_code: product.paystack_subaccount_code || '',
+          location: product.location || '',
+        });
+      }
+      localStorage.setItem('sb_cart', JSON.stringify(cart));
+      window.dispatchEvent(new Event('smartbiz_cart_updated'));
+      toast.success('Added to shopping bag! 🛍️');
+    } catch {
+      toast.error('Could not add item to bag right now.');
+    }
+  };
 
   const cleanWhatsApp = () => {
     const raw = product.whatsapp_number || '';
@@ -159,6 +197,11 @@ const PublicProductPage: React.FC = () => {
       return;
     }
 
+    if (isOutOfStock || (isPhysicalProduct && quantity > maxOrderQty)) {
+      toast.error('Insufficient stock available for this quantity.');
+      return;
+    }
+
     const waNumber = cleanWhatsApp();
     const orderSummaryText =
       `🛒 *NEW SMARTBIZ ORDER*\n\n` +
@@ -178,7 +221,7 @@ const PublicProductPage: React.FC = () => {
           product: product.id,
           customer_name: buyerForm.name,
           customer_contact: buyerForm.phone,
-          message: `WhatsApp Product Order:\nQty: ${quantity}\nTotal: ₦${totalAmount.toLocaleString()}\nAddress: ${buyerForm.address}\nNotes: ${buyerForm.notes}`,
+          message: `WhatsApp Product Order:\nQty: ${quantity}\nTotal: ₦${totalAmount.toLocaleString()}\nAddress: ${buyerForm.address}, ${buyerForm.state}\nNotes: ${buyerForm.notes}`,
           lead_type: 'ORDER',
           quoted_price: totalAmount.toFixed(2),
         }).catch(() => {});
@@ -190,7 +233,7 @@ const PublicProductPage: React.FC = () => {
       const waUrl = waNumber
         ? `https://wa.me/${waNumber}?text=${encodeURIComponent(orderSummaryText)}`
         : `https://wa.me/?text=${encodeURIComponent(orderSummaryText)}`;
-      window.open(waUrl, '_blank');
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
       toast.success('Order logged! Opening WhatsApp chat with the seller...');
       return;
     }
@@ -203,17 +246,20 @@ const PublicProductPage: React.FC = () => {
         amount: totalAmount,
         customerName: buyerForm.name.trim(),
         customerPhone: buyerForm.phone.trim(),
-        customerAddress: buyerForm.address.trim() || undefined,
+        customerAddress: `${buyerForm.address.trim()}, ${buyerForm.state}`,
         orderNotes: buyerForm.notes.trim() || `${product.name} x${quantity}`,
         subaccountCode: product.paystack_subaccount_code || undefined,
+        metadata: { purpose: 'marketplace_order', product_id: product.id, delivery_state: buyerForm.state },
         onSuccess: async (paystackRes: { reference: string }) => {
           const reference = paystackRes?.reference || `SB-${Date.now()}`;
           try {
             const res = await api.post('/api/marketplace/orders/create/', {
+              payment_method: 'PAYSTACK',
               reference,
               total_amount: totalAmount,
               customer_name: buyerForm.name,
               customer_phone: buyerForm.phone,
+              customer_email: buyerForm.email.trim(),
               customer_address: buyerForm.address,
               delivery_state: buyerForm.state,
               notes: buyerForm.notes,
@@ -238,8 +284,9 @@ const PublicProductPage: React.FC = () => {
               waUrl: res.data?.whatsapp_dispatch?.merchant_wa_url || (waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(orderSummaryText)}` : undefined),
             });
             toast.success('Payment verified! Order sent to merchant.');
-          } catch {
-            toast.success('Payment complete! Reference: ' + reference);
+          } catch (orderErr: any) {
+            const msg = orderErr?.response?.data?.error || 'Could not save order automatically.';
+            toast.error(`Paystack Ref ${reference} paid, but order creation returned: ${msg}. Save this reference and contact support.`, { duration: 9000 });
             setShowCheckoutModal(false);
           } finally {
             setIsSubmitting(false);
@@ -425,18 +472,20 @@ const PublicProductPage: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
+                    disabled={isOutOfStock || quantity <= 1}
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
                   <span className="text-base font-black text-slate-900 min-w-[28px] text-center">
-                    {quantity}
+                    {isOutOfStock ? 0 : quantity}
                   </span>
                   <button
                     type="button"
-                    onClick={() => setQuantity((q) => q + 1)}
-                    className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    disabled={isOutOfStock || quantity >= maxOrderQty}
+                    onClick={() => setQuantity((q) => Math.min(maxOrderQty, q + 1))}
+                    className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -452,34 +501,45 @@ const PublicProductPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
+                  disabled={isOutOfStock}
                   onClick={() => {
                     setCheckoutMode('PAYSTACK');
                     setShowCheckoutModal(true);
                   }}
-                  className="min-h-[54px] rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-[0.98] cursor-pointer"
+                  className="min-h-[54px] rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-[0.98] cursor-pointer"
                 >
                   <CreditCard className="w-4 h-4" />
-                  <span>Buy Now · ₦{totalAmount.toLocaleString()}</span>
+                  <span>{isOutOfStock ? 'Out of Stock' : `Buy Now · ₦${totalAmount.toLocaleString()}`}</span>
                 </button>
 
                 <button
                   type="button"
+                  disabled={isOutOfStock}
                   onClick={() => {
                     setCheckoutMode('WHATSAPP');
                     setShowCheckoutModal(true);
                   }}
-                  className="min-h-[54px] rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
+                  className="min-h-[54px] rounded-2xl bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer"
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-400" />
-                  <span>Order on WhatsApp</span>
+                  <span>{isOutOfStock ? 'Currently Unavailable' : 'Order on WhatsApp'}</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  disabled={isOutOfStock}
+                  onClick={handleAddToBag}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-2xl bg-indigo-50 hover:bg-indigo-100 disabled:bg-slate-100 disabled:text-slate-400 text-indigo-700 font-bold text-xs cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Add to Bag</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleShareProduct}
-                  className="inline-flex items-center justify-center gap-2 px-3 min-h-[44px] rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
                 >
                   <Share2 className="w-4 h-4" />
                   <span>Share Link</span>
@@ -490,7 +550,7 @@ const PublicProductPage: React.FC = () => {
                     const saved = wishlist.toggle(product.id);
                     toast.success(saved ? 'Saved to your wishlist!' : 'Removed from wishlist');
                   }}
-                  className="inline-flex items-center justify-center gap-2 px-3 min-h-[44px] rounded-2xl bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold text-xs cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 min-h-[44px] rounded-2xl bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold text-xs cursor-pointer"
                 >
                   <Heart className={`w-4 h-4 ${wishlist.has(product.id) ? 'fill-pink-600 text-pink-600' : ''}`} />
                   <span>{wishlist.has(product.id) ? 'Saved' : 'Save Item'}</span>
@@ -635,22 +695,24 @@ const PublicProductPage: React.FC = () => {
         <div className="flex items-center gap-2 flex-1 justify-end">
           <button
             type="button"
+            disabled={isOutOfStock}
             onClick={() => {
               setCheckoutMode('PAYSTACK');
               setShowCheckoutModal(true);
             }}
-            className="min-h-[46px] px-3.5 rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 flex-1 cursor-pointer"
+            className="min-h-[46px] px-3.5 rounded-xl bg-emerald-600 active:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30 flex-1 cursor-pointer"
           >
             <CreditCard className="w-3.5 h-3.5" />
-            <span>Buy Now</span>
+            <span>{isOutOfStock ? 'Out of Stock' : 'Buy Now'}</span>
           </button>
           <button
             type="button"
+            disabled={isOutOfStock}
             onClick={() => {
               setCheckoutMode('WHATSAPP');
               setShowCheckoutModal(true);
             }}
-            className="min-h-[46px] px-3 rounded-xl bg-slate-900 active:bg-slate-800 text-white font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
+            className="min-h-[46px] px-3 rounded-xl bg-slate-900 active:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs flex items-center justify-center gap-1 cursor-pointer"
             title="Order via WhatsApp"
           >
             <MessageCircle className="w-4 h-4 text-emerald-400" />
@@ -666,7 +728,7 @@ const PublicProductPage: React.FC = () => {
           onClick={() => setShowCheckoutModal(false)}
         >
           <div
-            className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4"
+            className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">

@@ -193,9 +193,12 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       if (!result.email && user?.email) result.email = user.email;
       if (!result.address && user?.location) result.address = user.location;
       
-      // Only deduct credits if generation successfully completed
-      const billingResponse = await billingService.deductCredits(100, "Full Corporate Brand Identity Kit");
-      onUpdateCredits(billingResponse.credits);
+      // Credits are atomically reserved on the server during /api/brand/generate/
+      if (typeof resultRaw?.credits === 'number') {
+        onUpdateCredits(resultRaw.credits);
+      } else {
+        onUpdateCredits(Math.max(0, credits - 15));
+      }
 
       setLocalBrandData(result);
       onSave(result);
@@ -214,7 +217,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
     const finalNiche = formData.niche === 'Other' ? customNiche : formData.niche;
     if (!formData.name || !finalNiche || !formData.vibe) return;
 
-    const brandCost = 100;
+    const brandCost = 15;
     if (credits < brandCost) {
       setDeductOnConfirm(null);
       setShowCreditPrompt(true);
@@ -229,7 +232,7 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
 
   const handleGenerateLogo = async () => {
     if (!localBrandData) return;
-    const logoCost = 2;
+    const logoCost = 15;
     if (credits < logoCost) {
       toast.error(`Insufficient credits. Generating an AI logo requires ${logoCost} BizCredits.`);
       return;
@@ -245,9 +248,8 @@ const BrandBuilder: React.FC<BrandBuilderProps> = ({ savedBrand, onSave, credits
       const logoUrl = await generateBrandLogo(prompt);
       const updatedBrand = mapDbToBrand({ ...localBrandData, logoUrl });
 
-      // Only deduct credits if logo successfully generated
-      const billingResponse = await billingService.deductCredits(logoCost, "AI Logo Generation");
-      onUpdateCredits(billingResponse.credits);
+      // Server /api/brand/generate-logo/ deducts credits atomically
+      onUpdateCredits(Math.max(0, credits - logoCost));
 
       setLocalBrandData(updatedBrand);
       onSave(updatedBrand);

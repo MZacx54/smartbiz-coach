@@ -6,6 +6,7 @@ interface PaymentModalProps {
   amount: number;
   description: string;
   email?: string;
+  metadata?: Record<string, any>;
   onClose: () => void;
   onSuccess: (reference: string) => void;
 }
@@ -14,6 +15,7 @@ interface PaystackButtonProps {
   publicKey: string;
   amount: number;
   email: string;
+  metadata?: Record<string, any>;
   onSuccess: (reference: string) => void;
   onClose: () => void;
   setProcessing: (proc: boolean) => void;
@@ -24,17 +26,20 @@ const PaystackButtonInner: React.FC<PaystackButtonProps> = ({
   publicKey,
   amount,
   email,
+  metadata,
   onSuccess,
   onClose,
   setProcessing,
   processing,
 }) => {
-  const config = {
-    reference: new Date().getTime().toString(),
+  const [txRef] = useState(() => `SB_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  const config: any = {
+    reference: txRef,
     email: email,
-    amount: amount * 100, // Paystack expects Kobo
+    amount: Math.round(amount * 100), // Paystack expects Kobo
     publicKey: publicKey,
     currency: "NGN",
+    ...(metadata ? { metadata } : {}),
   };
 
   const initializePaystack = usePaystackPayment(config);
@@ -77,6 +82,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   amount,
   description,
   email = "guest@smartbizcoach.com.ng",
+  metadata,
   onClose,
   onSuccess,
 }) => {
@@ -146,6 +152,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               publicKey={publicKey}
               amount={amount}
               email={email}
+              metadata={metadata}
               onSuccess={onSuccess}
               onClose={onClose}
               setProcessing={setProcessing}

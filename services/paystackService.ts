@@ -92,6 +92,7 @@ export interface PaystackCheckoutOptions {
   customerAddress?: string;
   orderNotes?: string;
   subaccountCode?: string; // e.g. ACCT_pdtmkty7e2khq5t (Direct vendor bank settlement)
+  metadata?: Record<string, any>;
   onSuccess: (response: { reference: string }) => void;
   onClose?: () => void;
 }
@@ -110,9 +111,22 @@ export const openPaystackCheckout = async (options: PaystackCheckoutOptions): Pr
     throw new Error('Paystack public key is not configured. Please proceed via WhatsApp order.');
   }
 
+  let fallbackUserEmail = '';
+  let fallbackUserId: any = undefined;
+  try {
+    const rawUser = localStorage.getItem('sb_user');
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser);
+      fallbackUserEmail = parsed?.email || '';
+      fallbackUserId = parsed?.id;
+    }
+  } catch {
+    // ignore corrupted storage
+  }
+
   const cleanPhone = (options.customerPhone || '').replace(/\D/g, '');
-  const email = options.email || (cleanPhone.length >= 7 
-    ? `customer${cleanPhone}@smartbizcoach.com.ng` 
+  const email = (options.email && options.email.trim()) || fallbackUserEmail || (cleanPhone.length >= 7
+    ? `customer${cleanPhone}@smartbizcoach.com.ng`
     : `buyer${Date.now()}@smartbizcoach.com.ng`);
 
   const amountKobo = Math.round(options.amount * 100);
@@ -127,6 +141,8 @@ export const openPaystackCheckout = async (options: PaystackCheckoutOptions): Pr
     amount: amountKobo,
     currency: 'NGN',
     metadata: {
+      ...(fallbackUserId ? { user_id: fallbackUserId } : {}),
+      ...(options.metadata || {}),
       custom_fields: [
         { display_name: 'Customer Name', variable_name: 'customer_name', value: options.customerName },
         { display_name: 'Customer Phone', variable_name: 'customer_phone', value: options.customerPhone },

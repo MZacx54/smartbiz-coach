@@ -2,7 +2,7 @@ from rest_framework import generics, permissions, filters, views, status
 from rest_framework.response import Response
 from django.db.models import Q
 from .models import VendorVerification, MarketplaceListing, Product, Lead
-from .serializers import VendorVerificationSerializer, MarketplaceListingSerializer, ProductSerializer, LeadSerializer
+from .serializers import VendorVerificationSerializer, MarketplaceListingSerializer, ProductSerializer, PublicProductSerializer, LeadSerializer
 
 # ... existing views ...
 
@@ -44,12 +44,12 @@ class EcosystemAnalyticsView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        from django.db.models import Sum, Count
+        from django.db.models import Sum, Count, F
         user_products = Product.objects.filter(brand__user=request.user)
         user_leads = Lead.objects.filter(brand__user=request.user)
         
-        # Calculations
-        inventory_value = user_products.filter(product_type='PHYSICAL').aggregate(total=Sum('price'))['total'] or 0
+        # Calculations (multiply unit price by available stock quantity for physical inventory)
+        inventory_value = user_products.filter(product_type='PHYSICAL').aggregate(total=Sum(F('price') * F('stock_count')))['total'] or 0
         property_value = user_products.filter(product_type='PROPERTY').aggregate(total=Sum('price'))['total'] or 0
         service_count = user_products.filter(product_type='SERVICE').count()
         
@@ -200,7 +200,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Product.objects.filter(brand__user=self.request.user)
 
 class PublicBrandProductListView(generics.ListAPIView):
-    serializer_class = ProductSerializer
+    serializer_class = PublicProductSerializer
     permission_classes = [] # Public
 
     def get_queryset(self):
@@ -220,7 +220,7 @@ class PublicProductDetailView(views.APIView):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        product_data = ProductSerializer(product).data
+        product_data = PublicProductSerializer(product).data
         more_from_seller = Product.objects.filter(
             brand=product.brand,
             is_public=True,
@@ -239,12 +239,12 @@ class PublicProductDetailView(views.APIView):
 
         return Response({
             'product': product_data,
-            'more_from_seller': ProductSerializer(more_from_seller, many=True).data,
-            'similar_products': ProductSerializer(similar_items, many=True).data,
+            'more_from_seller': PublicProductSerializer(more_from_seller, many=True).data,
+            'similar_products': PublicProductSerializer(similar_items, many=True).data,
         })
 
 class GlobalMarketplaceListView(generics.ListAPIView):
-    serializer_class = ProductSerializer
+    serializer_class = PublicProductSerializer
     permission_classes = [] # Public
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'description', 'category', 'location', 'brand__business_name']
@@ -352,18 +352,29 @@ class DashboardSearchView(generics.ListAPIView):
 
 class ProductSnapAndListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_scope = 'ai'
 
     def post(self, request):
-        import re, random
+        import re
+        from billing.utils import reserve_ai_credits, refund_ai_credits
+        from billing.catalog import AI_CREDIT_COSTS
+
         image_base64 = request.data.get('image_base64') or request.data.get('video_snapshot_base64') or request.data.get('image')
         mime_type = request.data.get('mime_type', 'image/jpeg')
         file_name = request.data.get('file_name', '').strip()
-        is_video = request.data.get('is_video', False)
 
         if not image_base64 and not file_name:
             return Response({'error': 'No image or video frame provided'}, status=400)
 
-        # Sanitize image base64 if present
+        MAX_B64_CHARS = 15 * 1024 * 1024
+        if isinstance(image_base64, str) and len(image_base64) > MAX_B64_CHARS:
+            return Response({'error': 'Uploaded media exceeds maximum size limit (10 MB).'}, status=400)
+
+        cost = AI_CREDIT_COSTS.get('snap_and_list', 3)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'AI Snap & List Scanner')
+        if not allowed:
+            return Response({'error': f'Insufficient BizCredits (requires {cost} credits).', 'credits': remaining}, status=402)
+
         clean_b64 = None
         if image_base64:
             clean_b64 = str(image_base64).strip()
@@ -371,7 +382,6 @@ class ProductSnapAndListView(views.APIView):
                 clean_b64 = clean_b64.split(';base64,')[1]
             clean_b64 = "".join(clean_b64.split())
 
-        # Retrieve user's brand profile context if available
         biz_context = ""
         try:
             from brand.models import BrandIdentity
@@ -381,68 +391,21 @@ class ProductSnapAndListView(views.APIView):
         except Exception:
             pass
 
-        # Smart contextual heuristic builder for fallback
         clean_name = re.sub(r'[\-_.]+', ' ', file_name).strip() if file_name else ''
-        name_lower = clean_name.lower()
-
-        # Determine smart defaults based on filename / context
-        if any(w in name_lower for w in ['tech', 'ssl', 'web', 'code', 'software', 'error', 'issue', 'screen', 'laptop', 'phone', 'gadget', 'electronic']):
-            default_name = clean_name.title() if len(clean_name) > 3 else "Tech & Digital Solution Asset"
-            default_price = random.choice([25000, 35000, 48000, 18500])
-            default_cost = int(default_price * 0.60)
-            default_type = "SERVICE" if any(w in name_lower for w in ['service', 'support', 'issue', 'ssl', 'consult']) else "PHYSICAL"
-            default_cat = "Electronics" if default_type == "PHYSICAL" else "IT Support"
-            default_desc = f"Verified {default_name} solution built for reliable performance and business efficiency. Includes technical setup, direct WhatsApp assistance, and prompt support."
-        elif any(w in name_lower for w in ['naccima', 'meeting', 'consult', 'counsel', 'biz', 'plan', 'coaching', 'training', 'audit', 'strategy']):
-            default_name = clean_name.title() if len(clean_name) > 3 else "Executive Business Consultation Session"
-            default_price = random.choice([30000, 45000, 60000, 25000])
-            default_cost = int(default_price * 0.50)
-            default_type = "SERVICE"
-            default_cat = "Consulting"
-            default_desc = f"Strategic advisory and {default_name} structured for Nigerian founders and growing enterprises. Includes personalized roadmapping, compliance guidance, and direct 1-on-1 support."
-        elif any(w in name_lower for w in ['shoe', 'bag', 'cloth', 'dress', 'wear', 'shirt', 'cap', 'fashion', 'ankara', 'lace', 'suit', 'jeans']):
-            default_name = clean_name.title() if len(clean_name) > 3 else "Handcrafted Nigerian Fashion Piece"
-            default_price = random.choice([12500, 18500, 24000, 15000, 32000])
-            default_cost = int(default_price * 0.65)
-            default_type = "PHYSICAL"
-            default_cat = "Fashion"
-            default_desc = f"Premium {default_name} tailored with top-grade fabrics for superior comfort, durability, and elegance. Perfect for casual or special occasions with fast nationwide delivery."
-        elif any(w in name_lower for w in ['food', 'rice', 'oil', 'soup', 'snack', 'cake', 'pepper', 'agro', 'grain', 'flour']):
-            default_name = clean_name.title() if len(clean_name) > 3 else "Fresh Farm Agro-Commodity Pack"
-            default_price = random.choice([8500, 14000, 22000, 6500])
-            default_cost = int(default_price * 0.70)
-            default_type = "PHYSICAL"
-            default_cat = "Groceries"
-            default_desc = f"Fresh, hygienically packaged {default_name} sourced directly from verified local suppliers. 100% natural, premium quality, ready for immediate delivery."
-        else:
-            default_name = clean_name.title() if len(clean_name) > 3 else ("Verified Product Video Item" if is_video else "Premium Quality Store Item")
-            default_price = random.choice([12500, 16000, 22500, 18000, 28000])
-            default_cost = int(default_price * 0.65)
-            default_type = "PHYSICAL"
-            default_cat = "General Goods"
-            default_desc = f"High-quality {default_name} verified for authenticity, durability, and value. Enjoy swift door-step dispatch and seamless WhatsApp order checkout."
-
         prompt = f"""
         You are a top-tier Google Vision AI tailored for Nigerian commerce and retail e-commerce inventory.
         {biz_context}
 
-        Analyze this product image/frame carefully (filename hint: "{file_name}"). Inspect all visible visual details:
-        - Product identification (what is it specifically: shoes, phone, wig, fabric, food item, software dashboard, service certificate, etc.).
-        - Color, material, finish, style, packaging, and visible features.
-        - Realistic Nigerian market retail selling price in Nigerian Naira (₦ integer, realistic for Nigerian consumers e.g. 8500, 15000, 28500, 45000, 85000).
-        - Estimated Cost Price (COGS, integer approx 60-70% of retail price).
-        - Correct Product Type: 'PHYSICAL', 'SERVICE', 'PROPERTY', or 'B2B'.
-        - Accurate Category (e.g., 'Fashion', 'Electronics', 'Beauty & Hair', 'Groceries', 'Home & Living', 'IT Support', 'Consulting', 'Real Estate').
-        - Persuasive, high-converting Nigerian sales copy (2-3 sentences) suitable for WhatsApp and Instagram sales. Highlight genuine durability, key benefits, fast nationwide waybill delivery, and direct order CTA.
-
-        Respond STRICTLY with a valid JSON object matching this schema:
+        Analyze this product image/frame carefully (filename hint: "{clean_name or file_name}").
+        Identify what is visible, suggest a realistic Nigerian Naira retail selling price and wholesale cost price, product_type ('PHYSICAL', 'SERVICE', 'PROPERTY', or 'B2B'), category, and accurate 2-3 sentence Nigerian sales description.
+        Respond STRICTLY with valid JSON:
         {{
             "name": "Specific Product Name",
             "price": 28500,
             "cost_price": 18000,
             "product_type": "PHYSICAL",
             "category": "Fashion",
-            "description": "High-converting 2-3 sentence product sales description with benefit hooks and WhatsApp call to action."
+            "description": "Concise product description and WhatsApp CTA."
         }}
         """
 
@@ -453,56 +416,39 @@ class ProductSnapAndListView(views.APIView):
                 image_base64=clean_b64,
                 mime_type=mime_type
             )
-            
-            if isinstance(content, dict) and 'name' in content and 'price' in content and 'description' in content:
-                # Ensure price is valid number and description is not empty
-                try:
-                    p = int(content.get('price') or default_price)
-                except (ValueError, TypeError):
-                    p = default_price
 
+            if isinstance(content, dict) and 'name' in content and 'price' in content and not content.get('error'):
                 try:
-                    c = int(content.get('cost_price') or int(p * 0.65))
+                    p = int(content.get('price') or 0)
                 except (ValueError, TypeError):
-                    c = int(p * 0.65)
-
+                    p = 0
+                try:
+                    c = int(content.get('cost_price') or 0)
+                except (ValueError, TypeError):
+                    c = 0
                 d = str(content.get('description') or '').strip()
-                if not d or len(d) < 15:
-                    d = default_desc
-
-                prod_name = str(content.get('name') or default_name).strip()
-                prod_cat = str(content.get('category') or default_cat).strip()
-                prod_type = str(content.get('product_type') or default_type).strip()
+                prod_name = str(content.get('name') or clean_name.title() or 'Store Item').strip()
+                prod_cat = str(content.get('category') or 'General Goods').strip()
+                prod_type = str(content.get('product_type') or 'PHYSICAL').strip()
                 if prod_type not in ['PHYSICAL', 'SERVICE', 'PROPERTY', 'B2B']:
-                    prod_type = default_type
+                    prod_type = 'PHYSICAL'
 
                 return Response({
                     'name': prod_name,
-                    'price': p if p > 0 else default_price,
-                    'cost_price': c if c > 0 else default_cost,
+                    'price': max(0, p),
+                    'cost_price': max(0, c),
                     'product_type': prod_type,
                     'category': prod_cat,
-                    'description': d
+                    'description': d or prod_name,
+                    'credits': remaining,
+                    'credits_deducted_server': True,
                 })
-            else:
-                return Response({
-                    'name': default_name,
-                    'price': default_price,
-                    'cost_price': default_cost,
-                    'product_type': default_type,
-                    'category': default_cat,
-                    'description': default_desc
-                })
+
+            refund_ai_credits(request.user, reserved, 'Snap & List Unavailable')
+            return Response({'error': 'Could not analyze image right now. Your credits were refunded—please try again or enter details manually.'}, status=502)
         except Exception as e:
-            print(f"Product snap view exception: {e}")
-            return Response({
-                'name': default_name,
-                'price': default_price,
-                'cost_price': default_cost,
-                'product_type': default_type,
-                'category': default_cat,
-                'description': default_desc
-            })
+            refund_ai_credits(request.user, reserved, 'Snap & List Error')
+            return Response({'error': f'Snap & List failed: {str(e)}'}, status=503)
 
 
 class RelatedEcosystemProductsView(views.APIView):
@@ -512,7 +458,7 @@ class RelatedEcosystemProductsView(views.APIView):
         category = request.query_params.get('category', '').strip()
         exclude_brand_id = request.query_params.get('exclude_brand_id', '').strip()
 
-        qs = Product.objects.filter(is_suspended=False).order_by('-created_at')
+        qs = Product.objects.filter(is_public=True, is_suspended=False).order_by('-created_at')
 
         if exclude_brand_id:
             qs = qs.exclude(brand_id=exclude_brand_id)
@@ -522,9 +468,8 @@ class RelatedEcosystemProductsView(views.APIView):
             if qs_cat.exists():
                 qs = qs_cat
 
-        # Return up to 6 items for ecosystem cross-discovery
         products = qs[:6]
-        serializer = ProductSerializer(products, many=True, context={'request': request})
+        serializer = PublicProductSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -963,11 +908,14 @@ class DailySaleListCreateView(generics.ListCreateAPIView):
         if update_fields:
             sale.save(update_fields=update_fields)
 
-        # Auto-decrement physical inventory stock count
-        if sale.product and sale.quantity > 0 and sale.product.product_type == 'PHYSICAL' and sale.product.stock_count > 0:
-            product = sale.product
-            product.stock_count = max(0, product.stock_count - sale.quantity)
-            product.save(update_fields=['stock_count'])
+        # Auto-decrement physical inventory stock count atomically
+        if sale.product and sale.quantity > 0 and sale.product.product_type == 'PHYSICAL':
+            from django.db.models import F
+            updated = Product.objects.filter(
+                pk=sale.product.pk, product_type='PHYSICAL', stock_count__gte=sale.quantity
+            ).update(stock_count=F('stock_count') - sale.quantity)
+            if not updated:
+                Product.objects.filter(pk=sale.product.pk, product_type='PHYSICAL', stock_count__gt=0).update(stock_count=0)
 
         try:
             from .models import LedgerAuditLog
@@ -1135,7 +1083,7 @@ class DailySummaryView(views.APIView):
         cogs = 0.0
         for s in sales:
             cogs += float(s.cost_price or 0.0) * s.quantity
-        gross_profit = max(0.0, total_sales_revenue - cogs)
+        gross_profit = total_sales_revenue - cogs
 
         # Expenses
         total_expenses = float(expenses.aggregate(total=Sum('amount'))['total'] or 0.00)
@@ -1215,7 +1163,7 @@ class DailyTrendsView(views.APIView):
 
         series = []
         for day, v in per_day.items():
-            profit = max(0.0, v['revenue'] - v['cogs']) - v['expenses']
+            profit = (v['revenue'] - v['cogs']) - v['expenses']
             series.append({'date': day, 'revenue': round(v['revenue'], 2), 'expenses': round(v['expenses'], 2),
                            'profit': round(profit, 2)})
 
@@ -1298,13 +1246,31 @@ class DailySaleDetailView(generics.RetrieveUpdateDestroyAPIView):
 
         updated_sale = serializer.save(is_edited=True, edited_at=timezone.now())
 
-        # If connected to product, adjust inventory differential
-        if updated_sale.product:
-            if old_product == updated_sale.product:
+        # Adjust physical inventory atomically across edits/product changes
+        from django.db.models import F
+        if old_product and old_product.product_type == 'PHYSICAL':
+            if updated_sale.product and old_product.pk == updated_sale.product.pk:
                 qty_diff = updated_sale.quantity - old_qty
-                if qty_diff != 0:
-                    updated_sale.product.stock_count = max(0, (updated_sale.product.stock_count or 0) - qty_diff)
-                    updated_sale.product.save(update_fields=['stock_count'])
+                if qty_diff > 0:
+                    updated_count = Product.objects.filter(pk=old_product.pk, stock_count__gte=qty_diff).update(
+                        stock_count=F('stock_count') - qty_diff
+                    )
+                    if not updated_count:
+                        Product.objects.filter(pk=old_product.pk).update(stock_count=0)
+                elif qty_diff < 0:
+                    Product.objects.filter(pk=old_product.pk).update(stock_count=F('stock_count') + abs(qty_diff))
+            else:
+                Product.objects.filter(pk=old_product.pk).update(stock_count=F('stock_count') + old_qty)
+                if updated_sale.product and updated_sale.product.product_type == 'PHYSICAL':
+                    updated_count = Product.objects.filter(
+                        pk=updated_sale.product.pk, stock_count__gte=updated_sale.quantity
+                    ).update(stock_count=F('stock_count') - updated_sale.quantity)
+                    if not updated_count:
+                        Product.objects.filter(pk=updated_sale.product.pk).update(stock_count=0)
+        elif updated_sale.product and updated_sale.product.product_type == 'PHYSICAL':
+            Product.objects.filter(
+                pk=updated_sale.product.pk, stock_count__gte=updated_sale.quantity
+            ).update(stock_count=F('stock_count') - updated_sale.quantity)
 
         LedgerAuditLog.objects.create(
             user=self.request.user,
@@ -1327,10 +1293,10 @@ class DailySaleDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_destroy(self, instance):
         from django.utils import timezone
+        from django.db.models import F
         from .models import LedgerAuditLog
-        if instance.product and instance.quantity > 0:
-            instance.product.stock_count = (instance.product.stock_count or 0) + instance.quantity
-            instance.product.save(update_fields=['stock_count'])
+        if instance.product and instance.product.product_type == 'PHYSICAL' and instance.quantity > 0:
+            Product.objects.filter(pk=instance.product.pk).update(stock_count=F('stock_count') + instance.quantity)
         instance.is_voided = True
         instance.voided_at = timezone.now()
         instance.save(update_fields=['is_voided', 'voided_at'])
@@ -1456,7 +1422,7 @@ class DailyAIInsightsView(views.APIView):
 
         # COGS & Margins
         cogs = sum(float(s.cost_price or 0.0) * s.quantity for s in sales)
-        gross_profit = max(0.0, total_sales_revenue - cogs)
+        gross_profit = total_sales_revenue - cogs
         margin_pct = round((gross_profit / total_sales_revenue * 100), 1) if total_sales_revenue > 0 else 0
 
         # Expenses breakdown
@@ -1724,7 +1690,7 @@ class DailyAIAskView(views.APIView):
                     'profit': 0.0,
                     'stock_remaining': prod.stock_count if (prod and prod.product_type == 'PHYSICAL') else None,
                     'product_type': prod.product_type if prod else 'PHYSICAL',
-                    'category': (prod.category.name if (prod and getattr(prod, 'category', None)) else 'General')
+                    'category': (getattr(prod, 'category', None) or 'General') if prod else 'General'
                 }
             qty = s.quantity or 1
             tot = float(s.total_amount or 0.0)
@@ -1732,7 +1698,7 @@ class DailyAIAskView(views.APIView):
             item_map[key]['quantity_sold'] += qty
             item_map[key]['revenue'] += tot
             item_map[key]['cost'] += cost
-            item_map[key]['profit'] += max(0.0, tot - cost)
+            item_map[key]['profit'] += (tot - cost)
 
         sorted_by_revenue = sorted(item_map.values(), key=lambda x: x['revenue'], reverse=True)
         sorted_by_qty = sorted(item_map.values(), key=lambda x: x['quantity_sold'], reverse=True)
@@ -1743,7 +1709,7 @@ class DailyAIAskView(views.APIView):
         top_by_profit = sorted_by_profit[0] if sorted_by_profit else None
 
         cogs = sum(x['cost'] for x in item_map.values())
-        gross_profit = max(0.0, total_revenue - cogs)
+        gross_profit = total_revenue - cogs
         net_profit = gross_profit - total_expenses
         margin_pct = round((gross_profit / total_revenue * 100), 1) if total_revenue > 0 else 0.0
 
@@ -1955,15 +1921,22 @@ class PaperReceiptOCRView(views.APIView):
         from smartbiz_backend import gemini_utils
         from billing.utils import reserve_ai_credits, refund_ai_credits
 
+        MAX_IMAGE_BYTES = 10 * 1024 * 1024
         img_file = request.FILES.get('receipt_image')
         img_b64 = request.data.get('image_base64') or request.data.get('receipt_image')
         mime_type = request.data.get('mimeType') or 'image/jpeg'
 
         if img_file:
-            raw_bytes = img_file.read()
+            if getattr(img_file, 'size', 0) > MAX_IMAGE_BYTES:
+                return Response({"error": "Receipt image exceeds 10 MB size limit."}, status=status.HTTP_400_BAD_REQUEST)
+            raw_bytes = img_file.read(MAX_IMAGE_BYTES + 1)
+            if len(raw_bytes) > MAX_IMAGE_BYTES:
+                return Response({"error": "Receipt image exceeds 10 MB size limit."}, status=status.HTTP_400_BAD_REQUEST)
             img_b64 = base64.b64encode(raw_bytes).decode('utf-8')
             raw_mime = img_file.content_type or 'image/jpeg'
             mime_type = 'image/png' if 'png' in raw_mime else 'image/jpeg'
+        elif isinstance(img_b64, str) and len(img_b64) > MAX_IMAGE_BYTES * 2:
+            return Response({"error": "Receipt image payload exceeds maximum size limit."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not img_b64:
             return Response({"error": "No receipt or ledger image provided."}, status=status.HTTP_400_BAD_REQUEST)
@@ -2023,29 +1996,41 @@ class PaperReceiptOCRView(views.APIView):
 class VisualSearchProductView(views.APIView):
     """
     Cutting-Edge AI Feature: Visual Search by Image & Photo Matching.
-    Customers upload an image (e.g. from Instagram or a snapshot).
-    Multimodal AI identifies product features, visual attributes, and compares
-    against the merchant's catalog or global marketplace to return top matching items.
+    Authenticated users/merchants upload an image and match against catalog items.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     throttle_scope = 'visual_search'
 
     def post(self, request):
         import base64
         from smartbiz_backend import gemini_utils
+        from billing.utils import reserve_ai_credits, refund_ai_credits
+        from billing.catalog import AI_CREDIT_COSTS
 
+        MAX_IMAGE_BYTES = 10 * 1024 * 1024
         img_file = request.FILES.get('image')
         img_b64 = request.data.get('image_base64') or request.data.get('image')
         mime_type = request.data.get('mimeType') or 'image/jpeg'
 
         if img_file:
-            raw_bytes = img_file.read()
+            if getattr(img_file, 'size', 0) > MAX_IMAGE_BYTES:
+                return Response({"error": "Image exceeds 10 MB size limit."}, status=status.HTTP_400_BAD_REQUEST)
+            raw_bytes = img_file.read(MAX_IMAGE_BYTES + 1)
+            if len(raw_bytes) > MAX_IMAGE_BYTES:
+                return Response({"error": "Image exceeds 10 MB size limit."}, status=status.HTTP_400_BAD_REQUEST)
             img_b64 = base64.b64encode(raw_bytes).decode('utf-8')
             raw_mime = img_file.content_type or 'image/jpeg'
             mime_type = 'image/png' if 'png' in raw_mime else 'image/jpeg'
+        elif isinstance(img_b64, str) and len(img_b64) > MAX_IMAGE_BYTES * 2:
+            return Response({"error": "Image payload exceeds maximum size limit."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not img_b64:
             return Response({"error": "No query image provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        cost = AI_CREDIT_COSTS.get('visual_search', 1)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'Visual Product Search')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credit).", "credits": remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         # 1. Inspect image to extract search tags & visual description
         prompt = """
@@ -2062,6 +2047,9 @@ class VisualSearchProductView(views.APIView):
 
         try:
             parsed = gemini_utils.generate_json_content(prompt, image_base64=img_b64, mime_type=mime_type)
+            if not isinstance(parsed, dict) or parsed.get("error"):
+                refund_ai_credits(request.user, reserved, 'Visual Search Unavailable')
+                return Response({"error": "Visual search temporarily unavailable."}, status=status.HTTP_502_BAD_GATEWAY)
             keywords = parsed.get("keywords", []) if isinstance(parsed, dict) else []
             detected_name = parsed.get("detected_item", "") if isinstance(parsed, dict) else ""
             category = parsed.get("category", "") if isinstance(parsed, dict) else ""
@@ -2076,12 +2064,11 @@ class VisualSearchProductView(views.APIView):
             if category:
                 query |= Q(category__icontains=category)
 
-            matching_products = Product.objects.filter(query, is_public=True).distinct()[:8]
+            matching_products = Product.objects.filter(query, is_public=True, is_suspended=False).distinct()[:8]
             if not matching_products.exists():
-                matching_products = Product.objects.filter(is_public=True).order_by('-created_at')[:6]
+                matching_products = Product.objects.filter(is_public=True, is_suspended=False).order_by('-created_at')[:6]
 
-            from .serializers import ProductSerializer
-            serializer = ProductSerializer(matching_products, many=True, context={'request': request})
+            serializer = PublicProductSerializer(matching_products, many=True, context={'request': request})
 
             return Response({
                 "detected_item": detected_name or "Store Product",
@@ -2154,25 +2141,27 @@ class WhatsAppCartRecoveryView(views.APIView):
 class PublicDebtorSettlementView(views.APIView):
     """
     Publicly accessible endpoint for debtors to view their debt details,
-    the merchant's verified bank account, and settle their balance.
-    No authentication required so debtors can settle on any phone.
+    the merchant's verified bank account, and settle their balance via unguessable token.
     """
     permission_classes = [permissions.AllowAny]
 
+    @staticmethod
+    def _find_sale(debtor_id, lock=False):
+        from .models import DailySale
+        token = str(debtor_id or '').strip()
+        if not token or len(token) < 6:
+            return None
+        qs = DailySale.objects.select_for_update() if lock else DailySale.objects
+        qs = qs.filter(is_voided=False)
+        sale = qs.filter(settlement_token=token).first()
+        if not sale:
+            sale = qs.filter(notes__contains=f"#{token}").first()
+        return sale
+
     def get(self, request, debtor_id):
-        from .models import DailySale, VendorVerification
-        from django.db.models import Q
+        from .models import VendorVerification
 
-        sale = None
-        if debtor_id:
-            sale = DailySale.objects.filter(is_voided=False).filter(
-                Q(notes__icontains=f"#{debtor_id}") |
-                Q(notes__icontains=str(debtor_id))
-            ).first()
-
-            if not sale and str(debtor_id).isdigit():
-                sale = DailySale.objects.filter(pk=int(debtor_id), is_voided=False).first()
-
+        sale = self._find_sale(debtor_id, lock=False)
         if not sale:
             return Response({"found": False}, status=status.HTTP_404_NOT_FOUND)
 
@@ -2223,7 +2212,7 @@ class PublicDebtorSettlementView(views.APIView):
         """Mark debt settled ONLY after server-side Paystack verification of both status and paid amount."""
         from decimal import Decimal
         from django.db import transaction
-        from django.db.models import Q
+        from billing.models import PaymentReferenceLedger
         from .commerce_orders import verify_paystack
         from .models import DailySale, LedgerAuditLog
 
@@ -2231,9 +2220,14 @@ class PublicDebtorSettlementView(views.APIView):
         if not reference:
             return Response({"error": "Verified Paystack reference is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Prevent replay of the same payment reference across multiple debts
-        if DailySale.objects.filter(notes__icontains=f"Paystack (Ref: {reference})").exists():
+        # Look up the target debt first so same-debt retries stay idempotent while cross-debt replays fail 409
+        sale_precheck = self._find_sale(debtor_id, lock=False)
+        if not sale_precheck:
+            return Response({"error": "Debt record not found."}, status=status.HTTP_404_NOT_FOUND)
+        if sale_precheck.settlement_reference == reference or f"Paystack (Ref: {reference})" in (sale_precheck.notes or ""):
             return Response({"success": True, "idempotent": True, "message": "Debt settlement already recorded for this reference."})
+        if DailySale.objects.filter(settlement_reference=reference).exists() or DailySale.objects.filter(notes__icontains=f"Paystack (Ref: {reference})").exists():
+            return Response({"error": "This payment reference was already applied to another debt record."}, status=status.HTTP_409_CONFLICT)
 
         outcome, paid_amount = verify_paystack(reference)
         if outcome != 'success' or paid_amount is None:
@@ -2243,16 +2237,11 @@ class PublicDebtorSettlementView(views.APIView):
             )
 
         with transaction.atomic():
-            sale = None
-            if debtor_id:
-                sale = DailySale.objects.select_for_update().filter(is_voided=False).filter(
-                    Q(notes__icontains=f"#{debtor_id}") |
-                    Q(notes__icontains=str(debtor_id))
-                ).first()
+            claimed = PaymentReferenceLedger.objects.select_for_update().filter(reference=reference).first()
+            if claimed and (claimed.purpose != 'DEBT_SETTLEMENT' or str(claimed.target_id) != str(sale_precheck.pk)):
+                return Response({"error": "This payment reference was already used for another transaction."}, status=status.HTTP_409_CONFLICT)
 
-                if not sale and str(debtor_id).isdigit():
-                    sale = DailySale.objects.select_for_update().filter(pk=int(debtor_id), is_voided=False).first()
-
+            sale = self._find_sale(debtor_id, lock=True)
             if not sale:
                 return Response({"error": "Debt record not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -2265,9 +2254,19 @@ class PublicDebtorSettlementView(views.APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            if not claimed:
+                PaymentReferenceLedger.objects.create(
+                    reference=reference,
+                    purpose='DEBT_SETTLEMENT',
+                    user=sale.user,
+                    amount_ngn=paid_amount,
+                    target_id=str(sale.pk),
+                )
+
             sale.is_debt = False
+            sale.settlement_reference = reference
             sale.notes = (sale.notes or "") + f" | Settled via 1-Tap Paystack (Ref: {reference})"
-            sale.save(update_fields=['is_debt', 'notes'])
+            sale.save(update_fields=['is_debt', 'settlement_reference', 'notes'])
 
             LedgerAuditLog.objects.create(
                 user=sale.user,

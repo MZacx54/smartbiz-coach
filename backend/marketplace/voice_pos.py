@@ -408,8 +408,10 @@ class VoicePOSConfirmView(views.APIView):
                     new_items.append({'id': product.id, 'name': product.name,
                                       'product_type': product.product_type, 'price': float(product.price)})
                 elif product.product_type == 'PHYSICAL' and product.stock_count > 0:
-                    product.stock_count = max(0, product.stock_count - s['quantity'])
-                    product.save(update_fields=['stock_count'])
+                    from django.db.models import F as _F
+                    Product.objects.filter(pk=product.pk, product_type='PHYSICAL', stock_count__gte=s['quantity']).update(
+                        stock_count=_F('stock_count') - s['quantity']
+                    )
 
                 sale = DailySale.objects.create(
                     user=request.user, product=product, item_name=s['item_name'],

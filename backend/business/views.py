@@ -1,11 +1,15 @@
+import re
 from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from smartbiz_backend import gemini_utils
-from content.views import deduct_credits
+from smartbiz_backend.throttles import BusinessPlanThrottle
+from billing.utils import reserve_ai_credits, refund_ai_credits
+from billing.catalog import AI_CREDIT_COSTS
 
 class GenerateBusinessPlanView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [BusinessPlanThrottle]
 
     def post(self, request):
         name = request.data.get('businessName') or request.data.get('business_name') or request.data.get('name') or getattr(request.user, 'business_name', '') or 'SmartBiz Enterprise'
@@ -15,6 +19,11 @@ class GenerateBusinessPlanView(views.APIView):
         employees = request.data.get('employeesCount') or request.data.get('employees') or '1-3 employees'
         revenue_model = request.data.get('revenueModel') or request.data.get('revenue_model') or 'Direct retail & service sales'
         location = request.data.get('location') or getattr(request.user, 'location', 'Lagos, Nigeria')
+
+        cost = AI_CREDIT_COSTS.get('business_plan', 15)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, f'AI Business Plan ({str(name)[:40]})')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=402)
 
         from brand.models import BrandIdentity
         # Retrieve BrandIdentity to enrich prompt with user's specific brand settings
@@ -121,9 +130,7 @@ CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NE
 """
         
         try:
-            plan = gemini_utils.generate_json_content(prompt)
-            
-            # Handle list outputs or non-dict structures safely
+            plan = gemini_utils.generate_json_content(prompt, user=request.user, feature='business_plan')
             if isinstance(plan, dict) and 'error' not in plan:
                 normalized_plan = {
                     'executiveSummary': plan.get('executiveSummary') or plan.get('executive_summary') or plan.get('ExecutiveSummary') or "",
@@ -136,312 +143,23 @@ CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NE
                     'underwritingSummary': plan.get('underwritingSummary') or plan.get('underwriting_summary') or plan.get('UnderwritingSummary') or "",
                     'promoterDeclaration': plan.get('promoterDeclaration') or plan.get('promoter_declaration') or plan.get('PromoterDeclaration') or ""
                 }
-                # Anti-brevity safeguards: augment with rich pre-computed bank-grade models if LLM truncated tables
-                fin = normalized_plan.get('financialProjection', '')
-                if 'omitted for brevity' in fin.lower() or 'month 12' not in fin.lower() or fin.count('|') < 10:
-                    normalized_plan['financialProjection'] = fallback_plan['financialProjection']
-                
-                if len(normalized_plan.get('underwritingSummary', '')) < 250 or '|' not in normalized_plan.get('underwritingSummary', ''):
-                    normalized_plan['underwritingSummary'] = fallback_plan['underwritingSummary']
-                    
-                if len(normalized_plan.get('promoterDeclaration', '')) < 250:
-                    normalized_plan['promoterDeclaration'] = fallback_plan['promoterDeclaration']
-                    
-                if len(normalized_plan.get('riskMitigation', '')) < 200:
-                    normalized_plan['riskMitigation'] = fallback_plan['riskMitigation']
-
-                if len(normalized_plan['executiveSummary']) > 150 and len(normalized_plan['marketAnalysis']) > 150:
+                if len(normalized_plan['executiveSummary']) > 120 and len(normalized_plan['marketAnalysis']) > 120:
+                    if not normalized_plan['promoterDeclaration']:
+                        normalized_plan['promoterDeclaration'] = (
+                            f"Promoter Declaration ({name}): Confirm business registration, annual Nigeria Revenue Service (NRS) filings, "
+                            f"and verify NTA 2025 small-company eligibility with a certified tax adviser. Not legal or tax advice."
+                        )
+                    normalized_plan['credits'] = remaining
+                    normalized_plan['credits_deducted_server'] = True
                     return Response(normalized_plan)
         except Exception as e:
             print(f"Business plan generation error: {e}")
 
-        # Exhaustive investor-grade fallback plan tailored with deep Nigerian economic modeling
-        fallback_plan = {
-            "executiveSummary": f"""1.1 ENTERPRISE OVERVIEW & PROBLEM STATEMENT
-{name} is a high-growth commercial enterprise established to capture strong, unmet market demand within Nigeria's burgeoning {niche} sector. In today's volatile economic landscape, consumers and commercial buyers face persistent pain points: unpredictable product quality, opaque pricing structures, unreliable fulfillment timelines, and poor customer service. {name} directly solves these vulnerabilities by institutionalizing standardized procurement, transparent tiered pricing, rapid digital fulfillment, and dedicated relationship management.
-
-1.2 THE INNOVATION & UNIQUE VALUE PROPOSITION (UVP)
-Operating from {location}, {name} combines direct-to-consumer digital channels with robust local fulfillment networks. Unlike traditional informal market traders, {name} delivers:
-- Verified product authenticity and batch-level quality control.
-- Seamless WhatsApp-first social commerce with instant catalog browsing, real-time inventory visibility, and digital invoicing.
-- High-efficiency dispatch and waybill fulfillment with same-day local delivery and 48-hour nationwide transit.
-- Flexible payment reconciliation via instant bank transfer and verified escrow gateways.
-
-1.3 TARGET MARKET & DEMOGRAPHIC POTENTIAL
-The enterprise targets two primary revenue cohorts:
-1. Urban Middle-Class Consumers & Professionals: Seeking premium, reliable goods with zero hassle.
-2. B2B Commercial Buyers & Retail Resellers: Requiring steady wholesale replenishment with guaranteed margins and predictable delivery schedules.
-
-1.4 BUSINESS MODEL & COMMERCIAL REVENUE DRIVERS
-{name} operates a multi-stream revenue model centered around {revenue_model}. Core monetization channels include:
-- Direct Retail Sales: High-margin retail commerce driven by social proof and digital marketing.
-- Wholesale & Bulk Distribution: Volume-discounted orders providing predictable baseline cash flow.
-- Value-Added Service & Custom Packaging: Premium customized orders generating incremental gross margins.
-
-1.5 CAPITAL REQUIREMENT & RESOURCE ALLOCATION
-To scale operations, expand inventory reserves, and solidify market leadership, {name} is deployed with an initial capitalization base of {capital}. Capital is allocated rigorously across four strategic pillars:
-- 45% Working Capital & Inventory Stocking: Sourcing high-demand inventory directly from tier-1 manufacturers to secure wholesale volume discounts.
-- 25% Logistics, Power & Operational Infrastructure: Installing a hybrid solar inverter system (to eliminate diesel generator downtime) and establishing dispatch logistics hubs.
-- 20% Omnichannel Marketing & Customer Acquisition: Scaling hyper-targeted social media campaigns, influencer partnerships, and localized activations.
-- 10% Regulatory Compliance, Quality Assurance & Emergency Buffer: Maintaining CAC, TIN, and operational contingency reserves.
-
-1.6 3-YEAR STRATEGIC GROWTH & FINANCIAL SUMMARY
-Over the next 36 months, {name} is projected to achieve:
-- Year 1 Gross Revenue: ₦18,500,000 (Net Margin: 27.0%)
-- Year 2 Gross Revenue: ₦42,000,000 (Net Margin: 32.5%)
-- Year 3 Gross Revenue: ₦85,000,000 (Net Margin: 28.5% post-CIT)
-- Break-even milestone achieved by Month 4 of operations, with full capital payback anticipated within 14 months.""",
-
-            "marketAnalysis": f"""2.1 NIGERIAN SECTOR OVERVIEW & MACRO DYNAMICS
-Nigeria's {niche} industry is undergoing a structural transition driven by rapid urbanization, an expanding tech-savvy youth demographic, and widespread smartphone penetration exceeding 85% in major urban commercial centers. Despite macroeconomic headwinds such as inflation and foreign exchange volatility, consumer spending on essential and lifestyle goods remains resilient, with buyers increasingly shifting toward trusted, digitally enabled merchants who guarantee quality and prompt delivery.
-
-2.2 TARGET CUSTOMER PERSONAS & DEMOGRAPHICS
-{name} has segmented its market into three distinct buyer personas:
-1. 'The Digital Professional' (Ages 24–45, 60% of volume): Urban salaried professionals and tech workers who value convenience, speed, and trusted digital communication. They prioritize effortless ordering via WhatsApp and fast door-to-door delivery.
-2. 'The Value-Seeking Family Shopper' (Ages 30–55, 25% of volume): Household decision-makers focused on durability, transparent pricing, and bulk discount incentives.
-3. 'The SME / Corporate Reseller' (Commercial accounts, 15% of volume): Small boutique owners and business operators who require reliable wholesale supply, consistent quality, and formal tax/invoicing documentation.
-
-2.3 MARKET SIZING (TAM, SAM, SOM) IN NIGERIAN NAIRA
-- Total Addressable Market (TAM): Estimated at ₦450 Billion nationally across Nigeria's broader {niche} ecosystem.
-- Serviceable Available Market (SAM): Estimated at ₦45 Billion, encompassing accessible urban markets in Lagos, Abuja, Port Harcourt, Kano, and Ibadan with active logistics networks.
-- Serviceable Obtainable Market (SOM): Targeted at ₦120 Million over the next 3 years by capturing a dominant 0.25% market share in primary operating zones through superior branding and customer retention.
-
-2.4 COMPETITIVE LANDSCAPE & ADVANTAGE MATRIX
-The local market is currently characterized by three tiers of competition:
-- Informal Open-Market Traders: Low prices but plagued by inconsistent quality, zero after-sales support, and manual, friction-heavy payment methods.
-- Large Retail Conglomerates: Established brand recognition but hindered by high overheads, slow customer response times, and premium price markups.
-- {name}'s Competitive Edge: Combines the agility and competitive pricing of independent traders with the institutional reliability, standardized packaging, digital speed, and professional customer care of major corporations.
-
-2.5 ENTRY BARRIERS & DEFENSIVE MOATS
-- Direct Supplier Relationships: Securing preferential wholesale pricing directly from factory importers and primary producers.
-- Proprietary Customer Community: Building an engaged WhatsApp and social media audience with high switching costs driven by personalized service and loyalty rewards.
-- Agile Digital Infrastructure: Utilizing automated order capture, debtor tracking, and inventory sync to operate at 40% lower overhead than brick-and-mortar competitors.""",
-
-            "marketingStrategy": f"""3.1 OMNICHANNEL CUSTOMER ACQUISITION STRATEGY
-{name} executes a multi-pronged digital and localized marketing framework designed to maximize organic reach and maintain low customer acquisition costs:
-1. WhatsApp Community Commerce: Daily curated status updates, flash sales, private VIP broadcast groups, and 1-on-1 personalized follow-ups to turn social contacts into repeat buyers.
-2. High-Converting Short-Form Video (TikTok & Instagram Reels): Product unboxings, customer testimonials, behind-the-scenes quality checks, and educational lifestyle content designed for viral organic discovery.
-3. Strategic Influencer & Micro-Creator Endorsements: Collaborating with trusted niche creators in {location} to drive authentic social proof and instant credibility.
-4. Local B2B Outreach & Commercial Activations: Direct distribution of branded flyers, corporate catalogs, and introductory trial packages in high-traffic business districts.
-
-3.2 UNIT ECONOMICS & CAC VS. LTV OPTIMIZATION
-- Estimated Customer Acquisition Cost (CAC): ₦1,200 – ₦2,500 per paying customer via targeted digital channels.
-- Average Order Value (AOV): ₦18,500 – ₦45,000 across product categories.
-- Projected Customer Lifetime Value (LTV): ₦125,000 over 12 months based on a conservative 4.2x annual repurchase frequency.
-- LTV-to-CAC Ratio: 50:1, demonstrating outstanding marketing ROI and highly profitable unit economics.
-
-3.3 CONVERSION FUNNEL & DAILY SALES PIPELINE
-- Stage 1 (Awareness): Targeted reels, paid meta ads, and word-of-mouth driving traffic to the digital storefront.
-- Stage 2 (Engagement): Automated instant WhatsApp greeting with product catalogs, pricing tiers, and active promotional vouchers.
-- Stage 3 (Checkout): Seamless invoice generation with verified bank payment details and automated order confirmation.
-- Stage 4 (Fulfillment & Review): Dispatch tracking notification followed by an automated review/feedback request within 48 hours.
-
-3.4 CUSTOMER RETENTION, LOYALTY LOOPS & REFERRALS
-- 'Refer-a-Friend' Incentive: Providing a 5% discount on the referrer's next purchase and a ₦1,000 voucher for new referred buyers.
-- VIP Priority Access: Exclusive first-look access to new inventory arrivals and seasonal clearance discounts for repeat customers.
-- Proactive Relationship Management: Automated birthday and milestone greetings coupled with customized restock reminders.""",
-
-            "operationalPlan": f"""4.1 DAILY OPERATIONAL WORKFLOW & STANDARD OPERATING PROCEDURES
-{name} operates with streamlined, documented SOPs to ensure flawless daily execution:
-- Morning Shift (08:00 - 10:00): Inventory audit, reconciliation of incoming stock, and review of overnight digital orders.
-- Mid-Day Operations (10:00 - 15:00): Order processing, packaging in branded protective materials, quality inspection, and dispatch handover to courier partners.
-- Afternoon/Evening (15:00 - 18:00): Customer support, delivery confirmation tracking, debtor ledger reconciliation, and daily financial balancing.
-
-4.2 SUPPLY CHAIN RESILIENCE & SOURCING STRATEGY
-To mitigate inflation and foreign exchange shocks, {name} maintains a diversified dual-sourcing model:
-- Primary Tier: Long-term agreements with verified primary importers and local manufacturers with guaranteed 30-day price-lock commitments.
-- Secondary Tier: Pre-vetted local distributor network in major wholesale commercial centers for rapid emergency restocks.
-- Buffer Inventory: Maintaining a minimum 21-day safety stock on high-velocity SKUs to prevent stockouts during supplier lead-time spikes.
-
-4.3 LOGISTICS, FULFILLMENT & WAYBILL PARTNERSHIPS
-- Local Intra-City Deliveries: Exclusive SLAs with dedicated dispatch courier networks in {location} ensuring 2- to 4-hour express fulfillment.
-- Interstate Transit: Strategic partnerships with established logistics providers (e.g., GIG Logistics, Speedaf, Peace Mass Transit) offering trackable waybill services across all 36 Nigerian states.
-
-4.4 POWER & INFRASTRUCTURE CONTINUITY (100% UPTIME)
-To eliminate downtime caused by national grid instability:
-- Primary Power Backup: 3.5kVA Pure Sine Wave Solar Inverter installation equipped with lithium-ion batteries powering all computers, routers, lighting, and communication devices.
-- Secondary Backup: Low-fuel consumption generator for peak machinery operation during extended rainy spells.
-- Internet Redundancy: Dual high-speed 4G/5G mobile routers (MTN + Airtel) ensuring zero disruption to digital orders and customer messaging.
-
-4.5 STAFFING STRUCTURE & KEY PERSONNEL
-Operated by an agile team of {employees}:
-- Managing Director / Founder: Strategic direction, supplier negotiations, marketing campaigns, and financial oversight.
-- Operations & Fulfillment Lead: Packaging, inventory management, courier coordination, and quality control.
-- Customer Care & Sales Associate: WhatsApp community management, order entry, and after-sales support.""",
-
-            "financialProjection": f"""5.1 STARTUP CAPITAL EXPENDITURE (CAPEX) & WORKING CAPITAL
-Total Capital Base: {capital}
-
-| Expenditure Item | Category | Allocation (₦) | % Total | Strategic Purpose |
-| :--- | :--- | :--- | :--- | :--- |
-| **Initial Inventory Stocking** | Working Capital | ₦2,250,000 | 45.0% | Direct wholesale procurement from Tier-1 suppliers at volume discounts |
-| **Logistics & Packaging Setup** | Fixed Asset | ₦600,000 | 12.0% | Commercial packaging, thermal dispatch barcode printers, precision scales |
-| **Solar Power Continuity System** | Infrastructure | ₦650,000 | 13.0% | 3.5kVA Pure Sine Wave Inverter + Lithium Battery for 24/7 power uptime |
-| **Omnichannel Customer Acquisition** | Marketing | ₦750,000 | 15.0% | Meta ads, TikTok/Reels creator activations, local B2B commercial campaigns |
-| **Regulatory & Tax Compliance** | Statutory | ₦250,000 | 5.0% | CAC incorporation, TIN, SMEDAN SUIN, corporate banking setup |
-| **Contingency Operating Reserve** | Cash Buffer | ₦500,000 | 10.0% | 90-day operational buffer against inflation and supplier lead-time shocks |
-| **TOTAL INITIAL CAPITAL ALLOCATION** | **All Categories** | **₦5,000,000** | **100.0%** | **Comprehensive Launch & Growth Capitalization** |
-
-5.2 3-YEAR PROJECTED INCOME STATEMENT (NGN)
-
-| Financial Metric | Year 1 (₦) | Year 2 (₦) | Year 3 (₦) | 3-Year CAGR / Growth Driver |
-| :--- | :--- | :--- | :--- | :--- |
-| **Gross Operating Revenue** | ₦18,500,000 | ₦42,000,000 | ₦85,000,000 | +114% CAGR via customer retention & B2B expansion |
-| **Cost of Goods Sold (COGS)** | (₦10,175,000) | (₦21,840,000) | (₦42,500,000) | Wholesale volume price locks reducing COGS to 50% |
-| **Gross Operating Profit** | **₦8,325,000** | **₦20,160,000** | **₦42,500,000** | **Gross Margin expands from 45.0% to 50.0%** |
-| Operating Overheads (Logistics, Rent) | (₦1,850,000) | (₦3,780,000) | (₦7,140,000) | Shared infrastructure & route optimization |
-| Staff Compensation & Personnel | (₦840,000) | (₦1,680,000) | (₦3,360,000) | Performance-linked incentive model |
-| Marketing & Customer Acquisition | (₦455,000) | (₦840,000) | (₦1,400,000) | LTV/CAC ratio exceeds 50:1 |
-| Total Operating Expenses (OPEX) | (₦3,145,000) | (₦6,300,000) | (₦11,900,000) | Scalable digital operating model |
-| **Operating EBITDA** | **₦5,180,000** | **₦13,860,000** | **₦30,600,000** | **EBITDA Margin: 28.0% -> 36.0%** |
-| Depreciation & Amortization | (₦180,000) | (₦220,000) | (₦260,000) | Straight-line asset depreciation |
-| **Net Operating Profit Before Tax** | **₦5,000,000** | **₦13,640,000** | **₦30,340,000** | **Robust Cashflow for Debt Service** |
-| Corporate Income Tax (CIT) | ₦0 | ₦0 | (₦6,068,000) | **Estimated CIT (consult tax adviser on NTA 2025 small-company eligibility)** |
-| **Net Retained Earnings** | **₦5,000,000** | **₦13,640,000** | **₦24,272,000** | **Net Profit Margin: 27.0% -> 28.5%** |
-
-*Note (Not Legal or Tax Advice): Under NTA 2025 / CITA provisions, small-company 0% CIT applies only to qualifying incorporated companies (Ltd) meeting statutory turnover and ₦250M fixed-asset caps (excluding professional services); mandatory annual Nigeria Revenue Service (NRS) filings and valid local/state permits still apply.*
-
-5.3 12-MONTH PROJECTED CASHFLOW TRAJECTORY (YEAR 1)
-
-| Month / Operating Period | Cash Inflow (₦) | Cash Outflow (₦) | Net Monthly Cashflow (₦) | Cumulative Cash Balance (₦) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Month 01 (Launch)** | ₦750,000 | ₦1,250,000 | (₦500,000) | ₦4,500,000 |
-| **Month 02** | ₦980,000 | ₦1,120,000 | (₦140,000) | ₦4,360,000 |
-| **Month 03** | ₦1,250,000 | ₦1,180,000 | ₦70,000 | ₦4,430,000 |
-| **Month 04 (Breakeven)** | ₦1,420,000 | ₦1,210,000 | ₦210,000 | ₦4,640,000 |
-| **Month 05** | ₦1,550,000 | ₦1,240,000 | ₦310,000 | ₦4,950,000 |
-| **Month 06** | ₦1,680,000 | ₦1,260,000 | ₦420,000 | ₦5,370,000 |
-| **Month 07** | ₦1,750,000 | ₦1,290,000 | ₦460,000 | ₦5,830,000 |
-| **Month 08** | ₦1,820,000 | ₦1,310,000 | ₦510,000 | ₦6,340,000 |
-| **Month 09** | ₦1,890,000 | ₦1,330,000 | ₦560,000 | ₦6,900,000 |
-| **Month 10** | ₦1,960,000 | ₦1,350,000 | ₦610,000 | ₦7,510,000 |
-| **Month 11** | ₦2,100,000 | ₦1,380,000 | ₦720,000 | ₦8,230,000 |
-| **Month 12** | ₦2,350,000 | ₦1,400,000 | ₦950,000 | ₦9,180,000 |
-| **FULL YEAR 1 TOTAL** | **₦18,500,000** | **₦15,320,000** | **₦3,180,000** | **₦9,180,000 Ending Cash** |
-
-5.4 KEY CREDIT, SOLVENCY & FINANCIAL METRICS
-
-| Financial & Solvency Metric | Institutional Benchmark | Year 1 Performance | Year 2 Performance | Underwriter Appraisal |
-| :--- | :--- | :--- | :--- | :--- |
-| **Debt Service Coverage Ratio (DSCR)** | Minimum >= 1.30x | **1.85x** | **2.65x** | **EXCELLENT (Low Default Risk)** |
-| **Gross Profit Margin** | Minimum >= 35.0% | **45.0%** | **48.0%** | **STRONG (Superior Pricing Power)** |
-| **Operating EBITDA Margin** | Minimum >= 15.0% | **28.0%** | **33.0%** | **HIGH OPERATIONAL EFFICIENCY** |
-| **Net Profit Margin** | Minimum >= 12.0% | **27.0%** | **32.5%** | **SUSTAINABLE PROFITABILITY** |
-| **Commercial Break-Even Point** | <= 6 Months | **Month 4 (₦680,000/mo)** | Surpassed | **FAST CASH GENERATION** |
-| **Capital Payback Horizon** | <= 24 Months | **14 Months** | Fully Recovered | **FAVORABLE CAPITAL VELOCITY** |
-| **Current Ratio (Liquidity)** | Minimum >= 1.50x | **2.85x** | **3.40x** | **ROBUST SHORT-TERM SOLVENCY** |""",
-
-            "swotAnalysis": f"""6.1 IN-DEPTH SWOT STRATEGIC ANALYSIS FOR {name}
-
-### STRENGTHS (Internal Advantages)
-- Agile Digital Sales Engine: High-converting WhatsApp community commerce and direct social selling with near-zero customer friction.
-- Lean Operational Cost Structure: Operating without bloated retail rent overheads, enabling 15–20% higher net margins than traditional competitors.
-- Uncompromising Quality Control: Direct sourcing protocols ensuring zero counterfeit products and top-tier customer trust.
-- Verified Payment & Invoicing Infrastructure: Seamless digital invoices and instant bank reconciliation building strong commercial credibility.
-
-### WEAKNESSES (Internal Improvement Areas)
-- Early-Stage Brand Awareness: Initial market presence requires aggressive social proof and targeted acquisition campaigns.
-- Reliance on Third-Party Couriers: Potential delivery delays caused by external logistics dispatch partners during peak rainy seasons.
-- Working Capital Constraints on Bulk Stocking: Need to balance rapid stock turnover against bulk purchase volume discounts.
-
-### OPPORTUNITIES (External Market Growth Vectors)
-- B2B Corporate Supply & Wholesale Expansion: Supplying larger retail outlets, corporate offices, and institutional buyers in bulk.
-- Interstate Geographic Scaling: Replicating {location} success across Abuja, Port Harcourt, and regional commerce hubs.
-- Nigerian Grant & MSME Funding Access: Capitalizing on active funding programs (e.g. Bank of Industry, iDICE, LSETF, TEF) to acquire specialized equipment and bulk inventory.
-- Digital Marketplace Dominance: Leveraging ecosystem listings to attract nationwide organic buyers.
-
-### THREATS (External Macroeconomic Risks)
-- Macroeconomic Inflation & Fuel Price Volatility: Escalating transport and delivery costs impacting margins.
-- Foreign Exchange Fluctuation: Rising import replacement costs for raw materials and imported goods.
-- Price Undercutting by Low-Quality Informal Traders: Competitors offering cheap counterfeit substitutes.
-
-6.2 STRATEGIC SWOT ACTION MATRIX
-
-| Strategy Type | Strategic Initiative | Execution Horizon | Expected Business Impact |
-| :--- | :--- | :--- | :--- |
-| **SO (Strengths + Opportunities)** | Deploy lean digital sales engine to bid on corporate contracts & apply for single-digit BOI asset funding | Months 1 - 6 | Scale institutional revenues by 150% with low capital cost |
-| **ST (Strengths + Threats)** | Deploy dynamic cost-plus pricing algorithms with a 10–15% floating inflation hedge buffer | Continuous | Insulate gross margin above 45% despite supplier shocks |
-| **WO (Weaknesses + Opportunities)** | Channel institutional expansion capital into volume manufacturer orders & dedicated dispatch partners | Months 3 - 9 | Eliminate delivery bottlenecks and unlock bulk discounts |
-| **WT (Weaknesses + Threats)** | Implement strict 100% advance digital settlement on custom orders & active debtor recovery nudges | Immediate | Preserve operating cashflow and restrict receivables < 5% |""",
-
-            "riskMitigation": f"""7.1 MACROECONOMIC INFLATION & FX SHIELDING PROTOCOL
-- Dynamic Cost-Plus Pricing Buffer: Adjusting retail and wholesale price lists dynamically with a 10–15% floating margin buffer to absorb sudden supplier increases without eroding profitability.
-- Fast Inventory Velocity: Maintaining a high inventory turnover cycle (<25 days) to ensure cash is never trapped in stagnant stock during inflationary surges.
-- Bulk Pre-Orders: Locking in wholesale prices with upfront supplier deposits prior to anticipated currency devaluations.
-
-7.2 REGULATORY & TAX COMPLIANCE ROADMAP
-- CAC Corporate Registration: Formally registered under the Corporate Affairs Commission (CAC) with active status.
-- Tax Identification Number (TIN): Fully linked with the Federal Inland Revenue Service (FIRS) and state revenue boards to ensure 100% compliance for corporate contracts and grant eligibility.
-- Standard Financial Ledgers: Utilizing SmartBiz audit-ready bookkeeping (invoicing, stock tracking, expense logs) to satisfy bank loan conditions and institutional grant audits.
-
-7.3 SUPPLY CHAIN DISRUPTIONS & INVENTORY PROTECTION
-- Dual-Vendor Redundancy: No single supplier accounts for more than 40% of total procurement, preventing single-point failure bottlenecks.
-- Safe Storage Protocols: Fire-rated, moisture-controlled, and digitally monitored warehouse inventory holding.
-- Strict Debtor Limits: Enforcing strict credit thresholds via Gbege Book debt recovery nudges to keep outstanding receivables under 5% of monthly revenue.
-
-7.4 GRANT & INSTITUTIONAL FUNDING ALIGNMENT
-{name}'s operational and financial structure is directly aligned with top Nigerian intervention funds:
-- **Bank of Industry (BOI) Micro-Enterprise Fund**: Eligible for single-digit concessionary asset financing.
-- **iDICE (Investment in Digital and Creative Enterprises)**: Positioned for tech-enabled digital commerce scaling.
-- **LSETF (Lagos State Employment Trust Fund)**: Tailored for local job creation and micro-expansion capital.
-- **Tony Elumelu Foundation (TEF)**: Structured to meet all seed grant application and mentorship criteria.""",
-
-            "underwritingSummary": f"""8.1 PROPOSED CREDIT FACILITY STRUCTURE & DEBT TERMS
-
-| Facility Parameter | Recommended Specification | Institutional Underwriter Justification |
-| :--- | :--- | :--- |
-| **Credit Facility Type** | Term Loan / Equipment Asset Financing & Working Capital Line | Matched to high-velocity stock procurement and power continuity infrastructure |
-| **Target Principal Amount** | {capital} | Structured to scale enterprise capacity and secure volume manufacturer discounts |
-| **Tenor / Amortization** | 24 - 36 Months | Optimizes cash retention while ensuring predictable monthly principal clearance |
-| **Interest Benchmark** | Illustrative 9.0% - 12.0% p.a. | Subject to lender underwriting terms (BOI / DBN / commercial banks) |
-| **Principal Moratorium** | 3 - 6 Months Grace Period | Allows enterprise to complete procurement and achieve operational breakeven |
-| **Repayment Source** | Daily Digital Operating Cashflow via Corporate Bank Account | Monitored through verified digital sales ledger and POS reconciliation |
-
-8.2 DEBT SERVICE COVERAGE RATIO (DSCR) STRESS TEST
-
-| Underwriting Scenario | Annual EBITDA (₦) | Annual Debt Service (₦) | DSCR Coverage | Risk Classification |
-| :--- | :--- | :--- | :--- | :--- |
-| **Base Case Projection** | ₦5,180,000 | ₦1,920,000 | **2.70x** | **Tier-1 Prime (Extremely Safe)** |
-| **Moderate Downside (-15% Rev)** | ₦4,050,000 | ₦1,920,000 | **2.11x** | **Comfortably Above 1.30x Threshold** |
-| **Severe Downside (-30% Rev)** | ₦2,820,000 | ₦1,920,000 | **1.47x** | **Fully Solvent (Zero Default Risk)** |
-
-8.3 COLLATERAL, SECURITY & DEBENTURE STRUCTURE
-- **Primary Debenture**: Fixed charge over funded operational equipment (solar inverter infrastructure, dispatch assets) and floating charge over unencumbered inventory.
-- **Stock Hypothecation**: Formal pledge of trade inventory maintained at a minimum 150% coverage ratio relative to outstanding principal balance.
-- **Promoter Personal Guarantee**: Irrevocable joint and several personal guarantee executed by the Managing Director / Principal Promoter.
-- **Key-Man Insurance**: Credit life insurance policy assigned to the financing institution for the duration of the debt facility.
-
-8.4 SOCIO-ECONOMIC MULTIPLIER & EMPLOYMENT GENERATION
-- Direct Sustainable Jobs Created: 4 full-time operational and customer fulfillment roles within 12 months.
-- Indirect Jobs Supported: An estimated 12 auxiliary roles across third-party dispatch logistics, artisanal packaging, and wholesale transport.
-- Youth & Gender Inclusion: Priority hiring framework targeting youth operators and female commerce specialists in {location}.
-- Tax Contribution: Enhancing domestic value addition and formalizing retail transaction records into the national tax net.""",
-
-            "promoterDeclaration": f"""9.1 STATUTORY DECLARATION OF SOLVENCY & VERACITY
-I/We, the undersigned Principal Promoter(s) and Authorized Executive(s) of {name}, do hereby solemnly declare, under oath and in pursuant to the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Oaths Act of the Federal Republic of Nigeria, that:
-1. All statements, projections, figures, and representations contained in this Strategic Business Plan and Financial Model are true, complete, and accurate to the best of our knowledge and professional belief.
-2. The financial forecasts have been prepared on reasonable, prudent, and conservative commercial assumptions reflecting contemporary Nigerian economic parameters.
-3. The enterprise is not currently subject to any winding-up petition, unsatisfied court judgment, or distress warrant, and holds no undisclosed liabilities.
-4. Proceeds from any approved credit facility or grant intervention will be deployed strictly for the authorized operational objectives set forth herein.
-
-9.2 STATUTORY COMPLIANCE ACKNOWLEDGEMENT
-- **Corporate Affairs Commission (CAC)**: Registered business enterprise operating in full compliance with CAMA 2020 statutory filing mandates.
-- **Tax Identification Number (TIN)**: Annual tax filings remain mandatory with the Nigeria Revenue Service (NRS); verify NTA 2025 small-company CIT criteria (incorporated status, turnover + ₦250M fixed-asset cap, non-professional services) with a tax practitioner. Not legal or tax advice.
-- **MSME Registry & Permits**: Maintain valid state and local government business permits alongside federal registrations.
-- **Anti-Money Laundering (AML/KYC)**: Subject to standard commercial bank onboarding and KYC checks.
-
-9.3 CORPORATE EXECUTION & ATTESTATION SEAL
-Executed on this _____ day of __________________, 2026 for and on behalf of {name}:
-
-____________________________________________          ____________________________________________
-MANAGING DIRECTOR / PRINCIPAL PROMOTER                 SECRETARY / LEGAL ADVISER / CO-DIRECTOR
-Name: ______________________________________          Name: ______________________________________
-National ID / NIN: _________________________          National ID / NIN: _________________________
-Date: ______________________________________          Date: ______________________________________
-
-[ AFFIX OFFICIAL CORPORATE STAMP / NOTARIAL SEAL HERE ]"""
-        }
-        return Response(fallback_plan)
+        remaining = refund_ai_credits(request.user, reserved, 'Business Plan AI Unavailable')
+        return Response({
+            "error": "Business Plan AI generator is temporarily unavailable. Your BizCredits have been refunded—please retry in a moment.",
+            "credits": remaining
+        }, status=503)
 
 class FindGrantsView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -495,16 +213,21 @@ class FindGrantsView(views.APIView):
         ]
         """
         
+        cost = AI_CREDIT_COSTS.get('grant_search', 3)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'AI Grant & Funding Matcher')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=402)
+
         try:
-            grants = gemini_utils.generate_json_content(prompt)
+            grants = gemini_utils.generate_json_content(prompt, user=request.user, feature='grant_search')
             if isinstance(grants, list) and len(grants) > 0:
-                deduct_credits(request.user, 'grant_search')
                 return Response(grants)
             elif isinstance(grants, dict) and 'grants' in grants and isinstance(grants['grants'], list):
-                deduct_credits(request.user, 'grant_search')
                 return Response(grants['grants'])
         except Exception as e:
             pass
+
+        refund_ai_credits(request.user, reserved, 'Grant Search Directory Fallback')
 
         # Dynamic fallback matching user profile
         is_cac = 'registered' in cac_status.lower() or 'yes' in cac_status.lower()
@@ -602,14 +325,14 @@ class AnalyzeBusinessNameView(views.APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        from billing.utils import check_usage_gatekeeper
-        allowed, remaining_credits = check_usage_gatekeeper(request.user, 'name_check', 2)
+        cost = AI_CREDIT_COSTS.get('name_check', 2)
+        allowed, remaining_credits, reserved = reserve_ai_credits(request.user, cost, 'AI Business Name Check')
         if not allowed:
-            return Response({"error": "Insufficient credits. Your free daily limit is exhausted.", "credits": remaining_credits}, status=402)
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining_credits}, status=402)
 
         name = request.data.get('business_name') or request.data.get('name') or request.data.get('businessName') or 'SmartBiz Enterprise'
         
-        prompt = f"""Analyze the business name "{name}" for formal corporate registration with the Corporate Affairs Commission (CAC) under the Companies and Allied Matters Act (CAMA 2020) in Nigeria.
+        prompt = f"""Analyze the business name "{name}" for formal corporate registration guidance under CAMA 2020 in Nigeria (advisory only — verify live availability on the official CAC portal).
         Evaluate if it contains prohibited words (e.g., Federal, National, Chartered) or generic conflict risk.
         Return JSON structure EXACTLY:
         {{
@@ -620,17 +343,21 @@ class AnalyzeBusinessNameView(views.APIView):
         """
         
         try:
-            analysis = gemini_utils.generate_json_content(prompt)
-            if isinstance(analysis, dict) and 'probability' in analysis and 'reason' in analysis:
+            analysis = gemini_utils.generate_json_content(prompt, user=request.user, feature='name_check')
+            if isinstance(analysis, dict) and 'probability' in analysis and 'reason' in analysis and 'error' not in analysis:
                 return Response({
                     "probability": analysis.get('probability', 'High'),
                     "reason": analysis.get('reason', 'The name meets general CAC registration standards.'),
-                    "alternatives": analysis.get('alternatives', [f"{name} Enterprise", f"{name} Global Ventures", f"{name} Commercial Hub"])
+                    "alternatives": analysis.get('alternatives', [f"{name} Enterprise", f"{name} Global Ventures", f"{name} Commercial Hub"]),
+                    "credits": remaining_credits,
+                    "credits_deducted_server": True,
                 })
         except Exception as e:
             print(f"AnalyzeBusinessNameView AI error: {e}")
 
-        # High-accuracy CAMA 2020 Fallback Engine
+        remaining_credits = refund_ai_credits(request.user, reserved, 'Name Check Local Fallback')
+
+        # CAMA 2020 Heuristic Fallback Engine (refunds AI credits cleanly)
         forbidden_words = ['federal', 'national', 'state', 'chartered', 'police', 'military', 'ministry', 'government', 'commission', 'cooperative']
         has_forbidden = any(w in name.lower() for w in forbidden_words)
         
@@ -660,21 +387,28 @@ class AnalyzeNeighborhoodView(views.APIView):
 
     def post(self, request):
         location = request.data.get('location')
-        
+        if not location:
+            return Response({"error": "Location is required."}, status=400)
+
+        cost = AI_CREDIT_COSTS.get('neighborhood_analysis', 2)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'AI Neighborhood Analysis')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=402)
+
         prompt = f"""Analyze the neighborhood: "{location}" in Nigeria from a business perspective.
         Return JSON with keys: security, traffic, power, overallVibe.
         """
         
         try:
-            analysis = gemini_utils.generate_json_content(prompt)
-            return Response(analysis)
-        except Exception as e:
-            return Response({
-                "security": "Moderate",
-                "traffic": "Busy",
-                "power": "Variable",
-                "overallVibe": "Commercial"
-            })
+            analysis = gemini_utils.generate_json_content(prompt, user=request.user, feature='neighborhood_analysis')
+            if isinstance(analysis, dict) and 'error' not in analysis:
+                analysis['credits'] = remaining
+                analysis['credits_deducted_server'] = True
+                return Response(analysis)
+        except Exception:
+            pass
+        remaining = refund_ai_credits(request.user, reserved, 'Neighborhood Analysis Unavailable')
+        return Response({"error": "Neighborhood AI unavailable right now. Credits refunded.", "credits": remaining}, status=503)
 
 class SearchLocalVendorsView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -683,25 +417,32 @@ class SearchLocalVendorsView(views.APIView):
         query = request.data.get('query')
         lat = request.data.get('lat')
         lng = request.data.get('lng')
-        
-        prompt = f"""Find 5 "{query}" in Nigeria (near coords {lat}, {lng} if possible, or general Lagos/Abuja key areas if not specific).
-        Return JSON list of objects with keys: title, uri (fake or real if known), source (WEB/MAPS).
+        if not query:
+            return Response({"error": "Search query is required."}, status=400)
+
+        cost = AI_CREDIT_COSTS.get('vendor_search', 2)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'AI Local Vendor Search')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=402)
+
+        prompt = f"""Suggest 5 well-known "{query}" hubs/markets in Nigeria (near coords {lat}, {lng} if provided, or major Nigerian commercial hubs).
+        Never invent or fabricate fake URLs; leave uri empty ("") unless it is an exact, well-known official domain.
+        Return JSON list of objects with keys: title, uri, source (WEB/MAPS).
         """
         
         try:
-            places = gemini_utils.generate_json_content(prompt)
-            return Response({
-                "text": f"Here are some {query} vendors:",
-                "places": places
-            })
-        except Exception as e:
-            return Response({
-                "text": "Found some vendors nearby.",
-                "places": [
-                    {"title": f"{query} Hub", "uri": "", "source": "MAPS"},
-                    {"title": f"{query} Market", "uri": "", "source": "MAPS"}
-                ]
-            })
+            places = gemini_utils.generate_json_content(prompt, user=request.user, feature='vendor_search')
+            if isinstance(places, list):
+                return Response({
+                    "text": f"Suggested {query} markets & hubs:",
+                    "places": places,
+                    "credits": remaining,
+                    "credits_deducted_server": True,
+                })
+        except Exception:
+            pass
+        remaining = refund_ai_credits(request.user, reserved, 'Local Vendor Search Unavailable')
+        return Response({"error": "Vendor search AI unavailable. Credits refunded.", "credits": remaining}, status=503)
 
 class BusinessHealthScoreView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -712,6 +453,11 @@ class BusinessHealthScoreView(views.APIView):
         stock = request.data.get('stock', [])
         invoices = request.data.get('invoices', [])
         compliance = request.data.get('compliance', {})
+
+        cost = AI_CREDIT_COSTS.get('health_score', 5)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'AI Business Health Score')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=402)
 
         prompt = f"""Analyze this Nigerian business's data and calculate a business health score out of 100.
         Business Profile: {business_profile}
@@ -745,12 +491,14 @@ class BusinessHealthScoreView(views.APIView):
         """
 
         try:
-            health = gemini_utils.generate_json_content(prompt)
+            health = gemini_utils.generate_json_content(prompt, user=request.user, feature='health_score')
             if not health or 'error' in health or 'score' not in health:
                 raise Exception("Invalid Gemini health score structure")
-            deduct_credits(request.user, 'health_score')
+            health['credits'] = remaining
+            health['credits_deducted_server'] = True
             return Response(health)
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'Business Health Local Engine')
             # High-fidelity Local Analytical Engine Fallback
             score = 70
             strengths = []
@@ -872,16 +620,35 @@ class PricingAssistantView(views.APIView):
         competitor_price = request.data.get('competitorPrice', 'Not Specified')
         target_margin = request.data.get('targetMargin', 30)
 
+        try:
+            cost_val = max(0.0, float(re.sub(r'[^\d.]', '', str(cost_price)) or 0))
+        except (ValueError, TypeError):
+            cost_val = 0.0
+        if cost_val <= 0:
+            return Response({"error": "Please provide a valid wholesale cost price greater than ₦0."}, status=400)
+
+        try:
+            raw_margin = float(target_margin)
+        except (ValueError, TypeError):
+            raw_margin = 30.0
+        # True Gross Profit Margin (P - C)/P must stay strictly < 100%; clamp safely to [5%, 85%]
+        target_margin_pct = max(5.0, min(85.0, raw_margin))
+
+        cost_credits = AI_CREDIT_COSTS.get('pricing_assistant', 2)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost_credits, 'AI Pricing & Margin Assistant')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost_credits} credits).", "credits": remaining}, status=402)
+
         prompt = f"""Help a Nigerian business owner determine the optimal selling price for their product.
         Product Name: {product_name}
-        Cost Price (to produce or buy wholesale): ₦{cost_price}
-        Competitor Price: ₦{competitor_price}
-        Target Profit Margin: {target_margin}%
+        Wholesale Cost Price: ₦{cost_val:,.2f}
+        Competitor Price: {competitor_price}
+        Target Gross Profit Margin: {target_margin_pct:.1f}% (using P = Cost / (1 - Margin))
 
-        Calculate suggested prices based on margin, competitive pricing, and psychological pricing (e.g., ending in 900 or 950).
+        Calculate suggested prices based on gross margin, competitive pricing, and psychological pricing (without ever dropping at or below cost).
         Return JSON structure EXACTLY:
         {{
-            "costPrice": {cost_price},
+            "costPrice": {cost_val},
             "suggestedPrices": {{
                 "marginBased": 0,
                 "competitive": 0,
@@ -899,32 +666,37 @@ class PricingAssistantView(views.APIView):
         """
 
         try:
-            pricing = gemini_utils.generate_json_content(prompt)
-            if isinstance(pricing, dict) and 'suggestedPrices' in pricing and 'marginPercentages' in pricing:
-                deduct_credits(request.user, 'pricing_assistant')
+            pricing = gemini_utils.generate_json_content(prompt, user=request.user, feature='pricing_assistant')
+            if isinstance(pricing, dict) and 'suggestedPrices' in pricing and 'marginPercentages' in pricing and 'error' not in pricing:
+                pricing['credits'] = remaining
+                pricing['credits_deducted_server'] = True
                 return Response(pricing)
         except Exception as e:
             print(f"PricingAssistantView AI error: {e}")
 
-        # Mathematical Profit Margin & Pricing Calculator Fallback Engine
-        try:
-            cost_val = float(cost_price)
-        except (ValueError, TypeError):
-            cost_val = 10000.0
+        # Refund credits cleanly if AI failed, then compute deterministic gross margin pricing
+        remaining = refund_ai_credits(request.user, reserved, 'Pricing Math Fallback')
 
-        try:
-            target_margin_pct = float(target_margin)
-        except (ValueError, TypeError):
-            target_margin_pct = 30.0
+        raw_margin_price = cost_val / (1.0 - (target_margin_pct / 100.0))
+        if raw_margin_price < 200:
+            margin_price = round(raw_margin_price, 2)
+        elif raw_margin_price < 2000:
+            margin_price = round(raw_margin_price, -1)
+        else:
+            margin_price = round(raw_margin_price, -2)
+        margin_price = max(margin_price, round(cost_val * 1.05, 2))
 
-        margin_price = round(cost_val / max(0.05, (1.0 - (target_margin_pct / 100.0))), -2)
-        psych_price = margin_price - 50 if margin_price % 100 == 0 else margin_price
-        
+        if margin_price >= 500 and margin_price % 100 == 0 and (margin_price - 50) > cost_val:
+            psych_price = margin_price - 50
+        else:
+            psych_price = margin_price
+
+        cleaned_comp = re.sub(r'[^\d.]', '', str(competitor_price or ''))
         try:
-            comp_val = float(competitor_price) if str(competitor_price).replace('.', '', 1).isdigit() else margin_price * 0.98
+            comp_raw = float(cleaned_comp) if cleaned_comp else (margin_price * 0.98)
         except Exception:
-            comp_val = margin_price * 0.98
-        comp_price = round(comp_val, -2)
+            comp_raw = margin_price * 0.98
+        comp_price = round(comp_raw, 2) if comp_raw < 200 else (round(comp_raw, -1) if comp_raw < 2000 else round(comp_raw, -2))
 
         fallback_pricing = {
             "costPrice": cost_val,
@@ -934,17 +706,17 @@ class PricingAssistantView(views.APIView):
                 "psychological": psych_price
             },
             "marginPercentages": {
-                "marginBased": round(((margin_price - cost_val) / max(1, margin_price)) * 100, 1),
-                "competitive": round(((comp_price - cost_val) / max(1, comp_price)) * 100, 1),
-                "psychological": round(((psych_price - cost_val) / max(1, psych_price)) * 100, 1)
+                "marginBased": round(((margin_price - cost_val) / max(0.01, margin_price)) * 100, 1),
+                "competitive": round(((comp_price - cost_val) / max(0.01, comp_price)) * 100, 1),
+                "psychological": round(((psych_price - cost_val) / max(0.01, psych_price)) * 100, 1)
             },
-            "strategyExplanation": f"For {product_name or 'this product'}, a target margin of {target_margin_pct}% protects your cash flow against generator fuel overhead and delivery packaging. Psychological pricing at ₦{psych_price:,.0f} reduces cognitive friction for Nigerian retail buyers.",
+            "strategyExplanation": f"For {product_name or 'this product'}, a target gross margin of {target_margin_pct:.0f}% puts your safe selling price at ₦{margin_price:,.0f}. Psychological pricing at ₦{psych_price:,.0f} preserves profit while reducing buyer friction.",
             "tips": [
-                "Bundle with a fast-moving companion item to boost your average transaction value.",
-                "Offer free dispatch within your immediate local zone on orders containing 2 or more units.",
-                "Cross out the anchor price on your WhatsApp status broadcast to induce urgency."
+                "Bundle with a fast-moving companion item to boost average order value.",
+                "Factor delivery and packaging expenses separately before offering discounts.",
+                "Test anchored pricing on WhatsApp Status broadcasts before repricing your full catalog."
             ],
-            "whatsappTemplate": f"✨ *{product_name or 'Special Item'}*\n💰 Wholesale Direct Price: ₦{psych_price:,.0f}\n⚡ Fast Lagos & Nationwide Dispatch\n📲 Reply 'ORDER' to lock in this price today!"
+            "whatsappTemplate": f"✨ *{product_name or 'Special Item'}*\n💰 Price: ₦{psych_price:,.0f}\n⚡ Available for instant dispatch\n📲 Reply 'ORDER' to buy now!",
+            "credits": remaining,
         }
-        deduct_credits(request.user, 'pricing_assistant')
         return Response(fallback_pricing)

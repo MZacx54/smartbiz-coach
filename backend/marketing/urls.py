@@ -22,8 +22,9 @@ urlpatterns = [
     # SMS
     path('sms/send/', views.send_sms_batch, name='sms-send'),
 
-    # Email Broadcast
+    # Email Broadcast & Opt-out
     path('email/send/', views.send_email_batch, name='email-send'),
+    path('unsubscribe/<str:token>/', views.unsubscribe_contact, name='marketing-unsubscribe'),
 
     # AI Message suggestion
     path('ai-suggest/', views.ai_suggest_message, name='marketing-ai-suggest'),

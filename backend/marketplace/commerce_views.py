@@ -5,13 +5,14 @@ import re
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Avg, Count, F
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.utils import timezone
 from rest_framework import permissions, status, views
 from rest_framework.response import Response
 
-from .models import (DeliveryRate, ListingReport, Order, OrderEvent, Product, ProductReview)
+from .models import (DailySale, DeliveryRate, LedgerAuditLog, ListingReport, Order, OrderEvent, Product, ProductReview)
 
 
 def frontend_base():
@@ -114,39 +115,62 @@ class MerchantOrderDetailView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
-        try:
-            order = Order.objects.select_related('brand', 'brand__user').get(pk=pk, brand__user=request.user)
-        except Order.DoesNotExist:
-            return Response({'error': 'Order not found'}, status=404)
+        with transaction.atomic():
+            try:
+                order = (
+                    Order.objects.select_for_update()
+                    .select_related('brand', 'brand__user')
+                    .get(pk=pk, brand__user=request.user)
+                )
+            except Order.DoesNotExist:
+                return Response({'error': 'Order not found'}, status=404)
 
-        if 'courier' in request.data:
-            order.courier = str(request.data.get('courier') or '')[:120]
-        if 'waybill_number' in request.data:
-            order.waybill_number = str(request.data.get('waybill_number') or '')[:120]
+            if 'courier' in request.data:
+                order.courier = str(request.data.get('courier') or '')[:120]
+            if 'waybill_number' in request.data:
+                order.waybill_number = str(request.data.get('waybill_number') or '')[:120]
 
-        new_status = request.data.get('status')
-        note = str(request.data.get('note') or '')
-        if new_status and new_status != order.status:
-            if new_status not in ALLOWED_TRANSITIONS.get(order.status, set()):
-                return Response({'error': f'Cannot move an order from {order.status} to {new_status}.'}, status=400)
-            if new_status == 'SHIPPED':
-                order.shipped_at = timezone.now()
-            elif new_status == 'DELIVERED':
-                order.delivered_at = timezone.now()
-            elif new_status == 'CANCELLED':
-                # Return physical stock to the shelf
-                for item in order.items.select_related('product'):
-                    p = item.product
-                    if p and p.product_type == 'PHYSICAL':
-                        Product.objects.filter(pk=p.pk).update(stock_count=F('stock_count') + item.quantity)
-            order.status = new_status
-            _log(order, new_status, note or {
-                'PACKED': 'Seller packed your order', 'SHIPPED': 'Order is on its way',
-                'DELIVERED': 'Seller marked the order delivered', 'CANCELLED': 'Order cancelled by seller',
-            }.get(new_status, ''))
-        order.save()
-        order.refresh_from_db()
-        return Response(order_to_dict(order))
+            new_status = request.data.get('status')
+            note = str(request.data.get('note') or '')
+            if new_status and new_status != order.status:
+                if new_status not in ALLOWED_TRANSITIONS.get(order.status, set()):
+                    return Response({'error': f'Cannot move an order from {order.status} to {new_status}.'}, status=400)
+                if new_status == 'SHIPPED':
+                    order.shipped_at = timezone.now()
+                elif new_status == 'DELIVERED':
+                    order.delivered_at = timezone.now()
+                elif new_status == 'CANCELLED':
+                    for item in order.items.select_related('product'):
+                        p = item.product
+                        if p and p.product_type == 'PHYSICAL':
+                            Product.objects.filter(pk=p.pk).update(stock_count=F('stock_count') + item.quantity)
+                    # Soft-void linked Day-Book sales for cancelled orders
+                    linked_sales = DailySale.objects.select_for_update().filter(
+                        user=request.user,
+                        is_voided=False,
+                        notes__contains=f"Order {order.tracking_code}"
+                    )
+                    for sale in linked_sales:
+                        sale.is_voided = True
+                        sale.voided_at = timezone.now()
+                        sale.save(update_fields=['is_voided', 'voided_at'])
+                        LedgerAuditLog.objects.create(
+                            user=request.user,
+                            entry_type='SALE',
+                            object_id=sale.id,
+                            action='VOID',
+                            actor_mode='OWNER',
+                            snapshot={'total_amount': float(sale.total_amount), 'order': order.tracking_code},
+                            note=f'Voided on Order {order.tracking_code} cancellation'
+                        )
+                order.status = new_status
+                _log(order, new_status, note or {
+                    'PACKED': 'Seller packed your order', 'SHIPPED': 'Order is on its way',
+                    'DELIVERED': 'Seller marked the order delivered', 'CANCELLED': 'Order cancelled by seller',
+                }.get(new_status, ''))
+            order.save()
+            order.refresh_from_db()
+            return Response(order_to_dict(order))
 
 
 class DeliveryRateListCreateView(views.APIView):

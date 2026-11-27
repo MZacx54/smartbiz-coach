@@ -276,12 +276,11 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
     try {
       const result = await analyzeBusinessName(nameToAnalyze);
       
-      // Only deduct credits / increment usage if successful
-      if (deduct) {
-        const billingResponse = await billingService.deductCredits(cost, 'AI Name Availability Check');
-        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
-      } else {
-        usageLimiter.incrementUsage('name_check');
+      // Server /api/business/analyze-name/ already handles credit reservation atomically
+      if (typeof result?.credits === 'number') {
+        if (onUpdateCredits) onUpdateCredits(result.credits);
+      } else if (deduct && onUpdateCredits) {
+        onUpdateCredits(Math.max(0, credits - cost));
       }
 
       setAnalysisResult(result);
@@ -670,7 +669,7 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                  Finance Act 2019/2020 Statutory Relief
+                  Nigeria Tax Act (NTA) 2025 / CITA Reference
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-400/30">
                   Anti-Harassment Shield
@@ -934,7 +933,7 @@ const Compliance: React.FC<ComplianceProps> = ({ brand, user, credits = 0, onUpd
                   <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Annual Turnover (₦)</label>
                   <input
                     type="number"
-                    max="25000000"
+                    min="0"
                     value={exemptionTurnover}
                     onChange={(e) => setExemptionTurnover(e.target.value)}
                     placeholder="4,500,000"

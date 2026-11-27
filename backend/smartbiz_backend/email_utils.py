@@ -570,26 +570,34 @@ def send_password_reset_email(user, code):
     return success
 
 
-def send_broadcast_email(recipient_email, recipient_name, subject, body_content, sender_name="SmartBiz Merchant", business_name="", logo_url=""):
+def send_broadcast_email(recipient_email, recipient_name, subject, body_content, sender_name="SmartBiz Merchant", business_name="", logo_url="", unsubscribe_url=""):
     """
-    Renders and delivers a marketing broadcast email with professional HTML formatting.
+    Renders and delivers a marketing broadcast email with HTML escaping & NDPA unsubscribe link.
     """
+    import html as _html
     if not recipient_email or '@' not in recipient_email:
         return False, "Invalid email address"
 
-    name = recipient_name or "Valued Customer"
-    biz_name = business_name or sender_name or "SmartBiz Merchant"
-    
-    # Process line breaks if plain text
-    formatted_body = body_content.replace('\n', '<br>')
-    
+    name = _html.escape(str(recipient_name or "Valued Customer"))
+    biz_name = _html.escape(str(business_name or sender_name or "SmartBiz Merchant"))
+    safe_sender = _html.escape(str(sender_name or biz_name))
+    safe_subject = _html.escape(str(subject or "Update"))
+
+    # Escape raw text first so arbitrary HTML/script tags cannot inject into email body
+    formatted_body = _html.escape(str(body_content or "")).replace('\n', '<br>')
+    unsub_block = (
+        f'<p style="color: #94A3B8; font-size: 11px; margin: 6px 0 0 0;">'
+        f'<a href="{_html.escape(unsubscribe_url)}" style="color: #64748B; text-decoration: underline;">Unsubscribe from future broadcasts</a></p>'
+        if unsubscribe_url else ''
+    )
+
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>{subject}</title>
+      <title>{safe_subject}</title>
     </head>
     <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #F1F5F9; color: #1E293B; margin: 0; padding: 25px 10px;">
       <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #E2E8F0;">
@@ -614,7 +622,7 @@ def send_broadcast_email(recipient_email, recipient_name, subject, body_content,
             </div>
             <div style="margin-top: 25px; padding-top: 18px; border-top: 1px solid #F1F5F9; font-size: 13px; color: #64748B;">
               Best regards,<br>
-              <strong style="color: #0F172A;">{sender_name}</strong><br>
+              <strong style="color: #0F172A;">{safe_sender}</strong><br>
               <span style="color: #4F46E5;">{biz_name}</span>
             </div>
           </td>
@@ -626,6 +634,7 @@ def send_broadcast_email(recipient_email, recipient_name, subject, body_content,
             <p style="color: #94A3B8; font-size: 11px; margin: 0;">
               You received this message from {biz_name} via SmartBiz Marketing Hub.
             </p>
+            {unsub_block}
           </td>
         </tr>
       </table>

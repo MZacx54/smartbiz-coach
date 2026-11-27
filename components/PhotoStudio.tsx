@@ -355,6 +355,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                 let firstTitle = '';
                 let firstPrice = '';
                 let firstCat = '';
+                let latestCredits: number | undefined;
 
                 for (let i = 0; i < updatedSlots.length; i++) {
                     const slot = updatedSlots[i];
@@ -362,6 +363,9 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
 
                     setGenerationStep(`Processing ${slot.label} (${i + 1}/${updatedSlots.length}) — Removing background & relighting...`);
                     const res = await runPrecisionStudio(slot.rawImage, selectedTheme, relightPreset);
+                    if (res && typeof res.credits === 'number') {
+                        latestCredits = res.credits;
+                    }
                     if (res && res.studio_image_base64) {
                         updatedSlots[i] = {
                             ...slot,
@@ -394,13 +398,11 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                     setProductCategory(firstCat);
                 }
 
-                try {
-                    const billingRes = await billingService.deductCredits(totalCost, `AI Multi-Angle Studio (${filledSlots.length} shots)`);
-                    if (billingRes && typeof billingRes.credits === 'number') {
-                        onUpdateCredits(billingRes.credits);
-                    }
-                } catch (bErr) {
-                    console.warn('Billing notice:', bErr);
+                // Credits are reserved atomically by backend /api/content/precision-photoshoot/
+                if (typeof latestCredits === 'number') {
+                    onUpdateCredits(latestCredits);
+                } else {
+                    onUpdateCredits(Math.max(0, credits - totalCost));
                 }
 
                 toast.success(`✨ All ${filledSlots.length} product angles processed!`, { duration: 4000 });
@@ -430,13 +432,11 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
         setIsGenerating(true);
         setGenerationStep('Gemini Vision tracing product contour & subtracting interior holes...');
 
-        try {
-            setTimeout(() => {
-                if (isGenerating) {
-                    setGenerationStep('De-bleeding background edges & applying Studio Relighting...');
-                }
-            }, 1400);
+        const progressTimer = setTimeout(() => {
+            setGenerationStep('De-bleeding background edges & applying Studio Relighting...');
+        }, 1400);
 
+        try {
             const response = await runPrecisionStudio(rawImage, selectedTheme, relightPreset);
 
             if (response && response.studio_image_base64) {
@@ -457,13 +457,10 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
                 setBadgePrice(price);
                 setProductCategory(cat);
 
-                try {
-                    const billingRes = await billingService.deductCredits(cost, `AI Photo Studio - ${selectedTheme}`);
-                    if (billingRes && typeof billingRes.credits === 'number') {
-                        onUpdateCredits(billingRes.credits);
-                    }
-                } catch (bErr) {
-                    console.warn('Billing notice:', bErr);
+                if (typeof response.credits === 'number') {
+                    onUpdateCredits(response.credits);
+                } else {
+                    onUpdateCredits(Math.max(0, credits - 5));
                 }
 
                 toast.success('✨ Professional Studio Photoshoot Ready!', { duration: 4000 });
@@ -474,6 +471,7 @@ export const PhotoStudio: React.FC<PhotoStudioProps> = ({
             console.error('Photo Studio error:', err);
             toast.error(err.response?.data?.error || err.message || 'Failed to complete photoshoot. Please try again.');
         } finally {
+            clearTimeout(progressTimer);
             setIsGenerating(false);
             setGenerationStep('');
         }

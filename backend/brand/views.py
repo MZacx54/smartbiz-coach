@@ -3,7 +3,7 @@ from rest_framework import generics, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import BrandIdentity
-from .serializers import BrandSerializer
+from .serializers import BrandSerializer, PublicBrandSerializer
 from smartbiz_backend.throttles import BrandGenThrottle
 from content.views import deduct_credits
 class GenerateBrandView(views.APIView):
@@ -11,8 +11,18 @@ class GenerateBrandView(views.APIView):
     throttle_classes = [BrandGenThrottle]
 
     def post(self, request, *args, **kwargs):
+        from billing.utils import reserve_ai_credits, refund_ai_credits
+        from billing.catalog import AI_CREDIT_COSTS
+
         name = request.data.get('name')
         niche = request.data.get('niche')
+        if not name or not niche:
+            return Response({"error": "Business name and niche are required."}, status=400)
+
+        cost = AI_CREDIT_COSTS.get('brand_identity', 15)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, f'AI Brand Identity ({str(name)[:40]})')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=402)
         vibe = request.data.get('vibe')
         description = request.data.get('description', '')
         tone = request.data.get('tone', 'Corporate')
@@ -79,23 +89,18 @@ class GenerateBrandView(views.APIView):
         Use professional Nigerian corporate business terminology. For fonts, use established Google Fonts like Montserrat, Outfit, Playfair Display, Inter, etc.
         """
         try:
-            brand_identity = gemini_utils.generate_json_content(prompt)
+            brand_identity = gemini_utils.generate_json_content(prompt, user=request.user, feature='brand_identity')
             if not brand_identity or "error" in brand_identity:
                 raise Exception(brand_identity.get("error", "AI generation returned error status"))
-            
-            # Merge with default fallback dictionary to ensure all keys are populated
+
             brand_identity = self.ensure_complete_brand(brand_identity, name, niche, vibe, tone, phone, email, address, cac_number, tin_number, smedan_number, corporate_entity_type)
-            deduct_credits(request.user, 'brand_gen')
+            brand_identity['credits'] = remaining
+            brand_identity['credits_deducted_server'] = True
             return Response(brand_identity)
         except Exception as e:
-            # Dynamic high-fidelity fallback engine
-            print(f"Brand Generation fallback triggered: {e}")
-            brand_identity = self.ensure_complete_brand({}, name, niche, vibe, tone, phone, email, address, cac_number, tin_number, smedan_number, corporate_entity_type)
-            try:
-                deduct_credits(request.user, 'brand_gen')
-            except Exception:
-                pass
-            return Response(brand_identity)
+            print(f"Brand Generation error: {e}")
+            remaining = refund_ai_credits(request.user, reserved, 'Brand Generation Unavailable')
+            return Response({"error": "Brand studio AI is temporarily unavailable. Your credits have been refunded.", "credits": remaining}, status=503)
 
     def ensure_complete_brand(self, ai_data, name, niche, vibe, tone, phone='', email='', address='', cac_number='', tin_number='', smedan_number='', corporate_entity_type='Registered Business Name (BN)'):
         if not isinstance(ai_data, dict):
@@ -250,10 +255,21 @@ class GenerateBrandView(views.APIView):
 
 class GenerateBrandLogoView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [BrandGenThrottle]
 
     def post(self, request):
+        from billing.utils import reserve_ai_credits, refund_ai_credits
+        from billing.catalog import AI_CREDIT_COSTS
+
         prompt = request.data.get('prompt')
-        
+        if not prompt or not str(prompt).strip():
+            return Response({"error": "Logo prompt is required."}, status=400)
+
+        cost = AI_CREDIT_COSTS.get('brand_logo', 15)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'AI Logo Generation')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=402)
+
         from smartbiz_backend import gemini_utils
         try:
             import random
@@ -268,7 +284,9 @@ class GenerateBrandLogoView(views.APIView):
             ]
             style = random.choice(archetypes)
             prompt_svg = f"Create a simple, modern SVG logo for {prompt}. Style: {style}. Use clean shapes. Return ONLY the SVG code. No markdown or explanation. Ensure standard namespaces are included."
-            svg_code = gemini_utils.generate_text_content(prompt_svg)
+            svg_code = gemini_utils.generate_text_content(prompt_svg, user=request.user, feature='brand_logo')
+            if not svg_code or str(svg_code).startswith("Error:"):
+                raise ValueError("AI logo service returned an error")
             
             # Clean conversational wrappers and extract strictly the SVG node
             svg_code = svg_code.replace("```xml", "").replace("```svg", "").replace("```", "").strip()
@@ -288,23 +306,11 @@ class GenerateBrandLogoView(views.APIView):
             
             import base64
             encoded_svg = base64.b64encode(svg_code.encode('utf-8')).decode('utf-8')
-            return Response({'logoUrl': f"data:image/svg+xml;base64,{encoded_svg}"})
-            
+            return Response({'logoUrl': f"data:image/svg+xml;base64,{encoded_svg}", 'credits': remaining, 'credits_deducted_server': True})
+
         except Exception as e:
-            # Fallback to a generated SVG placeholder
-            width = 400
-            height = 400
-            svg_content = f'''
-            <svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
-                <rect width="100%" height="100%" fill="#f0f0f0"/>
-                <circle cx="{width/2}" cy="{height/2}" r="150" fill="#4ade80" />
-                <text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle" dy=".3em">Logo for {prompt[:20]}...</text>
-                <text x="50%" y="90%" font-family="Arial" font-size="12" fill="#666" text-anchor="middle">AI Generation Unavailable</text>
-            </svg>
-            '''
-            import base64
-            encoded_svg = base64.b64encode(svg_content.encode('utf-8')).decode('utf-8')
-            return Response({'logoUrl': f"data:image/svg+xml;base64,{encoded_svg}"})
+            remaining = refund_ai_credits(request.user, reserved, 'Logo Generation Unavailable')
+            return Response({'error': 'AI logo generation is temporarily unavailable. Your credits have been refunded.', 'credits': remaining}, status=503)
 
 class BrandListCreate(generics.ListCreateAPIView):
     serializer_class = BrandSerializer
@@ -329,14 +335,7 @@ class PublicStorefrontView(views.APIView):
     def get(self, request, slug):
         try:
             brand = BrandIdentity.objects.select_related('user', 'user__vendor_profile').get(slug=slug)
-            data = BrandSerializer(brand).data
-            # Ensure contact phone and whatsapp fallback to user phone so WhatsApp checkout never breaks
-            user_phone = getattr(brand.user, 'phone', '') or ''
-            vp_phone = getattr(getattr(brand.user, 'vendor_profile', None), 'whatsapp_number', '') or ''
-            if not data.get('phone') or data.get('phone') == '2348000000000':
-                data['phone'] = user_phone or vp_phone or data.get('phone', '')
-            if not data.get('whatsapp') or data.get('whatsapp') == '2348000000000':
-                data['whatsapp'] = data.get('phone') or user_phone or vp_phone or ''
+            data = PublicBrandSerializer(brand).data
             return Response(data)
         except BrandIdentity.DoesNotExist:
             return Response({'error': 'Store not found'}, status=404)

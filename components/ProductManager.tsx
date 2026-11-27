@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { commerceService, productShareUrl, storeShareUrl } from '../services/commerceService';
 import { billingService } from '../services/billingService';
+import { getBusinessDateStr } from '../utils/dateTime';
 import { toast } from 'react-hot-toast';
 import CreditPromptModal from './CreditPromptModal';
 import BarcodeScannerModal from './BarcodeScannerModal';
@@ -394,13 +395,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
             file_name: file.name
           });
 
-          try {
-            const billingRes = await billingService.deductCredits(1, 'AI Snap & List Scanner');
-            if (onUpdateCredits && typeof billingRes?.credits === 'number') {
-              onUpdateCredits(billingRes.credits);
-            }
-          } catch (billingErr) {
-            console.error("Credit deduction note:", billingErr);
+          if (onUpdateCredits && typeof response.data?.credits === 'number') {
+            onUpdateCredits(response.data.credits);
           }
 
           setBulkDrafts(prev => prev.map(d => d.id === draftId ? {
@@ -865,16 +861,11 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         platform: 'Instagram',
         tone: 'Persuasive'
       });
-      try {
-        const billingRes = await billingService.deductCredits(1, 'AI Product Sales Copy');
-        if (onUpdateCredits && typeof billingRes?.credits === 'number') {
-          onUpdateCredits(billingRes.credits);
-        }
-      } catch (billingErr) {
-        console.error("Credit deduction note:", billingErr);
+      if (onUpdateCredits && typeof response.data?.credits === 'number') {
+        onUpdateCredits(response.data.credits);
       }
       setCurrentProduct(prev => ({ ...prev, description: response.data.caption || response.data.text }));
-      toast.success('AI Copy applied! (1 credit debited)', { id: toastId });
+      toast.success('AI Copy applied!', { id: toastId });
     } catch (err) {
       toast.error('AI craft failed. Make sure you have credits.', { id: toastId });
     }
@@ -926,7 +917,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `SmartBiz_Inventory_Audit_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `SmartBiz_Inventory_Audit_${getBusinessDateStr()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

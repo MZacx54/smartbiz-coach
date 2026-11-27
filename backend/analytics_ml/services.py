@@ -109,8 +109,10 @@ class CreditScoringService:
         so partner microfinance banks and grant officers can verify authenticity.
         """
         if not date_prefix:
-            date_prefix = datetime.utcnow().strftime("%Y-%m")
-        secret = (getattr(settings, "SECRET_KEY", "") or "smartbiz- fallback-secret").encode("utf-8")
+            date_prefix = timezone.localdate().strftime("%Y-%m")
+        secret = (getattr(settings, "SECRET_KEY", "") or "").encode("utf-8")
+        if not secret:
+            raise ValueError("SECRET_KEY is required for dossier signature generation.")
         msg = f"SBC-UW-{int(user_id):05d}:{int(credit_score)}:{date_prefix}".encode("utf-8")
         return hmac.new(secret, msg, hashlib.sha256).hexdigest()[:16].upper()
 
@@ -155,19 +157,23 @@ class CreditScoringService:
 
         compliance_points = min(110, compliance_points)
 
-        # 2. Cashflow Velocity, Consistency & Expenses (Max 192 points)
-        sales_qs = DailySale.objects.filter(user=user)
-        expenses_qs = DailyExpense.objects.filter(user=user)
+        # 2. Cashflow Velocity, Consistency & Expenses (Max 192 points) - ALWAYS exclude voided entries
+        sales_qs = DailySale.objects.filter(user=user, is_voided=False)
+        expenses_qs = DailyExpense.objects.filter(user=user, is_voided=False)
 
         sales_count = sales_qs.count()
         total_revenue = sum(float(s.total_amount or 0) for s in sales_qs)
         total_expenses = sum(float(e.amount or 0) for e in expenses_qs)
         fuel_expenses = sum(float(e.amount or 0) for e in expenses_qs if getattr(e, 'category', '') == 'FUEL_GEN')
 
-        # Distinct active trading days in last 30 days
+        # Distinct active trading days in last 30 days (Nigeria WAT localtime)
         thirty_days_ago = timezone.now() - timedelta(days=30)
+        ninety_days_ago = timezone.now() - timedelta(days=90)
         recent_sales = sales_qs.filter(created_at__gte=thirty_days_ago)
-        active_days = len(set(s.created_at.date() for s in recent_sales if s.created_at))
+        active_days = len(set(timezone.localtime(s.created_at).date() for s in recent_sales if s.created_at))
+        rev_90d = sum(float(s.total_amount or 0) for s in sales_qs.filter(created_at__gte=ninety_days_ago))
+        exp_90d = sum(float(e.amount or 0) for e in expenses_qs.filter(created_at__gte=ninety_days_ago))
+        rev_30d = sum(float(s.total_amount or 0) for s in recent_sales)
 
         if sales_count > 0:
             freq_pts = min(90, int(math.log1p(sales_count) * 24) + (active_days * 2))
@@ -288,14 +294,18 @@ class CreditScoringService:
             risk_level = "HIGH_RISK"
             loan_eligibility = "Log 14 days of continuous sales in Daily Day-Book and verify CAC to unlock ₦1M+ micro-credit"
 
-        # 5. Supervised ML Probability of Default (PD%), LGD%, Expected Credit Loss (ECL) & DSCR (CBN / IFRS-9 Standard)
-        recommended_loan_limit = round(max(0.0, min(15000000.0, (total_revenue / 3.0) * 0.45)), -3) if total_revenue > 0 else 0.0
+        # 5. Behavioral Credit Readiness Heuristic Estimate (Trailing 90-day / 30-day Cashbook Velocity)
+        first_sale_dt = sales_qs.order_by('created_at').values_list('created_at', flat=True).first()
+        months_active = max(1.0, min(3.0, ((timezone.now() - first_sale_dt).days / 30.0) if first_sale_dt else 1.0))
+        monthly_revenue_est = (rev_90d / months_active) if rev_90d > 0 else rev_30d
+        monthly_expenses_est = (exp_90d / months_active) if exp_90d > 0 else total_expenses
+        recommended_loan_limit = round(max(0.0, min(15000000.0, monthly_revenue_est * 0.45)), -3) if monthly_revenue_est > 0 else 0.0
         cv_norm = min(1.2, float(cashflow_points) / 192.0)
         repay_norm = float(debt_recovery_points) / 138.0
         comp_norm = float(compliance_points) / 110.0
         inv_norm = float(inventory_points) / 110.0
-        operating_margin = max(0.05, min(0.85, (total_revenue - total_expenses) / max(1.0, total_revenue))) if total_revenue > 0 else 0.28
-        fuel_burden_ratio = min(1.0, fuel_expenses / max(1.0, total_expenses)) if total_expenses > 0 else 0.15
+        operating_margin = max(0.0, min(0.85, (total_revenue - total_expenses) / max(1.0, total_revenue))) if total_revenue > 0 else 0.0
+        fuel_burden_ratio = min(1.0, fuel_expenses / max(1.0, total_expenses)) if total_expenses > 0 else 0.0
         fuel_resilience_norm = max(0.1, 1.0 - fuel_burden_ratio)
 
         rf_model = CreditScoringService._get_or_train_credit_model()
@@ -303,25 +313,24 @@ class CreditScoringService:
             try:
                 x_merchant = np.array([[comp_norm, cv_norm, repay_norm, inv_norm, operating_margin, fuel_resilience_norm]])
                 raw_pd = float(rf_model.predict_proba(x_merchant)[0][1])
-                ml_risk_engine = "Persisted Scikit-Learn RandomForestClassifier (n_estimators=80, 6-feature Nigerian MSME Kernel) + IFRS-9"
+                ml_risk_engine = "Behavioral Cashbook Readiness Score (Heuristic ML Advisory — Not Audited Bureau Credit)"
             except Exception:
                 logit = 2.4 - (1.8 * cv_norm + 1.6 * repay_norm + 0.9 * comp_norm + 0.6 * inv_norm)
                 raw_pd = float(1.0 / (1.0 + math.exp(-logit)))
-                ml_risk_engine = "Logistic Sigmoid IFRS-9 Actuarial Kernel"
+                ml_risk_engine = "Behavioral Cashbook Readiness Score (Logistic Heuristic)"
         else:
             logit = 2.4 - (1.8 * cv_norm + 1.6 * repay_norm + 0.9 * comp_norm + 0.6 * inv_norm)
             raw_pd = float(1.0 / (1.0 + math.exp(-logit)))
-            ml_risk_engine = "Logistic Sigmoid IFRS-9 Actuarial Kernel"
+            ml_risk_engine = "Behavioral Cashbook Readiness Score (Logistic Heuristic)"
 
-        # Calibrate PD% to SmartScore band (1.2% for 820+ up to 48% for <450)
         score_pd_anchor = max(0.012, min(0.48, (860.0 - final_score) / 1100.0))
         pd_probability = round(((raw_pd * 0.45) + (score_pd_anchor * 0.55)) * 100.0, 2)
         lgd_pct = 32.0 if prod_count >= 5 else 45.0
         ecl_ngn = round(recommended_loan_limit * (pd_probability / 100.0) * (lgd_pct / 100.0), 2)
 
-        monthly_net_operating_income = max(65000.0, (total_revenue - total_expenses) / 3.0) if total_revenue > total_expenses else max(45000.0, total_revenue * 0.12)
-        estimated_monthly_debt_service = max(15000.0, (recommended_loan_limit * 1.09) / 12.0)
-        dscr = round(max(0.85, min(4.80, monthly_net_operating_income / estimated_monthly_debt_service)), 2)
+        monthly_net_operating_income = max(0.0, monthly_revenue_est - monthly_expenses_est)
+        estimated_monthly_debt_service = max(1.0, (recommended_loan_limit * 1.09) / 12.0) if recommended_loan_limit > 0 else 1.0
+        dscr = round(min(4.80, monthly_net_operating_income / estimated_monthly_debt_service), 2) if recommended_loan_limit > 0 else 0.0
 
         if pd_probability <= 8.5 and dscr >= 1.25:
             ifrs9_stage = "Stage 1 (Performing • Bankable)"
@@ -455,6 +464,7 @@ class DemandForecastService:
 
             recent_sales = DailySale.objects.filter(
                 user=user,
+                is_voided=False,
                 created_at__gte=thirty_days_ago
             ).filter(
                 Q(product=prod) | Q(item_name__iexact=prod.name)
@@ -480,18 +490,20 @@ class DemandForecastService:
                 preds = model.predict(next_7_days)
                 avg_daily_velocity = max(0.15, float(np.mean(preds)))
             else:
-                if total_30d_units > 0:
-                    avg_daily_velocity = max(0.2, total_30d_units / 30.0)
-                else:
-                    # Baseline velocity estimate for catalog planning
-                    avg_daily_velocity = round(0.4 + ((prod.id or 1) % 4) * 0.25, 2)
+                avg_daily_velocity = max(0.0, total_30d_units / 30.0) if total_30d_units > 0 else 0.0
 
             if current_stock <= 0:
                 days_remaining = 0
                 stockout_date = "Out of Stock Now"
                 status = "CRITICAL_STOCKOUT"
                 urgency = "CRITICAL"
-                suggested_reorder = max(10, int(avg_daily_velocity * 14))
+                suggested_reorder = max(5, int(avg_daily_velocity * 14)) if avg_daily_velocity > 0 else 5
+            elif avg_daily_velocity <= 0:
+                days_remaining = 999
+                stockout_date = "No Recent Sales (Unrated)"
+                status = "HEALTHY"
+                urgency = "LOW"
+                suggested_reorder = 0
             else:
                 days_remaining = int(current_stock / avg_daily_velocity)
                 stockout_dt = now + timedelta(days=days_remaining)
@@ -547,8 +559,8 @@ class TillAnomalyService:
     def detect_anomalies(user) -> Dict[str, Any]:
         from marketplace.models import DailySale, DailyExpense
 
-        sales = list(DailySale.objects.filter(user=user).order_by('-created_at')[:60])
-        expenses = list(DailyExpense.objects.filter(user=user).order_by('-created_at')[:60])
+        sales = list(DailySale.objects.filter(user=user, is_voided=False).order_by('-created_at')[:60])
+        expenses = list(DailyExpense.objects.filter(user=user, is_voided=False).order_by('-created_at')[:60])
 
         if len(sales) < 3 and len(expenses) < 2:
             return {
@@ -644,10 +656,10 @@ class CustomerSegmentationService:
     def segment_customers(user) -> Dict[str, Any]:
         from marketplace.models import DailySale
 
-        sales_qs = DailySale.objects.filter(user=user)
+        sales_qs = DailySale.objects.filter(user=user, is_voided=False)
 
         customer_map = {}
-        now = datetime.now()
+        now = timezone.localtime(timezone.now())
 
         for s in sales_qs:
             name = (s.customer_name or "").strip()
@@ -656,8 +668,8 @@ class CustomerSegmentationService:
             if not key:
                 continue
 
-            sale_date = s.created_at.replace(tzinfo=None) if hasattr(s.created_at, 'tzinfo') and s.created_at.tzinfo else (s.created_at or now)
-            days_ago = max(0, (now - sale_date).days)
+            sale_date = timezone.localtime(s.created_at) if s.created_at else now
+            days_ago = max(0, (now.date() - sale_date.date()).days)
             amount = float(s.total_amount or 0.0)
 
             if key not in customer_map:
@@ -810,7 +822,7 @@ class PriceElasticityService:
 
         results = []
         for p in products_qs[:10]:
-            sales = DailySale.objects.filter(user=user).filter(Q(product=p) | Q(item_name__icontains=p.name))
+            sales = DailySale.objects.filter(user=user, is_voided=False).filter(Q(product=p) | Q(item_name__icontains=p.name))
 
             current_price = float(p.price or 0.0)
             cost_price = float(p.cost_price or (current_price * 0.65))
@@ -898,20 +910,20 @@ class CashCliffForecastService:
         now = timezone.now()
         thirty_days_ago = now - timedelta(days=30)
 
-        sales_30d = list(DailySale.objects.filter(user=user, created_at__gte=thirty_days_ago))
-        expenses_30d = list(DailyExpense.objects.filter(user=user, created_at__gte=thirty_days_ago))
+        sales_30d = list(DailySale.objects.filter(user=user, is_voided=False, created_at__gte=thirty_days_ago))
+        expenses_30d = list(DailyExpense.objects.filter(user=user, is_voided=False, created_at__gte=thirty_days_ago))
 
         total_inflow_30d = sum(float(s.total_amount or 0) for s in sales_30d if s.payment_method != 'CREDIT')
         # All outstanding unsettled debt across the merchant's credit ledger
-        unpaid_credit_sales = DailySale.objects.filter(user=user, payment_method='CREDIT', is_debt=True)
+        unpaid_credit_sales = DailySale.objects.filter(user=user, is_voided=False, payment_method='CREDIT', is_debt=True)
         credit_locked_30d = sum(float(s.total_amount or 0) for s in unpaid_credit_sales)
         total_outflow_30d = sum(float(e.amount or 0) for e in expenses_30d)
         fuel_gen_outflow_30d = sum(float(e.amount or 0) for e in expenses_30d if e.category == 'FUEL_GEN')
 
-        # Active days denominator (at least 7 days to avoid extreme single-day spikes)
+        # Active days denominator (Nigeria WAT localtime)
         active_days = max(7, len(set(
-            [s.created_at.date() for s in sales_30d if s.created_at] +
-            [e.created_at.date() for e in expenses_30d if e.created_at]
+            [timezone.localtime(s.created_at).date() for s in sales_30d if s.created_at] +
+            [timezone.localtime(e.created_at).date() for e in expenses_30d if e.created_at]
         )))
 
         has_trading_data = (total_inflow_30d > 0 or total_outflow_30d > 0 or credit_locked_30d > 0)
@@ -1013,7 +1025,7 @@ class AutonomousAgentService:
         business_name = getattr(user, 'business_name', None) or "Our Store"
 
         # 1. Smart Debt Collector Agent (Gbege Recovery)
-        unpaid_sales = list(DailySale.objects.filter(user=user, payment_method='CREDIT', is_debt=True).order_by('-total_amount')[:5])
+        unpaid_sales = list(DailySale.objects.filter(user=user, is_voided=False, payment_method='CREDIT', is_debt=True).order_by('-total_amount')[:5])
         total_unpaid = sum(float(s.total_amount or 0) for s in unpaid_sales)
         top_debtor = unpaid_sales[0] if unpaid_sales else None
 
@@ -1227,7 +1239,7 @@ class PartnerPortalService:
                 "msme_count": len(items),
                 "avg_smart_score": round(sum(i["smart_score"] for i in items) / max(1, len(items))),
                 "total_gmv_ngn": round(sum(i["monthly_gmv_ngn"] for i in items), 2),
-                "women_led_pct": 60.0,
+                "women_led_pct": None,
                 "highlight": "100% Live PostgreSQL Telemetry",
             })
 
@@ -1238,12 +1250,13 @@ class PartnerPortalService:
             "total_msmes_monitored": len(live_cohort),
             "total_verified_gmv_ngn": live_total_gmv,
             "total_recommended_credit_pool_ngn": live_credit_pool,
-            "avg_smart_score": round(sum(r["smart_score"] for r in live_cohort) / max(1, len(live_cohort))) if live_cohort else 710,
+            "avg_smart_score": round(sum(r["smart_score"] for r in live_cohort) / max(1, len(live_cohort))) if live_cohort else 300,
             "cac_formalized_pct": round((live_cac_count / max(1, len(live_cohort))) * 100.0, 1) if live_cohort else 0.0,
-            "women_led_pct": 62.5,
-            "youth_led_pct": 80.0,
+            "women_led_pct": None,
+            "youth_led_pct": None,
+            "demographic_note": "Gender/youth breakdown requires opt-in owner demographic fields.",
             "prime_credit_ready_count": sum(1 for r in live_cohort if r["smart_score"] >= 700),
-            "estimated_jobs_supported": len(live_cohort) * 3,
+            "estimated_jobs_supported": None,
         }
 
         # 2. Benchmark Accredited Nigerian MSME Pilot Cohort (for National Simulation Mode)
@@ -1606,8 +1619,8 @@ class MonteCarloLoanSimulatorService:
         monthly_installment = total_repayable / tenor_months
         daily_debt_service = monthly_installment / 30.0
 
-        # Working capital injection boosts inventory turnover by ~22% annualized return on deployed stock
-        daily_revenue_boost = (loan_amount_ngn * 0.28) / 90.0
+        # Evaluate repayment on conservative observed cashflow baseline (no fabricated ROI multiplier)
+        daily_revenue_boost = 0.0
         projected_daily_inflow = base_daily_inflow + daily_revenue_boost
         projected_daily_net = projected_daily_inflow - base_daily_outflow - daily_debt_service
 
@@ -1617,13 +1630,13 @@ class MonteCarloLoanSimulatorService:
         sim_90d_nets = rng.normal(loc=projected_daily_net * 90.0, scale=daily_std * math.sqrt(90.0), size=1000)
 
         positive_paths = int(np.sum(sim_90d_nets > 0))
-        repayment_confidence_pct = round(min(99.4, max(12.0, (positive_paths / 1000.0) * 100.0)), 1)
+        repayment_confidence_pct = round((positive_paths / 1000.0) * 100.0, 1)
 
         p10_worst = round(float(np.percentile(sim_90d_nets, 10)), 2)
         p50_median = round(float(np.percentile(sim_90d_nets, 50)), 2)
         p90_best = round(float(np.percentile(sim_90d_nets, 90)), 2)
 
-        monthly_noi = max(25000.0, (projected_daily_inflow - base_daily_outflow) * 30.0)
+        monthly_noi = max(0.0, (projected_daily_inflow - base_daily_outflow) * 30.0)
         dscr = round(monthly_noi / max(1.0, monthly_installment), 2)
 
         if dscr >= 1.5 and repayment_confidence_pct >= 85.0:
@@ -1684,7 +1697,7 @@ class POSReconciliationService:
                 })
                 break
 
-        recent_sales = list(DailySale.objects.filter(user=user).order_by('-created_at')[:100]) if user and getattr(user, 'is_authenticated', False) else []
+        recent_sales = list(DailySale.objects.filter(user=user, is_voided=False).order_by('-created_at')[:100]) if user and getattr(user, 'is_authenticated', False) else []
         recorded_amounts = [float(s.total_amount) for s in recent_sales]
 
         verified_matches = []

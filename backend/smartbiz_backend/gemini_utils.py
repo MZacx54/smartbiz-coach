@@ -144,16 +144,19 @@ def get_monthly_ai_spend_summary(user=None) -> dict:
         "total_completion_tokens": total_completion_tokens,
     }
 
-# In-memory prompt cache for free-tier optimization
-PROMPT_CACHE = {}
+# Bounded LRU prompt cache for free-tier optimization (max 256 entries to avoid memory leaks)
+from collections import OrderedDict
+PROMPT_CACHE = OrderedDict()
+MAX_PROMPT_CACHE_SIZE = 256
 CACHE_TTL = 86400  # 24 hours
 
-def get_cache_key(messages, model, response_format, system_instruction):
+def get_cache_key(messages, model, response_format, system_instruction, temperature=0.7):
     key_data = json.dumps({
         "messages": messages,
         "model": model,
         "response_format": response_format,
-        "system_instruction": system_instruction
+        "system_instruction": system_instruction,
+        "temperature": temperature,
     }, sort_keys=True)
     return hashlib.sha256(key_data.encode('utf-8')).hexdigest()
 
@@ -239,14 +242,19 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
             return get_dynamic_json_fallback(messages)
         return get_dynamic_string_fallback(messages)
 
-    # 1. In-memory cache lookup (Bypass cache for dynamic generation prompts)
-    cache_key = get_cache_key(messages, model, response_format, system_instruction)
+    # 1. Bounded LRU cache lookup (Bypass cache for personalized / dynamic prompts)
+    cache_key = get_cache_key(messages, model, response_format, system_instruction, temperature=temperature)
     now = time.time()
     msg_str = str(messages).lower()
-    is_dynamic = "trend" in msg_str or "concept" in msg_str or "caption" in msg_str or "topic" in msg_str or "script" in msg_str or "chat" in msg_str or "smartbiz" in msg_str or "coach" in msg_str or "support" in msg_str or "debt" in msg_str or "nudge" in msg_str or "reminder" in msg_str or "debtor" in msg_str or "owe" in msg_str or "plan" in msg_str or "business_plan" in msg_str or "grant" in msg_str
+    is_dynamic = any(tok in msg_str for tok in (
+        "trend", "concept", "caption", "topic", "script", "chat", "smartbiz", "coach",
+        "support", "debt", "nudge", "reminder", "debtor", "owe", "plan", "business_plan",
+        "grant", "pricing", "receipt", "analyze", "product", "sales", "email", "ask", "ledger"
+    ))
     if not is_dynamic and cache_key in PROMPT_CACHE:
         timestamp, cached_response = PROMPT_CACHE[cache_key]
         if now - timestamp < CACHE_TTL:
+            PROMPT_CACHE.move_to_end(cache_key)
             record_ai_usage(
                 model_name=model,
                 prompt_tokens=max(1, len(msg_str) // 4),
@@ -322,9 +330,10 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
             "parts": [{"text": str(system_instruction)}]
         }
 
-    # Set up generation config (JSON mode, temperature, etc.)
+    # Set up generation config (JSON mode, temperature, bounded maxOutputTokens)
     gen_config = {
-        "temperature": temperature
+        "temperature": temperature,
+        "maxOutputTokens": 4096,
     }
     
     # If JSON response requested
@@ -390,8 +399,13 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                     global KEY_INDEX
                     KEY_INDEX = (KEY_INDEX + attempt) % len(keys)
 
-                    # Cache successful response
-                    PROMPT_CACHE[cache_key] = (time.time(), text_response)
+                    # Bounded LRU Cache store
+                    if not is_dynamic:
+                        if cache_key in PROMPT_CACHE:
+                            PROMPT_CACHE.move_to_end(cache_key)
+                        while len(PROMPT_CACHE) >= MAX_PROMPT_CACHE_SIZE:
+                            PROMPT_CACHE.popitem(last=False)
+                        PROMPT_CACHE[cache_key] = (time.time(), text_response)
                     return text_response
                 except (KeyError, IndexError) as parse_err:
                     print(f"Gemini response structure unexpected on {active_model}: {result}")
@@ -773,7 +787,7 @@ def clean_json_response(text):
     cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
     return cleaned.strip()
 
-def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, audio_base64=None, mime_type=None):
+def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, audio_base64=None, mime_type=None, user=None, feature="general", strict=False, max_output_tokens=4096):
     """
     Generates JSON content using Google Gemini.
     Supports optional image or audio base64 for multimodal vision and audio tasks.
@@ -814,19 +828,18 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None,
             contents,
             model=DEFAULT_TEXT_MODEL,
             response_format={"type": "json_object"},
-            system_instruction=system_instruction
+            system_instruction=system_instruction,
+            strict=True,
+            user=user,
+            feature=feature,
         )
         cleaned_text = clean_json_response(response_text)
         return json.loads(cleaned_text)
     except Exception as e:
-        print(f"Gemini JSON generation error: {e}")
-        try:
-            fallback_str = get_dynamic_json_fallback(prompt)
-            return json.loads(clean_json_response(fallback_str))
-        except Exception:
-            return {"error": str(e)}
+        print(f"Gemini JSON generation error ({feature}): {e}")
+        return {"error": str(e)}
 
-def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_type=None):
+def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_type=None, user=None, feature="general"):
     """
     Generates pure text content using Google Gemini.
     Supports optional image or audio base64 inputs for vision or voice tasks.
@@ -844,7 +857,10 @@ def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_typ
             }
         })
     if audio_base64:
-        clean_audio = "".join(audio_base64.split())
+        clean_audio = audio_base64
+        if ";base64," in clean_audio:
+            clean_audio = clean_audio.split(";base64,")[1]
+        clean_audio = "".join(clean_audio.split())
         parts.append({
             "inline_data": {
                 "mime_type": mime_type or "audio/webm",
@@ -859,9 +875,9 @@ def generate_text_content(prompt, image_base64=None, audio_base64=None, mime_typ
     }]
 
     try:
-        return make_gemini_request(contents, model=DEFAULT_TEXT_MODEL)
+        return make_gemini_request(contents, model=DEFAULT_TEXT_MODEL, strict=True, user=user, feature=feature)
     except Exception as e:
-        print(f"Gemini text generation error: {e}")
+        print(f"Gemini text generation error ({feature}): {e}")
         return f"Error: {str(e)}"
 
 

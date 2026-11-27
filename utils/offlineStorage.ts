@@ -6,9 +6,10 @@
  */
 
 const DB_NAME = 'SmartBizOfflineDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_SALES = 'offline_sales';
 const STORE_EXPENSES = 'offline_expenses';
+const STORE_KV = 'kv_cache';
 
 function getActiveScopeUserId(): string {
   try {
@@ -47,6 +48,9 @@ function openDB(): Promise<IDBDatabase | null> {
         }
         if (!db.objectStoreNames.contains(STORE_EXPENSES)) {
           db.createObjectStore(STORE_EXPENSES, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(STORE_KV)) {
+          db.createObjectStore(STORE_KV, { keyPath: 'key' });
         }
       };
 
@@ -126,14 +130,58 @@ export const offlineStorage = {
       const db = await openDB();
       if (db) {
         await new Promise<void>((resolve) => {
-          const tx = db.transaction([STORE_SALES, STORE_EXPENSES], 'readwrite');
-          tx.objectStore(STORE_SALES).clear();
-          tx.objectStore(STORE_EXPENSES).clear();
+          const stores = [STORE_SALES, STORE_EXPENSES, ...(db.objectStoreNames.contains(STORE_KV) ? [STORE_KV] : [])];
+          const tx = db.transaction(stores, 'readwrite');
+          stores.forEach((s) => tx.objectStore(s).clear());
           tx.oncomplete = () => resolve();
           tx.onerror = () => resolve();
         });
       }
     } catch {}
+  },
+
+  /**
+   * Persist large structured data (such as photo studio projects) in IndexedDB.
+   */
+  async saveJsonItem(key: string, value: any): Promise<void> {
+    const scopedKey = `${getActiveScopeUserId()}:${key}`;
+    try {
+      const db = await openDB();
+      if (db && db.objectStoreNames.contains(STORE_KV)) {
+        await new Promise<void>((resolve) => {
+          const tx = db.transaction(STORE_KV, 'readwrite');
+          tx.objectStore(STORE_KV).put({ key: scopedKey, value });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
+        return;
+      }
+    } catch {}
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  },
+
+  async loadJsonItem<T>(key: string, fallback: T): Promise<T> {
+    const scopedKey = `${getActiveScopeUserId()}:${key}`;
+    try {
+      const db = await openDB();
+      if (db && db.objectStoreNames.contains(STORE_KV)) {
+        const res = await new Promise<any>((resolve) => {
+          const tx = db.transaction(STORE_KV, 'readonly');
+          const req = tx.objectStore(STORE_KV).get(scopedKey);
+          req.onsuccess = () => resolve(req.result?.value);
+          req.onerror = () => resolve(undefined);
+        });
+        if (res !== undefined) return res as T;
+      }
+    } catch {}
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : fallback;
+    } catch {
+      return fallback;
+    }
   },
 
   /**

@@ -157,18 +157,22 @@ const InvoiceGenerator: React.FC = () => {
     loadInvoices();
   }, []);
 
+  const roundKobo = (val: number) => Math.round((Number(val) || 0) * 100) / 100;
+  const clampDiscount = (d: number) => Math.min(100, Math.max(0, Number(d) || 0));
+  const clampTax = (t: number) => Math.max(0, Number(t) || 0);
+
   const saveInvoicesToStore = (newInvoices: Invoice[]) => {
     localStorage.setItem('sb_invoices_detailed', JSON.stringify(newInvoices));
     
     // Maintain compat with main dashboard health score widget:
     const summaryStats = newInvoices.map(inv => {
-      const sub = inv.items.reduce((a, item) => a + (item.quantity * item.price), 0);
-      const disc = sub * (inv.discount / 100);
-      const tax = (sub - disc) * (inv.taxRate / 100);
+      const sub = roundKobo(inv.items.reduce((a, item) => a + (Math.max(0, item.quantity) * Math.max(0, item.price)), 0));
+      const disc = roundKobo(sub * (clampDiscount(inv.discount) / 100));
+      const tax = roundKobo((sub - disc) * (clampTax(inv.taxRate) / 100));
       return {
         id: inv.id,
         clientName: inv.clientName,
-        total: sub - disc + tax,
+        total: roundKobo(sub - disc + tax),
         date: inv.date
       };
     });
@@ -181,10 +185,10 @@ const InvoiceGenerator: React.FC = () => {
       let debtorsList: any[] = savedDebtors ? JSON.parse(savedDebtors) : [];
       
       newInvoices.forEach(inv => {
-        const sub = inv.items.reduce((a, item) => a + (item.quantity * item.price), 0);
-        const disc = sub * (inv.discount / 100);
-        const tax = (sub - disc) * (inv.taxRate / 100);
-        const totalAmount = sub - disc + tax;
+        const sub = roundKobo(inv.items.reduce((a, item) => a + (Math.max(0, item.quantity) * Math.max(0, item.price)), 0));
+        const disc = roundKobo(sub * (clampDiscount(inv.discount) / 100));
+        const tax = roundKobo((sub - disc) * (clampTax(inv.taxRate) / 100));
+        const totalAmount = roundKobo(sub - disc + tax);
         
         // Find existing debtor linked to this invoice
         const existingIdx = debtorsList.findIndex(d => d.linkedInvoiceId === inv.id || (d.name === inv.clientName && d.amount === totalAmount && d.status === 'UNPAID'));
@@ -252,13 +256,14 @@ const InvoiceGenerator: React.FC = () => {
     });
   };
 
-  const calculateSubtotal = (inv: Invoice) => inv.items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+  const calculateSubtotal = (inv: Invoice) =>
+    roundKobo(inv.items.reduce((acc, item) => acc + (Math.max(0, Number(item.quantity) || 0) * Math.max(0, Number(item.price) || 0)), 0));
   
   const calculateTotal = (inv: Invoice) => {
     const sub = calculateSubtotal(inv);
-    const discountAmt = sub * (inv.discount / 100);
-    const taxAmt = (sub - discountAmt) * (inv.taxRate / 100);
-    return sub - discountAmt + taxAmt;
+    const discountAmt = roundKobo(sub * (clampDiscount(inv.discount) / 100));
+    const taxAmt = roundKobo((sub - discountAmt) * (clampTax(inv.taxRate) / 100));
+    return roundKobo(sub - discountAmt + taxAmt);
   };
 
   const handleCreateNew = () => {
@@ -354,7 +359,7 @@ const InvoiceGenerator: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `SmartBiz_Invoices_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `SmartBiz_Invoices_Report_${getBusinessDateStr()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -809,18 +814,24 @@ Generated via SmartBiz Coach`;
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Discount (%)</label>
               <input 
                 type="number"
+                min="0"
+                max="100"
+                step="0.5"
                 className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-indigo-500"
                 value={formInvoice.discount || ''}
-                onChange={(e) => setFormInvoice({...formInvoice, discount: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setFormInvoice({...formInvoice, discount: Math.min(100, Math.max(0, parseFloat(e.target.value) || 0))})}
               />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Tax / VAT (%)</label>
               <input 
                 type="number"
+                min="0"
+                max="100"
+                step="0.5"
                 className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-indigo-500"
                 value={formInvoice.taxRate || ''}
-                onChange={(e) => setFormInvoice({...formInvoice, taxRate: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setFormInvoice({...formInvoice, taxRate: Math.max(0, parseFloat(e.target.value) || 0)})}
               />
             </div>
           </div>

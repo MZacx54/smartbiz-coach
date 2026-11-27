@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as geminiService from '../services/geminiService';
 import { usageLimiter } from '../utils/usageLimiter';
 import { billingService } from '../services/billingService';
+import { offlineStorage } from '../utils/offlineStorage';
 import { marketingService } from '../services/marketingService';
 import CreditPromptModal from './CreditPromptModal';
 import { PhotoStudio } from './PhotoStudio';
@@ -340,10 +341,15 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         selectedTrustBadges: string[];
         timestamp: number;
     }
-    const [savedProjects, setSavedProjects] = useState<SavedPhotoProject[]>(() => {
-        const saved = localStorage.getItem('sb_saved_photo_projects');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [savedProjects, setSavedProjects] = useState<SavedPhotoProject[]>([]);
+
+    useEffect(() => {
+        offlineStorage.loadJsonItem<SavedPhotoProject[]>('sb_saved_photo_projects', []).then((loaded) => {
+            if (Array.isArray(loaded) && loaded.length > 0) {
+                setSavedProjects(loaded);
+            }
+        });
+    }, []);
 
     const [badgeTheme, setBadgeTheme] = useState<'gold' | 'emerald' | 'ruby' | 'dark'>('gold');
     const [badgePosition, setBadgePosition] = useState<'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'>('top-right');
@@ -380,7 +386,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         };
         const updated = [newProj, ...savedProjects];
         setSavedProjects(updated);
-        localStorage.setItem('sb_saved_photo_projects', JSON.stringify(updated));
+        void offlineStorage.saveJsonItem('sb_saved_photo_projects', updated);
         toast.success("Project saved successfully!");
     };
 
@@ -388,7 +394,7 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
         e.stopPropagation();
         const updated = savedProjects.filter(p => p.id !== id);
         setSavedProjects(updated);
-        localStorage.setItem('sb_saved_photo_projects', JSON.stringify(updated));
+        void offlineStorage.saveJsonItem('sb_saved_photo_projects', updated);
         toast.success("Project deleted.");
     };
 
@@ -426,11 +432,15 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
             const result = await geminiService.editProductImage(currentImg, mimeType, prompt);
             
             if (result && result.image_base64) {
-                // Deduct credits on success
-                const billingResponse = await billingService.deductCredits(cost, "AI Photo Studio Edit");
-                onUpdateCredits(billingResponse.credits);
-                
-                const newImg = `data:${mimeType};base64,${result.image_base64}`;
+                if (typeof result.credits === 'number') {
+                    onUpdateCredits(result.credits);
+                } else {
+                    onUpdateCredits(Math.max(0, credits - 5));
+                }
+
+                const newImg = String(result.image_base64).startsWith('data:')
+                    ? result.image_base64
+                    : `data:${mimeType};base64,${result.image_base64}`;
                 const nextHistory = (overrideImage ? [overrideImage] : imageHistory).slice(0, (overrideImage ? 0 : historyIndex) + 1);
                 nextHistory.push(newImg);
                 setImageHistory(nextHistory);
@@ -870,12 +880,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 throw new Error("AI returned an empty response. Please try a more specific topic.");
             }
 
-            // Only charge credits or increment usage on success
-            if (deduct) {
-                const billingResponse = await billingService.deductCredits(cost, `AI Content Studio - ${activeTab}`);
-                onUpdateCredits(billingResponse.credits);
-            } else {
-                usageLimiter.incrementUsage('content_generator');
+            // Server endpoint already performs atomic credit reservation
+            if (typeof result?.credits === 'number') {
+                onUpdateCredits(result.credits);
+            } else if (deduct) {
+                onUpdateCredits(Math.max(0, credits - cost));
             }
 
             setGeneratedContent(result);
@@ -975,8 +984,11 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                 toast.loading(msg, { id: 'vid-gen' });
             });
 
-            const billingResponse = await billingService.deductCredits(videoCost, "AI Video Storyboard & Voiceover");
-            onUpdateCredits(billingResponse.credits);
+            if (typeof response?.credits === 'number') {
+                onUpdateCredits(response.credits);
+            } else {
+                onUpdateCredits(Math.max(0, credits - 8));
+            }
 
             setStoryboard(response.storyboard);
             
@@ -989,7 +1001,10 @@ const ContentStudio: React.FC<ContentStudioProps> = ({ brand, credits, onUpdateC
                     }
                     const blob = new Blob([array], { type: 'audio/mp3' });
                     const url = URL.createObjectURL(blob);
-                    setAudioUrl(url);
+                    setAudioUrl((prevUrl: string | null) => {
+                        if (prevUrl && prevUrl.startsWith('blob:')) URL.revokeObjectURL(prevUrl);
+                        return url;
+                    });
                     toast.success('Storyboard & voiceover generated successfully!', { id: 'vid-gen' });
                 } catch (audioErr) {
                     console.error("Failed to decode audio:", audioErr);

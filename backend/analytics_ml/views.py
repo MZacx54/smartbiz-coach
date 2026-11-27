@@ -239,15 +239,30 @@ class VerifyUnderwritingDossierView(views.APIView):
         brand = BrandIdentity.objects.filter(user=user).first()
         business_name = (getattr(brand, 'business_name', None) if brand else None) or getattr(user, 'business_name', None) or user.username
 
+        import hmac
         expected_hash = CreditScoringService.generate_dossier_signature(user.id, credit['credit_score'])
         provided_hash = (request.query_params.get('hash') or '').strip().upper()
-        signature_match = True if not provided_hash else (provided_hash == expected_hash)
+        if not provided_hash:
+            return Response({
+                "verified": False,
+                "dossier_id": f"SBC-UW-{user.id:05d}",
+                "signature_status": "MISSING_VERIFICATION_HASH",
+                "error": "A cryptographic verification ?hash= parameter is required."
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        signature_match = hmac.compare_digest(provided_hash, expected_hash.upper())
+        if not signature_match:
+            return Response({
+                "verified": False,
+                "dossier_id": f"SBC-UW-{user.id:05d}",
+                "signature_status": "HASH_MISMATCH_OR_SCORE_UPDATED",
+                "error": "Dossier signature mismatch. Ask the merchant for a fresh underwriting link."
+            }, status=status.HTTP_403_FORBIDDEN)
 
         return Response({
-            "verified": signature_match,
+            "verified": True,
             "dossier_id": f"SBC-UW-{user.id:05d}",
-            "signature_status": "CRYPTOGRAPHICALLY_VALID" if signature_match else "HASH_MISMATCH_OR_SCORE_UPDATED",
-            "current_verification_hash": expected_hash,
+            "signature_status": "CRYPTOGRAPHICALLY_VALID",
             "merchant_summary": {
                 "business_name": business_name,
                 "cac_verified": credit['metrics']['cac_verified'],
@@ -268,16 +283,15 @@ class VerifyUnderwritingDossierView(views.APIView):
 
 class PartnerPortalDataView(views.APIView):
     """
-    Sprint 4 & Upgrade 1: Institutional Partner Intelligence & Loan Underwriting Terminal API.
-    Supports ?mode=LIVE (100% real database users) or ?mode=SIMULATION (Real DB + Multi-State Benchmark).
+    Institutional Partner Intelligence & Loan Underwriting Terminal API.
+    Restricted strictly to authenticated platform staff / partner administrators.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
         try:
-            req_user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
             mode = request.query_params.get('mode', 'HYBRID')
-            data = PartnerPortalService.get_partner_intelligence(req_user, mode=mode)
+            data = PartnerPortalService.get_partner_intelligence(request.user, mode=mode)
             return Response(data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Partner portal error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

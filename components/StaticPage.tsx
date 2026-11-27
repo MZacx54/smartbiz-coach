@@ -791,7 +791,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     </div>
                     <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
                       <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
-                      <span>Anti-Theft Apprentice Shift Lock (4-Digit PIN)</span>
+                      <span>Anti-Theft Apprentice Shift Lock (Owner Security Password)</span>
                     </div>
                     <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
                       <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
@@ -842,8 +842,8 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                       <strong className="text-slate-900 block mb-1">Standard Transparent Token Pricing Packs:</strong>
                       <p className="text-slate-600">
-                        Packs are purchased in Naira (₦) via Paystack: <strong>Micro</strong> (₦500 / 40 credits), <strong>Starter</strong> (₦1,500 / 150 credits), <strong>Grower</strong> (₦3,500 / 400 credits), 
-                        <strong>Vendor Pro</strong> (₦7,500 / 1,000 credits), and <strong>Mogul</strong> (₦15,000 / 2,500 credits).
+                        Packs are purchased in Naira (₦) via Paystack: <strong>Micro</strong> (₦500 / 50 credits), <strong>Starter</strong> (₦1,500 / 175 credits), <strong>Grower</strong> (₦3,500 / 450 credits), 
+                        <strong>Vendor Pro</strong> (₦7,500 / 1,250 credits), and <strong>Mogul</strong> (₦15,000 / 2,500 credits).
                       </p>
                     </div>
 
@@ -1191,23 +1191,23 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="bg-white p-3 rounded-xl border border-slate-200">
                       <div className="text-slate-500 font-bold text-[10px]">MICRO</div>
                       <div className="font-black text-slate-900 text-sm mt-0.5">₦500</div>
-                      <div className="text-emerald-600 font-bold text-[11px] mt-1">40 Credits</div>
+                      <div className="text-emerald-600 font-bold text-[11px] mt-1">50 Credits</div>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-slate-200">
                       <div className="text-slate-500 font-bold text-[10px]">STARTER</div>
                       <div className="font-black text-slate-900 text-sm mt-0.5">₦1,500</div>
-                      <div className="text-blue-600 font-bold text-[11px] mt-1">150 Credits</div>
+                      <div className="text-blue-600 font-bold text-[11px] mt-1">175 Credits</div>
                     </div>
                     <div className="bg-white p-3 rounded-xl border-2 border-green-500 shadow-sm relative">
                       <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase">Popular</span>
                       <div className="text-slate-500 font-bold text-[10px]">GROWER</div>
                       <div className="font-black text-slate-900 text-sm mt-0.5">₦3,500</div>
-                      <div className="text-green-600 font-bold text-[11px] mt-1">400 Credits</div>
+                      <div className="text-green-600 font-bold text-[11px] mt-1">450 Credits</div>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-slate-200">
                       <div className="text-slate-500 font-bold text-[10px]">VENDOR PRO</div>
                       <div className="font-black text-slate-900 text-sm mt-0.5">₦7,500</div>
-                      <div className="text-purple-600 font-bold text-[11px] mt-1">1,000 Credits</div>
+                      <div className="text-purple-600 font-bold text-[11px] mt-1">1,250 Credits</div>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-slate-200">
                       <div className="text-slate-500 font-bold text-[10px]">MOGUL</div>

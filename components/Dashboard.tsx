@@ -288,9 +288,12 @@ const Dashboard: React.FC<DashboardProps> = ({ userStats, actions, onNavigate, c
         compliance: complianceStatus || {}
       });
 
-      // Only deduct credits on success
-      const billingResponse = await billingService.deductCredits(5, 'AI Business Health Score');
-      onUpdateCredits(billingResponse.credits);
+      // Server /api/business/health-score/ reserves credits atomically
+      if (typeof result?.credits === 'number') {
+        onUpdateCredits(result.credits);
+      } else {
+        onUpdateCredits(Math.max(0, credits - 5));
+      }
 
       setHealthScore(result);
       localStorage.setItem('sb_health_score_data', JSON.stringify(result));

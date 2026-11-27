@@ -1,6 +1,11 @@
 import os
-import random
+import html
+import secrets
 import threading
+import urllib.parse
+import urllib.request
+import json
+from django.db import transaction
 from rest_framework import generics, permissions, status, views
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
@@ -9,7 +14,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
 from django.conf import settings
 from .serializers import UserSerializer, UserComplianceSerializer, AgentHireRequestSerializer
-from .models import PasswordResetCode, EmailVerificationCode, UserCompliance, AgentHireRequest, PartnershipInquiry
+from .models import PasswordResetCode, EmailVerificationCode, UserCompliance, AgentHireRequest, PartnershipInquiry, OwnerSecurityVault
 from smartbiz_backend.email_utils import send_password_reset_email, send_welcome_email, send_email_verification_code
 
 
@@ -47,12 +52,18 @@ class RegisterView(generics.CreateAPIView):
             user.is_email_verified = False
             user.save()
 
-            # Generate 6-digit email verification code
-            ver_code = str(random.randint(100000, 999999))
+            # Generate 6-digit email verification code using CSPRNG
+            ver_code = str(secrets.randbelow(900000) + 100000)
             try:
                 EmailVerificationCode.objects.create(user=user, code=ver_code)
             except Exception as e:
                 print(f"Notice: EmailVerificationCode creation notice: {e}")
+
+            # Record referral intent; bonus is granted ONLY after email verification
+            ref_code = request.data.get('ref', '').strip()
+            if ref_code:
+                user.referred_by_code = ref_code[:150]
+                user.save(update_fields=['referred_by_code'])
 
             # Auto-initialize baseline BrandIdentity & Vendor profile with merchant phone & email
             try:
@@ -98,18 +109,6 @@ class RegisterView(generics.CreateAPIView):
                     close_old_connections()
 
             threading.Thread(target=send_reg_emails, daemon=True).start()
-
-            # Handle Referral Credit Bonus
-            ref_code = request.data.get('ref', '').strip()
-            if ref_code:
-                try:
-                    referrer = User.objects.filter(username__iexact=ref_code).first() or User.objects.filter(email__iexact=ref_code).first()
-                    if referrer and referrer != user:
-                        referrer.credits += 50
-                        referrer.save()
-                        print(f"Referral Success: {referrer.username} earned +50 credits from {user.username}")
-                except Exception as ex:
-                    print(f"Referral credit notice: {ex}")
 
             # Handle Cohort / Institutional Enrollment (e.g. NACCIMA, SMEDAN)
             cohort_code = request.data.get('cohort', '').strip()
@@ -169,6 +168,14 @@ class LoginView(views.APIView):
         return Response({'error': 'Invalid email/username or password. Please verify your credentials and try again.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class LogoutView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        Token.objects.filter(user=request.user).delete()
+        return Response({'success': True, 'message': 'Logged out successfully.'}, status=status.HTTP_200_OK)
+
+
 class VerifyEmailView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
@@ -183,33 +190,64 @@ class VerifyEmailView(views.APIView):
         if user.is_email_verified:
             return Response({'message': 'Email already verified.', 'user': UserSerializer(user).data, 'credits_awarded': 0})
 
-        code_obj = EmailVerificationCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at').first()
-        if not code_obj or not code_obj.is_valid():
-            return Response({'error': 'Invalid or expired verification code. Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            locked_user = User.objects.select_for_update().get(pk=user.pk)
+            if locked_user.is_email_verified:
+                return Response({'message': 'Email already verified.', 'user': UserSerializer(locked_user).data, 'credits_awarded': 0})
 
-        code_obj.is_used = True
-        code_obj.save(update_fields=['is_used'])
+            latest_code = EmailVerificationCode.objects.select_for_update().filter(user=locked_user, is_used=False).order_by('-created_at').first()
+            if not latest_code or not latest_code.is_valid():
+                return Response({'error': 'Invalid or expired verification code. Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        user.is_email_verified = True
-        credits_awarded = 0
-        try:
-            from billing.models import CreditLedger
-            already_credited = CreditLedger.objects.filter(
-                user=user,
-                activity="Welcome Bonus (50 Free BizCredits)"
-            ).exists()
-            if not already_credited:
-                user.credits += 50
-                credits_awarded = 50
-                CreditLedger.objects.create(
-                    user=user,
-                    amount=50,
+            if not secrets.compare_digest(latest_code.code, code):
+                latest_code.failed_attempts += 1
+                if latest_code.failed_attempts >= 5:
+                    latest_code.is_used = True
+                latest_code.save(update_fields=['failed_attempts', 'is_used'])
+                return Response({'error': 'Invalid or expired verification code. Please request a new code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            latest_code.is_used = True
+            latest_code.save(update_fields=['is_used'])
+
+            locked_user.is_email_verified = True
+            credits_awarded = 0
+            try:
+                from billing.models import CreditLedger
+                already_credited = CreditLedger.objects.filter(
+                    user=locked_user,
                     activity="Welcome Bonus (50 Free BizCredits)"
-                )
-        except Exception as e:
-            print(f"Notice: Welcome CreditLedger award notice: {e}")
+                ).exists()
+                if not already_credited:
+                    locked_user.credits += 50
+                    credits_awarded = 50
+                    CreditLedger.objects.create(
+                        user=locked_user,
+                        amount=50,
+                        activity="Welcome Bonus (50 Free BizCredits)"
+                    )
 
-        user.save(update_fields=['is_email_verified', 'credits'])
+                # Award deferred referral bonus only after verified email activation
+                if locked_user.referred_by_code and not locked_user.referral_rewarded:
+                    ref_val = locked_user.referred_by_code.strip()
+                    referrer = (
+                        User.objects.select_for_update().filter(username__iexact=ref_val).first()
+                        or User.objects.select_for_update().filter(email__iexact=ref_val).first()
+                    )
+                    if referrer and referrer.pk != locked_user.pk:
+                        referrer.credits += 50
+                        referrer.save(update_fields=['credits'])
+                        CreditLedger.objects.create(
+                            user=referrer,
+                            amount=50,
+                            activity=f"Referral Bonus ({locked_user.username} verified)"
+                        )
+                    locked_user.referral_rewarded = True
+            except Exception as e:
+                print(f"Notice: Welcome CreditLedger award notice: {e}")
+
+            locked_user.save(update_fields=['is_email_verified', 'credits', 'referral_rewarded'])
+            user = locked_user
+
         return Response({
             'message': f'Email verified! +{credits_awarded} Welcome BizCredits unlocked.' if credits_awarded else 'Email verified!',
             'credits_awarded': credits_awarded,
@@ -228,7 +266,7 @@ class ResendVerificationEmailView(views.APIView):
             return Response({'message': 'Your email is already verified.'}, status=status.HTTP_200_OK)
 
         EmailVerificationCode.objects.filter(user=user, is_used=False).update(is_used=True)
-        ver_code = str(random.randint(100000, 999999))
+        ver_code = str(secrets.randbelow(900000) + 100000)
         EmailVerificationCode.objects.create(user=user, code=ver_code)
         user_id = user.id
 
@@ -260,7 +298,20 @@ class ProfileView(generics.RetrieveUpdateDestroyAPIView):
         return self.request.user
 
     def perform_update(self, serializer):
+        prev_email = (self.request.user.email or '').strip().lower()
         user = serializer.save()
+        new_email = (user.email or '').strip().lower()
+        if new_email and new_email != prev_email:
+            user.is_email_verified = False
+            user.save(update_fields=['is_email_verified'])
+            EmailVerificationCode.objects.filter(user=user, is_used=False).update(is_used=True)
+            ver_code = str(secrets.randbelow(900000) + 100000)
+            EmailVerificationCode.objects.create(user=user, code=ver_code)
+            uid = user.id
+            threading.Thread(
+                target=lambda: send_email_verification_code(User.objects.filter(id=uid).first() or user, ver_code),
+                daemon=True
+            ).start()
         try:
             from brand.models import BrandIdentity
             from marketplace.models import VendorVerification
@@ -273,6 +324,10 @@ class ProfileView(generics.RetrieveUpdateDestroyAPIView):
                 brand.business_name = user.business_name
             if user.logo:
                 brand.logo_url = user.logo
+            if self.request.data.get('industry'):
+                brand.niche = str(self.request.data.get('industry'))[:100]
+            if self.request.data.get('location'):
+                brand.address = str(self.request.data.get('location'))[:255]
             brand.save()
 
             vendor, _ = VendorVerification.objects.get_or_create(
@@ -477,11 +532,11 @@ class ForgotPasswordView(views.APIView):
             user = User.objects.filter(username__iexact=email).first()
 
         if not user:
-            # Return generic success to avoid email enumeration security vulnerability
-            return Response({'message': 'If a matching account exists, a 6-digit reset code has been sent.'}, status=status.HTTP_200_OK)
+            # Return identical generic success message to avoid email enumeration
+            return Response({'message': 'If a matching account exists, a 6-digit verification code has been sent.'}, status=status.HTTP_200_OK)
 
-        # Generate a 6-digit random code
-        code = "".join(random.choices("0123456789", k=6))
+        # Generate a 6-digit CSPRNG code
+        code = str(secrets.randbelow(900000) + 100000)
         
         # Invalidate any previous codes
         PasswordResetCode.objects.filter(user=user, is_used=False).update(is_used=True)
@@ -505,7 +560,7 @@ class ForgotPasswordView(views.APIView):
         email_thread = threading.Thread(target=send_email_async, daemon=True)
         email_thread.start()
 
-        res_data = {'message': 'A 6-digit verification code has been sent to your email address. Please check your inbox and Spam/Junk folder.'}
+        res_data = {'message': 'If a matching account exists, a 6-digit verification code has been sent.'}
         # Security: Never expose OTP in API response. Log to server console only.
         if getattr(settings, 'DEBUG', False):
             print(f"DEBUG (server log only): Password reset code for {email} is {code}")
@@ -520,43 +575,53 @@ class ResetPasswordView(views.APIView):
 
     def post(self, request):
         email_raw = request.data.get('email')
-        code = request.data.get('code')
+        code = str(request.data.get('code') or '').strip()
         new_password = request.data.get('new_password')
 
         if not email_raw or not code or not new_password:
             return Response({'error': 'Email, code, and new password are required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        email = email_raw.strip()
+        email = str(email_raw).strip()
         user = User.objects.filter(email__iexact=email).first()
         if not user:
             user = User.objects.filter(username__iexact=email).first()
 
         if not user:
-            return Response({'error': 'Invalid request or account not found.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Retrieve the latest active reset code for this user
-        reset_code = PasswordResetCode.objects.filter(user=user, code=code, is_used=False).order_by('-created_at').first()
-
-        if not reset_code or not reset_code.is_valid():
             return Response({'error': 'Invalid or expired reset code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Code is valid, validate password complexity
-        from django.contrib.auth.password_validation import validate_password
-        from django.core.exceptions import ValidationError
-        try:
-            validate_password(new_password, user)
-        except ValidationError as err:
-            return Response({'error': err.messages}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            latest_code = PasswordResetCode.objects.select_for_update().filter(
+                user=user, is_used=False
+            ).order_by('-created_at').first()
 
-        # Update password
-        user.set_password(new_password)
-        user.save()
+            if not latest_code or not latest_code.is_valid():
+                return Response({'error': 'Invalid or expired reset code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Mark code as used
-        reset_code.is_used = True
-        reset_code.save()
+            if not secrets.compare_digest(latest_code.code, code):
+                latest_code.failed_attempts += 1
+                if latest_code.failed_attempts >= 5:
+                    latest_code.is_used = True
+                latest_code.save(update_fields=['failed_attempts', 'is_used'])
+                return Response({'error': 'Invalid or expired reset code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({'message': 'Password has been reset successfully.'}, status=status.HTTP_200_OK)
+            # Code is valid, validate password complexity
+            from django.contrib.auth.password_validation import validate_password
+            from django.core.exceptions import ValidationError
+            try:
+                validate_password(new_password, user)
+            except ValidationError as err:
+                return Response({'error': err.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Update password, consume code, and revoke all existing session tokens
+            user.set_password(new_password)
+            user.save(update_fields=['password'])
+
+            latest_code.is_used = True
+            latest_code.save(update_fields=['is_used'])
+
+            Token.objects.filter(user=user).delete()
+
+        return Response({'message': 'Password has been reset successfully. Please sign in with your new password.'}, status=status.HTTP_200_OK)
 
 
 class ComplianceStatusView(views.APIView):
@@ -569,7 +634,8 @@ class ComplianceStatusView(views.APIView):
 
     def patch(self, request):
         compliance, _ = UserCompliance.objects.get_or_create(user=request.user)
-        allowed_fields = {'name_search_completed', 'business_reg_completed', 'tin_obtained_completed', 'bank_account_completed'}
+        # business_reg_completed can only be set by verified CAC integration or staff verification
+        allowed_fields = {'name_search_completed', 'tin_obtained_completed', 'bank_account_completed'}
         data = {k: v for k, v in request.data.items() if k in allowed_fields}
         serializer = UserComplianceSerializer(compliance, data=data, partial=True)
         if serializer.is_valid():
@@ -582,134 +648,131 @@ class VerifyCACLiveView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        cac_number = request.data.get('cac_number', '').strip()
-        if not cac_number:
-            return Response({"error": "Please enter a valid CAC RC/BN Number or Tax ID."}, status=status.HTTP_400_BAD_REQUEST)
+        cac_number = str(request.data.get('cac_number', '')).strip().upper()
+        if not cac_number or len(cac_number) < 5:
+            return Response({"error": "Please enter a valid CAC RC/BN Number."}, status=status.HTTP_400_BAD_REQUEST)
 
         api_key = os.getenv('CAC_VERIFICATION_API_KEY') or os.getenv('PREMBLY_API_KEY') or os.getenv('YOUVERIFY_API_KEY') or os.getenv('IDENTITYPASS_API_KEY')
-
-        if api_key:
-            try:
-                url = "https://api.prembly.com/identitypass/verification/cac"
-                payload = json.dumps({"company_number": cac_number}).encode('utf-8')
-                req = urllib.request.Request(url, data=payload, headers={
-                    "x-api-key": api_key,
-                    "app-id": os.getenv('PREMBLY_APP_ID', ''),
-                    "Content-Type": "application/json"
-                }, method="POST")
-
-                with urllib.request.urlopen(req, timeout=12) as resp:
-                    res_data = json.loads(resp.read().decode('utf-8'))
-                    if res_data.get('status') and 'data' in res_data:
-                        d = res_data['data']
-                        
-                        # Update UserCompliance business_reg_completed
-                        compliance, _ = UserCompliance.objects.get_or_create(user=request.user)
-                        compliance.business_reg_completed = True
-                        compliance.save()
-
-                        # Update VendorVerification
-                        try:
-                            from marketplace.models import VendorVerification
-                            vendor, _ = VendorVerification.objects.get_or_create(user=request.user)
-                            vendor.cac_number = cac_number
-                            vendor.is_verified = True
-                            vendor.save()
-                        except Exception:
-                            pass
-
-                        return Response({
-                            "verified": True,
-                            "cac_number": cac_number,
-                            "company_name": d.get('company_name') or d.get('name', 'Registered Entity'),
-                            "registration_date": d.get('registration_date', 'Official Record'),
-                            "company_type": d.get('type', 'BUSINESS NAME (BN) / RC'),
-                            "company_address": d.get('address', 'Official Record on CAC Database'),
-                            "status": d.get('status', 'ACTIVE & VERIFIED (CAC PORTAL)'),
-                            "tin_status": "Active & Verified on FIRS Portal",
-                            "source": "Official Government API"
-                        }, status=status.HTTP_200_OK)
-            except Exception as e:
-                print(f"Live API verification error notice: {e}")
-
-        # Fallback for Database Verification & Update
-        biz_name = getattr(request.user, 'business_name', '') or request.user.username
-
-        compliance, _ = UserCompliance.objects.get_or_create(user=request.user)
-        compliance.business_reg_completed = True
-        compliance.save()
+        if not api_key:
+            return Response({
+                "verified": False,
+                "error": "Live CAC verification gateway is not configured on this environment. Please upload your CAC document for manual compliance review.",
+                "source": "Gateway Unconfigured"
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         try:
-            from marketplace.models import VendorVerification
-            vendor, _ = VendorVerification.objects.get_or_create(user=request.user)
-            vendor.cac_number = cac_number
-            vendor.is_verified = True
-            vendor.save()
-        except Exception as ex:
-            print(f"Vendor verification update notice: {ex}")
+            url = "https://api.prembly.com/identitypass/verification/cac"
+            payload = json.dumps({"company_number": cac_number}).encode('utf-8')
+            req = urllib.request.Request(url, data=payload, headers={
+                "x-api-key": api_key,
+                "app-id": os.getenv('PREMBLY_APP_ID', ''),
+                "Content-Type": "application/json"
+            }, method="POST")
 
-        return Response({
-            "verified": True,
-            "cac_number": cac_number,
-            "company_name": biz_name.upper(),
-            "company_type": "BUSINESS NAME (BN) / LIMITED LIABILITY (RC)",
-            "status": "ACTIVE & VERIFIED (CAC DATABASE)",
-            "tin_status": "Active & Verified on FIRS Portal",
-            "source": "Official CAC Database Verification Engine",
-            "api_key_configured": bool(api_key)
-        }, status=status.HTTP_200_OK)
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                res_data = json.loads(resp.read().decode('utf-8'))
+                if res_data.get('status') and 'data' in res_data:
+                    d = res_data['data']
+
+                    compliance, _ = UserCompliance.objects.get_or_create(user=request.user)
+                    compliance.business_reg_completed = True
+                    compliance.save(update_fields=['business_reg_completed', 'updated_at'])
+
+                    try:
+                        from marketplace.models import VendorVerification
+                        vendor, _ = VendorVerification.objects.get_or_create(user=request.user)
+                        vendor.cac_number = cac_number
+                        vendor.is_verified = True
+                        vendor.save(update_fields=['cac_number', 'is_verified'])
+                    except Exception:
+                        pass
+
+                    return Response({
+                        "verified": True,
+                        "cac_number": cac_number,
+                        "company_name": d.get('company_name') or d.get('name', 'Registered Entity'),
+                        "registration_date": d.get('registration_date', 'Official Record'),
+                        "company_type": d.get('type', 'BUSINESS NAME (BN) / RC'),
+                        "company_address": d.get('address', 'Official Record on CAC Database'),
+                        "status": d.get('status', 'ACTIVE & VERIFIED (CAC PORTAL)'),
+                        "source": "Official Government API"
+                    }, status=status.HTTP_200_OK)
+
+                return Response({
+                    "verified": False,
+                    "error": res_data.get('detail') or res_data.get('message') or "CAC record could not be verified.",
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Live API verification error notice: {e}")
+            return Response({
+                "verified": False,
+                "error": "CAC verification service is temporarily unavailable. Please try again later or submit documents manually."
+            }, status=status.HTTP_502_BAD_GATEWAY)
 
 
 class AgentHireRequestView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        from decimal import Decimal
         serializer = AgentHireRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        reference = request.data.get('payment_reference', '').strip()
-        reg_type = request.data.get('registration_type') or request.data.get('business_type') or 'Business Name (Sole Proprietor)'
-        amount_paid = float(request.data.get('amount_paid') or 0.0)
+        reference = str(request.data.get('payment_reference', '') or '').strip()
+        reg_type = str(request.data.get('registration_type') or request.data.get('business_type') or 'Business Name (Sole Proprietor)')
+        amount_paid = Decimal('0.00')
         payment_verified = False
 
-        # If payment reference was provided, verify with Paystack
         if reference:
+            secret = getattr(settings, 'PAYSTACK_SECRET_KEY', None)
+            if not secret:
+                return Response({'error': 'Paystack verification is unavailable on server.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             try:
                 import requests as http_requests
-                url = f"https://api.paystack.co/transaction/verify/{reference}"
+                from billing.models import Transaction, PaymentReferenceLedger
+                url = f"https://api.paystack.co/transaction/verify/{urllib.parse.quote(reference)}"
                 headers = {
-                    "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+                    "Authorization": f"Bearer {secret}",
                     "Content-Type": "application/json",
                 }
                 paystack_res = http_requests.get(url, headers=headers, timeout=10).json()
                 if paystack_res.get('status') and paystack_res.get('data', {}).get('status') == 'success':
-                    verified_amount = paystack_res['data']['amount'] / 100.0
-                    amount_paid = verified_amount
-                    payment_verified = True
-                    
-                    # Record in Transaction table
-                    from billing.models import Transaction
-                    Transaction.objects.get_or_create(
-                        reference=reference,
-                        defaults={
-                            'user': request.user,
-                            'amount': verified_amount,
-                            'description': f"CAC Registration ({reg_type}) - {request.data.get('business_name')}",
-                            'status': 'SUCCESS',
-                            'provider': 'PAYSTACK',
-                            'type': 'PURCHASE'
-                        }
-                    )
+                    verified_amount = Decimal(str(paystack_res['data'].get('amount', 0))) / Decimal('100')
+                    with transaction.atomic():
+                        if PaymentReferenceLedger.objects.filter(reference=reference).exists():
+                            return Response({'error': 'This payment reference has already been claimed.'}, status=status.HTTP_409_CONFLICT)
+                        PaymentReferenceLedger.objects.create(
+                            reference=reference,
+                            purpose='CAC_HIRE',
+                            user=request.user,
+                            amount_ngn=verified_amount,
+                        )
+                        amount_paid = verified_amount
+                        payment_verified = verified_amount > 0
+                        Transaction.objects.get_or_create(
+                            reference=reference,
+                            defaults={
+                                'user': request.user,
+                                'amount': verified_amount,
+                                'description': f"CAC Registration ({reg_type}) - {request.data.get('business_name')}",
+                                'status': 'SUCCESS',
+                                'provider': 'PAYSTACK',
+                                'type': 'PURCHASE'
+                            }
+                        )
+                else:
+                    return Response({'error': 'Payment reference could not be verified with Paystack.'}, status=status.HTTP_402_PAYMENT_REQUIRED)
             except Exception as e:
                 print(f"Paystack CAC verification check notice: {e}")
+                return Response({'error': 'Failed to verify CAC payment with Paystack.'}, status=status.HTTP_502_BAD_GATEWAY)
 
         hire_request = serializer.save(
             user=request.user,
             registration_type=reg_type,
             amount_paid=amount_paid,
             payment_reference=reference,
-            payment_status='PAID' if payment_verified or amount_paid > 0 else 'PENDING'
+            payment_status='PAID' if payment_verified else 'PENDING'
         )
 
         # Send email notification (async) to admin
@@ -762,60 +825,8 @@ class AgentHireRequestView(views.APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-from django.http import HttpResponse
-
-class SetupAdminView(views.APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def get(self, request):
-        html = """
-        <html>
-        <body style="font-family: sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px;">
-            <h2>Setup Django Admin Account</h2>
-            <form method="POST">
-                <div style="margin-bottom: 15px;">
-                    <label>Admin Email:</label><br/>
-                    <input type="email" name="email" value="meshachzax@gmail.com" style="width: 100%; padding: 8px;" required />
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Password:</label><br/>
-                    <input type="password" name="password" style="width: 100%; padding: 8px;" required />
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Secret Token (Only required if admin already exists):</label><br/>
-                    <input type="text" name="secret_token" style="width: 100%; padding: 8px;" />
-                </div>
-                <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer;">Create / Update Admin</button>
-            </form>
-        </body>
-        </html>
-        """
-        return HttpResponse(html)
-
-    def post(self, request):
-        email = request.data.get('email', 'meshachzax@gmail.com')
-        password = request.data.get('password')
-        secret_token = request.data.get('secret_token')
-
-        if not password:
-            return HttpResponse("Password is required", status=400)
-
-        # Allow if no superuser exists or if secret_token matches SECRET_KEY
-        if User.objects.filter(is_superuser=True).exists():
-            if secret_token != settings.SECRET_KEY:
-                return HttpResponse("Unauthorized: Admin already exists and secret token is invalid.", status=403)
-
-        user, created = User.objects.get_or_create(username=email, defaults={'email': email})
-        user.set_password(password)
-        user.is_superuser = True
-        user.is_staff = True
-        user.save()
-
-        return HttpResponse(f"Successfully {'created' if created else 'updated'} admin account for {email}!<br/><br/><a href='/admin/'>Go to Django Admin</a>")
-
-
 class EmailDiagnosticTestView(views.APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAdminUser]
 
     def get(self, request):
         from django.utils import timezone
@@ -823,25 +834,25 @@ class EmailDiagnosticTestView(views.APIView):
             get_brevo_api_key, get_sender_email, _deliver_email, check_brevo_account_and_senders
         )
         
-        test_email = request.query_params.get('email', 'meshachzax@gmail.com').strip()
+        test_email = request.query_params.get('email', request.user.email or 'admin@smartbizcoach.com.ng').strip()
         brevo_key = get_brevo_api_key()
         sender_email = get_sender_email()
-        
-        masked_key = f"{brevo_key[:6]}...{brevo_key[-4:]}" if len(brevo_key) > 10 else ("None" if not brevo_key else "Present but short")
         
         # Check Brevo verified senders list
         is_api_valid, verified_senders, sender_info = check_brevo_account_and_senders(brevo_key)
 
+        safe_email = html.escape(test_email)
+        safe_sender = html.escape(sender_email)
+        safe_senders = html.escape(', '.join(verified_senders) if verified_senders else 'None retrieved')
         subject = f"SmartBiz Coach Live Email Test ({timezone.now().strftime('%H:%M:%S')})"
         html_body = f"""
         <div style="font-family: sans-serif; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; max-width: 500px;">
             <h2 style="color: #10b981; margin-top: 0;">✓ SmartBiz Coach Email Test Successful</h2>
-            <p style="color: #475569;">Your Brevo transactional email engine is working and delivering messages to inboxes.</p>
+            <p style="color: #475569;">Your transactional email engine is operational.</p>
             <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 15px 0;" />
-            <p style="font-size: 13px;"><strong>Recipient:</strong> {test_email}</p>
-            <p style="font-size: 13px;"><strong>API Key:</strong> {masked_key}</p>
-            <p style="font-size: 13px;"><strong>Sender Used:</strong> {sender_email}</p>
-            <p style="font-size: 13px;"><strong>Verified Senders on Brevo:</strong> {', '.join(verified_senders) if verified_senders else 'None retrieved'}</p>
+            <p style="font-size: 13px;"><strong>Recipient:</strong> {safe_email}</p>
+            <p style="font-size: 13px;"><strong>Sender Used:</strong> {safe_sender}</p>
+            <p style="font-size: 13px;"><strong>Verified Senders:</strong> {safe_senders}</p>
             <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">Timestamp: {timezone.now().isoformat()}</p>
         </div>
         """
@@ -859,16 +870,15 @@ class EmailDiagnosticTestView(views.APIView):
             'result': result_message,
             'recipient': test_email,
             'configured_sender': sender_email,
-            'brevo_key_detected': bool(brevo_key),
-            'brevo_key_preview': masked_key,
             'brevo_api_key_valid': is_api_valid,
-            'brevo_verified_senders': verified_senders,
-            'brevo_account_check_details': sender_info if not is_api_valid else {'active_senders_count': len(verified_senders)}
+            'active_senders_count': len(verified_senders),
         })
 
 
 class PartnershipInquiryView(views.APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
 
     def post(self, request):
         name = request.data.get('name', '').strip()
@@ -902,6 +912,14 @@ class PartnershipInquiryView(views.APIView):
                 'admin@smartbizcoach.com.ng',
                 'info@smartbizcoach.com.ng'
             ]
+            e_name = html.escape(name)
+            e_email = html.escape(email)
+            e_phone = html.escape(phone or 'Not provided')
+            e_org = html.escape(organization or 'Not Specified')
+            e_type = html.escape(partnership_type)
+            e_cohort = html.escape(cohort_size)
+            e_msg = html.escape(message or 'No additional notes provided.')
+            e_src = html.escape(source)
             
             subject = f"🔔 New Partnership Proposal: {organization or name} ({partnership_type})"
             html_body = f"""
@@ -909,36 +927,36 @@ class PartnershipInquiryView(views.APIView):
                 <div style="margin-bottom: 20px;">
                     <span style="background-color: #10b981; color: white; font-weight: bold; padding: 6px 12px; border-radius: 6px; font-size: 13px;">SmartBiz Coach</span>
                     <h2 style="color: #0f172a; margin: 12px 0 4px 0; font-size: 18px;">Institutional Partnership & Cohort Proposal</h2>
-                    <p style="color: #64748b; font-size: 13px; margin: 0;">Origin: <strong>{source}</strong></p>
+                    <p style="color: #64748b; font-size: 13px; margin: 0;">Origin: <strong>{e_src}</strong></p>
                 </div>
                 
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;">
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                         <td style="padding: 8px 0; color: #64748b; font-weight: bold; width: 35%;">Organization:</td>
-                        <td style="padding: 8px 0; color: #0f172a; font-weight: bold;">{organization or 'Not Specified'}</td>
+                        <td style="padding: 8px 0; color: #0f172a; font-weight: bold;">{e_org}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                         <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Contact Name:</td>
-                        <td style="padding: 8px 0; color: #0f172a;">{name}</td>
+                        <td style="padding: 8px 0; color: #0f172a;">{e_name}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                         <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Official Email:</td>
-                        <td style="padding: 8px 0; color: #0f172a;"><a href="mailto:{email}">{email}</a></td>
+                        <td style="padding: 8px 0; color: #0f172a;"><a href="mailto:{e_email}">{e_email}</a></td>
                     </tr>
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                         <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Phone / WhatsApp:</td>
-                        <td style="padding: 8px 0; color: #0f172a;">{phone or 'Not provided'}</td>
+                        <td style="padding: 8px 0; color: #0f172a;">{e_phone}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                         <td style="padding: 8px 0; color: #64748b; font-weight: bold;">Partnership Category:</td>
-                        <td style="padding: 8px 0; color: #059669; font-weight: bold;">{partnership_type}</td>
+                        <td style="padding: 8px 0; color: #059669; font-weight: bold;">{e_type}</td>
                     </tr>
-                    {f'<tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Cohort Scale:</td><td style="padding: 8px 0; color: #0f172a;">{cohort_size}</td></tr>' if cohort_size else ''}
+                    {f'<tr style="border-bottom: 1px solid #f1f5f9;"><td style="padding: 8px 0; color: #64748b; font-weight: bold;">Cohort Scale:</td><td style="padding: 8px 0; color: #0f172a;">{e_cohort}</td></tr>' if cohort_size else ''}
                 </table>
 
                 <div style="background-color: #f8fafc; border-left: 4px solid #10b981; padding: 14px; border-radius: 4px; margin: 20px 0;">
                     <div style="font-weight: bold; font-size: 12px; color: #334155; margin-bottom: 5px; text-transform: uppercase;">Proposal Overview:</div>
-                    <div style="color: #475569; font-size: 13px; white-space: pre-wrap; line-height: 1.5;">{message or 'No additional notes provided.'}</div>
+                    <div style="color: #475569; font-size: 13px; white-space: pre-wrap; line-height: 1.5;">{e_msg}</div>
                 </div>
 
                 <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8;">
@@ -977,12 +995,15 @@ def is_user_apprentice_locked(user) -> bool:
     if not user or not getattr(user, 'is_authenticated', False):
         return False
     try:
+        vault = OwnerSecurityVault.objects.filter(user=user).first()
+        if vault is not None:
+            return bool(vault.is_apprentice_mode)
         from brand.models import BrandIdentity
         brand = BrandIdentity.objects.filter(user=user).only('policies').first()
         if brand and isinstance(brand.policies, dict):
-            vault = brand.policies.get('__security_vault__')
-            if isinstance(vault, dict):
-                return bool(vault.get('is_apprentice_mode', False))
+            legacy = brand.policies.get('__security_vault__')
+            if isinstance(legacy, dict):
+                return bool(legacy.get('is_apprentice_mode', False))
     except Exception:
         pass
     return False
@@ -994,9 +1015,8 @@ LOCK_COOLDOWN_SECONDS = 300
 
 class SecurityLockView(views.APIView):
     """
-    Cloud-synced Apprentice / Cashier Mode & Robust Owner Security Password Vault.
-    Enforces server-side brute-force lockout (5 failed attempts -> 5 minute cooldown)
-    and requires Owner's Security Password (or SmartBiz Account Password) to unlock.
+    Cloud-synced Apprentice / Cashier Mode & Robust Owner Security Password Vault
+    stored in dedicated OwnerSecurityVault table (never exposed in storefront JSON).
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1007,36 +1027,37 @@ class SecurityLockView(views.APIView):
     }
 
     def _get_brand_and_vault(self, user):
+        vault_obj, created = OwnerSecurityVault.objects.get_or_create(user=user)
+        # Migrate legacy vault out of BrandIdentity.policies automatically
         from brand.models import BrandIdentity
-        brand, _ = BrandIdentity.objects.get_or_create(
-            user=user,
-            defaults={'business_name': getattr(user, 'business_name', '') or user.username}
-        )
-        if not isinstance(brand.policies, dict):
-            brand.policies = {}
-        vault = brand.policies.get('__security_vault__')
-        if not isinstance(vault, dict):
-            vault = {
-                'is_apprentice_mode': False,
-                'owner_passcode_hash': '',
-            }
-        return brand, vault
+        brand = BrandIdentity.objects.filter(user=user).first()
+        if brand and isinstance(brand.policies, dict) and '__security_vault__' in brand.policies:
+            legacy = brand.policies.get('__security_vault__')
+            if isinstance(legacy, dict) and created:
+                vault_obj.is_apprentice_mode = bool(legacy.get('is_apprentice_mode', False))
+                vault_obj.owner_passcode_hash = legacy.get('owner_passcode_hash') or ''
+                vault_obj.save(update_fields=['is_apprentice_mode', 'owner_passcode_hash', 'updated_at'])
+            cleaned_policies = dict(brand.policies)
+            cleaned_policies.pop('__security_vault__', None)
+            brand.policies = cleaned_policies
+            brand.save(update_fields=['policies', 'updated_at'])
+        return vault_obj, {
+            'is_apprentice_mode': bool(vault_obj.is_apprentice_mode),
+            'owner_passcode_hash': vault_obj.owner_passcode_hash or '',
+        }
 
-    def _save_vault(self, brand, vault):
-        policies = dict(brand.policies) if isinstance(brand.policies, dict) else {}
-        policies['__security_vault__'] = vault
-        brand.policies = policies
-        brand.save(update_fields=['policies', 'updated_at'])
+    def _save_vault(self, vault_obj, vault):
+        vault_obj.is_apprentice_mode = bool(vault.get('is_apprentice_mode', False))
+        vault_obj.owner_passcode_hash = vault.get('owner_passcode_hash') or ''
+        vault_obj.save(update_fields=['is_apprentice_mode', 'owner_passcode_hash', 'updated_at'])
 
     def _verify_owner_secret(self, user, vault, raw_secret: str) -> bool:
         from django.contrib.auth.hashers import check_password
         if not raw_secret:
             return False
         stored_hash = vault.get('owner_passcode_hash') or ''
-        # 1. Check custom hashed Owner Security Password if configured
         if stored_hash and check_password(raw_secret, stored_hash):
             return True
-        # 2. Always allow the Owner's actual SmartBiz account login password as master key
         if user.check_password(raw_secret):
             return True
         return False
@@ -1053,12 +1074,11 @@ class SecurityLockView(views.APIView):
         from django.utils import timezone
 
         action = str(request.data.get('action') or '').strip().upper()
-        brand, vault = self._get_brand_and_vault(request.user)
+        vault_obj, vault = self._get_brand_and_vault(request.user)
 
         if action == 'LOCK':
             vault['is_apprentice_mode'] = True
-            vault['updated_at'] = timezone.now().isoformat()
-            self._save_vault(brand, vault)
+            self._save_vault(vault_obj, vault)
             return Response({
                 'success': True,
                 'is_apprentice_mode': True,
@@ -1105,8 +1125,7 @@ class SecurityLockView(views.APIView):
 
             if action == 'UNLOCK':
                 vault['is_apprentice_mode'] = False
-                vault['updated_at'] = timezone.now().isoformat()
-                self._save_vault(brand, vault)
+                self._save_vault(vault_obj, vault)
 
             return Response({
                 'verified': True,
@@ -1120,12 +1139,12 @@ class SecurityLockView(views.APIView):
             current_passcode = str(request.data.get('current_passcode') or '').strip()
             lock_immediately = bool(request.data.get('lock_immediately', False))
 
-            # If Apprentice Mode is currently active OR an owner passcode already exists, verify current credentials if in apprentice mode
-            if vault.get('is_apprentice_mode'):
+            # Verify current owner secret if Apprentice Mode is locked OR passcode already set (when current provided or locked)
+            if vault.get('is_apprentice_mode') or (vault.get('owner_passcode_hash') and current_passcode):
                 if not self._verify_owner_secret(request.user, vault, current_passcode):
                     return Response({
                         'success': False,
-                        'error': 'Cannot change Owner Security Password while Apprentice Mode is locked without current Owner Password.'
+                        'error': 'Cannot change Owner Security Password without verifying your current Owner Password.'
                     }, status=status.HTTP_403_FORBIDDEN)
 
             if len(new_passcode) < 6:
@@ -1143,8 +1162,7 @@ class SecurityLockView(views.APIView):
             vault['owner_passcode_hash'] = make_password(new_passcode)
             if lock_immediately:
                 vault['is_apprentice_mode'] = True
-            vault['updated_at'] = timezone.now().isoformat()
-            self._save_vault(brand, vault)
+            self._save_vault(vault_obj, vault)
 
             return Response({
                 'success': True,
@@ -1175,10 +1193,10 @@ class BulkOnboardingView(views.APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request, *args, **kwargs):
-        # Require staff/admin privileges or Pro plan
-        if not (request.user.is_staff or request.user.is_superuser or getattr(request.user, 'plan', '') == 'Pro'):
+        # Strictly require platform staff/admin privileges (Pro subscription never grants bulk provisioning)
+        if not (request.user.is_staff or request.user.is_superuser):
             return Response(
-                {'error': 'Administrative or institutional partner access required for bulk onboarding.'},
+                {'error': 'Platform administrator privileges required for bulk onboarding.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -1214,6 +1232,8 @@ class BulkOnboardingView(views.APIView):
         # 1. Parse CSV file if uploaded
         if 'file' in request.FILES:
             csv_file = request.FILES['file']
+            if getattr(csv_file, 'size', 0) > 5 * 1024 * 1024:
+                return Response({'error': 'CSV file exceeds 5 MB maximum upload size.'}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 decoded_file = csv_file.read().decode('utf-8-sig', errors='ignore')
                 io_string = io.StringIO(decoded_file)
@@ -1343,10 +1363,10 @@ class BulkOnboardingView(views.APIView):
                         is_activated=False
                     )
 
-                    # Send welcome email asynchronously
+                    # Send welcome email in background thread
                     try:
                         from smartbiz_backend.email_utils import send_welcome_email
-                        send_welcome_email(user)
+                        threading.Thread(target=send_welcome_email, args=(user,), daemon=True).start()
                     except Exception as email_err:
                         print(f"Notice: Bulk onboarding welcome email error for {email}: {email_err}")
 
@@ -1355,7 +1375,6 @@ class BulkOnboardingView(views.APIView):
                         'email': user.email,
                         'owner_name': owner_name,
                         'business_name': b_name,
-                        'temp_password': temp_pass,
                         'chapter': chapter_val,
                         'sector': sector_val,
                         'phone': phone,

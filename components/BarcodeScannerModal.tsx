@@ -11,6 +11,20 @@ interface BarcodeScannerModalProps {
   description?: string;
 }
 
+let sharedAudioCtx: AudioContext | null = null;
+const getSharedAudioContext = (): AudioContext | null => {
+  if (typeof window === 'undefined') return null;
+  const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+  if (!Ctor) return null;
+  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+    sharedAudioCtx = new Ctor();
+  }
+  if (sharedAudioCtx.state === 'suspended') {
+    void sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+};
+
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   isOpen,
   onClose,
@@ -25,11 +39,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerId = 'interactive-barcode-scanner';
 
-  // Sound beep on successful scan
+  // Sound beep on successful scan (reuses singleton AudioContext to avoid browser limit)
   const playScanBeep = () => {
     if (!soundEnabled) return;
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioCtx = getSharedAudioContext();
+      if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);

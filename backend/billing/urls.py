@@ -11,9 +11,11 @@ from .views import (
     SquadWebhookView,
     RewardShareView,
     AIBudgetStatusView,
+    BillingCatalogView,
 )
 
 urlpatterns = [
+    path('catalog/', BillingCatalogView.as_view(), name='billing-catalog'),
     path('transactions/', TransactionListView.as_view(), name='transaction-list'),
     path('ledger/', CreditLedgerListView.as_view(), name='credit-ledger'),
     path('buy-credits/', CreditPurchaseView.as_view(), name='buy-credits'),

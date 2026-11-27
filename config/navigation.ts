@@ -114,22 +114,14 @@ export const OWNER_ONLY_VIEWS: AppView[] = [
   AppView.CONTENT_GENERATOR,
   AppView.MARKETING_AGENT,
   AppView.SALES_ASSISTANT,
+  AppView.PRICING_ASSISTANT,
+  AppView.ORDER_INBOX,
   ...NAV_SECTIONS.flatMap((s) => s.children.filter((c) => !c.attendant).map((c) => c.view)),
-];
-
-const ADMIN_EMAILS = [
-  'meshachzax@gmail.com',
-  'admin@smartbizcoach.com.ng',
-  'partners@smartbizcoach.com.ng',
-  'info@smartbizcoach.com.ng',
-  'mzacs54@gmail.com',
 ];
 
 export const isAdminOrPartnerUser = (user?: User | null): boolean => {
   if (!user) return false;
-  if ((user as any).is_staff || (user as any).is_superuser) return true;
-  const email = (user.email || '').toLowerCase().trim();
-  return ADMIN_EMAILS.includes(email);
+  return Boolean((user as any).is_staff || (user as any).is_superuser);
 };
 
 export const leafVisible = (leaf: NavLeaf, role: NavRole) =>

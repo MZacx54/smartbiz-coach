@@ -227,7 +227,7 @@ export const securityLockService = {
     }
 };
 
-export const clearAllTenantLocalState = (preservePreferences = true) => {
+export const clearAllTenantLocalState = async (preservePreferences = true) => {
     const explicitKeys = [
         'sb_auth_token',
         'sb_active_user_id',
@@ -307,7 +307,8 @@ export const clearAllTenantLocalState = (preservePreferences = true) => {
         try { localStorage.removeItem('sb_voice_lang'); } catch {}
     }
     try { sessionStorage.clear(); } catch {}
-    try { void offlineStorage.clearAll(); } catch {}
+    try { window.dispatchEvent(new Event('sb_auth_cleared')); } catch {}
+    try { await offlineStorage.clearAll(); } catch {}
 };
 
 export const authService = {
@@ -359,8 +360,13 @@ export const authService = {
         return response.data;
     },
 
-    logout: () => {
-        clearAllTenantLocalState();
+    logout: async () => {
+        try {
+            if (localStorage.getItem('sb_auth_token')) {
+                await api.post('users/logout/', {}, { timeout: 2500 }).catch(() => {});
+            }
+        } catch {}
+        await clearAllTenantLocalState();
     },
 
     getStats: async () => {

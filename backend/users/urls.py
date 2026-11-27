@@ -1,8 +1,8 @@
 from django.urls import path
 from .views import (
-     RegisterView, LoginView, VerifyEmailView, ResendVerificationEmailView, ProfileView, UserStatsView, UserActionsView,
+     RegisterView, LoginView, LogoutView, VerifyEmailView, ResendVerificationEmailView, ProfileView, UserStatsView, UserActionsView,
      ForgotPasswordView, ResetPasswordView, ComplianceStatusView, AgentHireRequestView,
-     SetupAdminView, VerifyCACLiveView, EmailDiagnosticTestView, PartnershipInquiryView,
+     VerifyCACLiveView, EmailDiagnosticTestView, PartnershipInquiryView,
      SecurityLockView, BulkOnboardingView, CohortDashboardView,
      BlogPostListView, BlogPostDetailView
 )
@@ -10,6 +10,7 @@ from .views import (
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('verify-email/', VerifyEmailView.as_view(), name='verify-email'),
     path('resend-verification/', ResendVerificationEmailView.as_view(), name='resend-verification'),
     path('profile/', ProfileView.as_view(), name='profile'),
@@ -21,7 +22,6 @@ urlpatterns = [
     path('compliance/', ComplianceStatusView.as_view(), name='compliance'),
     path('compliance/verify-cac/', VerifyCACLiveView.as_view(), name='verify-cac'),
     path('hire-agent/', AgentHireRequestView.as_view(), name='hire-agent'),
-    path('setup-admin/', SetupAdminView.as_view(), name='setup-admin'),
     path('test-email/', EmailDiagnosticTestView.as_view(), name='test-email'),
     path('partnership-inquiry/', PartnershipInquiryView.as_view(), name='partnership-inquiry'),
     path('bulk-onboard/', BulkOnboardingView.as_view(), name='bulk-onboard'),

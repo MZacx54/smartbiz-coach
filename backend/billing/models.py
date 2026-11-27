@@ -16,11 +16,14 @@ class Transaction(models.Model):
         ('CREDIT_TOPUP', 'Credit Top-up'),
     ]
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
-    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    provider = models.CharField(max_length=20, choices=[
+        ('PAYSTACK', 'Paystack'),
+        ('SQUAD', 'Squad'),
+    ])
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     reference = models.CharField(max_length=100, unique=True, blank=True, null=True)
     
@@ -85,3 +88,26 @@ class AIUsageLog(models.Model):
 
     def __str__(self):
         return f"[{self.month_key}] {self.model_name} ({self.feature}) - ${self.estimated_cost_usd}"
+
+
+class PaymentReferenceLedger(models.Model):
+    """
+    Canonical cross-flow payment reference registry to prevent cross-purpose
+    Paystack/Squad reference hijacking or replay (e.g., storefront ref replayed as wallet top-up).
+    """
+    PURPOSE_CHOICES = [
+        ('BILLING_TOPUP', 'BizCredit Top-up'),
+        ('SUBSCRIPTION', 'Pro Subscription'),
+        ('STOREFRONT_ORDER', 'Storefront Order'),
+        ('DEBT_SETTLEMENT', 'Debtor Settlement'),
+        ('CAC_HIRE', 'CAC Filing Payment'),
+    ]
+    reference = models.CharField(max_length=120, unique=True)
+    purpose = models.CharField(max_length=40, choices=PURPOSE_CHOICES)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='claimed_payment_refs')
+    amount_ngn = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    target_id = models.CharField(max_length=100, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.reference} [{self.purpose}] ₦{self.amount_ngn}"

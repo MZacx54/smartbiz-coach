@@ -518,52 +518,14 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
         const res = await api.get('/api/analytics/underwriting-dossier/');
         dossier = res.data;
       } catch (err) {
-        const savedU = (() => { try { return JSON.parse(localStorage.getItem('sb_user') || '{}'); } catch { return {}; } })();
-        const savedB = (() => { try { return JSON.parse(localStorage.getItem('sb_brand') || '{}'); } catch { return {}; } })();
-        dossier = {
-          dossier_id: `SBC-UW-${Math.floor(10000 + Math.random() * 90000)}`,
-          verification_hash: "9A4C7E82F1D0B3A6",
-          issued_at: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
-          business_info: {
-            business_name: savedB?.business_name || savedU?.businessName || "Registered Merchant",
-            owner_name: savedU?.name || "Business Owner",
-            email: savedU?.email || "",
-            phone: savedU?.phone || "",
-            cac_number: savedB?.cacNumber || "Pending Verification",
-            is_cac_verified: Boolean(savedB?.cacNumber),
-          },
-          underwriting_assessment: {
-            credit_score: creditData?.credit_score ?? 300,
-            rating_tier: creditData?.rating_tier || "UNRATED",
-            risk_level: creditData?.risk_level || "INSUFFICIENT_DATA",
-            bank_recommendation: creditData?.bank_recommendation || "Record daily sales in your Cashbook to build underwriting credibility.",
-            breakdown: creditData?.breakdown || {
-              compliance_points: 0,
-              cashflow_points: 0,
-              debt_recovery_points: 0,
-              inventory_points: 0,
-            },
-            metrics: creditData?.metrics || {
-              cac_verified: Boolean(savedB?.cacNumber),
-              total_sales_logged: 0,
-              total_gmv_revenue: 0,
-              active_inventory_items: 0,
-            },
-            till_integrity_score: anomalies?.integrity_score ?? 100,
-            fraud_risk_status: anomalies?.status || "SECURE",
-            cash_runway_days: cashCliff?.runway_days ?? 0,
-            daily_net_velocity: cashCliff?.daily_net_velocity ?? 0,
-            fuel_gen_burn_pct: cashCliff?.fuel_gen_burn_pct ?? 0,
-          },
-          target_institutions: [
-            "Bank of Industry (BOI) & Development Bank of Nigeria (DBN)",
-            "Commercial Banks & Tier-1 Microfinance Banks (IFRS-9 Performing Underwriting)",
-            "SMEDAN & Federal Ministry of Industry, Trade and Investment (FMITI)",
-            "NIRSAL Microfinance Bank (NMFB) & State Enterprise Funds (LSETF / KADIPA / AEA)",
-            "International Impact Agencies & Foundations (World Bank, AfDB, USAID, TEF)",
-          ],
-          verifier_statement: "This report is algorithmically compiled from continuous, tamper-evident daily ledger logs, Isolation Forest fraud auditing, and compliance verification on the SmartBiz Coach AI Operating System."
-        };
+        toast.error('Certified Underwriting Dossier requires an active connection to verify records on the server.', { id: 'pdf-gen' });
+        setIsExportingPDF(false);
+        return;
+      }
+      if (!dossier?.verification_hash) {
+        toast.error('Server could not issue a verification hash right now. Please try again.', { id: 'pdf-gen' });
+        setIsExportingPDF(false);
+        return;
       }
 
       const doc = new jsPDF({

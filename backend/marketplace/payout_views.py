@@ -1,5 +1,6 @@
 import os
 import json
+import urllib.parse
 import urllib.request
 import urllib.error
 from rest_framework import views, status, permissions
@@ -64,11 +65,12 @@ class ResolveBankView(views.APIView):
         if not account_number or len(account_number) != 10:
             return Response({"error": "Please enter a valid 10-digit NUBAN account number."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not bank_code:
-            return Response({"error": "Please select a bank."}, status=status.HTTP_400_BAD_REQUEST)
+        if not bank_code or not bank_code.isdigit() or len(bank_code) > 12:
+            return Response({"error": "Please select a valid bank code."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # If user explicitly provided their account name manually
-        if custom_name and len(custom_name) >= 3:
+        secret_key = get_paystack_secret()
+        # Only permit manual account name bypass when Paystack NUBAN secret is unconfigured
+        if custom_name and len(custom_name) >= 3 and not secret_key:
             return Response({
                 "account_number": account_number,
                 "account_name": custom_name.upper(),
@@ -76,7 +78,6 @@ class ResolveBankView(views.APIView):
                 "is_manual": True
             }, status=status.HTTP_200_OK)
 
-        secret_key = get_paystack_secret()
         if not secret_key:
             return Response({
                 "error": "Paystack Secret Key is not configured on server. Please enter your account name manually below.",
@@ -84,7 +85,10 @@ class ResolveBankView(views.APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            url = f"https://api.paystack.co/bank/resolve?account_number={account_number}&bank_code={bank_code}"
+            url = (
+                f"https://api.paystack.co/bank/resolve"
+                f"?account_number={urllib.parse.quote(account_number)}&bank_code={urllib.parse.quote(bank_code)}"
+            )
             req = urllib.request.Request(url, headers={
                 "Authorization": f"Bearer {secret_key}",
                 "Content-Type": "application/json",
@@ -144,12 +148,18 @@ class SetupPayoutView(views.APIView):
             }
         )
 
+        bank_details_changed = (
+            vendor.bank_code != bank_code or vendor.account_number != account_number
+        )
         vendor.bank_name = bank_name
         vendor.bank_code = bank_code
         vendor.account_number = account_number
         vendor.account_name = account_name
 
         secret_key = get_paystack_secret()
+        # Clear stale subaccount code whenever bank coordinates change until Paystack confirms the new subaccount
+        if bank_details_changed:
+            vendor.paystack_subaccount_code = ""
         subaccount_code = vendor.paystack_subaccount_code or ""
 
         if secret_key and secret_key.startswith('sk_'):
@@ -174,17 +184,13 @@ class SetupPayoutView(views.APIView):
                     if res_data.get('status') and 'data' in res_data:
                         subaccount_code = res_data['data']['subaccount_code']
                         vendor.paystack_subaccount_code = subaccount_code
+                    else:
+                        vendor.paystack_subaccount_code = ""
             except Exception as e:
                 print(f"Warning: Paystack subaccount creation notice: {e}")
-                # Ensure dummy code is NEVER set if real creation fails so storefront payment isn't broken
-                if not subaccount_code or subaccount_code.startswith('ACCT_DIR_'):
-                    subaccount_code = ""
-                    vendor.paystack_subaccount_code = ""
-        else:
-            # If secret key is not live, do not set dummy subaccount code
-            if not subaccount_code or subaccount_code.startswith('ACCT_DIR_'):
-                subaccount_code = ""
                 vendor.paystack_subaccount_code = ""
+        else:
+            vendor.paystack_subaccount_code = ""
 
         vendor.save()
 

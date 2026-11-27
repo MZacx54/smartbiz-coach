@@ -50,10 +50,11 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
         targetMargin: parseFloat(targetMargin),
       });
 
-      // Only deduct credits if free daily allowance was exceeded
-      if (shouldDeduct) {
-        const billingResponse = await billingService.deductCredits(2, 'AI Pricing & Margin Optimization Assistant');
-        onUpdateCredits(billingResponse.credits);
+      // Server /api/business/pricing-assistant/ handles credit deduction atomically
+      if (typeof data?.credits === 'number') {
+        onUpdateCredits(data.credits);
+      } else if (shouldDeduct) {
+        onUpdateCredits(Math.max(0, credits - 2));
       }
 
       setResult(data);
@@ -147,36 +148,34 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1.5">Target Profit Margin: <span className="text-indigo-600 font-bold">{targetMargin}%</span></label>
+          <label className="block text-sm font-semibold text-slate-700 mb-1.5">Target Gross Profit Margin: <span className="text-indigo-600 font-bold">{targetMargin}%</span></label>
           <input
             type="range"
             min="5"
-            max="200"
+            max="85"
             step="5"
             className="w-full accent-indigo-600"
-            value={targetMargin}
+            value={Math.min(85, Math.max(5, Number(targetMargin) || 30))}
             onChange={(e) => setTargetMargin(e.target.value)}
           />
           <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-            <span>5%</span><span>Low Risk</span><span>High Margin</span><span>200%</span>
+            <span>5%</span><span>Low Risk</span><span>High Margin</span><span>85% Cap</span>
           </div>
         </div>
 
         <button
           onClick={handleAnalyse}
-          disabled={isLoading || !productName || !costPrice}
+          disabled={isLoading || !productName || !costPrice || Number(costPrice) <= 0}
           className="w-full py-3.5 bg-indigo-600 disabled:bg-gray-300 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 flex justify-center items-center gap-2 cursor-pointer"
         >
           {isLoading ? (
             <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Calculating...</>
           ) : (
-            <><span>Analyse Pricing {usageLimiter.getUsageCount('pricing_assistant') < 2 ? `(Free • ${2 - usageLimiter.getUsageCount('pricing_assistant')} left today)` : '(2 Credits)'}</span><span>💡</span></>
+            <><span>Analyse Pricing (2 BizCredits)</span><span>💡</span></>
           )}
         </button>
         <p className="text-center text-xs text-slate-500">
-          ⚡ {usageLimiter.getUsageCount('pricing_assistant') < 2 
-            ? `2 free analyses per day (${2 - usageLimiter.getUsageCount('pricing_assistant')} remaining today) • then 2 credits` 
-            : 'Daily free allowance used • 2 BizCredits per analysis'}
+          ⚡ Powered by AI Pricing Engine • 2 BizCredits per analysis
         </p>
       </div>
 
@@ -271,7 +270,7 @@ const PricingAssistant: React.FC<PricingAssistantProps> = ({ credits, onUpdateCr
       <CreditPromptModal
         isOpen={showCreditPrompt}
         featureLabel="AI Pricing & Margin Assistant"
-        creditCost={20}
+        creditCost={2}
         currentCredits={credits}
         onConfirm={deductOnConfirm || (() => {})}
         onClose={() => setShowCreditPrompt(false)}

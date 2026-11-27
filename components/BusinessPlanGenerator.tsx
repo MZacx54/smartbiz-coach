@@ -55,7 +55,7 @@ I/We, the undersigned Principal Promoter(s) and Authorized Executive(s) of ${biz
 
 9.2 STATUTORY COMPLIANCE ACKNOWLEDGEMENT
 - Corporate Affairs Commission (CAC): Registered business enterprise operating in full compliance with CAMA 2020 statutory filing mandates.
-- Tax Identification Number (TIN): Enrolled in the Joint Tax Board (JTB) / FIRS national database; compliant with Section 23 of CITA (0% CIT threshold for small businesses with turnover < NGN 25,000,000).
+- Tax Identification Number (TIN): Enrolled in the Joint Tax Board (JTB) / Nigeria Revenue Service (NRS) database; subject to annual tax returns filing and applicable small-company provisions under the Nigeria Tax Act (NTA) 2025 / CITA (informational only; consult a licensed tax practitioner).
 - SMEDAN SUIN Verification: Duly indexed under the National MSME Database maintained by the Small and Medium Enterprises Development Agency of Nigeria.
 - Financial Institutions Act (BOFI Act): Fully aligned with Central Bank of Nigeria anti-money laundering (AML/CFT) and Know-Your-Customer (KYC) standards.
 
@@ -162,9 +162,12 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
         throw new Error(result?.error || 'The AI generator returned an incomplete plan. Please refine your details and try again.');
       }
       
-      // Only deduct credits if generation successfully completed
-      const billingResponse = await billingService.deductCredits(200, 'AI Bank & Grant Business Plan Generator');
-      onUpdateCredits(billingResponse.credits);
+      // Server /api/business/generate-plan/ already reserves credits atomically
+      if (typeof result?.credits === 'number') {
+        onUpdateCredits(result.credits);
+      } else {
+        onUpdateCredits(Math.max(0, credits - 15));
+      }
       
       if (!result.underwritingSummary) {
         result.underwritingSummary = getUnderwritingSummaryFallback(name, startupCapital, location);
@@ -852,12 +855,12 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
         doc.setFont("helvetica", "bold");
         doc.setFontSize(7);
         doc.setTextColor(30, 58, 138);
-        doc.text("DIGITAL AUDIT TRAIL • SHA-256 SYSTEM ATTESTATION", margin + 4, y + 4.5);
+        doc.text("SELF-AUTHORED BUSINESS PLAN SUMMARY", margin + 4, y + 4.5);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(6.5);
         doc.setTextColor(71, 85, 105);
-        doc.text("Hash: SHA256: 7F4A-98C2-B01D-5E39-A488-82CE-71BD-2026-SBZ • Status: Bank & Grant Validated", margin + 4, y + 8.5);
-        doc.text("Online Verification: https://smartbizcoach.com.ng/audit-verify • Validated against BOI & DBN MSME Lending Benchmarks", margin + 4, y + 12);
+        doc.text(`Document Ref: SBC-PLAN-${Date.now().toString(36).toUpperCase()} • Financial figures are merchant-provided assumptions`, margin + 4, y + 8.5);
+        doc.text("Notice: Informational plan prepared by merchant. Not audited financial statements or guaranteed loan approval.", margin + 4, y + 12);
         y += 18;
       }
     });
@@ -872,7 +875,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       doc.setFontSize(7);
       doc.setTextColor(148, 163, 184);
       doc.text(`Page ${p} of ${totalPages}`, 105, 288, { align: "center" });
-      doc.text("SmartBiz AI Enterprise System • Bank of Industry (BOI) Compliant", pageWidth - margin, 288, { align: "right" });
+      doc.text("SmartBiz Coach Business Plan Builder", pageWidth - margin, 288, { align: "right" });
     }
 
     // Save and trigger browser download

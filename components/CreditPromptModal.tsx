@@ -16,11 +16,11 @@ interface CreditPromptModalProps {
 }
 
 const CREDIT_PACK_OPTIONS = [
-  { credits: 50, price: 500, label: 'Micro Pack', desc: '50 🪙 (~₦10/credit) for micro-boosts & daily AI' },
-  { credits: 150, price: 1500, label: 'Starter Pack', desc: '150 🪙 for 7-day boost + photo AI' },
-  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 🪙 (+50 Bonus) for Verified Badge + Boosts', popular: true },
-  { credits: 1000, price: 7500, label: 'Vendor Pro', desc: '1,000 🪙 (+250 Bonus) for 30-Day VIP + Full AI Studio' },
-  { credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 🪙 for continuous heavy boosts & business plans' },
+  { id: 'micro_50', credits: 50, price: 500, label: 'Micro Pack', desc: '50 🪙 (~₦10/credit) for daily AI studio & pricing' },
+  { id: 'starter_175', credits: 175, price: 1500, label: 'Starter Pack', desc: '175 🪙 (150 + 25 Bonus) for 7-day boost & Photo AI' },
+  { id: 'grower_450', credits: 450, price: 3500, label: 'Grower Pack', desc: '450 🪙 (400 + 50 Bonus) for Studio Shoots & Boosts', popular: true },
+  { id: 'vendor_pro_1250', credits: 1250, price: 7500, label: 'Vendor Pro', desc: '1,250 🪙 (1,000 + 250 Bonus) for 30-Day VIP + Studio' },
+  { id: 'mogul_2500', credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 🪙 (2,000 + 500 Bonus) for heavy studio & plans' },
 ];
 
 const CreditPromptModal: React.FC<CreditPromptModalProps> = ({
@@ -104,12 +104,25 @@ const CreditPromptModal: React.FC<CreditPromptModalProps> = ({
     setIsProcessingPayment(true);
     try {
       toast.loading(`Opening Paystack checkout for ${selectedPack.label}...`, { id: 'topup-toast' });
-      
+      let currentUser: any = null;
+      try {
+        currentUser = JSON.parse(localStorage.getItem('sb_user') || 'null');
+      } catch {
+        currentUser = null;
+      }
+
       await openPaystackCheckout({
+        email: currentUser?.email || undefined,
         amount: selectedPack.price,
-        customerName: 'SmartBiz Merchant',
-        customerPhone: '',
+        customerName: currentUser?.businessName || currentUser?.name || 'SmartBiz Merchant',
+        customerPhone: currentUser?.phone || '',
         orderNotes: `BizCredit Top-Up: ${selectedPack.credits} Credits for ${featureLabel}`,
+        metadata: {
+          user_id: currentUser?.id,
+          purpose: 'credit_topup',
+          pack_id: selectedPack.id,
+          credits: selectedPack.credits,
+        },
         onSuccess: async (res) => {
           toast.loading('Verifying transaction & crediting wallet...', { id: 'topup-toast' });
           try {

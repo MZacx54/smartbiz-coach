@@ -105,6 +105,9 @@ const SEED_MARKETPLACE_LISTINGS: Record<'PHYSICAL' | 'SERVICE' | 'PROPERTY' | 'B
 
 // Client-side in-memory cache for instant tab switching (2 minutes TTL)
 const marketplaceClientCache = new Map<string, { data: UnifiedItem[]; timestamp: number }>();
+if (typeof window !== 'undefined') {
+  window.addEventListener('sb_auth_cleared', () => marketplaceClientCache.clear());
+}
 
 const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'PHYSICAL', isPublicMode = false }) => {
   const navigate = useNavigate();
@@ -152,7 +155,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
   useEffect(() => {
     const syncCart = () => {
       try {
-        const saved = localStorage.getItem('smartbiz_cart');
+        const saved = localStorage.getItem('sb_cart');
         if (saved) {
           const parsed = JSON.parse(saved);
           setLocalCartCount(Array.isArray(parsed) ? parsed.reduce((sum: number, it: any) => sum + (it.quantity || 1), 0) : 0);
@@ -165,7 +168,11 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
     };
     syncCart();
     window.addEventListener('storage', syncCart);
-    return () => window.removeEventListener('storage', syncCart);
+    window.addEventListener('smartbiz_cart_updated', syncCart);
+    return () => {
+      window.removeEventListener('storage', syncCart);
+      window.removeEventListener('smartbiz_cart_updated', syncCart);
+    };
   }, []);
   const [selectedCategory, setSelectedCategory] = useState<string>(() => routeParams.category ? decodeURIComponent(routeParams.category) : '');
   const [selectedLocation, setSelectedLocation] = useState<string>(() => routeParams.state ? decodeURIComponent(routeParams.state) : '');
@@ -986,34 +993,43 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                   {/* Modern, High-Converting 1-Tap Action Bar */}
                   <div className="mt-auto pt-2 sm:pt-3 border-t border-slate-100 flex items-center gap-1.5">
                     {item.product_type === 'PHYSICAL' ? (
-                      <button
-                        onClick={() => {
-                          if (onAddToCart && !isPublicMode) {
-                            onAddToCart(item);
-                            setLocalCartCount(prev => prev + 1);
-                            toast.success((t) => (
-                              <div className="flex items-center justify-between gap-3 w-full">
-                                <span className="text-xs font-bold">Added to cart!</span>
-                                <button
-                                  onClick={() => {
-                                    toast.dismiss(t.id);
-                                    navigate('/dashboard/cart');
-                                  }}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg whitespace-nowrap cursor-pointer"
-                                >
-                                  View Cart →
-                                </button>
-                              </div>
-                            ), { duration: 3500 });
-                          } else {
-                            navigate(getProductDeepLink(item));
-                          }
-                        }}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-black py-2 sm:py-2.5 px-2.5 rounded-xl transition-all shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1 cursor-pointer active:scale-95 min-h-[38px]"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{onAddToCart && !isPublicMode ? 'Add to Cart' : 'Buy Now'}</span>
-                      </button>
+                      (item.stock_count !== undefined && Number(item.stock_count) <= 0) ? (
+                        <button
+                          disabled
+                          className="flex-1 bg-slate-200 text-slate-500 text-[11px] sm:text-xs font-black py-2 sm:py-2.5 px-2.5 rounded-xl flex items-center justify-center gap-1 cursor-not-allowed min-h-[38px]"
+                        >
+                          <span>Out of Stock</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (onAddToCart) {
+                              onAddToCart(item);
+                              window.dispatchEvent(new Event('smartbiz_cart_updated'));
+                              toast.success((t) => (
+                                <div className="flex items-center justify-between gap-3 w-full">
+                                  <span className="text-xs font-bold">Added to cart!</span>
+                                  <button
+                                    onClick={() => {
+                                      toast.dismiss(t.id);
+                                      navigate(isPublicMode ? '/cart' : '/dashboard/cart');
+                                    }}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg whitespace-nowrap cursor-pointer"
+                                  >
+                                    View Cart →
+                                  </button>
+                                </div>
+                              ), { duration: 3500 });
+                            } else {
+                              navigate(getProductDeepLink(item));
+                            }
+                          }}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-black py-2 sm:py-2.5 px-2.5 rounded-xl transition-all shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1 cursor-pointer active:scale-95 min-h-[38px]"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{onAddToCart ? 'Add to Cart' : 'Buy Now'}</span>
+                        </button>
+                      )
                     ) : item.product_type === 'B2B' ? (
                       <button
                         onClick={() => setRfqItem(item)}
@@ -1338,19 +1354,27 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
                   <div className="mt-auto pt-2.5 sm:pt-3 border-t border-slate-100 flex flex-col gap-2 sticky bottom-0 bg-white/95 backdrop-blur-md pb-safe">
                      <div className="flex items-center gap-2">
                         {selectedItem.product_type === 'PHYSICAL' ? (
-                          <button 
-                            onClick={() => {
-                              if (onAddToCart) {
-                                onAddToCart(selectedItem);
-                                setLocalCartCount(prev => prev + 1);
-                                toast.success('Added to shopping cart! 🛍️');
-                              }
-                              setSelectedItem(null);
-                            }}
-                            className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white py-3 rounded-xl font-extrabold text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
-                          >
-                            <ShoppingBag className="w-4 h-4" /> Add to Cart
-                          </button>
+                          (selectedItem.stock_count !== undefined && Number(selectedItem.stock_count) <= 0) ? (
+                            <button
+                              disabled
+                              className="flex-1 bg-slate-200 text-slate-500 py-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed min-h-[44px]"
+                            >
+                              Out of Stock
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                if (onAddToCart) {
+                                  onAddToCart(selectedItem);
+                                  window.dispatchEvent(new Event('smartbiz_cart_updated'));
+                                }
+                                setSelectedItem(null);
+                              }}
+                              className="flex-1 bg-slate-900 hover:bg-emerald-600 text-white py-3 rounded-xl font-extrabold text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer min-h-[44px]"
+                            >
+                              <ShoppingBag className="w-4 h-4" /> Add to Cart
+                            </button>
+                          )
                         ) : selectedItem.product_type === 'B2B' ? (
                           <button 
                             onClick={() => {

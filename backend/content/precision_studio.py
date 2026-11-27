@@ -266,13 +266,20 @@ class PrecisionPhotoStudioView(views.APIView):
         if not image_base64:
             return Response({'error': 'No product image provided'}, status=status.HTTP_400_BAD_REQUEST)
 
+        MAX_B64_CHARS = 14 * 1024 * 1024
+        if isinstance(image_base64, str) and len(image_base64) > MAX_B64_CHARS:
+            return Response({'error': 'Uploaded image exceeds maximum size limit (10 MB).'}, status=status.HTTP_400_BAD_REQUEST)
+
         allowed, remaining, reserved = reserve_ai_credits(request.user, 5, 'Precision Photo Studio Segmentation')
         if not allowed:
             return Response({'error': 'Insufficient BizCredits (requires 5 credits).', 'credits': remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         try:
+            Image.MAX_IMAGE_PIXELS = 25_000_000  # Defend against PIL decompression bombs
             clean_b64 = image_base64.split(',')[1] if ',' in image_base64 else image_base64
             img_bytes = base64.b64decode(clean_b64)
+            if len(img_bytes) > 10 * 1024 * 1024:
+                raise ValueError("Decoded image exceeds 10 MB limit")
             orig_img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
             orig_img.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
             w, h = orig_img.size

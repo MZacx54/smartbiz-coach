@@ -5,10 +5,19 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import SEO from "./components/SEO";
 
 // Layout & Core
-import DashboardLayout from "./components/DashboardLayout";
+const DashboardLayout = lazy(() => import("./components/DashboardLayout"));
 const LandingPage = lazy(() => import("./components/LandingPage"));
 const PricingPage = lazy(() => import("./components/PricingPage"));
 import CookieConsent from "./components/CookieConsent";
+
+const safeJsonParse = <T,>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
 
 // Lazy loaded core components
 const Dashboard = lazy(() => import("./components/Dashboard"));
@@ -67,6 +76,7 @@ import { authService, securityLockService, clearAllTenantLocalState } from "./se
 import { brandService } from "./services/brandService";
 import { billingService } from "./services/billingService";
 import { FEATURE_FLAGS } from "./config/featureFlags";
+import { isAdminOrPartnerUser } from "./config/navigation";
 
 const normalizeUser = (backendUser: any): User | null => {
   if (!backendUser) return null;
@@ -78,10 +88,10 @@ const normalizeUser = (backendUser: any): User | null => {
     email: backendUser.email || '',
     businessName: backendUser.businessName || backendUser.business_name || 'My Venture',
     business_name: backendUser.business_name || backendUser.businessName || 'My Venture',
-    plan: backendUser.plan || 'Free',
+    plan: backendUser.effective_plan || backendUser.plan || 'Free',
     hasOnboarded: backendUser.hasOnboarded || backendUser.has_onboarded || false,
     has_onboarded: backendUser.has_onboarded || backendUser.hasOnboarded || false,
-    is_email_verified: typeof backendUser.is_email_verified === 'boolean' ? backendUser.is_email_verified : true,
+    is_email_verified: typeof backendUser.is_email_verified === 'boolean' ? backendUser.is_email_verified : false,
     logo: backendUser.logo || '',
     phone: backendUser.phone || '',
     location: backendUser.location || '',
@@ -106,37 +116,27 @@ const App: React.FC = () => {
 
   // Auth State (Persisted)
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem("sb_user");
-    return saved ? normalizeUser(JSON.parse(saved)) : null;
+    const parsed = safeJsonParse<any>(localStorage.getItem("sb_user"), null);
+    return parsed ? normalizeUser(parsed) : null;
   });
 
   // Data Persistence (Lifted State)
-  const [savedBrand, setSavedBrand] = useState<BrandIdentity | null>(() => {
-    const saved = localStorage.getItem("sb_brand");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [savedBrand, setSavedBrand] = useState<BrandIdentity | null>(() =>
+    safeJsonParse<BrandIdentity | null>(localStorage.getItem("sb_brand"), null)
+  );
 
-  const [contentHistory, setContentHistory] = useState<GeneratedContent[]>(
-    () => {
-      const saved = localStorage.getItem("sb_content_history");
-      return saved ? JSON.parse(saved) : [];
-    }
+  const [contentHistory, setContentHistory] = useState<GeneratedContent[]>(() =>
+    safeJsonParse<GeneratedContent[]>(localStorage.getItem("sb_content_history"), [])
   );
 
   // Cart & Transactions
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem("sb_cart");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [cartItems, setCartItems] = useState<CartItem[]>(() =>
+    safeJsonParse<CartItem[]>(localStorage.getItem("sb_cart"), [])
+  );
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem("sb_transactions");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [transactions, setTransactions] = useState<Transaction[]>(() =>
+    safeJsonParse<Transaction[]>(localStorage.getItem("sb_transactions"), [])
+  );
 
   // Navigation State -> Converted to Sync with React Router
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
@@ -163,6 +163,7 @@ const App: React.FC = () => {
     else if (path.includes('/dashboard/order-gen')) setCurrentView(AppView.ORDER_GENERATOR);
     else if (path.includes('/dashboard/orders')) setCurrentView(AppView.ORDER_INBOX);
     else if (path.includes('/dashboard/store-preview')) setCurrentView(AppView.STOREFRONT);
+    else if (path.includes('/dashboard/pricing-assistant')) setCurrentView(AppView.PRICING_ASSISTANT);
     else if (path.includes('/dashboard/settings')) setCurrentView(AppView.SETTINGS);
     else if (path.includes('/dashboard/hub') || path.includes('/dashboard/marketplace')) setCurrentView(AppView.MARKETPLACE);
     else if (path.includes('/dashboard/marketing')) setCurrentView(AppView.MARKETING_AGENT);
@@ -437,7 +438,9 @@ const App: React.FC = () => {
       toast('👨‍💼 Apprentice / Cashier Mode is active on this account. Owner Password required for Petty Cash & Admin.', { icon: '🔒' });
       navigate('/dashboard/cashbook');
     } else {
-      navigate('/dashboard');
+      const redirectTo = new URLSearchParams(location.search).get('redirect');
+      const safeRedirect = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard';
+      navigate(safeRedirect);
     }
   };
 
@@ -521,12 +524,18 @@ const App: React.FC = () => {
   };
 
   const handleAddToCart = (product: UnifiedItem) => {
+    const isPhysical = (product.product_type || 'PHYSICAL').toUpperCase() === 'PHYSICAL';
+    const maxStock = isPhysical ? Math.max(0, Number((product as any).stock_count ?? 1)) : 999;
+    if (isPhysical && maxStock <= 0) {
+      toast.error(`${product.name} is currently out of stock.`);
+      return;
+    }
     setCartItems((prev: CartItem[]) => {
       const existing = prev.find((item) => item.productId === String(product.id));
       if (existing) {
         return prev.map((item) =>
           item.productId === String(product.id)
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: Math.min(maxStock, item.quantity + 1) }
             : item
         );
       }
@@ -539,7 +548,7 @@ const App: React.FC = () => {
           price: Number(product.price) || 0,
           image: product.image_url || '',
           quantity: 1,
-          vendorId: String(product.id),
+          vendorId: String((product as any).brand || (product as any).brand_slug || product.brand_name || product.id),
           vendorName: product.brand_name || 'Verified Merchant',
           whatsapp: product.whatsapp_number || '',
           paystack_subaccount_code: product.paystack_subaccount_code || '',
@@ -547,52 +556,51 @@ const App: React.FC = () => {
         },
       ];
     });
+    window.dispatchEvent(new Event('smartbiz_cart_updated'));
     toast.success("Item added to cart!");
   };
 
   const handleRemoveFromCart = (id: string) => {
     setCartItems((prev: CartItem[]) => prev.filter((item) => item.id !== id));
+    window.dispatchEvent(new Event('smartbiz_cart_updated'));
   };
 
-  const handleClearCart = () => setCartItems([]);
+  const handleClearCart = () => {
+    setCartItems([]);
+    window.dispatchEvent(new Event('smartbiz_cart_updated'));
+  };
 
   const handleCheckout = async (
     provider: "PAYSTACK" | "SQUAD",
     amount: number,
     reference: string
   ) => {
+    // Marketplace orders are verified inside Cart.tsx via /api/marketplace/orders/create/.
+    if (cartItems.length > 0) {
+      setCartItems([]);
+      window.dispatchEvent(new Event('smartbiz_cart_updated'));
+      toast.success("Order placed successfully!");
+      navigate('/dashboard/orders');
+      return;
+    }
     try {
       toast.loading(`Verifying ${provider} payment...`);
-
       const result = await billingService.verifyPayment(reference, amount);
-
-      // Cart orders are already created with buyer info by Cart.tsx before this callback fires.
-      // Here we just clear the cart and show confirmation.
-      if (cartItems.length > 0) {
-        toast.success("Order placed! Check your Order Inbox for details.");
-        setCartItems([]);
-        toast.success("Order placed successfully!");
-        setCartItems([]);
-      } else {
-        // This is a credit top-up
-        if (result.credits !== undefined) {
-          setUserStats((prev) => ({ ...prev, bizCredits: result.credits }));
-        }
-        
-        const newTx: Transaction = {
-          id: reference,
-          date: Date.now(),
-          amount: amount,
-          description: `Direct Credit Purchase (${provider})`,
-          status: "SUCCESS",
-          provider: provider,
-          type: "CREDIT_TOPUP",
-        };
-        setTransactions((prev: Transaction[]) => [newTx, ...prev]);
-        toast.success(`Credits added via ${provider}!`);
+      if (result.credits !== undefined) {
+        setUserStats((prev) => ({ ...prev, bizCredits: result.credits }));
       }
-
+      const newTx: Transaction = {
+        id: reference,
+        date: Date.now(),
+        amount: amount,
+        description: `Direct Credit Purchase (${provider})`,
+        status: "SUCCESS",
+        provider: provider,
+        type: "CREDIT_TOPUP",
+      };
+      setTransactions((prev: Transaction[]) => [newTx, ...prev]);
       toast.dismiss();
+      toast.success(`Credits added via ${provider}!`);
       navigate('/dashboard');
     } catch (error: any) {
       toast.dismiss();
@@ -822,7 +830,7 @@ const App: React.FC = () => {
         } />
 
         <Route path="/partner-portal" element={
-          FEATURE_FLAGS.partnerPortal ? (
+          (FEATURE_FLAGS.partnerPortal && isAdminOrPartnerUser(user)) ? (
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950 text-white"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <PartnerPortal />
             </Suspense>
@@ -867,8 +875,10 @@ const App: React.FC = () => {
                           has_onboarded: true,
                           location: updatedUser.location,
                           phone: updatedUser.phone,
-                          business_name: updatedUser.businessName
-                        });
+                          business_name: updatedUser.businessName,
+                          industry: (updatedUser as any).industry,
+                          goals: (updatedUser as any).goals,
+                        } as any);
                         setUser({
                           ...user,
                           has_onboarded: true,
@@ -886,6 +896,7 @@ const App: React.FC = () => {
                   />
                 </Suspense>
               )}
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" /></div>}>
               <DashboardLayout
                 user={user}
                 userStats={userStats}
@@ -945,11 +956,12 @@ const App: React.FC = () => {
                   <Route path="marketing" element={FEATURE_FLAGS.aiStudio ? <AIStudio initialTab="marketing" savedBrand={savedBrand} onSaveBrand={handleSaveBrand} credits={userStats.bizCredits} onUpdateCredits={handleUpdateCredits} user={user} /> : <Navigate to="/dashboard" replace />} />
                   <Route path="analytics" element={FEATURE_FLAGS.dataScienceLabs ? <DataScienceHub onNavigate={handleNavigate} /> : <Navigate to="/dashboard" replace />} />
                   <Route path="audit" element={<PublicAuditReport />} />
-                  <Route path="partner-portal" element={FEATURE_FLAGS.partnerPortal ? <PartnerPortal /> : <Navigate to="/dashboard" replace />} />
+                  <Route path="partner-portal" element={(FEATURE_FLAGS.partnerPortal && isAdminOrPartnerUser(user)) ? <PartnerPortal /> : <Navigate to="/dashboard" replace />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </Suspense>
             </DashboardLayout>
+            </Suspense>
           </>
         )
         } />

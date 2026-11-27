@@ -2,26 +2,55 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     credits = models.IntegerField(default=50)
     is_email_verified = models.BooleanField(default=False)
-    
+
     # Business Profile Fields
     business_name = models.CharField(max_length=255, blank=True)
     plan = models.CharField(max_length=50, default='Free', choices=[('Free', 'Free'), ('Pro', 'Pro')])
+    plan_expires_at = models.DateTimeField(null=True, blank=True)
+    plan_billing_cycle = models.CharField(max_length=20, blank=True, default='')
     has_onboarded = models.BooleanField(default=False)
     logo = models.TextField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True)
     location = models.CharField(max_length=255, blank=True)
     currency = models.CharField(max_length=10, default='NGN')
+    referred_by_code = models.CharField(max_length=150, blank=True, default='')
+    referral_rewarded = models.BooleanField(default=False)
+
+    @property
+    def has_active_pro(self):
+        if getattr(self, 'plan', 'Free') != 'Pro':
+            return False
+        if self.plan_expires_at and self.plan_expires_at < timezone.now():
+            return False
+        return True
+
+    @property
+    def effective_plan(self):
+        return 'Pro' if self.has_active_pro else 'Free'
 
     @property
     def is_admin_or_owner(self):
-        return self.is_staff or self.is_superuser or getattr(self, 'plan', '') == 'Pro'
+        # Pro subscription does NOT grant platform admin privileges
+        return bool(self.is_staff or self.is_superuser)
 
     def __str__(self):
         return self.username or self.email or 'User'
+
+
+class OwnerSecurityVault(models.Model):
+    """Dedicated private table for Apprentice Lock & Owner Passcode hashes."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='security_vault')
+    is_apprentice_mode = models.BooleanField(default=False)
+    owner_passcode_hash = models.CharField(max_length=255, blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"SecurityVault({self.user_id}, locked={self.is_apprentice_mode})"
 
 
 class PasswordResetCode(models.Model):
@@ -29,10 +58,11 @@ class PasswordResetCode(models.Model):
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
 
     def is_valid(self):
         expiry = self.created_at + timezone.timedelta(minutes=15)
-        return not self.is_used and timezone.now() < expiry
+        return not self.is_used and self.failed_attempts < 5 and timezone.now() < expiry
 
     def __str__(self):
         return f"{self.user.email if self.user else 'User'} - {self.code}"
@@ -43,10 +73,11 @@ class EmailVerificationCode(models.Model):
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
 
     def is_valid(self):
         expiry = self.created_at + timezone.timedelta(hours=24)
-        return not self.is_used and timezone.now() < expiry
+        return not self.is_used and self.failed_attempts < 5 and timezone.now() < expiry
 
     def __str__(self):
         return f"{self.user.email if self.user else 'User'} - {self.code}"
@@ -126,8 +157,6 @@ class PartnershipInquiry(models.Model):
 
     def __str__(self):
         return f"{self.organization} ({self.name}) - {self.partnership_type} [{self.status}]"
-
-
 
 
 class Cohort(models.Model):

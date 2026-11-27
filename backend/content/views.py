@@ -1,9 +1,14 @@
 import os
+import json
+import random
+import base64
+from django.utils import timezone
 from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from smartbiz_backend import gemini_utils
 from smartbiz_backend.throttles import ContentGenThrottle, ImageEditThrottle, VideoGenThrottle
+from billing.utils import reserve_ai_credits, refund_ai_credits
 from brand.models import BrandIdentity
 
 # ─── Credit Costs per AI Action ───────────────────────────────────────────────
@@ -73,11 +78,6 @@ class GenerateSocialContentView(views.APIView):
     throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
-        from billing.utils import check_usage_gatekeeper
-        allowed, remaining_credits = check_usage_gatekeeper(request.user, 'content_gen', 5)
-        if not allowed:
-            return Response({"error": "Insufficient credits. Your free daily limit is exhausted.", "credits": remaining_credits}, status=402)
-
         topic = request.data.get('topic')
         platform = request.data.get('platform', 'Instagram')
         tone = request.data.get('tone', 'Exciting')
@@ -86,6 +86,15 @@ class GenerateSocialContentView(views.APIView):
 
         if not topic:
             return Response({'error': 'Missing required parameter: topic'}, status=400)
+
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('social_post', 2), 'AI Social Content Studio'
+        )
+        if not allowed:
+            return Response(
+                {"error": "Insufficient BizCredits for AI Content Studio.", "credits": remaining},
+                status=402,
+            )
 
         brand_context = get_brand_context(request.user)
 
@@ -152,12 +161,17 @@ class GenerateSocialContentView(views.APIView):
         """
 
         try:
-            content = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            content = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_prompt, user=request.user, feature='content_post'
+            )
             if isinstance(content, dict) and 'caption' in content:
-                deduct_credits(request.user, 'social_post')
+                content['credits'] = remaining
+                content['credits_deducted_server'] = True
                 return Response(content)
             raise Exception("Invalid response structure from AI model")
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'AI Social Content Fallback')
+            remaining_after = getattr(request.user, 'credits', remaining)
             # Rich, comprehensive contextual fallback
             biz_name = getattr(request.user, 'business_name', 'Our Store')
             fallback_caption = f"""🚨 STOP SCROLLING! Your search for the best {topic} in Nigeria ends right here! ✨\n\nAre you tired of compromising on quality or dealing with disappointing deliveries? At {biz_name}, we bring you premium-grade {topic} crafted for unmatched value, durability, and style.\n\nHere is why our customers love this:\n💎 100% Premium Quality Guaranteed — No shortcuts, no fake materials.\n⚡ Fast Lagos & Nationwide Door-Step Waybill Delivery.\n📦 Safe, tamper-proof packaging to ensure your order arrives in perfect condition.\n🤝 Transparent pricing & responsive customer support.\n\n🔥 LIMITED STOCK AVAILABLE: Due to high demand, current batch is selling out fast!\n\n📲 HOW TO ORDER:\n👉 Tap the link in our bio or send us a WhatsApp DM right now to claim yours today!\n\n#{biz_name.replace(' ', '')} #NaijaBrand #NigerianBusiness #QualityFirst #LagosSME #ShopNigeria #ReliableMerchant"""
@@ -170,7 +184,6 @@ class GenerateSocialContentView(views.APIView):
                 {"slideNumber": 5, "title": "Claim Yours Today 🚀", "content": f"Limited batch available for immediate dispatch. WhatsApp us or click the link in bio to order now!", "visualDirection": "Bold closing slide with WhatsApp phone number and 'Order Now' button graphic."}
             ]
 
-            deduct_credits(request.user, 'social_post')
             return Response({
                 "caption": fallback_caption,
                 "whatsAppStatus": f"✨ New Arrival Alert: {topic} now in stock at {biz_name}!\n\n• Premium Quality Guaranteed 💎\n• Fast Nationwide Delivery ⚡\n• Limited Quantity Available 🔥\n\nReply 'ORDER' to lock yours in right away! 👇",
@@ -183,7 +196,10 @@ class GenerateSocialContentView(views.APIView):
                 ],
                 "imageText": f"Premium {topic} • Fast Delivery",
                 "dmReply": f"Hello! 👋 Thank you for reaching out to {biz_name} regarding our {topic}. We currently have limited units in stock ready for immediate nationwide waybill dispatch! Would you like me to share our current promo pricing and delivery options for your location?",
-                "slides": fallback_slides
+                "slides": fallback_slides,
+                "credits": remaining_after,
+                "credits_deducted_server": True,
+                "fallback": True,
             })
 
 
@@ -200,6 +216,15 @@ class GenerateVideoScriptView(views.APIView):
 
         if not topic:
             return Response({'error': 'Missing required parameter: topic'}, status=400)
+
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('video_script', 8), 'AI Video Script Generator'
+        )
+        if not allowed:
+            return Response(
+                {"error": "Insufficient BizCredits for AI Video Script.", "credits": remaining},
+                status=402,
+            )
 
         brand_context = get_brand_context(request.user)
 
@@ -270,16 +295,21 @@ class GenerateVideoScriptView(views.APIView):
         """
 
         try:
-            script = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            script = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_prompt, user=request.user, feature='video_script'
+            )
             if isinstance(script, dict) and 'hook' in script:
                 if 'callToAction' not in script and 'cta' in script:
                     script['callToAction'] = script['cta']
                 if 'teleprompter_script' not in script:
                     script['teleprompter_script'] = script.get('body', f"{script.get('hook', '')} {script.get('callToAction', '')}")
-                deduct_credits(request.user, 'video_script')
+                script['credits'] = remaining
+                script['credits_deducted_server'] = True
                 return Response(script)
             raise Exception("Invalid script response structure")
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'AI Video Script Fallback')
+            remaining_after = getattr(request.user, 'credits', remaining)
             biz_name = getattr(request.user, 'business_name', 'Our Brand')
             fallback_teleprompter = f"If you're in Nigeria and you've been searching for the absolute best {topic}, stop scrolling right now! Most options on the market either disappoint on quality or don't last. That's why we at {biz_name} engineered this premium solution for you. Look at this build quality and finish. It delivers 100% reliability, looks incredible, and is backed by fast nationwide delivery. Stock for this batch is strictly limited, so click the link in our bio or send us a WhatsApp DM right now to secure yours before it sells out!"
             
@@ -314,7 +344,6 @@ class GenerateVideoScriptView(views.APIView):
                 }
             ]
 
-            deduct_credits(request.user, 'video_script')
             return Response({
                 "title": f"The Ultimate {topic} Showcase 🔥",
                 "hook": f"If you've been looking for the best {topic} in Nigeria, stop scrolling right now!",
@@ -324,16 +353,25 @@ class GenerateVideoScriptView(views.APIView):
                 "callToAction": "Click the link in bio or WhatsApp us to order now!",
                 "audio_suggestions": ["Trending Afrobeats Instrumental", "Fast-paced TikTok Vlog Beat"],
                 "caption_for_post": f"Don't compromise on quality! ✨ Check out our {topic} at {biz_name}. Fast nationwide dispatch. WhatsApp link in bio! #NaijaTech #ShopNigeria #ViralReels #SMEGrowth",
-                "script_breakdown": fallback_breakdown
+                "script_breakdown": fallback_breakdown,
+                "credits": remaining_after,
+                "credits_deducted_server": True,
+                "fallback": True,
             })
 
 
 class GenerateTrendIdeasView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
         niche = request.data.get('niche', 'Small Business')
         brand_context = get_brand_context(request.user)
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, 1, 'AI Trend Ideas'
+        )
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits.", "credits": remaining}, status=402)
 
         system_instruction = f"""
         {brand_context}
@@ -348,7 +386,9 @@ class GenerateTrendIdeasView(views.APIView):
         prompt = f"Provide 4 hyper-personalized, high-converting Nigerian marketing angles for a business in '{niche}'."
 
         try:
-            trends = gemini_utils.generate_json_content(prompt, system_instruction=system_instruction)
+            trends = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_instruction, user=request.user, feature='trend_ideas'
+            )
             trends_list = []
             if isinstance(trends, dict):
                 if 'trends' in trends:
@@ -381,6 +421,7 @@ class GenerateTrendIdeasView(views.APIView):
                 return Response(normalized)
             raise Exception("Insufficient trend items returned")
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'AI Trend Ideas Fallback')
             return Response([
                 {"trendName": "Month-End Payday Flash Promo", "description": "Capitalize on salary disbursements by offering a 48-hour bundle discount on top inventory items.", "application": "Run a broadcast on WhatsApp Status with countdown timer stickers.", "volume": "High Buying Intent"},
                 {"trendName": "Inflation Relief Combo Pack", "description": "Package complementary items together at an all-inclusive, pocket-friendly price point.", "application": "Create a multi-slide carousel highlighting cost savings vs buying individually.", "volume": "Top Consumer Priority"},
@@ -725,6 +766,8 @@ class EditImageView(views.APIView):
 from rest_framework.parsers import MultiPartParser, FormParser
 
 class TranscribeAudioView(views.APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
     parser_classes = (MultiPartParser, FormParser)
     
     def post(self, request):
@@ -732,35 +775,49 @@ class TranscribeAudioView(views.APIView):
         mime_type = 'audio/webm'
         
         if audio_file:
-            import base64
+            if getattr(audio_file, 'size', 0) > 12 * 1024 * 1024:
+                return Response({'error': 'Audio file exceeds maximum size limit (12 MB).'}, status=400)
             audio_data = audio_file.read()
+            if len(audio_data) > 12 * 1024 * 1024:
+                return Response({'error': 'Audio file exceeds maximum size limit (12 MB).'}, status=400)
             audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-            # Normalize mime type for Gemini API support
             raw_mime = audio_file.content_type or 'audio/webm'
             mime_type = 'audio/webm' if 'webm' in raw_mime else 'audio/wav' if 'wav' in raw_mime else 'audio/mp3' if 'mp3' in raw_mime or 'mpeg' in raw_mime else 'audio/webm'
         else:
             audio_base64 = request.data.get('audio')
             raw_mime = request.data.get('mimeType') or 'audio/webm'
             mime_type = 'audio/webm' if 'webm' in raw_mime else 'audio/wav' if 'wav' in raw_mime else 'audio/mp3' if 'mp3' in raw_mime or 'mpeg' in raw_mime else 'audio/webm'
+            if isinstance(audio_base64, str) and len(audio_base64) > 16 * 1024 * 1024:
+                return Response({'error': 'Audio payload exceeds maximum size limit (12 MB).'}, status=400)
             
         if not audio_base64:
             return Response({'error': 'No audio data provided'}, status=400)
+
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('transcription', 3), 'AI Audio Transcription'
+        )
+        if not allowed:
+            return Response({'error': 'Insufficient BizCredits for audio transcription.', 'credits': remaining}, status=402)
             
         try:
-            # Use Gemini to transcribe the audio natively with strong multilingual Nigerian language support
             text = gemini_utils.generate_text_content(
                 "Transcribe this audio recording accurately. The speaker may be speaking Nigerian English, Nigerian Pidgin, Hausa, Yoruba, or Igbo (or mixing them). "
                 "Accurately capture all product names, service names, quantities, currency values (Naira, kobo), and customer notes. "
                 "Return ONLY the exact transcribed text, nothing else.",
                 audio_base64=audio_base64,
-                mime_type=mime_type
+                mime_type=mime_type,
+                user=request.user,
+                feature='transcription',
             )
             return Response({
                 'transcription': text,
-                'text': text
+                'text': text,
+                'credits': remaining,
+                'credits_deducted_server': True,
             })
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            refund_ai_credits(request.user, reserved, 'AI Audio Transcription Failure')
+            return Response({'error': 'Audio transcription failed. Please try again.'}, status=503)
 
 class GenerateDailyMotivationView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -895,12 +952,10 @@ class GenerateDailyMotivationView(views.APIView):
                 ]
             }
             
-            # Seed based on date + user ID so it changes daily per user
-            seed_val = datetime.now().date().toordinal() + request.user.id
-            random.seed(seed_val)
-            
+            # Seed deterministically based on local date + user ID without mutating global RNG state
+            seed_val = timezone.localdate().toordinal() + request.user.id
             niche_list = fallback_pool.get(niche_key, fallback_pool["general"])
-            selected = random.choice(niche_list)
+            selected = random.Random(seed_val).choice(niche_list)
             
             return Response({
                 "quote": selected["quote"],
@@ -911,10 +966,10 @@ class GenerateDailyMotivationView(views.APIView):
 
 class GenerateSeasonalTipsView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
-        from datetime import datetime
-        date_str = datetime.now().strftime("%Y-%m-%d")
+        date_str = timezone.localdate().strftime("%Y-%m-%d")
         brand_context = get_brand_context(request.user)
         
         prompt = f"""
@@ -925,7 +980,9 @@ class GenerateSeasonalTipsView(views.APIView):
         """
         
         try:
-            content = gemini_utils.generate_json_content(prompt)
+            content = gemini_utils.generate_json_content(
+                prompt, user=request.user, feature='seasonal_tips'
+            )
             return Response(content)
         except Exception as e:
             return Response({
@@ -937,10 +994,13 @@ class GenerateSeasonalTipsView(views.APIView):
 
 class ChatWithSmartBizView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
         history = request.data.get('history', [])
         message = request.data.get('message')
+        if not str(message or '').strip():
+            return Response({'error': 'Message is required'}, status=400)
         
         # Inject brand context into chat
         brand_context = get_brand_context(request.user)
@@ -984,10 +1044,10 @@ class ChatWithSmartBizView(views.APIView):
                 "role": "system", 
                 "content": system_prompt
             })
-            if history:
-                messages.extend(history)
-            messages.append({"role": "user", "content": message})
-            text = gemini_utils.make_gemini_request(messages)
+            if history and isinstance(history, list):
+                messages.extend(history[-10:])
+            messages.append({"role": "user", "content": str(message)[:4000]})
+            text = gemini_utils.make_gemini_request(messages, user=request.user, feature='ai_chat')
             return Response({'text': text})
         except Exception as e:
             # Fallback if history format is issue or network
@@ -995,6 +1055,7 @@ class ChatWithSmartBizView(views.APIView):
 
 class GenerateSuggestedPromptsView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
     
     def post(self, request):
         niche = request.data.get('niche')
@@ -1002,6 +1063,9 @@ class GenerateSuggestedPromptsView(views.APIView):
         image = request.data.get('image') or request.data.get('image_base_64') or request.data.get('image_base64')
         mime_type = request.data.get('mimeType') or request.data.get('image_mime_type') or request.data.get('mime_type')
         trends = request.data.get('trends') or request.data.get('trend_names') or []
+
+        if image and isinstance(image, str) and len(image) > 14 * 1024 * 1024:
+            return Response({'error': 'Uploaded image exceeds 10 MB limit.'}, status=400)
         
         trend_context = f"Consider current Nigerian trends: {', '.join(trends)}." if trends else ""
         brand_context = get_brand_context(request.user)
@@ -1057,8 +1121,14 @@ class GenerateSuggestedPromptsView(views.APIView):
 
 class GenerateWeeklyPlanView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, 2, 'AI Weekly Content Plan'
+        )
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits for AI Weekly Plan.", "credits": remaining}, status=402)
         goal_input = request.data.get('goal') or request.data.get('niche') or 'Brand Awareness'
         frequency_input = str(request.data.get('frequency', '5 times/week')).lower().strip()
         
@@ -1126,11 +1196,16 @@ class GenerateWeeklyPlanView(views.APIView):
         """
 
         try:
-            plan = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            plan = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_prompt, user=request.user, feature='weekly_plan'
+            )
             if isinstance(plan, dict) and 'days' in plan and len(plan['days']) >= num_days - 1:
+                plan['credits'] = remaining
+                plan['credits_deducted_server'] = True
                 return Response(plan)
             raise Exception("Incomplete weekly plan structure")
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'AI Weekly Plan Fallback')
             biz_name = getattr(request.user, 'business_name', 'Our Brand')
             
             all_fallback_days = [
@@ -1222,6 +1297,15 @@ class GenerateMarketingVideoView(views.APIView):
         hook = script_data.get('hook', '')
         body = script_data.get('body', '')
         cta = script_data.get('callToAction') or script_data.get('cta', '')
+
+        if not any([str(title).strip(), str(hook).strip(), str(body).strip(), str(cta).strip()]):
+            return Response({'error': 'Script content is required to generate video storyboard and audio.'}, status=400)
+
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('video_script', 8), 'AI Marketing Video'
+        )
+        if not allowed:
+            return Response({'error': 'Insufficient BizCredits for video generation.', 'credits': remaining}, status=402)
         
         prompt = f"""
         Generate a step-by-step visual storyboard for a video script based on these details:
@@ -1239,14 +1323,15 @@ class GenerateMarketingVideoView(views.APIView):
         Return a JSON list of 3-5 objects with keys: visual, audio.
         """
         
+        temp_name = None
         try:
             import tempfile
-            import os
-            import base64
             from gtts import gTTS
             
             # Step 1: Generate storyboard using Gemini
-            storyboard = gemini_utils.generate_json_content(prompt)
+            storyboard = gemini_utils.generate_json_content(
+                prompt, user=request.user, feature='video_storyboard'
+            )
             
             # Fallback if storyboard is invalid or contains errors
             if not isinstance(storyboard, list) or len(storyboard) == 0 or (isinstance(storyboard, dict) and 'error' in storyboard):
@@ -1272,21 +1357,25 @@ class GenerateMarketingVideoView(views.APIView):
             # Step 4: Encode audio to base64
             with open(temp_name, "rb") as audio_file:
                 audio_b64 = base64.b64encode(audio_file.read()).decode('utf-8')
-                
-            os.remove(temp_name)
-            
-            # Deduct credits
-            deduct_credits(request.user, 'video_script')
             
             return Response({
                 'storyboard': storyboard,
                 'audio_base64': audio_b64,
                 'spoken_text': spoken_text,
+                'credits': remaining,
+                'credits_deducted_server': True,
                 'message': "Video storyboard and voiceover generated successfully!"
             })
             
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            refund_ai_credits(request.user, reserved, 'AI Marketing Video Failure')
+            return Response({'error': 'Video generation failed. Credits were refunded.'}, status=503)
+        finally:
+            if temp_name and os.path.exists(temp_name):
+                try:
+                    os.remove(temp_name)
+                except Exception:
+                    pass
 
 
 class GenerateDebtReminderView(views.APIView):
@@ -1415,10 +1504,9 @@ class ListModelsView(views.APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-import random
-
 class GetTrendingTopicsView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
     
     def get(self, request):
         prompt = """
@@ -1431,7 +1519,9 @@ class GetTrendingTopicsView(views.APIView):
         Return JSON list of 3 objects with keys: id (e.g. t1, t2, t3), title, category, volume.
         """
         try:
-            content = gemini_utils.generate_json_content(prompt)
+            content = gemini_utils.generate_json_content(
+                prompt, user=request.user, feature='trending_topics'
+            )
             if isinstance(content, list) and len(content) > 0 and 'error' not in content:
                 for idx, item in enumerate(content):
                     if 'id' not in item:
@@ -1439,12 +1529,8 @@ class GetTrendingTopicsView(views.APIView):
                 return Response(content[:3])
             raise Exception("Gemini JSON invalid or contains error")
         except Exception as e:
-            # Fallback to rich, daily-seeded Naija topics
-            import random
-            from datetime import datetime
-            seed_val = datetime.now().date().toordinal()
-            random.seed(seed_val)
-            
+            # Fallback to deterministic local-date topics without mutating global RNG state
+            seed_val = timezone.localdate().toordinal()
             trends_pool = [
                 {"id": "t1", "title": "Fuel Prices & transport hacks", "category": "Economy", "volume": "140K Posts"},
                 {"id": "t2", "title": "New Afrobeats Dance Challenge", "category": "Entertainment", "volume": "95K TikToks"},
@@ -1462,14 +1548,20 @@ class GetTrendingTopicsView(views.APIView):
                 {"id": "t14", "title": "Delivery Logistics price changes", "category": "Logistics", "volume": "40K Posts"},
                 {"id": "t15", "title": "Nigerian Food Inflation hacks", "category": "Lifestyle", "volume": "130K Posts"}
             ]
-            daily_trends = random.sample(trends_pool, 3)
+            daily_trends = random.Random(seed_val).sample(trends_pool, 3)
             return Response(daily_trends)
 
 
 class GenerateSalesScriptView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ContentGenThrottle]
 
     def post(self, request):
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('sales_script', 1), 'AI Sales Assistant'
+        )
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits for AI Sales Assistant.", "credits": remaining}, status=402)
         context = request.data.get('context', 'CLOSING') # CLOSING, OBJECTION, FOLLOW_UP, GREETING, PRICE_ISSUE
         customer_message = request.data.get('customer_message', '').strip()
         closing_style = request.data.get('closing_style', 'MIXED').strip().upper() # PIDGIN, CORPORATE, FOMO, SOFT_PULL, MIXED
@@ -1522,11 +1614,18 @@ DEAL CONTEXT:
             """
             prompt = f"Seller's latest reply: '{customer_message}'. Chat history: {json.dumps(chat_history[-6:] if chat_history else [])}. Seed: {random_seed}"
             try:
-                result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+                result = gemini_utils.generate_json_content(
+                    prompt, system_instruction=system_prompt, user=request.user, feature='sales_assistant_roleplay'
+                )
                 if isinstance(result, dict) and 'buyer_reply' in result:
+                    result['credits'] = remaining
+                    result['credits_deducted_server'] = True
                     return Response(result)
             except Exception as e:
                 pass
+
+            refund_ai_credits(request.user, reserved, 'AI Sales Roleplay Fallback')
+            remaining_after = getattr(request.user, 'credits', remaining)
 
             msg_lower = customer_message.lower()
             if 'price' in msg_lower or 'discount' in msg_lower or 'how much' in msg_lower:
@@ -1553,7 +1652,10 @@ DEAL CONTEXT:
                 "deal_closed": closed,
                 "trust_score": trust,
                 "feedback": fb,
-                "suggested_counter": counter
+                "suggested_counter": counter,
+                "credits": remaining_after,
+                "credits_deducted_server": True,
+                "fallback": True,
             })
 
         # SUGGEST Mode: Professional Deal Closer Script Engine
@@ -1595,12 +1697,18 @@ DEAL CONTEXT:
         prompt = f"Situation Goal: {context}. Customer's message / objection: '{customer_message or 'Customer asking for price and order details'}'. Product: {product_name or 'Our product'}, Price: {product_price or 'Listed Price'}, Floor: {floor_price or 'Margin protected'}."
 
         try:
-            result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            result = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_prompt, user=request.user, feature='sales_assistant'
+            )
             if isinstance(result, dict) and 'options' in result and isinstance(result['options'], list) and len(result['options']) > 0:
-                deduct_credits(request.user, 'sales_script')
+                result['credits'] = remaining
+                result['credits_deducted_server'] = True
                 return Response(result)
         except Exception as e:
             pass
+
+        refund_ai_credits(request.user, reserved, 'AI Sales Script Fallback')
+        remaining_after = getattr(request.user, 'credits', remaining)
 
         # High-Fidelity Professional Fallback Engine
         biz_name = "our business"
@@ -1630,9 +1738,11 @@ DEAL CONTEXT:
             "do_not_say": [
                 "Our price is non-negotiable, take it or leave it",
                 "You can buy from other sellers if you find it cheaper"
-            ]
+            ],
+            "credits": remaining_after,
+            "credits_deducted_server": True,
+            "fallback": True,
         }
-        deduct_credits(request.user, 'sales_script')
         return Response(fallback)
 
 
@@ -1647,6 +1757,14 @@ class AnalyzeProductView(views.APIView):
 
         if not image_base64:
             return Response({'error': 'No image provided'}, status=400)
+        if isinstance(image_base64, str) and len(image_base64) > 14 * 1024 * 1024:
+            return Response({'error': 'Uploaded image exceeds maximum size limit (10 MB).'}, status=400)
+
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('image_edit', 5), 'AI Product Photo Analysis'
+        )
+        if not allowed:
+            return Response({'error': 'Insufficient BizCredits for product photo analysis.', 'credits': remaining}, status=402)
 
         mode_prompts = {
             'ANALYZE': """Analyze this product photo for e-commerce/social media use.
@@ -1689,11 +1807,17 @@ Return JSON with these keys:
         """
         
         try:
-            result = gemini_utils.generate_json_content(prompt, system_instruction=system_instruction, image_base64=image_base64, mime_type=mime_type)
-            deduct_credits(request.user, 'image_edit')
+            result = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_instruction, image_base64=image_base64, mime_type=mime_type,
+                user=request.user, feature='product_analysis'
+            )
+            if isinstance(result, dict):
+                result['credits'] = remaining
+                result['credits_deducted_server'] = True
             return Response(result)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            refund_ai_credits(request.user, reserved, 'AI Product Photo Analysis Failure')
+            return Response({'error': 'Image analysis failed. Credits were refunded.'}, status=503)
 
 
 class GenerateBlogPostView(views.APIView):
@@ -1707,6 +1831,15 @@ class GenerateBlogPostView(views.APIView):
 
         if not topic:
             return Response({'error': 'Missing required parameter: topic'}, status=400)
+
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('blog_post', 5), 'AI Blog Post Generator'
+        )
+        if not allowed:
+            return Response(
+                {"error": "Insufficient BizCredits for AI Blog Post.", "credits": remaining},
+                status=402,
+            )
 
         brand_context = get_brand_context(request.user)
 
@@ -1744,12 +1877,17 @@ class GenerateBlogPostView(views.APIView):
         prompt = f"Write a comprehensive {length} article on: '{topic}' with a {tone} tone. Optimize for Nigerian search intent and business growth."
 
         try:
-            result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            result = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_prompt, user=request.user, feature='blog_post'
+            )
             if isinstance(result, dict) and 'blogContent' in result and len(result['blogContent']) > 200:
-                deduct_credits(request.user, 'blog_post')
+                result['credits'] = remaining
+                result['credits_deducted_server'] = True
                 return Response(result)
             raise Exception("Incomplete blog post structure")
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'AI Blog Post Fallback')
+            remaining_after = getattr(request.user, 'credits', remaining)
             biz_name = getattr(request.user, 'business_name', 'Our Business')
             fallback_markdown = f"""# The Ultimate Guide to {topic} in Nigeria: Proven Strategies for Growth & Success
 
@@ -1799,7 +1937,6 @@ Mastering **{topic}** is your gateway to consistent growth and unmatched reliabi
 
 👉 **Ready to experience the best?** Explore our verified catalog or connect with our team on WhatsApp today to get started!"""
 
-            deduct_credits(request.user, 'blog_post')
             return Response({
                 "title": f"The Ultimate Guide to {topic} in Nigeria: Strategies for Growth & Quality",
                 "metaDescription": f"Discover how {topic} is transforming Nigerian commerce. Practical tips, industry data, and proven strategies from {biz_name}.",
@@ -1810,7 +1947,10 @@ Mastering **{topic}** is your gateway to consistent growth and unmatched reliabi
                     "Trust and quality are the primary drivers of sustainable growth in Nigeria.",
                     "Digital channels like WhatsApp and social storefronts are essential for customer retention.",
                     f"{biz_name} provides verified, high-performance solutions with fast nationwide delivery."
-                ]
+                ],
+                "credits": remaining_after,
+                "credits_deducted_server": True,
+                "fallback": True,
             })
 
 
@@ -1822,6 +1962,12 @@ class GeneratePartnershipPitchView(views.APIView):
         partner_name = request.data.get('partner_name', 'SMEDAN / Corporate Partner')
         pitch_type = request.data.get('pitch_type', 'Strategic Distribution & Workshop Collaboration')
         call_to_action = request.data.get('call_to_action', '15-Minute Strategic Alignment Meeting')
+
+        allowed, remaining, reserved = reserve_ai_credits(
+            request.user, CREDIT_COSTS.get('partnership_pitch', 3), 'AI Partnership Pitch'
+        )
+        if not allowed:
+            return Response({"error": "Insufficient BizCredits for Partnership Pitch.", "credits": remaining}, status=402)
 
         brand_context = get_brand_context(request.user)
 
@@ -1855,12 +2001,17 @@ class GeneratePartnershipPitchView(views.APIView):
         prompt = f"Write a formal B2B partnership proposal to {partner_name}. Collaboration Focus: '{pitch_type}'. Next Action: '{call_to_action}'."
 
         try:
-            result = gemini_utils.generate_json_content(prompt, system_instruction=system_prompt)
+            result = gemini_utils.generate_json_content(
+                prompt, system_instruction=system_prompt, user=request.user, feature='partnership_pitch'
+            )
             if isinstance(result, dict) and 'emailBody' in result:
-                deduct_credits(request.user, 'partnership_pitch')
+                result['credits'] = remaining
+                result['credits_deducted_server'] = True
                 return Response(result)
             raise Exception("Incomplete partnership proposal structure")
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'AI Partnership Pitch Fallback')
+            remaining_after = getattr(request.user, 'credits', remaining)
             biz_name = getattr(request.user, 'business_name', 'Our Enterprise')
             biz_email = getattr(request.user, 'email', 'contact@ourbusiness.com')
             fallback_body = f"""Dear Executive Leadership Team at {partner_name},
@@ -1891,7 +2042,6 @@ Executive Leadership Team
 Email: {biz_email}
 Website: www.smartbizcoach.com.ng"""
 
-            deduct_credits(request.user, 'partnership_pitch')
             return Response({
                 "subjectLine": f"Strategic Partnership Proposal: {biz_name} × {partner_name}",
                 "emailBody": fallback_body,
@@ -1900,7 +2050,10 @@ Website: www.smartbizcoach.com.ng"""
                     "Direct measurable impact on stakeholder satisfaction and commercial adoption.",
                     "Turnkey operational execution with dedicated account management support."
                 ],
-                "followUpStrategy": "Send a polite follow-up via email after 3 business days, and connect with their partnership coordinator on LinkedIn."
+                "followUpStrategy": "Send a polite follow-up via email after 3 business days, and connect with their partnership coordinator on LinkedIn.",
+                "credits": remaining_after,
+                "credits_deducted_server": True,
+                "fallback": True,
             })
 
 

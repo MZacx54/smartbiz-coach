@@ -49,12 +49,11 @@ const GrantMatcher: React.FC<GrantMatcherProps> = ({ businessName, credits = 0, 
         ...formData
       });
       
-      // Only deduct credits / increment usage if successful
-      if (deduct) {
-        const billingResponse = await billingService.deductCredits(cost, 'AI Grant Search');
-        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
-      } else {
-        usageLimiter.incrementUsage('grant_search');
+      // Server /api/business/find-grants/ handles atomic credit reservation
+      if (typeof (results as any)?.credits === 'number') {
+        if (onUpdateCredits) onUpdateCredits((results as any).credits);
+      } else if (deduct && onUpdateCredits) {
+        onUpdateCredits(Math.max(0, credits - cost));
       }
 
       const grantList = Array.isArray(results)

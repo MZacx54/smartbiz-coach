@@ -173,6 +173,24 @@ class ProductSerializer(serializers.ModelSerializer):
                 attrs['is_promoted'] = False
         return attrs
 
+
+class PublicProductSerializer(ProductSerializer):
+    """Public-facing product serializer omitting internal COGS cost_price, low_stock_threshold, and SKU."""
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'brand', 'name', 'description', 'price', 'price_max', 'image_url',
+            'video_url', 'category', 'product_type', 'location', 'metadata',
+            'is_public', 'is_promoted', 'promoted_until', 'stock_count',
+            'compare_at_price', 'deal_ends_at', 'is_suspended', 'created_at', 'updated_at',
+            'brand_name', 'brand_slug', 'brand_logo', 'brand_niche', 'brand_address',
+            'smedan_number', 'corporate_entity_type', 'trust_badge_text', 'cac_number',
+            'whatsapp_number', 'paystack_subaccount_code', 'is_vendor_verified',
+            'avg_rating', 'review_count', 'deal_active', 'discount_percent',
+            'vendor_badge', 'vendor_verification_tier', 'vendor_chamber', 'vendor_verification_status',
+        ]
+
+
 class LeadSerializer(serializers.ModelSerializer):
     product_name = serializers.ReadOnlyField(source='product.name')
     product_type = serializers.ReadOnlyField(source='product.product_type')

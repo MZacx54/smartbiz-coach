@@ -1,27 +1,56 @@
 import csv
+import hashlib
+import hmac
 import io
 import json
-import requests
 import os
+import requests
 from datetime import datetime
 
+from django.conf import settings
+from django.core import signing
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from smartbiz_backend.throttles import ContentGenThrottle
 
 from .models import Contact, Campaign, MessageLog, SocialConnect
 from billing.models import CreditLedger  # For deducting credits on SMS sending
+from billing.utils import reserve_ai_credits, refund_ai_credits
+
+
+def _synthetic_email_phone(email: str) -> str:
+    digest = hashlib.sha256(email.strip().lower().encode('utf-8')).hexdigest()
+    return f"+00{int(digest[:10], 16) % 10000000000}"
+
+
+def _mask_secret(token: str) -> str:
+    val = str(token or '').strip()
+    if not val:
+        return ''
+    if len(val) <= 8:
+        return '****'
+    return f"{val[:4]}...{val[-4:]}"
+
+
+def _make_unsubscribe_url(contact: Contact) -> str:
+    token = signing.dumps({'cid': contact.id, 'uid': contact.user_id}, salt='marketing-unsubscribe')
+    frontend_url = os.getenv('FRONTEND_URL', 'https://www.smartbizcoach.com.ng').rstrip('/')
+    api_base = os.getenv('BACKEND_PUBLIC_URL', os.getenv('RENDER_EXTERNAL_URL', 'https://smartbiz-coach-api.onrender.com')).rstrip('/')
+    return f"{api_base}/api/marketing/unsubscribe/{token}/"
+
 
 def get_plan_limits(user):
     """
     Returns the limitations and rules for a user based on their subscription plan.
-    - Owner/Admin (meshachzax@gmail.com) gets absolute bypass.
+    - Platform Staff/Superuser gets elevated limits.
     - Pro Plan: Unlimited contacts, 200 daily WA limit, SMS enabled (2 credits/SMS).
-    - Free Plan: 500 contacts, 20 daily WA limit, 1 active campaign, SMS disabled.
+    - Free Plan: 500 contacts, 20 daily WA limit, 1 active campaign, SMS enabled via BizCredits.
     """
-    if user.email == 'meshachzax@gmail.com':
+    if user.is_superuser:
         return {
             'plan_name': 'Admin/Owner',
             'max_contacts': 999999,
@@ -31,9 +60,9 @@ def get_plan_limits(user):
             'sms_credit_cost': 0,
             'bypass_limits': True
         }
-    
-    plan = getattr(user, 'plan', 'Free')
-    if plan == 'Pro' or user.is_staff or user.is_superuser:
+
+    plan = getattr(user, 'effective_plan', getattr(user, 'plan', 'Free'))
+    if plan == 'Pro' or user.is_staff:
         return {
             'plan_name': 'Pro Plan',
             'max_contacts': 999999,
@@ -107,8 +136,8 @@ def contacts_list(request):
     if phone:
         normalized = normalize_phone(phone)
     else:
-        # Fallback phone when only email is provided
-        normalized = f"+00{abs(hash(email)) % 10000000000}"
+        # Deterministic fallback key when only email is provided
+        normalized = _synthetic_email_phone(email)
 
     limits = get_plan_limits(request.user)
     
@@ -291,6 +320,8 @@ def upload_contacts_csv(request):
         return Response({'error': 'No file uploaded. Send a CSV/TXT file as "file" field.'}, status=400)
 
     upload_file = request.FILES['file']
+    if getattr(upload_file, 'size', 0) > 5 * 1024 * 1024:
+        return Response({'error': 'File exceeds 5 MB maximum upload size.'}, status=400)
     filename = upload_file.name.lower()
     if not (filename.endswith('.csv') or filename.endswith('.txt') or filename.endswith('.tsv') or filename.endswith('.vcf')):
         return Response({'error': 'File must be a .csv, .txt, or .tsv file'}, status=400)
@@ -367,7 +398,7 @@ def upload_contacts_csv(request):
                 continue
 
             if not phone and email:
-                phone = f"+00{abs(hash(email)) % 10000000000}"
+                phone = _synthetic_email_phone(email)
 
             raw_name = _extract_field(row, NAME_HEADERS)
             if raw_name and normalize_phone(raw_name) == phone:
@@ -427,7 +458,7 @@ def upload_contacts_csv(request):
                 continue
 
             if not phone and email:
-                phone = f"+00{abs(hash(email)) % 10000000000}"
+                phone = _synthetic_email_phone(email)
 
             if raw_name and normalize_phone(raw_name) == phone:
                 raw_name = ''
@@ -774,6 +805,17 @@ def send_sms_batch(request):
     except Campaign.DoesNotExist:
         return Response({'error': 'SMS Campaign not found'}, status=404)
 
+    # Enforce campaign daily_limit
+    today_sent = MessageLog.objects.filter(
+        campaign=campaign,
+        status__in=['SENT', 'DELIVERED'],
+        sent_at__date=timezone.localdate(),
+    ).count()
+    daily_remaining = max(0, (campaign.daily_limit or 100) - today_sent)
+    if daily_remaining <= 0:
+        return Response({'error': f'Daily campaign send limit ({campaign.daily_limit}) reached for today.'}, status=429)
+    batch_size = min(batch_size, daily_remaining)
+
     # Get unmessaged contacts
     messaged_phones = MessageLog.objects.filter(
         campaign=campaign, status__in=['SENT', 'DELIVERED']
@@ -792,20 +834,28 @@ def send_sms_batch(request):
                 tag_query |= Q(tags__icontains=tag)
             contacts_qs = contacts_qs.filter(tag_query)
 
-    contacts = contacts_qs[:batch_size]
+    contacts = list(contacts_qs[:batch_size])
 
     if not contacts:
         return Response({'message': 'No more contacts to message in this campaign.', 'sent': 0})
 
-    # Check credit balance before sending (by segment count)
-    num_contacts = len(contacts)
-    template_segments = calculate_sms_segments(campaign.message_template)
-    credit_cost = num_contacts * template_segments * limits['sms_credit_cost']
-    
-    if request.user.credits < credit_cost:
-        return Response({
-            'error': f"Insufficient credits. This batch of {num_contacts} SMS requires {credit_cost} credits ({template_segments} segments per message), but you only have {request.user.credits} credits. Please top up."
-        }, status=400)
+    # Atomically reserve max segment credit cost upfront before calling Termii
+    max_segments = 0
+    for c in contacts:
+        rendered = campaign.message_template.replace('{{name}}', c.name or 'Friend')
+        max_segments += calculate_sms_segments(rendered)
+    credit_cost = max_segments * limits['sms_credit_cost']
+
+    reserved_cost = 0
+    if credit_cost > 0:
+        allowed, remaining_credits, reserved_cost = reserve_ai_credits(
+            request.user, credit_cost, f"SMS batch reservation ({len(contacts)} contacts - '{campaign.name}')"
+        )
+        if not allowed:
+            return Response({
+                'error': f"Insufficient credits. This batch of {len(contacts)} SMS requires {credit_cost} credits ({max_segments} segments), but you only have {remaining_credits} credits.",
+                'credits': remaining_credits,
+            }, status=402)
 
     results = []
     sent_count = 0
@@ -865,17 +915,11 @@ def send_sms_batch(request):
     campaign.failed_count += failed_count
     campaign.save()
 
-    # Deduct user credits based on exact segments sent
-    if sent_count > 0 and limits['sms_credit_cost'] > 0:
-        actual_cost = total_segments_sent * limits['sms_credit_cost']
-        request.user.credits = max(0, request.user.credits - actual_cost)
-        request.user.save()
-        
-        CreditLedger.objects.create(
-            user=request.user,
-            amount=-actual_cost,
-            activity=f"Sent {sent_count} SMS ({total_segments_sent} segments) via campaign '{campaign.name}'"
-        )
+    # Refund unused reserved credits if any SMS failed
+    actual_cost = total_segments_sent * limits['sms_credit_cost']
+    unused = max(0, reserved_cost - actual_cost)
+    if unused > 0:
+        refund_ai_credits(request.user, unused, f"Unused SMS batch credits for '{campaign.name}'")
 
     return Response({
         'sent': sent_count,
@@ -902,6 +946,16 @@ def send_email_batch(request):
     except Campaign.DoesNotExist:
         return Response({'error': 'Email Campaign not found'}, status=404)
 
+    today_sent = MessageLog.objects.filter(
+        campaign=campaign,
+        status__in=['SENT', 'DELIVERED'],
+        sent_at__date=timezone.localdate(),
+    ).count()
+    daily_remaining = max(0, (campaign.daily_limit or 100) - today_sent)
+    if daily_remaining <= 0:
+        return Response({'error': f'Daily campaign send limit ({campaign.daily_limit}) reached for today.'}, status=429)
+    batch_size = min(batch_size, daily_remaining)
+
     # Get already messaged emails for this campaign
     messaged_emails = MessageLog.objects.filter(
         campaign=campaign, status__in=['SENT', 'DELIVERED']
@@ -925,15 +979,21 @@ def send_email_batch(request):
     if not contacts:
         return Response({'message': 'No more contacts with email addresses to message in this campaign.', 'sent': 0})
 
-    # Credit cost: 1 BizCredit per email sent (Admin gets bypass)
-    is_admin = (request.user.email == 'meshachzax@gmail.com')
+    # Atomically reserve credits upfront: 1 BizCredit per email (Superuser bypass)
+    is_admin = bool(request.user.is_superuser)
     credit_cost_per_email = 0 if is_admin else 1
     total_cost = len(contacts) * credit_cost_per_email
 
-    if not is_admin and request.user.credits < total_cost:
-        return Response({
-            'error': f"Insufficient BizCredits. Sending to {len(contacts)} emails requires {total_cost} credits, but you have {request.user.credits} credits. Please top up."
-        }, status=400)
+    reserved_cost = 0
+    if total_cost > 0:
+        allowed, remaining_credits, reserved_cost = reserve_ai_credits(
+            request.user, total_cost, f"Email Broadcast reservation ({len(contacts)} emails - '{campaign.name}')"
+        )
+        if not allowed:
+            return Response({
+                'error': f"Insufficient BizCredits. Sending to {len(contacts)} emails requires {total_cost} credits, but you have {remaining_credits} credits. Please top up.",
+                'credits': remaining_credits,
+            }, status=402)
 
     from smartbiz_backend.email_utils import send_broadcast_email
     
@@ -948,6 +1008,7 @@ def send_email_batch(request):
         contact_name = contact.name or "Valued Customer"
         rendered_subject = (campaign.email_subject or "Important update for you").replace('{{name}}', contact_name).replace('{{business_name}}', business_name)
         rendered_body = campaign.message_template.replace('{{name}}', contact_name).replace('{{business_name}}', business_name)
+        unsub_url = _make_unsubscribe_url(contact)
 
         success, err_msg = send_broadcast_email(
             recipient_email=contact.email,
@@ -955,7 +1016,8 @@ def send_email_batch(request):
             subject=rendered_subject,
             body_content=rendered_body,
             sender_name=sender_name,
-            business_name=business_name
+            business_name=business_name,
+            unsubscribe_url=unsub_url,
         )
 
         if success:
@@ -995,17 +1057,12 @@ def send_email_batch(request):
         campaign.status = 'ACTIVE'
     campaign.save()
 
-    # Deduct credits
     actual_credit_cost = sent_count * credit_cost_per_email
-    if actual_credit_cost > 0:
-        request.user.credits = max(0, request.user.credits - actual_credit_cost)
-        request.user.save(update_fields=['credits'])
-        CreditLedger.objects.create(
-            user=request.user,
-            amount=-actual_credit_cost,
-            activity=f"Email Broadcast ({sent_count} emails - Campaign: '{campaign.name}')"
-        )
+    unused = max(0, reserved_cost - actual_credit_cost)
+    if unused > 0:
+        refund_ai_credits(request.user, unused, f"Unused Email Broadcast credits for '{campaign.name}'")
 
+    request.user.refresh_from_db(fields=['credits'])
     return Response({
         'sent': sent_count,
         'failed': failed_count,
@@ -1015,6 +1072,32 @@ def send_email_batch(request):
         'remaining_credits': request.user.credits,
         'results': results
     })
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def unsubscribe_contact(request, token):
+    """Public signed-token email opt-out endpoint (NDPA 2023 compliance)."""
+    try:
+        payload = signing.loads(token, salt='marketing-unsubscribe', max_age=60 * 60 * 24 * 90)
+        contact = Contact.objects.filter(id=payload.get('cid'), user_id=payload.get('uid')).first()
+        if not contact:
+            return HttpResponse(
+                "<html><body style='font-family:sans-serif;padding:40px;text-align:center'><h2>Link expired or contact not found</h2><p>You will not receive further messages if already removed.</p></body></html>",
+                status=404,
+            )
+        if not contact.is_opted_out:
+            contact.is_opted_out = True
+            contact.save(update_fields=['is_opted_out'])
+        return HttpResponse(
+            "<html><body style='font-family:sans-serif;padding:40px;text-align:center'><h2>Unsubscribed Successfully</h2><p>You have been opted out from future promotional broadcasts by this merchant.</p></body></html>",
+            status=200,
+        )
+    except signing.BadSignature:
+        return HttpResponse(
+            "<html><body style='font-family:sans-serif;padding:40px;text-align:center'><h2>Invalid or Expired Unsubscribe Link</h2></body></html>",
+            status=400,
+        )
 
 
 @api_view(['GET'])
@@ -1073,6 +1156,7 @@ def marketing_stats(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([ContentGenThrottle])
 def ai_suggest_message(request):
     """
     Generate an AI suggested marketing message based on user's BrandIdentity.
@@ -1082,9 +1166,17 @@ def ai_suggest_message(request):
     """
     from brand.models import BrandIdentity
     from smartbiz_backend import gemini_utils
+    from billing.catalog import AI_CREDIT_COSTS
 
     topic = str(request.data.get('topic', 'General Promotion')).strip()
     channel = str(request.data.get('channel', 'WHATSAPP')).upper()
+
+    cost = AI_CREDIT_COSTS.get('marketing_ai_suggest', 1)
+    allowed, remaining, reserved = reserve_ai_credits(
+        request.user, cost, f"Marketing AI Message Suggest ({channel})"
+    )
+    if not allowed:
+        return Response({'error': 'Insufficient BizCredits for AI suggestion.', 'credits': remaining}, status=402)
 
     # Retrieve BrandIdentity
     biz_name = getattr(request.user, 'business_name', '') or "our business"
@@ -1131,20 +1223,28 @@ Otherwise return ONLY the message content text.
 
     try:
         if channel == 'EMAIL':
-            email_data = gemini_utils.generate_json_content(prompt)
+            email_data = gemini_utils.generate_json_content(
+                prompt, user=request.user, feature='marketing_ai_suggest_email'
+            )
             if isinstance(email_data, dict) and 'message' in email_data:
                 return Response({
                     'suggestion': email_data.get('message', ''),
                     'subject': email_data.get('subject', f"Exciting update from {biz_name}"),
-                    'preview_text': email_data.get('preview_text', f"Special offer on {topic}")
+                    'preview_text': email_data.get('preview_text', f"Special offer on {topic}"),
+                    'credits': remaining,
                 })
 
-        suggestion = gemini_utils.generate_text_content(prompt)
+        suggestion = gemini_utils.generate_text_content(
+            prompt, user=request.user, feature='marketing_ai_suggest'
+        )
         
         # If response was an error string, retry with fast fallback model
         if isinstance(suggestion, str) and suggestion.startswith("Error:"):
             try:
-                suggestion = gemini_utils.make_gemini_request(prompt, model=gemini_utils.DEFAULT_FALLBACK_MODEL)
+                suggestion = gemini_utils.make_gemini_request(
+                    prompt, model=gemini_utils.DEFAULT_FALLBACK_MODEL,
+                    user=request.user, feature='marketing_ai_suggest'
+                )
             except Exception:
                 pass
 
@@ -1160,35 +1260,50 @@ Otherwise return ONLY the message content text.
 
         # Fallback if empty or error string
         if not suggestion or suggestion.startswith("Error:") or len(suggestion) < 10:
+            refund_ai_credits(request.user, reserved, 'Marketing AI Suggest Fallback')
+            remaining_after = getattr(request.user, 'credits', remaining)
             if channel == 'SMS':
                 suggestion = f"Hi {{{{name}}}}, exciting news from {biz_name}! Check out our {topic} offers today. Reply to this SMS or visit us to order now!"
             elif channel == 'EMAIL':
                 return Response({
                     'suggestion': f"Hello {{{{name}}}},\n\nWe are excited to share an exclusive update from {biz_name} regarding {topic}.\n\nVisit our store or reply to this email to get started today!\n\nBest regards,\n{biz_name}",
                     'subject': f"Special Update from {biz_name}: {topic}",
-                    'preview_text': f"Don't miss our latest update on {topic}"
+                    'preview_text': f"Don't miss our latest update on {topic}",
+                    'credits': remaining_after,
+                    'fallback': True,
                 })
             else:
                 suggestion = f"Hi {{{{name}}}}! 👋\n\nExciting news from *{biz_name}*! 🚀\n\nWe have exclusive updates regarding *{topic}*. We'd love for you to be part of this special offer!\n\n👉 *Reply directly to this WhatsApp message* to place your order or learn more!\n\n– {biz_name} Team"
+            return Response({
+                'suggestion': suggestion,
+                'subject': f"Exclusive: {topic} from {biz_name}",
+                'preview_text': f"Special update on {topic}",
+                'credits': remaining_after,
+                'fallback': True,
+            })
 
         return Response({
             'suggestion': suggestion,
             'subject': f"Exclusive: {topic} from {biz_name}",
-            'preview_text': f"Special update on {topic}"
+            'preview_text': f"Special update on {topic}",
+            'credits': remaining,
         })
     except Exception as e:
-        print(f"AI Suggest error: {e}")
+        refund_ai_credits(request.user, reserved, 'Marketing AI Suggest Exception')
+        remaining_after = getattr(request.user, 'credits', remaining)
         if channel == 'SMS':
             fallback = f"Hi {{{{name}}}}, special update from {biz_name}! Check out our {topic} offers today. Reply to order now!"
         elif channel == 'EMAIL':
             return Response({
                 'suggestion': f"Hello {{{{name}}}},\n\nSpecial update from {biz_name} regarding {topic}.\n\nContact us today to learn more!\n\nBest regards,\n{biz_name}",
                 'subject': f"Update from {biz_name}",
-                'preview_text': f"Check out {topic}"
+                'preview_text': f"Check out {topic}",
+                'credits': remaining_after,
+                'fallback': True,
             })
         else:
             fallback = f"Hi {{{{name}}}}! 👋\n\nSpecial update from *{biz_name}*! 🌟\n\nRegarding *{topic}*, we are giving exclusive perks for you today.\n\n📲 *Reply to this chat* to get started right away!\n\n– {biz_name}"
-        return Response({'suggestion': fallback})
+        return Response({'suggestion': fallback, 'credits': remaining_after, 'fallback': True})
 
 
 
@@ -1203,22 +1318,28 @@ class SocialConnectView(APIView):
         has_wa = bool((connect.whatsapp_access_token or connect.meta_access_token) and connect.whatsapp_phone_number_id)
         platform_wa = bool(os.getenv('WHATSAPP_ACCESS_TOKEN') and os.getenv('WHATSAPP_PHONE_NUMBER_ID'))
         return Response({
-            'meta_access_token': connect.meta_access_token,
+            'meta_access_token': _mask_secret(connect.meta_access_token),
+            'has_meta_access_token': bool(connect.meta_access_token),
             'instagram_account_id': connect.instagram_account_id,
             'facebook_page_id': connect.facebook_page_id,
             'whatsapp_phone_number_id': connect.whatsapp_phone_number_id,
-            'whatsapp_access_token': connect.whatsapp_access_token,
+            'whatsapp_access_token': _mask_secret(connect.whatsapp_access_token),
+            'has_whatsapp_access_token': bool(connect.whatsapp_access_token),
             'is_connected': has_meta or has_wa,
             'platform_whatsapp_active': platform_wa
         })
 
     def post(self, request):
         connect, _ = SocialConnect.objects.get_or_create(user=request.user)
-        connect.meta_access_token = request.data.get('meta_access_token', connect.meta_access_token).strip()
-        connect.instagram_account_id = request.data.get('instagram_account_id', connect.instagram_account_id).strip()
-        connect.facebook_page_id = request.data.get('facebook_page_id', connect.facebook_page_id).strip()
-        connect.whatsapp_phone_number_id = request.data.get('whatsapp_phone_number_id', connect.whatsapp_phone_number_id).strip()
-        connect.whatsapp_access_token = request.data.get('whatsapp_access_token', connect.whatsapp_access_token).strip()
+        meta_tok = str(request.data.get('meta_access_token', '')).strip()
+        wa_tok = str(request.data.get('whatsapp_access_token', '')).strip()
+        if meta_tok and '...' not in meta_tok and meta_tok != '****':
+            connect.meta_access_token = meta_tok
+        connect.instagram_account_id = str(request.data.get('instagram_account_id', connect.instagram_account_id)).strip()
+        connect.facebook_page_id = str(request.data.get('facebook_page_id', connect.facebook_page_id)).strip()
+        connect.whatsapp_phone_number_id = str(request.data.get('whatsapp_phone_number_id', connect.whatsapp_phone_number_id)).strip()
+        if wa_tok and '...' not in wa_tok and wa_tok != '****':
+            connect.whatsapp_access_token = wa_tok
         connect.save()
 
         has_meta = bool(connect.meta_access_token and (connect.instagram_account_id or connect.facebook_page_id))
@@ -1262,7 +1383,7 @@ class PublishToMetaView(APIView):
                     'image_url': image_url,
                     'caption': caption,
                     'access_token': token
-                })
+                }, timeout=15)
                 c_data = c_res.json()
 
                 if 'id' in c_data:
@@ -1272,7 +1393,7 @@ class PublishToMetaView(APIView):
                     p_res = requests.post(pub_url, params={
                         'creation_id': creation_id,
                         'access_token': token
-                    })
+                    }, timeout=15)
                     p_data = p_res.json()
                     if 'id' in p_data:
                         results.append("Instagram Post Published Successfully!")
@@ -1291,7 +1412,7 @@ class PublishToMetaView(APIView):
                     'url': image_url,
                     'caption': caption,
                     'access_token': token
-                })
+                }, timeout=15)
                 fb_data = fb_res.json()
                 if 'id' in fb_data:
                     results.append("Facebook Page Photo Published Successfully!")

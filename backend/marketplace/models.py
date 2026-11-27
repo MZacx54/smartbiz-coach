@@ -271,6 +271,8 @@ class DailySale(models.Model):
     is_debt = models.BooleanField(default=False)
     debt_due_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True, default='')
+    settlement_token = models.CharField(max_length=40, unique=True, null=True, blank=True)
+    settlement_reference = models.CharField(max_length=120, blank=True, default='', db_index=True)
     is_edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
     is_voided = models.BooleanField(default=False, db_index=True)
@@ -279,6 +281,12 @@ class DailySale(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.is_debt and not self.settlement_token:
+            import secrets as _tok_sec
+            self.settlement_token = f"DBT-{_tok_sec.token_urlsafe(12)}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.item_name} (₦{self.total_amount:,.2f}) - {self.payment_method}"
@@ -321,7 +329,7 @@ import secrets as _secrets
 
 
 def _generate_tracking_code():
-    return 'SB-' + _secrets.token_hex(4).upper()
+    return 'SB-' + _secrets.token_hex(6).upper()
 
 
 class DeliveryRate(models.Model):

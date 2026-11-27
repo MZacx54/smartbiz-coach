@@ -153,25 +153,30 @@ class WhatsAppCommandEngine:
             payment_method = method_raw if method_raw in ("CASH", "TRANSFER", "POS", "CREDIT") else "CASH"
             unit_price = round(total_amount / qty, 2)
 
-            matched_product = Product.objects.filter(brand__user=user, name__icontains=item_name).first()
-            sale = DailySale.objects.create(
-                user=user,
-                product=matched_product,
-                item_name=matched_product.name if matched_product else item_name,
-                quantity=qty,
-                unit_price=unit_price,
-                total_amount=total_amount,
-                payment_method=payment_method,
-                is_debt=(payment_method == "CREDIT"),
-            )
-            if matched_product and getattr(matched_product, "stock_count", 0) >= qty:
-                matched_product.stock_count = max(0, matched_product.stock_count - qty)
-                matched_product.save(update_fields=["stock_count"])
+            from django.db import transaction
+            from django.db.models import F
+            with transaction.atomic():
+                matched_product = Product.objects.select_for_update().filter(brand__user=user, name__icontains=item_name).first()
+                sale = DailySale.objects.create(
+                    user=user,
+                    product=matched_product,
+                    item_name=matched_product.name if matched_product else item_name,
+                    quantity=qty,
+                    unit_price=unit_price,
+                    cost_price=getattr(matched_product, 'cost_price', 0) or 0,
+                    total_amount=total_amount,
+                    payment_method=payment_method,
+                    is_debt=(payment_method == "CREDIT"),
+                )
+                if matched_product and matched_product.product_type == "PHYSICAL":
+                    Product.objects.filter(pk=matched_product.pk, stock_count__gte=qty).update(
+                        stock_count=F("stock_count") - qty
+                    )
 
-            today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_local = timezone.localdate()
             today_total = sum(
                 float(s.total_amount or 0)
-                for s in DailySale.objects.filter(user=user, created_at__gte=today_start)
+                for s in DailySale.objects.filter(user=user, is_voided=False, created_at__date=today_local)
             )
             return {
                 "intent": "SALE_LOGGED",
@@ -217,14 +222,14 @@ class WhatsAppCommandEngine:
 
         # 3. Daily Summary / Credit Score Command
         if lower in ("balance", "summary", "report", "today", "score", "smartscore"):
-            today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_local = timezone.localdate()
             today_sales = sum(
                 float(s.total_amount or 0)
-                for s in DailySale.objects.filter(user=user, created_at__gte=today_start)
+                for s in DailySale.objects.filter(user=user, is_voided=False, created_at__date=today_local)
             )
             today_exp = sum(
                 float(e.amount or 0)
-                for e in DailyExpense.objects.filter(user=user, created_at__gte=today_start)
+                for e in DailyExpense.objects.filter(user=user, is_voided=False, created_at__date=today_local)
             )
             credit = CreditScoringService.calculate_credit_score(user)
             return {
@@ -242,7 +247,7 @@ class WhatsAppCommandEngine:
 
         # 4. Debtors / Gbege Command
         if lower in ("debtors", "gbege", "credit", "owed"):
-            unpaid = list(DailySale.objects.filter(user=user, payment_method="CREDIT", is_debt=True)[:5])
+            unpaid = list(DailySale.objects.filter(user=user, is_voided=False, payment_method="CREDIT", is_debt=True)[:5])
             total_owed = sum(float(s.total_amount or 0) for s in unpaid)
             if not unpaid:
                 return {
@@ -314,13 +319,32 @@ class WhatsAppWebhookView(views.APIView):
         return Response({"error": "Webhook verification token mismatch."}, status=status.HTTP_403_FORBIDDEN)
 
     def post(self, request):
+        import hmac
+        import hashlib
         from django.contrib.auth import get_user_model
         from marketplace.models import VendorVerification
+
+        app_secret = (os.getenv("META_APP_SECRET") or os.getenv("WHATSAPP_APP_SECRET") or "").strip()
+        hub_sig = request.headers.get("X-Hub-Signature-256") or request.META.get("HTTP_X_HUB_SIGNATURE_256") or ""
+
+        is_authenticated_sim = bool(getattr(request, "user", None) and request.user.is_authenticated)
+
+        if not is_authenticated_sim:
+            if not app_secret:
+                return Response({"error": "WhatsApp webhook secret not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            if not hub_sig.startswith("sha256="):
+                return Response({"error": "Missing X-Hub-Signature-256 header."}, status=status.HTTP_403_FORBIDDEN)
+            expected_sig = "sha256=" + hmac.new(
+                app_secret.encode("utf-8"),
+                msg=request.body,
+                digestmod=hashlib.sha256,
+            ).hexdigest()
+            if not hmac.compare_digest(expected_sig, hub_sig):
+                return Response({"error": "Invalid webhook signature."}, status=status.HTTP_403_FORBIDDEN)
 
         User = get_user_model()
         data = request.data or {}
 
-        # Extract sender phone and text from either Meta Cloud API payload or direct simulator payload
         sender_phone = ""
         message_text = ""
 
@@ -334,37 +358,35 @@ class WhatsAppWebhookView(views.APIView):
                     message_text = (msg.get("text") or {}).get("body", "")
             except (KeyError, IndexError, TypeError):
                 pass
-        else:
-            sender_phone = str(data.get("from") or data.get("phone") or "")
+        elif is_authenticated_sim:
+            sender_phone = getattr(request.user, "phone", "") or ""
             message_text = str(data.get("text") or data.get("message") or "")
 
         if not message_text:
             return Response({"status": "ignored", "reason": "No text message body"}, status=status.HTTP_200_OK)
 
-        # Resolve merchant user from authenticated session or phone number
-        target_user = request.user if (getattr(request, "user", None) and request.user.is_authenticated) else None
+        # Resolve target merchant strictly: authenticated user for simulator, or verified Cloud webhook phone
+        target_user = request.user if is_authenticated_sim else None
         if not target_user and sender_phone:
             clean_sender = normalize_ng_phone(sender_phone)
             last_10 = clean_sender[-10:] if len(clean_sender) >= 10 else clean_sender
             if last_10:
-                target_user = User.objects.filter(phone__icontains=last_10).first()
+                target_user = User.objects.filter(phone__endswith=last_10).first()
                 if not target_user:
-                    vv = VendorVerification.objects.filter(whatsapp_number__icontains=last_10).select_related("user").first()
+                    vv = VendorVerification.objects.filter(whatsapp_number__endswith=last_10).select_related("user").first()
                     if vv:
                         target_user = vv.user
 
         result = WhatsAppCommandEngine.process_message(target_user, sender_phone, message_text)
 
-        # If Cloud API is live and sender_phone is present, send the automated reply back on WhatsApp
-        outbound_receipt = None
-        if sender_phone and result.get("reply"):
-            outbound_receipt = WhatsAppOutboundService.send_message(sender_phone, result["reply"])
+        if sender_phone and result.get("reply") and not is_authenticated_sim:
+            WhatsAppOutboundService.send_message(sender_phone, result["reply"])
 
-        return Response({
-            **result,
-            "status": "processed",
-            "outbound": outbound_receipt,
-        }, status=status.HTTP_200_OK)
+        if is_authenticated_sim:
+            return Response({**result, "status": "processed"}, status=status.HTTP_200_OK)
+
+        # Never leak internal business financials/debtors back to webhook HTTP callers
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
 
 class WhatsAppOutboundView(views.APIView):

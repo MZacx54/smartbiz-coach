@@ -10,6 +10,8 @@ import { Debtor, DebtorPayment, Product, Invoice, SupplierPayable } from '../typ
 import { generateDebtReminder } from '../services/geminiService';
 import ShareActions from './ShareActions';
 import { usageLimiter } from '../utils/usageLimiter';
+import { getBusinessDateStr, getBusinessDueDateStr } from '../utils/dateTime';
+import { offlineStorage } from '../utils/offlineStorage';
 import { billingService } from '../services/billingService';
 import CreditPromptModal from './CreditPromptModal';
 import api from '../services/api';
@@ -223,7 +225,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       params.set('ba', m.bankAccount);
       params.set('ban', m.bankAccountName || m.merchantName);
     }
-    return `${origin}/pay-debt/${debtor.id}?${params.toString()}`;
+    return `${origin}/pay-debt/${(debtor as any).settlementToken || debtor.id}?${params.toString()}`;
   };
 
   // Helper: Build tailored multi-stage WhatsApp reminder copy with embedded online link and bank details
@@ -526,7 +528,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
     setSelectedItems([]);
     setShowForm(false);
 
-    // Also post to backend DailySale as a credit sale so backend analytics and cash cliff are synchronized
+    // Post to backend DailySale as a credit sale so backend analytics and cash cliff are synchronized
     api.post('/api/marketplace/daily-sales/', {
       item_name: itemsText || 'General Credit Sale',
       total_amount: parseFloat(newDebtor.amount),
@@ -538,6 +540,11 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       customer_phone: newDebtor.phone,
       debt_due_date: newDebtor.dueDate || undefined,
       notes: `Gbege Book Debtor #${d.id}`
+    }).then((res) => {
+      const token = res?.data?.settlement_token;
+      if (token) {
+        setDebtors(prev => prev.map(item => item.id === d.id ? { ...(item as any), settlementToken: token } : item));
+      }
     }).catch(err => {
       console.warn("Could not sync credit sale to backend:", err);
     });
@@ -559,9 +566,9 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       paidAmount: 0,
       itemsSupplied: newSupplier.itemsSupplied || 'Goods on Credit',
       invoiceNumber: newSupplier.invoiceNumber,
-      dueDate: newSupplier.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      dueDate: newSupplier.dueDate || getBusinessDueDateStr(14),
       status: 'UNPAID',
-      date: new Date().toISOString().split('T')[0],
+      date: getBusinessDateStr(),
       notes: newSupplier.notes
     };
     const updated = [sup, ...suppliers];
@@ -602,7 +609,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
   const totalSupplierPaid = suppliers.filter(s => s.status === 'PAID').reduce((acc, curr) => acc + curr.amount, 0);
 
   // Record payment installment
-  const handleRecordPaymentSubmit = (e: React.FormEvent) => {
+  const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentModalDebtor || !paymentAmount) return;
 
@@ -648,9 +655,11 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
 
     setDebtors(updatedDebtors);
 
-    // Synchronize receipt transaction with DailyCashbook and backend
-    const today = new Date().toISOString().split('T')[0];
+    // Synchronize receipt transaction with DailyCashbook and backend (avoiding duplicate local+cloud entries)
+    const today = getBusinessDateStr();
+    const recId = `deb-rec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const saleReceiptPayload = {
+      offline_id: recId,
       item_name: `Debtor Recovery: ${paymentModalDebtor.name} (${paymentNote || 'Installment'})`,
       total_amount: payVal,
       quantity: 1,
@@ -659,29 +668,24 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
       is_debt: false,
       customer_name: paymentModalDebtor.name,
       customer_phone: paymentModalDebtor.phone,
-      notes: `Gbege installment receipt for debtor #${paymentModalDebtor.id}`
+      notes: `Gbege installment receipt for debtor #${paymentModalDebtor.id} [offline_id:${recId}]`
     };
 
-    // 1. Post to backend DailySale
-    api.post('/api/marketplace/daily-sales/', saleReceiptPayload).catch(err => {
-      console.warn("Failed to sync debtor receipt to backend:", err);
-    });
-
-    // 2. Also save to local offline sales cache so Day-Book reflects it immediately
     try {
-      const localOffline = JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
+      const res = await api.post('/api/marketplace/daily-sales/', saleReceiptPayload, { timeout: 8000 });
+      if (res?.data) {
+        const cachedToday = JSON.parse(localStorage.getItem(`sb_cached_sales_${today}`) || '[]');
+        localStorage.setItem(`sb_cached_sales_${today}`, JSON.stringify([res.data, ...cachedToday.filter((s: any) => s.id !== res.data.id)]));
+      }
+    } catch (err) {
+      console.warn("Offline fallback for debtor receipt sync:", err);
       const localSale = {
-        id: `deb-rec-${Date.now()}`,
+        id: recId,
         date: today,
         created_at: new Date().toISOString(),
         ...saleReceiptPayload
       };
-      localStorage.setItem('sb_offline_sales', JSON.stringify([localSale, ...localOffline]));
-
-      const cachedToday = JSON.parse(localStorage.getItem(`sb_cached_sales_${today}`) || '[]');
-      localStorage.setItem(`sb_cached_sales_${today}`, JSON.stringify([localSale, ...cachedToday]));
-    } catch (e) {
-      console.warn("Could not cache debtor receipt locally:", e);
+      await offlineStorage.saveSale(localSale);
     }
 
     setPaymentModalDebtor(null);
@@ -2146,7 +2150,7 @@ const DebtorBook: React.FC<DebtorBookProps> = ({ credits = 0, onUpdateCredits })
         const totalPaid = (demandNoticeDebtor.payments || []).reduce((a, p) => a + p.amount, 0);
         const outstandingBal = getOutstandingBalance(demandNoticeDebtor);
         const isOverdueNow = demandNoticeDebtor.dueDate && new Date(demandNoticeDebtor.dueDate) < new Date();
-        const shortCleanUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://smartbizcoach.com.ng'}/pay-debt/${demandNoticeDebtor.id}`;
+        const shortCleanUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://smartbizcoach.com.ng'}/pay-debt/${(demandNoticeDebtor as any).settlementToken || demandNoticeDebtor.id}`;
         const fullPaystackUrl = buildSettlementUrl(demandNoticeDebtor);
 
         return (

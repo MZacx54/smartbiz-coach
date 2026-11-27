@@ -150,11 +150,19 @@ class BarcodeLookupAutoFillView(views.APIView):
             }, status=status.HTTP_200_OK)
 
         # 2. Try global open retail database
-        info = query_open_food_facts(barcode)
+        info = query_open_food_facts(urllib.parse.quote(barcode))
 
-        # 3. If not in open food facts, query AI barcode knowledge engine
+        # 3. If not in open food facts, query AI barcode knowledge engine (charge 1 credit)
         if not info:
+            from billing.utils import reserve_ai_credits, refund_ai_credits
+            from billing.catalog import AI_CREDIT_COSTS
+            cost = AI_CREDIT_COSTS.get('barcode_autofill', 1)
+            allowed, remaining, reserved = reserve_ai_credits(request.user, cost, f'AI Barcode Lookup ({barcode[:32]})')
+            if not allowed:
+                return Response({"error": f"Insufficient BizCredits (requires {cost} credit).", "credits": remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
             info = query_gemini_barcode_knowledge(barcode)
+            if not info:
+                refund_ai_credits(request.user, reserved, 'Barcode Lookup Miss')
 
         if info:
             return Response({
@@ -195,18 +203,32 @@ class VisualShelfScannerView(views.APIView):
 
     def post(self, request):
         import base64
+        from billing.utils import reserve_ai_credits, refund_ai_credits
+        from billing.catalog import AI_CREDIT_COSTS
 
+        MAX_IMAGE_BYTES = 10 * 1024 * 1024
         img_file = request.FILES.get('image')
         img_b64 = request.data.get('image_base64') or request.data.get('image')
         raw_mime = request.data.get('mimeType') or 'image/jpeg'
 
         if img_file:
-            raw_bytes = img_file.read()
+            if getattr(img_file, 'size', 0) > MAX_IMAGE_BYTES:
+                return Response({"error": "Shelf image exceeds maximum 10 MB limit."}, status=status.HTTP_400_BAD_REQUEST)
+            raw_bytes = img_file.read(MAX_IMAGE_BYTES + 1)
+            if len(raw_bytes) > MAX_IMAGE_BYTES:
+                return Response({"error": "Shelf image exceeds maximum 10 MB limit."}, status=status.HTTP_400_BAD_REQUEST)
             img_b64 = base64.b64encode(raw_bytes).decode('utf-8')
             raw_mime = img_file.content_type or 'image/jpeg'
+        elif isinstance(img_b64, str) and len(img_b64) > MAX_IMAGE_BYTES * 2:
+            return Response({"error": "Shelf image payload exceeds maximum size limit."}, status=status.HTTP_400_BAD_REQUEST)
 
         if not img_b64:
             return Response({"error": "Please provide an image of the shelf or product batch."}, status=status.HTTP_400_BAD_REQUEST)
+
+        cost = AI_CREDIT_COSTS.get('shelf_scan', 5)
+        allowed, remaining, reserved = reserve_ai_credits(request.user, cost, 'AI Visual Shelf Scanner')
+        if not allowed:
+            return Response({"error": f"Insufficient BizCredits (requires {cost} credits).", "credits": remaining}, status=status.HTTP_402_PAYMENT_REQUIRED)
 
         mime_type = 'image/png' if 'png' in raw_mime.lower() else 'image/jpeg'
 
@@ -239,13 +261,19 @@ class VisualShelfScannerView(views.APIView):
         try:
             parsed = gemini_utils.generate_json_content(prompt, image_base64=img_b64, mime_type=mime_type)
             items = parsed.get("items", []) if isinstance(parsed, dict) else []
+            if not items or (isinstance(parsed, dict) and parsed.get("error")):
+                refund_ai_credits(request.user, reserved, 'Shelf Scanner Empty/Error')
+                return Response({"error": "Could not detect products clearly in shelf photo. Please try a clearer photo."}, status=status.HTTP_502_BAD_GATEWAY)
             return Response({
                 "success": True,
                 "batch_title": parsed.get("batch_title", "Shelf Scan"),
                 "total_items_detected": len(items),
-                "items": items
+                "items": items,
+                "credits": remaining,
+                "credits_deducted_server": True,
             }, status=status.HTTP_200_OK)
         except Exception as e:
+            refund_ai_credits(request.user, reserved, 'Shelf Scanner Exception')
             return Response({"error": f"Shelf scan failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

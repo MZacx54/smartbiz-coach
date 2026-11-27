@@ -22,6 +22,20 @@ const api = axios.create({
 
 const GET_CACHE_PREFIX = 'sb_api_cache_v2:';
 
+const buildCacheKey = (config?: any): string => {
+  const url = config?.url || '';
+  const params = config?.params;
+  if (!params || typeof params !== 'object') {
+    return `${GET_CACHE_PREFIX}${url}`;
+  }
+  try {
+    const sorted = Object.keys(params).sort().map((k) => `${k}=${JSON.stringify(params[k])}`).join('&');
+    return sorted ? `${GET_CACHE_PREFIX}${url}?${sorted}` : `${GET_CACHE_PREFIX}${url}`;
+  } catch {
+    return `${GET_CACHE_PREFIX}${url}`;
+  }
+};
+
 const isCacheableGet = (url?: string): boolean => {
   if (!url) return false;
   return (
@@ -84,7 +98,7 @@ api.interceptors.response.use(
     const url = response.config.url || '';
     if (method === 'get' && isCacheableGet(url) && response.status === 200 && response.data !== undefined) {
       try {
-        localStorage.setItem(`${GET_CACHE_PREFIX}${url}`, JSON.stringify({
+        localStorage.setItem(buildCacheKey(response.config), JSON.stringify({
           ts: Date.now(),
           data: response.data,
         }));
@@ -107,18 +121,17 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     const isServerError = status === 502 || status === 503 || status === 504;
 
-    // Automated Failover: If custom subdomain API (api.smartbizcoach.com.ng) encounters DNS failure,
-    // connection drop, network error, or 502/503/504 gateway/reboot errors, immediately retry against
-    // the direct Render origin.
+    // Automated Failover strictly for idempotent GET requests (never replay non-idempotent POST/PATCH)
     if (
       config &&
+      method === 'get' &&
       !config._hasFailedOver &&
       (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED' || !error.response || isServerError)
     ) {
       config._hasFailedOver = true;
       config.baseURL = `${FALLBACK_API_ORIGIN}/api/`;
       try {
-        return await axios(config);
+        return await api.request(config);
       } catch (fallbackError) {
         // Continue to offline cache fallback
       }
@@ -144,7 +157,7 @@ api.interceptors.response.use(
     // serve the last known good cached response so the platform stays fast and functional offline.
     if (method === 'get' && isCacheableGet(url) && !error.response) {
       try {
-        const raw = localStorage.getItem(`${GET_CACHE_PREFIX}${url}`);
+        const raw = localStorage.getItem(buildCacheKey(config));
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && parsed.data !== undefined) {

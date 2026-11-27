@@ -200,7 +200,7 @@ async function run() {
       // Check IndexedDB contains all 3 offline sales BEFORE reload
       const idbCountBefore = await page.evaluate(async () => {
         return new Promise((resolve) => {
-          const req = window.indexedDB.open('SmartBizOfflineDB', 1);
+          const req = window.indexedDB.open('SmartBizOfflineDB');
           req.onsuccess = () => {
             const db = req.result;
             const tx = db.transaction('offline_sales', 'readonly');
@@ -222,7 +222,7 @@ async function run() {
 
       const idbCountAfterReload = await page.evaluate(async () => {
         return new Promise((resolve) => {
-          const req = window.indexedDB.open('SmartBizOfflineDB', 1);
+          const req = window.indexedDB.open('SmartBizOfflineDB');
           req.onsuccess = () => {
             const db = req.result;
             const tx = db.transaction('offline_sales', 'readonly');
@@ -245,7 +245,7 @@ async function run() {
         const ls = JSON.parse(localStorage.getItem('sb_offline_sales') || '[]');
         if (ls.length > 0) return false;
         return new Promise((resolve) => {
-          const req = window.indexedDB.open('SmartBizOfflineDB', 1);
+          const req = window.indexedDB.open('SmartBizOfflineDB');
           req.onsuccess = () => {
             const db = req.result;
             const tx = db.transaction('offline_sales', 'readonly');

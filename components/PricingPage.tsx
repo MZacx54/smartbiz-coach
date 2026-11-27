@@ -16,11 +16,11 @@ interface PricingPageProps {
 }
 
 const CREDIT_PACKS = [
-  { credits: 50, price: 500, label: 'Micro Pack', desc: '50 BizCredits (~₦10/credit) for daily AI marketing & price tags' },
-  { credits: 150, price: 1500, label: 'Starter Pack', desc: '150 BizCredits for 7-day boost + photo AI' },
-  { credits: 400, price: 3500, label: 'Grower Pack', desc: '400 BizCredits (+50 Bonus) for Studio Shoots & Marketplace Boosts', popular: true },
-  { credits: 1000, price: 7500, label: 'Vendor Pro Pack', desc: '1,000 BizCredits (+250 Bonus) for 30-Day VIP + Full AI Studio' },
-  { credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 BizCredits for continuous weekly boosts & business plans' },
+  { id: 'micro_50', credits: 50, price: 500, label: 'Micro Pack', desc: '50 BizCredits (~₦10/credit) for daily AI marketing & price tags' },
+  { id: 'starter_175', credits: 175, price: 1500, label: 'Starter Pack', desc: '175 BizCredits (150 + 25 Bonus) for 7-day boost + photo AI' },
+  { id: 'grower_450', credits: 450, price: 3500, label: 'Grower Pack', desc: '450 BizCredits (400 + 50 Bonus) for Studio Shoots & Marketplace Boosts', popular: true },
+  { id: 'vendor_pro_1250', credits: 1250, price: 7500, label: 'Vendor Pro Pack', desc: '1,250 BizCredits (1,000 + 250 Bonus) for 30-Day VIP + Full AI Studio' },
+  { id: 'mogul_2500', credits: 2500, price: 15000, label: 'Mogul Pack', desc: '2,500 BizCredits (2,000 + 500 Bonus) for continuous weekly boosts & business plans' },
 ];
 
 const FAQS = [
@@ -50,6 +50,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [checkoutItem, setCheckoutItem] = useState<{
+    id: string;
     price: number;
     credits: number;
     label: string;
@@ -67,6 +68,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
     }
     const isAnnual = billingCycle === 'annual';
     setCheckoutItem({
+      id: isAnnual ? 'pro_annual' : 'pro_monthly',
       price: isAnnual ? 35000 : 3500,
       credits: isAnnual ? 5000 : 450,
       label: isAnnual ? 'Growth Merchant Pro (Annual Subscription)' : 'Growth Merchant Pro (Monthly Subscription)',
@@ -83,6 +85,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
       return;
     }
     setCheckoutItem({
+      id: pack.id,
       price: pack.price,
       credits: pack.credits,
       label: `BizCredit Top-Up (${pack.credits} Credits)`,
@@ -214,7 +217,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
             <span className={`text-xs font-bold flex items-center gap-1.5 ${billingCycle === 'annual' ? 'text-white' : 'text-slate-500'}`}>
               Annual
               <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/30">
-                Save 20%
+                Save 16.7% (2 Months Free)
               </span>
             </span>
           </div>
@@ -292,7 +295,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
                   'Voice POS Note Ingest (Pidgin & English audio-to-sale)',
                   'Paper Receipt OCR Camera Scanner',
                   'VIP Spotlight Priority Ranking on Marketplace',
-                  '400 Monthly BizCredits Included',
+                  '450 Monthly BizCredits Included',
                   'Automated WhatsApp Outbound Confirmations',
                   'Priority Google & AI Search Engine (GEO) Indexing',
                   'Exportable Financial Health Score for Banks'
@@ -480,6 +483,13 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
           amount={checkoutItem.price}
           description={checkoutItem.label}
           email={currentUser.email}
+          metadata={{
+            user_id: currentUser.id,
+            purpose: checkoutItem.isSubscription ? 'pro_subscription' : 'credit_topup',
+            pack_id: checkoutItem.id,
+            plan: checkoutItem.isSubscription ? 'Pro' : undefined,
+            billing_cycle: checkoutItem.isSubscription ? billingCycle : undefined,
+          }}
           onClose={() => {
             setShowPaymentModal(false);
             setCheckoutItem(null);

@@ -1,30 +1,46 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .models import UserCompliance, AgentHireRequest, BlogPost
 
 User = get_user_model()
+
 
 class UserSerializer(serializers.ModelSerializer):
     logo = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     is_apprentice_mode = serializers.SerializerMethodField(read_only=True)
     has_owner_passcode = serializers.SerializerMethodField(read_only=True)
+    plan = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'password', 'first_name', 'last_name',
-            'business_name', 'plan', 'credits', 'is_email_verified', 'has_onboarded', 'logo',
-            'phone', 'location', 'currency', 'is_apprentice_mode', 'has_owner_passcode'
+            'business_name', 'plan', 'plan_expires_at', 'credits', 'is_email_verified', 'has_onboarded', 'logo',
+            'phone', 'location', 'currency', 'is_apprentice_mode', 'has_owner_passcode',
+            'is_staff', 'is_superuser',
         ]
-        read_only_fields = ['credits', 'plan', 'is_email_verified', 'is_apprentice_mode', 'has_owner_passcode']
+        read_only_fields = [
+            'credits', 'plan', 'plan_expires_at', 'is_email_verified',
+            'is_apprentice_mode', 'has_owner_passcode', 'is_staff', 'is_superuser',
+        ]
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
+
+    def get_plan(self, obj):
+        return getattr(obj, 'effective_plan', getattr(obj, 'plan', 'Free'))
 
     def _get_security_vault(self, obj):
         try:
+            vault = getattr(obj, 'security_vault', None)
+            if vault is not None:
+                return {
+                    'is_apprentice_mode': bool(vault.is_apprentice_mode),
+                    'owner_passcode_hash': vault.owner_passcode_hash or '',
+                }
             brand = getattr(obj, 'brand_identity', None)
             if brand and isinstance(brand.policies, dict):
-                vault = brand.policies.get('__security_vault__', {})
-                if isinstance(vault, dict):
-                    return vault
+                legacy = brand.policies.get('__security_vault__', {})
+                if isinstance(legacy, dict):
+                    return legacy
         except Exception:
             pass
         return {}
@@ -53,21 +69,18 @@ class UserSerializer(serializers.ModelSerializer):
         return instance
 
 
-from .models import UserCompliance, AgentHireRequest
-
 class UserComplianceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserCompliance
         fields = ['name_search_completed', 'business_reg_completed', 'tin_obtained_completed', 'bank_account_completed', 'updated_at']
 
+
 class AgentHireRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = AgentHireRequest
         fields = ['id', 'business_name', 'business_type', 'phone_number', 'registration_type', 'amount_paid', 'payment_reference', 'payment_status', 'status', 'created_at']
-        read_only_fields = ['status', 'created_at']
+        read_only_fields = ['payment_status', 'status', 'created_at']
 
-
-from .models import BlogPost
 
 class BlogPostSerializer(serializers.ModelSerializer):
     class Meta:

@@ -602,19 +602,17 @@ export const DailyCashbook: React.FC = () => {
     const allOfflineSales = getOfflineSales();
     const allOfflineExpenses = getOfflineExpenses();
 
-    // 1. Identify and purge offline sales that already exist in cloud (by offline_id tag or matching content)
+    // 1. Identify and purge offline sales that already exist in cloud strictly by ID or offline_id tag
     const syncedOfflineSaleIds = new Set<string>();
     for (const off of allOfflineSales) {
-      const offId = String(off.id);
+      const offId = String((off as any).offline_id || off.id || '').trim();
+      if (!offId) continue;
       const isAlreadyInCloud = cloudSales.some((cs: any) => {
-        if (cs.notes && (cs.notes.includes(`[offline_id:${offId}]`) || cs.notes.includes(offId))) return true;
-        const nameMatch = cs.item_name && off.item_name && cs.item_name.trim().toLowerCase() === off.item_name.trim().toLowerCase();
-        const amtMatch = Math.abs(parseFloat(String(cs.total_amount || 0)) - parseFloat(String(off.total_amount || 0))) < 0.01;
-        const pmMatch = cs.payment_method === off.payment_method;
-        return nameMatch && amtMatch && pmMatch;
+        if (String(cs.id) === offId || String(cs.offline_id || '') === offId) return true;
+        return Boolean(cs.notes && (cs.notes.includes(`[offline_id:${offId}]`) || cs.notes.includes(offId)));
       });
       if (isAlreadyInCloud) {
-        syncedOfflineSaleIds.add(offId);
+        syncedOfflineSaleIds.add(String(off.id));
       }
     }
 
@@ -623,19 +621,17 @@ export const DailyCashbook: React.FC = () => {
       localStorage.setItem('sb_offline_sales', JSON.stringify(remainingOfflineSales));
     }
 
-    // 2. Identify and purge offline expenses that already exist in cloud
+    // 2. Identify and purge offline expenses that already exist in cloud strictly by ID or offline_id tag
     const syncedOfflineExpIds = new Set<string>();
     for (const off of allOfflineExpenses) {
-      const offId = String(off.id);
+      const offId = String((off as any).offline_id || off.id || '').trim();
+      if (!offId) continue;
       const isAlreadyInCloud = cloudExpenses.some((ce: any) => {
-        if (ce.notes && (ce.notes.includes(`[offline_id:${offId}]`) || ce.notes.includes(offId))) return true;
-        const titleMatch = ce.title && off.title && ce.title.trim().toLowerCase() === off.title.trim().toLowerCase();
-        const amtMatch = Math.abs(parseFloat(String(ce.amount || 0)) - parseFloat(String(off.amount || 0))) < 0.01;
-        const catMatch = ce.category === off.category;
-        return titleMatch && amtMatch && catMatch;
+        if (String(ce.id) === offId || String(ce.offline_id || '') === offId) return true;
+        return Boolean(ce.notes && (ce.notes.includes(`[offline_id:${offId}]`) || ce.notes.includes(offId)));
       });
       if (isAlreadyInCloud) {
-        syncedOfflineExpIds.add(offId);
+        syncedOfflineExpIds.add(String(off.id));
       }
     }
 
@@ -728,13 +724,17 @@ export const DailyCashbook: React.FC = () => {
       if (salesRes.status === 'fulfilled' && salesRes.value.data) {
         const list = Array.isArray(salesRes.value.data) ? salesRes.value.data : (salesRes.value.data.results || []);
         loadedSales = list;
-        setCachedSalesForDate(selectedDate, list);
+        if (timeHorizon === 'TODAY') {
+          setCachedSalesForDate(selectedDate, list);
+        }
       }
 
       if (expensesRes.status === 'fulfilled' && expensesRes.value.data) {
         const list = Array.isArray(expensesRes.value.data) ? expensesRes.value.data : (expensesRes.value.data.results || []);
         loadedExpenses = list;
-        setCachedExpensesForDate(selectedDate, list);
+        if (timeHorizon === 'TODAY') {
+          setCachedExpensesForDate(selectedDate, list);
+        }
       }
 
       if (summaryRes.status === 'fulfilled' && summaryRes.value.data) {
@@ -1690,15 +1690,17 @@ export const DailyCashbook: React.FC = () => {
               )}
             </button>
 
-            <button
-              onClick={() => {
-                setActiveTab('AI_INSIGHTS');
-                if (!aiInsights) fetchAIInsights();
-              }}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all cursor-pointer"
-            >
-              <Bot className="w-4 h-4 text-purple-200" /> AI Daily Brief
-            </button>
+            {!isShiftMode && (
+              <button
+                onClick={() => {
+                  setActiveTab('AI_INSIGHTS');
+                  if (!aiInsights) fetchAIInsights();
+                }}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Bot className="w-4 h-4 text-purple-200" /> AI Daily Brief
+              </button>
+            )}
 
             <button
               onClick={() => setShowBarcodeScanner(true)}
@@ -2193,14 +2195,16 @@ export const DailyCashbook: React.FC = () => {
                 ))}
               </div>
 
-              {/* Ask AI button shortcut */}
-              <button
-                onClick={() => setShowAIAskModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-              >
-                <Bot className="w-3.5 h-3.5 text-purple-600" />
-                <span>Ask AI About Sales</span>
-              </button>
+              {/* Ask AI button shortcut (Owner only) */}
+              {!isShiftMode && (
+                <button
+                  onClick={() => setShowAIAskModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Bot className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Ask AI About Sales</span>
+                </button>
+              )}
             </div>
 
             {/* Custom Date Pickers (if CUSTOM selected) */}
@@ -4122,6 +4126,9 @@ export const DailyCashbook: React.FC = () => {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      if (receiptImagePreview && receiptImagePreview.startsWith('blob:')) {
+                        URL.revokeObjectURL(receiptImagePreview);
+                      }
                       setReceiptImageFile(file);
                       setReceiptImagePreview(URL.createObjectURL(file));
                     }
@@ -4134,6 +4141,9 @@ export const DailyCashbook: React.FC = () => {
                   <img src={receiptImagePreview} alt="Receipt preview" className="w-full h-full object-cover" />
                   <button
                     onClick={() => {
+                      if (receiptImagePreview && receiptImagePreview.startsWith('blob:')) {
+                        URL.revokeObjectURL(receiptImagePreview);
+                      }
                       setReceiptImageFile(null);
                       setReceiptImagePreview(null);
                       setScannedReceiptResult(null);

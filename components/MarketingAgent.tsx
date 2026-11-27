@@ -271,8 +271,9 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
         channel: newCampaignChannel
       });
       if (response.data.suggestion) {
-        const billingResponse = await billingService.deductCredits(aiCost, 'AI Broadcast Message Craft');
-        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
+        if (typeof response.data.credits === 'number' && onUpdateCredits) {
+          onUpdateCredits(response.data.credits);
+        }
 
         setNewCampaignTemplate(response.data.suggestion);
         if (response.data.subject) {
@@ -941,13 +942,14 @@ const MarketingAgent: React.FC<Props> = ({ user, credits = 0, onUpdateCredits })
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">📅 Schedule Date & Time (Optional)</label>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">📅 Planned Send Date (Target Reminder)</label>
                       <input
                         type="datetime-local"
                         value={newCampaignScheduledAt}
                         onChange={e => setNewCampaignScheduledAt(e.target.value)}
                         className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-pink-400 outline-none"
                       />
+                      <p className="text-[10px] text-slate-400 mt-1">Saves target date on the campaign; trigger batch dispatch manually from this screen when ready.</p>
                     </div>
                     <div>
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">🏷️ Target Tags (Optional, comma-separated)</label>

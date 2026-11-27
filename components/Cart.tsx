@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CartItem } from '../types';
 import { openPaystackCheckout } from '../services/paystackService';
+import { commerceService } from '../services/commerceService';
+import { NIGERIAN_STATES } from '../config/nigeriaStates';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -14,21 +17,42 @@ interface CartProps {
 }
 
 const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onCheckout, onBack }) => {
+  const navigate = useNavigate();
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [deliveryFee, setDeliveryFee] = useState(0);
   const [checkoutForm, setCheckoutForm] = useState({
     name: '',
+    email: userEmail || '',
     phone: '',
+    state: 'Lagos',
     address: '',
     notes: ''
   });
 
-  const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = subtotal + deliveryFee;
+
+  // Detect multiple distinct vendors in cart
+  const vendorNames = Array.from(new Set(items.map((it) => (it.vendorName || 'Verified Merchant').trim())));
+  const isMultiVendor = vendorNames.length > 1;
 
   // Determine Primary Vendor details from the first cart item
   const primaryItem = items[0];
-  const vendorSubaccount = primaryItem?.paystack_subaccount_code || '';
-  const vendorName = primaryItem?.vendorName || 'Verified Merchant';
+  const vendorSubaccount = isMultiVendor ? '' : (primaryItem?.paystack_subaccount_code || '');
+  const vendorName = isMultiVendor ? `${vendorNames.length} Vendors (Separate Split)` : (primaryItem?.vendorName || 'Verified Merchant');
+
+  useEffect(() => {
+    if (items.length === 0 || !checkoutForm.state) {
+      setDeliveryFee(0);
+      return;
+    }
+    const productIds = items.map((i) => Number(i.productId || i.id)).filter((n) => Number.isFinite(n) && n > 0);
+    if (productIds.length === 0) return;
+    commerceService.deliveryQuote(productIds, checkoutForm.state)
+      .then((q) => setDeliveryFee(q.total_fee || 0))
+      .catch(() => setDeliveryFee(0));
+  }, [items, checkoutForm.state]);
 
   const formatWhatsAppNumber = (phone?: string) => {
     if (!phone) return '';
@@ -54,47 +78,72 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
       return;
     }
 
+    if (isMultiVendor) {
+      toast.error('Please checkout items from one vendor at a time for Paystack direct settlement, or use WhatsApp checkout.');
+      return;
+    }
+
     setIsProcessing(true);
     toast.loading('Opening secure Paystack gateway...');
 
     try {
       await openPaystackCheckout({
+        email: checkoutForm.email.trim() || userEmail || undefined,
         amount: total,
         customerName: checkoutForm.name,
         customerPhone: checkoutForm.phone,
-        customerAddress: checkoutForm.address,
+        customerAddress: `${checkoutForm.address}, ${checkoutForm.state}`,
         orderNotes: checkoutForm.notes,
         subaccountCode: vendorSubaccount,
+        metadata: { purpose: 'marketplace_order', delivery_state: checkoutForm.state },
         onSuccess: async (res) => {
           toast.dismiss();
-          toast.success(`Payment verified! Reference: ${res.reference}`);
+          toast.loading('Confirming order & verifying Paystack settlement...', { id: 'cart-verify' });
 
           try {
-            // Log order and create vendor lead audit trail
             const orderRes = await api.post('/api/marketplace/orders/create/', {
               items: items.map(item => ({
                 productId: item.productId || item.id,
                 price: item.price,
                 quantity: item.quantity
               })),
+              payment_method: 'PAYSTACK',
               reference: res.reference,
               total_amount: total,
               customer_name: checkoutForm.name,
               customer_phone: checkoutForm.phone,
+              customer_email: checkoutForm.email.trim() || userEmail || '',
               customer_address: checkoutForm.address,
+              delivery_state: checkoutForm.state,
               notes: checkoutForm.notes
             });
+            toast.dismiss('cart-verify');
             const wa = orderRes.data?.whatsapp_dispatch;
+            const trackingCode = orderRes.data?.orders?.[0]?.tracking_code;
+            setShowCheckoutModal(false);
+            onClear();
+            setIsProcessing(false);
+            toast.success(
+              trackingCode
+                ? `Order confirmed! Tracking code: ${trackingCode}`
+                : `Payment verified! Ref: ${res.reference}`,
+              { duration: 5000 }
+            );
             if (wa?.merchant_wa_url) {
-              toast.success('Payment verified! Dispatching WhatsApp receipt...', { duration: 4000 });
-              window.open(wa.merchant_wa_url, '_blank');
+              window.open(wa.merchant_wa_url, '_blank', 'noopener,noreferrer');
             }
-          } catch (err) {
-            console.error('Order lead audit log notice:', err);
+            if (trackingCode) {
+              navigate(`/track/${trackingCode}`);
+            } else {
+              void onCheckout;
+              navigate('/marketplace');
+            }
+          } catch (err: any) {
+            toast.dismiss('cart-verify');
+            setIsProcessing(false);
+            const msg = err?.response?.data?.error || 'Order verification failed on server.';
+            toast.error(`Payment Ref ${res.reference} captured, but order confirmation returned: ${msg}. Contact support with this reference.`, { duration: 8000 });
           }
-
-          setShowCheckoutModal(false);
-          onCheckout('PAYSTACK', total, res.reference);
         },
         onClose: () => {
           setIsProcessing(false);
@@ -106,27 +155,27 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
       setIsProcessing(false);
       toast.dismiss();
       console.warn('Paystack gateway notice:', err);
-      toast.error(err?.message || 'Could not launch payment gateway. Redirecting to WhatsApp...');
-      handleWhatsAppOrder();
+      toast.error(err?.message || 'Could not launch payment gateway. You can complete via WhatsApp below.');
     }
   };
 
-  const handleWhatsAppOrder = () => {
+  const handleWhatsAppOrder = async () => {
     if (!checkoutForm.name.trim() || !checkoutForm.phone.trim() || !checkoutForm.address.trim()) {
       toast.error('Please fill in your Delivery Details before ordering via WhatsApp.');
       return;
     }
 
+    setIsProcessing(true);
     let orderText = `*New Market Square Order (SmartBiz Coach)*\n\n`;
     orderText += `Hello ${vendorName}, I would like to purchase the following items:\n\n`;
     items.forEach((item) => {
       orderText += `▪️ *${item.title}* x${item.quantity} — ₦${(item.price * item.quantity).toLocaleString()}\n`;
     });
-    orderText += `\n💵 *Total Order Amount:* ₦${total.toLocaleString()}\n`;
+    orderText += `\n💵 *Total Order Amount:* ₦${subtotal.toLocaleString()} (+ Delivery to ${checkoutForm.state})\n`;
     orderText += `\n📍 *Customer & Delivery Profile:*`;
     orderText += `\n👤 *Name:* ${checkoutForm.name}`;
     orderText += `\n📞 *Phone:* ${checkoutForm.phone}`;
-    orderText += `\n🏠 *Delivery Address:* ${checkoutForm.address}`;
+    orderText += `\n🏠 *Delivery Address:* ${checkoutForm.address}, ${checkoutForm.state}`;
     if (checkoutForm.notes) {
       orderText += `\n📝 *Notes:* ${checkoutForm.notes}`;
     }
@@ -136,28 +185,33 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
       ? `https://wa.me/${cleanVendorWhatsApp}?text=${encodeURIComponent(orderText)}`
       : `https://wa.me/?text=${encodeURIComponent(orderText)}`;
 
-    // Fire background lead creation non-blockingly so window.open is not intercepted by popup blocker
-    api.post('/api/marketplace/orders/create/', {
-      items: items.map(item => ({
-        productId: item.productId || item.id,
-        price: item.price,
-        quantity: item.quantity
-      })),
-      reference: `WA-ORDER-${Date.now()}`,
-      total_amount: total,
-      customer_name: checkoutForm.name,
-      customer_phone: checkoutForm.phone,
-      customer_address: checkoutForm.address,
-      notes: `WhatsApp Order Inquiry: ${checkoutForm.notes}`
-    }).catch(err => console.warn('Could not log WhatsApp lead:', err));
-
-    setShowCheckoutModal(false);
-    onClear();
-    toast.success('Order recorded! Redirecting to vendor WhatsApp...', { icon: '💬' });
-
-    const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
-    if (!win || win.closed || typeof win.closed === 'undefined') {
-      window.location.href = waUrl;
+    try {
+      await api.post('/api/marketplace/orders/create/', {
+        items: items.map(item => ({
+          productId: item.productId || item.id,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        payment_method: 'WHATSAPP',
+        total_amount: subtotal,
+        customer_name: checkoutForm.name,
+        customer_phone: checkoutForm.phone,
+        customer_address: `${checkoutForm.address}, ${checkoutForm.state}`,
+        delivery_state: checkoutForm.state,
+        notes: `WhatsApp Order Inquiry: ${checkoutForm.notes}`
+      });
+      setShowCheckoutModal(false);
+      onClear();
+      toast.success('Inquiry logged! Redirecting to vendor WhatsApp...', { icon: '💬' });
+      const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        window.location.href = waUrl;
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Could not submit inquiry right now. Opening WhatsApp directly.');
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -218,14 +272,19 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
 
       {/* Order Summary Card */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        {isMultiVendor && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 font-medium">
+            Your bag contains items from {vendorNames.length} different vendors. Online Paystack settlement supports one vendor per order; remove items from other sellers or submit your inquiry via WhatsApp.
+          </div>
+        )}
         <div className="flex justify-between items-center text-sm text-slate-600">
            <span>Items Subtotal</span>
-           <span className="font-bold text-slate-900">₦{total.toLocaleString()}</span>
+           <span className="font-bold text-slate-900">₦{subtotal.toLocaleString()}</span>
         </div>
         <div className="flex justify-between items-center text-sm text-slate-600">
-           <span>Estimated Delivery Fee</span>
+           <span>Delivery ({checkoutForm.state})</span>
            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-             Standard Park / Doorstep Dispatch
+             {deliveryFee > 0 ? `₦${deliveryFee.toLocaleString()}` : 'Standard Waybill / Pickup'}
            </span>
         </div>
         
@@ -303,6 +362,34 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                   value={checkoutForm.phone}
                   onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Delivery State *
+                </label>
+                <select
+                  value={checkoutForm.state}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, state: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  {NIGERIAN_STATES.map((st) => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Email (For Paystack Receipt)
+                </label>
+                <input
+                  type="email"
+                  placeholder="buyer@example.com"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  value={checkoutForm.email}
+                  onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
                 />
               </div>
 

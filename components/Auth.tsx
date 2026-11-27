@@ -173,6 +173,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
               : `${k.charAt(0).toUpperCase() + k.slice(1).replace('_', ' ')}: ${valStr}`;
           }
         }
+      } else if (!error.response) {
+        errorMsg = navigator?.onLine === false
+          ? "You appear to be offline. Please reconnect to the internet to sign in or create an account."
+          : "Network timeout reaching SmartBiz server. Please check your connection and try again.";
       } else if (error.message) {
         errorMsg = error.message;
       }
@@ -297,7 +301,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Phone Number</label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Phone Number <span className="text-slate-400 font-normal">(Optional)</span></label>
                     <input
                       type="tel"
                       inputMode="tel"
@@ -309,7 +313,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Location / State</label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Location / State <span className="text-slate-400 font-normal">(Optional)</span></label>
                     <select
                       className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all text-sm font-medium text-slate-800"
                       value={location}

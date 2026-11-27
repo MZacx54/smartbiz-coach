@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Mic, Square, X, Loader2, Trash2, AlertTriangle, CheckCircle, Sparkles, WifiOff, RotateCcw } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
+import { getBusinessDueDateStr } from '../utils/dateTime';
 
 type Pay = 'CASH' | 'TRANSFER' | 'CREDIT';
 
@@ -232,7 +233,7 @@ export const VoiceNoteModal: React.FC<Props> = ({ open, onClose, onSaved, select
         amount: d.amount,
         paidAmount: 0,
         itemsBought: d.itemsBought,
-        dueDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+        dueDate: getBusinessDueDateStr(7),
         status: 'UNPAID',
         date: selectedDate,
         createdAt: new Date().toISOString(),

@@ -553,30 +553,39 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </button>
                 </div>
 
-                {/* Primary Quick Access Grid */}
-                <div className="grid grid-cols-2 gap-2.5 mb-4">
-                    <button
-                        onClick={() => { setShowAllTools(false); go(AppView.SETTINGS); }}
-                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white text-left shadow-md active:scale-95 cursor-pointer border border-slate-700/50"
-                    >
-                        <span className="text-2xl p-2 rounded-xl bg-white/10">⚙️</span>
-                        <div className="min-w-0">
-                            <p className="text-xs font-black text-white leading-tight">{t('Settings', 'Settings')}</p>
-                            <p className="text-[10px] text-slate-300 truncate mt-0.5">{t('Security, PIN & Shop', 'Password & Shop')}</p>
-                        </div>
-                    </button>
+                {/* Primary Quick Access Grid (Owner Only for Settings & Billing) */}
+                {!isCashierMode ? (
+                  <div className="grid grid-cols-2 gap-2.5 mb-4">
+                      <button
+                          onClick={() => { setShowAllTools(false); go(AppView.SETTINGS); }}
+                          className="flex items-center gap-3 p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white text-left shadow-md active:scale-95 cursor-pointer border border-slate-700/50"
+                      >
+                          <span className="text-2xl p-2 rounded-xl bg-white/10">⚙️</span>
+                          <div className="min-w-0">
+                              <p className="text-xs font-black text-white leading-tight">{t('Settings', 'Settings')}</p>
+                              <p className="text-[10px] text-slate-300 truncate mt-0.5">{t('Security & Shop', 'Password & Shop')}</p>
+                          </div>
+                      </button>
 
-                    <button
-                        onClick={() => { setShowAllTools(false); go(AppView.SETTINGS, 'tab=billing'); }}
-                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-left shadow-sm active:scale-95 cursor-pointer"
-                    >
-                        <span className="text-2xl p-2 rounded-xl bg-amber-500/20 text-amber-900">⚡</span>
-                        <div className="min-w-0">
-                            <p className="text-xs font-black text-amber-950 leading-tight">{userStats.bizCredits} Credits</p>
-                            <p className="text-[10px] text-amber-700 truncate mt-0.5">{t('Top up AI Balance', 'Buy AI Credit')}</p>
-                        </div>
-                    </button>
-                </div>
+                      <button
+                          onClick={() => { setShowAllTools(false); go(AppView.SETTINGS, 'tab=billing'); }}
+                          className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-left shadow-sm active:scale-95 cursor-pointer"
+                      >
+                          <span className="text-2xl p-2 rounded-xl bg-amber-500/20 text-amber-900">⚡</span>
+                          <div className="min-w-0">
+                              <p className="text-xs font-black text-amber-950 leading-tight">{userStats.bizCredits} Credits</p>
+                              <p className="text-[10px] text-amber-700 truncate mt-0.5">{t('Top up AI Balance', 'Buy AI Credit')}</p>
+                          </div>
+                      </button>
+                  </div>
+                ) : (
+                  <div className="mb-4 p-3.5 rounded-2xl bg-slate-900 text-white flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-extrabold">🔒 Apprentice / Cashier Session</p>
+                      <p className="text-[11px] text-slate-300">Settings, billing, and margins require Owner Password.</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Shopping Cart Alert Banner inside Drawer if Cart has Items */}
                 {cartItems.length > 0 && !isCashierMode && (

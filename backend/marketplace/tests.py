@@ -218,22 +218,39 @@ class Phase3And4SecurityTests(APITestCase):
             user=self.owner, item_name='Cement', quantity=1, unit_price=5000, total_amount=5000,
             payment_method='CREDIT', customer_name='Kola', is_debt=True
         )
+        self.assertTrue(str(debt.settlement_token).startswith('DBT-'))
         anon = APIClient()
 
-        no_ref = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {}, format='json')
+        # Sequential numeric ID lookup must be rejected (prevents enumeration IDOR)
+        id_enum = anon.get(f'/api/marketplace/debtors/settle/{debt.id}/')
+        self.assertEqual(id_enum.status_code, 404)
+
+        no_ref = anon.post(f'/api/marketplace/debtors/settle/{debt.settlement_token}/', {}, format='json')
         self.assertEqual(no_ref.status_code, 400)
 
         with mock.patch('marketplace.commerce_orders.verify_paystack', return_value=('failed', None)):
-            bad_ref = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {'reference': 'FAKE123'}, format='json')
+            bad_ref = anon.post(f'/api/marketplace/debtors/settle/{debt.settlement_token}/', {'reference': 'FAKE123'}, format='json')
             self.assertEqual(bad_ref.status_code, 402)
 
         with mock.patch('marketplace.commerce_orders.verify_paystack', return_value=('success', Decimal('1000'))):
-            short_pay = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {'reference': 'SHORT123'}, format='json')
+            short_pay = anon.post(f'/api/marketplace/debtors/settle/{debt.settlement_token}/', {'reference': 'SHORT123'}, format='json')
             self.assertEqual(short_pay.status_code, 400)
 
         with mock.patch('marketplace.commerce_orders.verify_paystack', return_value=('success', Decimal('5000'))):
-            ok = anon.post(f'/api/marketplace/debtors/settle/{debt.id}/', {'reference': 'OKPAY123'}, format='json')
+            ok = anon.post(f'/api/marketplace/debtors/settle/{debt.settlement_token}/', {'reference': 'OKPAY123'}, format='json')
             self.assertEqual(ok.status_code, 200)
+
+        # Same-debt retry is idempotent (200), whereas cross-debt replay returns 409 Conflict
+        debt2 = DailySale.objects.create(
+            user=self.owner, item_name='Sand', quantity=1, unit_price=5000, total_amount=5000,
+            payment_method='CREDIT', customer_name='Ade', is_debt=True
+        )
+        with mock.patch('marketplace.commerce_orders.verify_paystack', return_value=('success', Decimal('5000'))):
+            idemp = anon.post(f'/api/marketplace/debtors/settle/{debt.settlement_token}/', {'reference': 'OKPAY123'}, format='json')
+            self.assertEqual(idemp.status_code, 200)
+            self.assertTrue(idemp.data.get('idempotent'))
+            replay = anon.post(f'/api/marketplace/debtors/settle/{debt2.settlement_token}/', {'reference': 'OKPAY123'}, format='json')
+            self.assertEqual(replay.status_code, 409)
 
         debt.refresh_from_db()
         self.assertFalse(debt.is_debt)

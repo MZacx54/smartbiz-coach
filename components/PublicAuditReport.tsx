@@ -92,12 +92,12 @@ const PublicAuditReport: React.FC = () => {
   const dailyNetVelocity = hasRealData ? (mlData?.cash_cliff?.daily_net_velocity ?? 0) : (isTractionMode ? 18500 : 0);
 
   const tractionData = {
-    invoiceCount: hasRealData ? (mlData?.credit?.metrics?.total_sales_logged || 0) : (isTractionMode ? 42 : 0),
-    totalVolume: hasRealData ? (mlData?.credit?.metrics?.total_gmv_revenue || 0) : (isTractionMode ? 12450000 : 0),
-    paidVolume: hasRealData ? Math.round((mlData?.credit?.metrics?.total_gmv_revenue || 0) * 0.924) : (isTractionMode ? 11500000 : 0),
-    complianceRating: hasRealData || isTractionMode ? `${tillIntegrity}%` : 'Pending Data',
-    overallScore: hasRealData || isTractionMode ? Math.min(99, Math.round((smartScore / 850) * 100)) : 35,
-    inventorySkus: hasRealData ? (mlData?.credit?.metrics?.active_inventory_items || 0) : (isTractionMode ? 12 : 0),
+    invoiceCount: hasRealData ? (mlData?.credit?.metrics?.total_sales_logged || 0) : 0,
+    totalVolume: hasRealData ? (mlData?.credit?.metrics?.total_gmv_revenue || 0) : 0,
+    paidVolume: hasRealData ? Math.max(0, Math.round((mlData?.credit?.metrics?.total_gmv_revenue || 0) - (mlData?.credit?.metrics?.outstanding_debt_ngn || 0))) : 0,
+    complianceRating: hasRealData ? `${tillIntegrity}%` : 'Pending Data',
+    overallScore: hasRealData ? Math.min(99, Math.round((smartScore / 850) * 100)) : 35,
+    inventorySkus: hasRealData ? (mlData?.credit?.metrics?.active_inventory_items || 0) : 0,
     inventoryCostValuation: hasRealData ? (mlData?.credit?.metrics?.inventory_valuation || 0) : (isTractionMode ? 8450000 : 0),
     pilots: [
       { name: 'SMEDAN & NACCIMA Youth Entrepreneurs (NYE)', program: 'MSME Digital Bookkeeping & Grant Readiness Passport' },
@@ -292,7 +292,7 @@ const PublicAuditReport: React.FC = () => {
                   All cashbook sales, petty cash expenses, inventory stock movements, and debtor recoveries are continuously audited by an unsupervised <strong>Scikit-Learn Isolation Forest</strong> fraud-detection model and Owner Shift-Lock controls, providing bank-grade alternative credit telemetry where traditional collateral is absent.
                 </p>
                 <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl text-[10px] font-bold text-indigo-900 uppercase tracking-wide">
-                  ✓ Pre-Cleared for BOI, DBN, FCMB SheVentures, NIRSAL MFB & SMEDAN Cohort Appraisal
+                  Informational Self-Reported Operational Telemetry — Subject to Independent Lender Appraisal
                 </div>
               </div>
             </div>

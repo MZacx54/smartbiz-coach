@@ -115,17 +115,17 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
         mode: 'SUGGEST'
       });
 
-      if (deduct) {
-        const billingResponse = await billingService.deductCredits(cost, 'AI Sales Closer');
-        if (onUpdateCredits) onUpdateCredits(billingResponse.credits);
-      } else {
-        usageLimiter.incrementUsage('sales_assistant');
+      // Server /api/content/generate-sales-script/ handles credit reservation atomically
+      if (typeof response.data?.credits === 'number') {
+        if (onUpdateCredits) onUpdateCredits(response.data.credits);
+      } else if (deduct && onUpdateCredits) {
+        onUpdateCredits(Math.max(0, credits - cost));
       }
 
       setResult(response.data);
       toast.success("Executive Sales Closer gameplan generated!");
-    } catch (error) {
-      toast.error("Failed to generate options. Try again.");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || "Failed to generate options. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -193,14 +193,19 @@ const SalesAssistant: React.FC<SalesAssistantProps> = ({ credits = 0, onUpdateCr
           suggested_counter: res.data.suggested_counter
         }
       ]);
-    } catch (err) {
+      if (typeof res.data?.credits === 'number' && onUpdateCredits) {
+        onUpdateCredits(res.data.credits);
+      }
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.error || 'Could not reach AI buyer coach right now. Please retry.';
+      toast.error(errMsg);
       setChatMessages(prev => [
         ...prev,
         {
           sender: 'buyer',
-          text: "Okay, send me your official bank account details so I can complete payment!",
-          feedback: "Great negotiation reply! Clear payment directive sent.",
-          trust_score: 90
+          text: `⚠️ ${errMsg}`,
+          feedback: 'Roleplay message could not be processed. No AI buyer simulation was generated.',
+          trust_score: currentTrustMeter
         }
       ]);
     } finally {

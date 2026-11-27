@@ -9,6 +9,8 @@ import { mapDbToBrand } from '../services/brandService';
 import { openPaystackCheckout } from '../services/paystackService';
 import SEO from './SEO';
 import { QrCode } from 'lucide-react';
+import { commerceService } from '../services/commerceService';
+import { NIGERIAN_STATES } from '../config/nigeriaStates';
 
 // Inline SVG replacements for brand icons
 const InstagramIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -61,9 +63,12 @@ const PublicStorefront: React.FC = () => {
     total: number;
     waDispatch?: any;
   } | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState(0);
   const [checkoutForm, setCheckoutForm] = useState({
     name: '',
+    email: '',
     phone: '',
+    state: 'Lagos',
     address: '',
     notes: ''
   });
@@ -310,6 +315,18 @@ const PublicStorefront: React.FC = () => {
     });
   }, [products, selectedCategory, searchQuery]);
 
+  useEffect(() => {
+    if (cart.length === 0 || !checkoutForm.state) {
+      setDeliveryFee(0);
+      return;
+    }
+    const ids = cart.map((i) => Number(i.product?.id)).filter((n) => Number.isFinite(n) && n > 0);
+    if (ids.length === 0) return;
+    commerceService.deliveryQuote(ids, checkoutForm.state)
+      .then((q) => setDeliveryFee(q.total_fee || 0))
+      .catch(() => setDeliveryFee(0));
+  }, [cart, checkoutForm.state]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -386,23 +403,65 @@ const PublicStorefront: React.FC = () => {
     return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80';
   };
 
-  // Cart actions
-  const addToCart = (product: any) => {
-    const existing = cart.find(item => item.product.id === product.id);
-    if (existing) {
-      setCart(cart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
-    } else {
-      setCart([...cart, { product, quantity: 1 }]);
+  // Cart actions (respecting physical stock availability & synced with sb_cart)
+  const isProductOutOfStock = (p: any) =>
+    (p?.product_type || 'PHYSICAL').toUpperCase() === 'PHYSICAL' && Number(p?.stock_count ?? 1) <= 0;
+
+  const syncGlobalCart = (nextCart: { product: any; quantity: number }[]) => {
+    try {
+      const normalized = nextCart.map((c) => ({
+        id: String(c.product.id),
+        productId: String(c.product.id),
+        title: c.product.name,
+        price: parseFloat(c.product.price) || 0,
+        image: c.product.image_url || '',
+        quantity: c.quantity,
+        vendorId: String(brand?.id || slug || c.product.brand || c.product.id),
+        vendorName: brand?.businessName || c.product.brand_name || 'Verified Merchant',
+        whatsapp: brand?.whatsapp || brand?.phone || c.product.whatsapp_number || '',
+        paystack_subaccount_code: brand?.paystack_subaccount_code || c.product.paystack_subaccount_code || '',
+        location: brand?.location || c.product.location || '',
+      }));
+      localStorage.setItem('sb_cart', JSON.stringify(normalized));
+      window.dispatchEvent(new Event('smartbiz_cart_updated'));
+    } catch {
+      // ignore storage errors
     }
+  };
+
+  const addToCart = (product: any) => {
+    if (isProductOutOfStock(product)) {
+      toast.error(`${product.name} is currently out of stock.`);
+      return;
+    }
+    const maxQty = (product?.product_type || 'PHYSICAL').toUpperCase() === 'PHYSICAL'
+      ? Math.max(0, Number(product?.stock_count ?? 1))
+      : 999;
+    const existing = cart.find(item => item.product.id === product.id);
+    if (existing && existing.quantity >= maxQty) {
+      toast.error(`Only ${maxQty} unit(s) available in stock.`);
+      return;
+    }
+    const nextCart = existing
+      ? cart.map(item => item.product.id === product.id ? { ...item, quantity: Math.min(maxQty, item.quantity + 1) } : item)
+      : [...cart, { product, quantity: 1 }];
+    setCart(nextCart);
+    syncGlobalCart(nextCart);
     toast.success(`${product.name} added to cart!`);
   };
 
   const updateCartQty = (productId: number, qty: number) => {
-    if (qty <= 0) {
-      setCart(cart.filter(item => item.product.id !== productId));
-    } else {
-      setCart(cart.map(item => item.product.id === productId ? { ...item, quantity: qty } : item));
-    }
+    const nextCart = qty <= 0
+      ? cart.filter(item => item.product.id !== productId)
+      : cart.map(item => {
+          if (item.product.id !== productId) return item;
+          const maxQty = (item.product?.product_type || 'PHYSICAL').toUpperCase() === 'PHYSICAL'
+            ? Math.max(1, Number(item.product?.stock_count ?? 1))
+            : 999;
+          return { ...item, quantity: Math.min(maxQty, qty) };
+        });
+    setCart(nextCart);
+    syncGlobalCart(nextCart);
   };
 
   const getCartTotal = () => {
@@ -465,44 +524,55 @@ const PublicStorefront: React.FC = () => {
     }
 
     const cartTotal = getCartTotal();
+    const grandTotal = cartTotal + deliveryFee;
     const rawSubaccount = (products[0]?.paystack_subaccount_code || brand?.paystack_subaccount_code || (brand as any)?.subaccount_code || "").trim();
 
     try {
       toast.loading('Opening secure Paystack checkout...');
       await openPaystackCheckout({
-        amount: cartTotal,
+        email: checkoutForm.email.trim() || undefined,
+        amount: grandTotal,
         customerName: checkoutForm.name,
         customerPhone: checkoutForm.phone,
-        customerAddress: checkoutForm.address,
+        customerAddress: `${checkoutForm.address}, ${checkoutForm.state}`,
         orderNotes: checkoutForm.notes,
         subaccountCode: rawSubaccount,
+        metadata: { purpose: 'marketplace_order', delivery_state: checkoutForm.state },
         onSuccess: async (res) => {
           toast.dismiss();
-          toast.success("Payment successful! Transaction Ref: " + res.reference);
-          
+          toast.loading("Verifying order with store server...", { id: 'storefront-verify' });
+
           let dispatchData = null;
           try {
             const orderRes = await api.post('/api/marketplace/orders/create/', {
               items: cart.map(i => ({ productId: i.product.id, price: i.product.price, quantity: i.quantity })),
+              payment_method: 'PAYSTACK',
               reference: res.reference,
-              total_amount: cartTotal,
+              total_amount: grandTotal,
               customer_name: checkoutForm.name,
               customer_phone: checkoutForm.phone,
+              customer_email: checkoutForm.email.trim(),
               customer_address: checkoutForm.address,
+              delivery_state: checkoutForm.state,
               notes: checkoutForm.notes
             });
             dispatchData = orderRes.data?.whatsapp_dispatch || null;
-          } catch (err) {
-            console.error('Order lead log notice:', err);
+            toast.dismiss('storefront-verify');
+            toast.success("Payment verified! Ref: " + res.reference);
+            setShowCartModal(false);
+            setCart([]);
+            localStorage.removeItem('sb_cart');
+            window.dispatchEvent(new Event('smartbiz_cart_updated'));
+            setPaymentConfirmation({
+              reference: res.reference,
+              total: grandTotal,
+              waDispatch: dispatchData
+            });
+          } catch (err: any) {
+            toast.dismiss('storefront-verify');
+            const msg = err?.response?.data?.error || 'Could not record order on server.';
+            toast.error(`Payment Ref ${res.reference} captured, but server returned: ${msg}. Contact store with reference ${res.reference}.`, { duration: 9000 });
           }
-
-          setShowCartModal(false);
-          setCart([]);
-          setPaymentConfirmation({
-            reference: res.reference,
-            total: cartTotal,
-            waDispatch: dispatchData
-          });
         },
         onClose: () => {
           toast.dismiss();
@@ -512,16 +582,7 @@ const PublicStorefront: React.FC = () => {
     } catch (err: any) {
       toast.dismiss();
       console.warn("Paystack checkout notice:", err);
-      toast.error(err?.message || "Card gateway loading error. Redirecting to WhatsApp...");
-      
-      const itemsText = cart.map(item => `- ${item.product.name} x${item.quantity} - ₦${(parseFloat(item.product.price) * item.quantity).toLocaleString()}`).join('\n');
-      const orderText = `Hi ${brand.businessName || 'Seller'}, I would like to place an order:\n\n${itemsText}\n\n*Total:* ₦${cartTotal.toLocaleString()}\n\n*Customer Details:*\n- Name: ${checkoutForm.name}\n- Phone: ${checkoutForm.phone}\n- Address: ${checkoutForm.address}${checkoutForm.notes ? `\n- Notes: ${checkoutForm.notes}` : ''}`;
-
-      setShowCartModal(false);
-      setCart([]);
-      const merchantWa = sanitizeWhatsAppNumber(brand.whatsapp || brand.phone || products[0]?.whatsapp_number || (brand as any).user_phone || (brand as any).vendor_phone);
-      const waUrl = merchantWa ? `https://wa.me/${merchantWa}?text=${encodeURIComponent(orderText)}` : `https://wa.me/?text=${encodeURIComponent(orderText)}`;
-      window.open(waUrl, '_blank', 'noopener,noreferrer');
+      toast.error(err?.message || "Could not launch Paystack right now. Please try WhatsApp checkout below.");
     }
   };
 
@@ -810,7 +871,7 @@ const PublicStorefront: React.FC = () => {
                           className="aspect-[4/3] relative overflow-hidden bg-slate-50 cursor-pointer"
                         >
                           {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <ShoppingBag className="w-12 h-12 text-slate-200" />
@@ -877,10 +938,11 @@ const PublicStorefront: React.FC = () => {
                               <span>🔗 Link</span>
                             </button>
                             <button 
+                              disabled={isProductOutOfStock(product)}
                               onClick={() => addToCart(product)}
-                              className="w-full bg-slate-900 hover:bg-indigo-600 text-white text-[9px] font-black uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                              className="w-full bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-[9px] font-black uppercase tracking-wider py-3 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
                             >
-                              <ShoppingCart className="w-3 h-3" /> + Cart
+                              <ShoppingCart className="w-3 h-3" /> {isProductOutOfStock(product) ? 'Out of Stock' : '+ Cart'}
                             </button>
                           </div>
                         </div>
@@ -1042,9 +1104,19 @@ const PublicStorefront: React.FC = () => {
             </div>
 
             {/* Total */}
-            <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <span className="text-xs text-slate-500 font-semibold">Total Order Cost</span>
-              <span className="text-sm font-black text-indigo-650">₦{getCartTotal().toLocaleString()}</span>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1">
+              <div className="flex justify-between items-center text-xs text-slate-500">
+                <span>Subtotal</span>
+                <span className="font-bold text-slate-700">₦{getCartTotal().toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs text-slate-500">
+                <span>Delivery ({checkoutForm.state})</span>
+                <span className="font-bold text-emerald-700">{deliveryFee > 0 ? `₦${deliveryFee.toLocaleString()}` : 'Free / Waybill'}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1.5 border-t border-slate-200">
+                <span className="text-xs text-slate-700 font-bold">Total Order Cost</span>
+                <span className="text-sm font-black text-indigo-650">₦{(getCartTotal() + deliveryFee).toLocaleString()}</span>
+              </div>
             </div>
 
             {/* Checkout Form */}
@@ -1072,6 +1144,31 @@ const PublicStorefront: React.FC = () => {
                     placeholder="e.g. 08012345678"
                     value={checkoutForm.phone}
                     onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-450 uppercase ml-1">Delivery State *</label>
+                  <select
+                    value={checkoutForm.state}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, state: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-indigo-500 bg-white"
+                  >
+                    {NIGERIAN_STATES.map((st) => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-bold text-slate-450 uppercase ml-1">Email (Receipt)</label>
+                  <input
+                    type="email"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-indigo-500"
+                    placeholder="buyer@email.com"
+                    value={checkoutForm.email}
+                    onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
                   />
                 </div>
               </div>
@@ -1209,13 +1306,14 @@ const PublicStorefront: React.FC = () => {
             {/* Actions */}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
+                disabled={isProductOutOfStock(selectedDetailProduct)}
                 onClick={() => {
                   addToCart(selectedDetailProduct);
                   setSelectedDetailProduct(null);
                 }}
-                className="py-3.5 px-4 bg-slate-900 hover:bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer"
+                className="py-3.5 px-4 bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer"
               >
-                <ShoppingCart className="w-4 h-4" /> Add to Order Cart
+                <ShoppingCart className="w-4 h-4" /> {isProductOutOfStock(selectedDetailProduct) ? 'Out of Stock' : 'Add to Order Cart'}
               </button>
               <a
                 href={`https://wa.me/${sanitizeWhatsAppNumber(brand?.whatsapp || brand?.phone)}?text=${encodeURIComponent(`Hi ${brand?.businessName}, I would like to order: ${selectedDetailProduct.name} (₦${parseFloat(selectedDetailProduct.price).toLocaleString()})`)}`}

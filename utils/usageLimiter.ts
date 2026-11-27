@@ -1,3 +1,5 @@
+import { getBusinessDateStr } from './dateTime';
+
 export type FeatureKey = 
   | 'brand_builder' 
   | 'content_generator' 
@@ -19,18 +21,18 @@ interface FeatureConfig {
 }
 
 export const FEATURE_CONFIGS: Record<FeatureKey, FeatureConfig> = {
-  brand_builder: { freeLimit: 0, creditCost: 100, label: 'Full Corporate Brand Identity Kit' },
-  content_generator: { freeLimit: 0, creditCost: 15, label: 'AI Content Studio' },
-  name_check: { freeLimit: 0, creditCost: 5, label: 'AI Name Availability Check' },
-  business_plan: { freeLimit: 0, creditCost: 200, label: 'AI Bank & Grant Business Plan' },
-  grant_search: { freeLimit: 0, creditCost: 50, label: 'AI Grant Search & Eligibility Audit' },
-  debt_reminder: { freeLimit: 0, creditCost: 25, label: 'AI Debtor Gbege WhatsApp Recovery' },
+  brand_builder: { freeLimit: 0, creditCost: 15, label: 'Full Corporate Brand Identity Kit' },
+  content_generator: { freeLimit: 0, creditCost: 2, label: 'AI Content Studio' },
+  name_check: { freeLimit: 0, creditCost: 2, label: 'AI Name Availability Check' },
+  business_plan: { freeLimit: 0, creditCost: 15, label: 'AI Bank & Grant Business Plan' },
+  grant_search: { freeLimit: 0, creditCost: 3, label: 'AI Grant Search & Eligibility Audit' },
+  debt_reminder: { freeLimit: 0, creditCost: 1, label: 'AI Debtor Gbege WhatsApp Recovery' },
   ai_chat: { freeLimit: 999999, creditCost: 0, label: 'AI Live Support Chat (Free)' },
-  sales_assistant: { freeLimit: 0, creditCost: 10, label: 'AI Sales Assistant' },
-  health_score: { freeLimit: 0, creditCost: 20, label: 'AI Business Health Score' },
-  pricing_assistant: { freeLimit: 2, creditCost: 2, label: 'AI Pricing & Margin Assistant' },
-  snap_and_list: { freeLimit: 0, creditCost: 5, label: 'AI Snap & List Scanner' },
-  logo_generation: { freeLimit: 0, creditCost: 20, label: 'AI Logo Generation' },
+  sales_assistant: { freeLimit: 0, creditCost: 1, label: 'AI Sales Assistant' },
+  health_score: { freeLimit: 0, creditCost: 5, label: 'AI Business Health Score' },
+  pricing_assistant: { freeLimit: 0, creditCost: 2, label: 'AI Pricing & Margin Assistant' },
+  snap_and_list: { freeLimit: 0, creditCost: 3, label: 'AI Snap & List Scanner' },
+  logo_generation: { freeLimit: 0, creditCost: 15, label: 'AI Logo Generation' },
 };
 
 interface UsageRecord {
@@ -40,7 +42,7 @@ interface UsageRecord {
 
 export const usageLimiter = {
   getUsageCount: (feature: FeatureKey): number => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getBusinessDateStr();
     const dataStr = localStorage.getItem(`sb_usage_${feature}`);
     if (!dataStr) return 0;
     try {
@@ -55,7 +57,7 @@ export const usageLimiter = {
   },
 
   incrementUsage: (feature: FeatureKey) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getBusinessDateStr();
     const currentCount = usageLimiter.getUsageCount(feature);
     const newRecord: UsageRecord = {
       date: today,

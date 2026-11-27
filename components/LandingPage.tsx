@@ -286,10 +286,10 @@ const LandingPage: React.FC = () => {
 
     const packs = [
         { name: 'Micro Pack', price: '₦500', credits: '50 Credits', tag: null, color: 'border-slate-200', btnColor: 'bg-slate-900 hover:bg-slate-700', popular: false, perks: ['50 BizCredits (Never Expire)', 'Up to 25 Studio Backdrop Edits', 'AI Promo Copy & Content Posts', '1-Tap Paystack Checkout', 'Standard Email Support'] },
-        { name: 'Starter Pack', price: '₦1,500', credits: '150 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['150 BizCredits', 'Up to 75 Studio Backdrop Edits', '1x AI Brand Identity Kit', '1x Market Square 7-Day Boost', 'Pricing & Margin Prompts', 'WhatsApp & Email Support Desk'] },
-        { name: 'Grower Pack', price: '₦3,500', credits: '400 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['400 BizCredits', '2x 3-Year Business Plans', 'Up to 200 Studio Backdrop Edits', '4x Market Square 7-Day Boosts', 'Full AI Content & Copy Suite', 'Priority Email & Chat Support'] },
-        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,000 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,000 BizCredits', '5x 3-Year Business Plans', 'Up to 500 Studio Backdrop Edits', '10x Market Square Priority Boosts', 'Guided CAC & Grant Checklists', 'Priority Support Queue'] },
-        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Best Credit Rate', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', '12x 3-Year Business Plans', 'Up to 1,250 Studio Backdrop Edits', '25x Market Square Priority Boosts', 'Multi-Store & Team Ready', 'Priority WhatsApp & Email Desk'] },
+        { name: 'Starter Pack', price: '₦1,500', credits: '175 Credits', tag: null, color: 'border-blue-500', btnColor: 'bg-blue-600 hover:bg-blue-500', popular: false, perks: ['175 BizCredits (150 + 25 Bonus)', 'Up to 35 Studio Shoots', '1x AI Brand Identity Kit', '1x Market Square 7-Day Boost', 'Pricing & Margin Prompts', 'WhatsApp & Email Support Desk'] },
+        { name: 'Grower Pack', price: '₦3,500', credits: '450 Credits', tag: '🔥 Most Popular', color: 'border-green-500', btnColor: 'bg-green-600 hover:bg-green-500', popular: true, perks: ['450 BizCredits (400 + 50 Bonus)', 'Full 3-Year Business Plans', 'AI Studio Backdrop Shoots', 'Market Square 7-Day Boosts', 'Full AI Content & Copy Suite', 'Priority Email & Chat Support'] },
+        { name: 'Vendor Pro Pack', price: '₦7,500', credits: '1,250 Credits', tag: '💎 High Velocity', color: 'border-purple-500', btnColor: 'bg-purple-700 hover:bg-purple-600', popular: false, perks: ['1,250 BizCredits (1,000 + 250 Bonus)', 'Multiple 3-Year Business Plans', 'Batch AI Studio Shoots', 'Market Square Priority Boosts', 'Guided CAC & Grant Checklists', 'Priority Support Queue'] },
+        { name: 'Mogul Pack', price: '₦15,000', credits: '2,500 Credits', tag: '👑 Best Credit Rate', color: 'border-amber-500', btnColor: 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500', popular: false, perks: ['2,500 BizCredits (Best Rate: ₦6/credit)', 'Heavy Business Plan & Studio Usage', 'Batch Photo Studio Edits', '25x Market Square Priority Boosts', 'Multi-Store & Team Ready', 'Priority WhatsApp & Email Desk'] },
     ];
 
     // ── THE MSME ZERO-SURPRISE FAIR-USE GUARANTEE MATRIX ──
@@ -312,7 +312,7 @@ const LandingPage: React.FC = () => {
         { feature: 'Voice Note Sale Ingestion & Receipt Scanner', cost: '2 BizCredits per audio/photo', type: 'AI Assistant', icon: '🎙️' },
         { feature: 'Market Square 7-Day Priority Showcase Boost', cost: '50 BizCredits (~₦500)', type: 'Store Visibility', icon: '🚀' },
         { feature: 'Product Studio Clean Backdrops', cost: '2 BizCredits per image', type: 'Visual Studio', icon: '📸' },
-        { feature: '3-Year Structured Business Plan (PDF)', cost: '200 BizCredits', type: 'Planning Engine', icon: '📄' },
+        { feature: '3-Year Structured Business Plan (PDF)', cost: '15 BizCredits', type: 'Planning Engine', icon: '📄' },
     ];
 
     const faqs = [

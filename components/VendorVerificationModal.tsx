@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { compressImage } from '../utils/imageOptimization';
 
 interface VendorProfile {
   id: number;
@@ -137,7 +138,7 @@ export const VendorVerificationModal: React.FC<Props> = ({ isOpen, onClose, onVe
     fetchStatus();
   }, [isOpen]);
 
-  const handleFileUpload = (field: 'id_document_url' | 'cac_document_url' | 'proof_of_address_url' | 'naccima_document_url', e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (field: 'id_document_url' | 'cac_document_url' | 'proof_of_address_url' | 'naccima_document_url', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -146,13 +147,27 @@ export const VendorVerificationModal: React.FC<Props> = ({ isOpen, onClose, onVe
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const base64 = uploadEvent.target?.result as string;
-      setFormData(prev => ({ ...prev, [field]: base64 }));
-      toast.success('Document uploaded successfully!');
-    };
-    reader.readAsDataURL(file);
+    try {
+      let targetBlob: Blob = file;
+      if (file.type.startsWith('image/')) {
+        targetBlob = await compressImage(file, 1400, 0.8);
+      }
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64 = uploadEvent.target?.result as string;
+        setFormData(prev => ({ ...prev, [field]: base64 }));
+        toast.success('Document uploaded & optimized successfully!');
+      };
+      reader.readAsDataURL(targetBlob);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64 = uploadEvent.target?.result as string;
+        setFormData(prev => ({ ...prev, [field]: base64 }));
+        toast.success('Document uploaded successfully!');
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

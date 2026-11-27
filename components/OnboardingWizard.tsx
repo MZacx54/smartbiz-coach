@@ -101,8 +101,20 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ user, onComplete })
         location: formData.location,
         phone: formData.phone,
         businessName: formData.businessName,
+        industry: formData.industry,
+        goals: formData.goals,
         hasOnboarded: true,
-      });
+      } as any);
+    } catch {
+      try {
+        localStorage.setItem('sb_onboarding_pending_sync', JSON.stringify({
+          location: formData.location,
+          phone: formData.phone,
+          businessName: formData.businessName,
+          industry: formData.industry,
+          goals: formData.goals,
+        }));
+      } catch {}
     } finally {
       setIsSaving(false);
     }

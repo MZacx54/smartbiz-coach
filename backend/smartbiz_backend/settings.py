@@ -17,23 +17,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables
 import os
+import sys
 from dotenv import load_dotenv
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 load_dotenv(BASE_DIR / '.env')
 
-
+IS_TESTING = 'test' in sys.argv or os.getenv('TESTING', '').lower() in ('1', 'true', 'yes')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key')
+SECRET_KEY = os.getenv('SECRET_KEY', '').strip()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['*']
+if not SECRET_KEY:
+    if DEBUG or IS_TESTING:
+        SECRET_KEY = 'django-insecure-local-dev-only-key'
+    else:
+        raise ImproperlyConfigured('SECRET_KEY environment variable must be set when DEBUG is False.')
+elif 'django-insecure' in SECRET_KEY and not DEBUG and not IS_TESTING:
+    raise ImproperlyConfigured('Insecure default SECRET_KEY is not allowed when DEBUG is False.')
+
+_default_hosts = 'smartbizcoach.com.ng,www.smartbizcoach.com.ng,api.smartbizcoach.com.ng,smartbiz-coach.onrender.com,localhost,127.0.0.1,testserver'
+ALLOWED_HOSTS = [
+    h.strip() for h in os.getenv('ALLOWED_HOSTS', _default_hosts).split(',')
+    if h.strip() and h.strip() != '*'
+] or ['smartbizcoach.com.ng', 'www.smartbizcoach.com.ng', 'api.smartbizcoach.com.ng', 'smartbiz-coach.onrender.com', 'localhost', '127.0.0.1', 'testserver']
 
 # Application definition
 
@@ -99,10 +113,34 @@ WSGI_APPLICATION = 'smartbiz_backend.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         default='sqlite:///db.sqlite3',
-        conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '0')),
         conn_health_checks=True,
     )
 }
+
+if 'sqlite' in DATABASES['default'].get('ENGINE', '') and not DEBUG and not IS_TESTING and not os.getenv('ALLOW_SQLITE_PROD'):
+    raise ImproperlyConfigured('PostgreSQL DATABASE_URL is required when DEBUG is False.')
+
+# Cache backend: uses Redis when REDIS_URL is configured (multi-worker safe), with bounded LocMemCache locally
+REDIS_URL = os.getenv('REDIS_URL', '').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'smartbiz-locmem',
+            'OPTIONS': {'MAX_ENTRIES': 5000},
+        }
+    }
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024  # 15 MB cap
+FILE_UPLOAD_MAX_MEMORY_SIZE = 15 * 1024 * 1024
 
 # Supabase / PgBouncer transaction pooler compatibility:
 # 1. Disable server-side cursors so pooled connections on port 6543 never fail.
@@ -171,10 +209,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
 ]
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*\.smartbizcoach\.com\.ng$",
-    r"^https://.*\.vercel\.app$",
-    r"^https://.*\.onrender\.com$",
-]
+    r"^https://([a-z0-9-]+\.)?smartbizcoach\.com\.ng$",
+] + ([r"^https://.*\.vercel\.app$"] if DEBUG else [])
 
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -192,7 +228,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         'CSRF_TRUSTED_ORIGINS',
-        'http://localhost:5173,http://localhost:3000,https://*.vercel.app,https://*.railway.app,https://*.onrender.com,https://smartbiz-coach.onrender.com,https://smartbizcoach.com.ng,https://www.smartbizcoach.com.ng,https://market.smartbizcoach.com.ng,https://api.smartbizcoach.com.ng'
+        'http://localhost:5173,http://localhost:3000,https://smartbiz-coach.onrender.com,https://smartbizcoach.com.ng,https://www.smartbizcoach.com.ng,https://market.smartbizcoach.com.ng,https://api.smartbizcoach.com.ng'
     ).split(',')
     if origin.strip()
 ]
@@ -324,7 +360,7 @@ if not EMAIL_HOST_USER:
 # ─── DRF Throttling (Rate Limiting & Anti-Brute-Force) ────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'smartbiz_backend.authentication.ExpiringTokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -337,17 +373,17 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '120/minute',
         'user': '1200/minute',
-        'auth': '6/minute',
+        'auth': '10/minute',
         'ai': '25/minute',
         'payment': '30/minute',
-        'brand_gen': '60/minute',
-        'content_gen': '60/minute',
-        'business_plan': '30/minute',
-        'video_gen': '20/minute',
-        'image_edit': '30/minute',
-        'analytics_ml': '60/minute',
-        'visual_search': '30/minute',
-        'cart_recovery': '30/minute',
+        'brand_gen': '15/hour',
+        'content_gen': '30/hour',
+        'business_plan': '10/day',
+        'video_gen': '15/day',
+        'image_edit': '20/day',
+        'analytics_ml': '30/minute',
+        'visual_search': '20/minute',
+        'cart_recovery': '20/minute',
     }
 }
 
