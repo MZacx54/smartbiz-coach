@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import LiveSupportWidget from './LiveSupportWidget';
 import { PWAInstallButton } from './PWAInstallPrompt';
 import { OWNER_ONLY_VIEWS, QUICK_ADD, matchNav, sectionsForRole, NavRole, isAdminOrPartnerUser } from '../config/navigation';
-import { FEATURE_FLAGS } from '../config/featureFlags';
+import { FEATURE_FLAGS, isFeatureEnabled } from '../config/featureFlags';
 import { useOwnerLock } from '../hooks/useOwnerLock';
 import { useLanguage } from './ui';
 
@@ -141,10 +141,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     /* ---------------- Desktop sidebar ---------------- */
     const Sidebar = (
         <aside className="hidden md:flex flex-col w-64 shrink-0 bg-slate-950 text-slate-300 h-screen sticky top-0">
-            <div className="flex items-center gap-2.5 px-5 h-16 border-b border-slate-800/80">
+            <button
+                type="button"
+                onClick={() => navigate('/')}
+                title={t('Go to SmartBiz Coach Home Page', 'Go to Home Page')}
+                className="flex items-center gap-2.5 px-5 h-16 border-b border-slate-800/80 w-full text-left hover:bg-slate-900/70 transition-colors cursor-pointer"
+            >
                 <img src="/favicon.png" alt="SmartBiz Coach" className="w-8 h-8 rounded-lg object-cover" />
                 <span className="font-extrabold text-white text-base font-heading">SmartBiz Coach</span>
-            </div>
+            </button>
 
             <div className="px-5 pt-4 pb-2">
                 <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
@@ -236,10 +241,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const TopBar = (
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100 w-full max-w-full overflow-hidden">
             <div className="flex items-center justify-between gap-1.5 sm:gap-3 px-2.5 sm:px-5 h-14 md:h-16 w-full max-w-full">
-                <div className="flex items-center gap-1.5 sm:gap-2 md:hidden min-w-0 shrink">
-                    <img src="/favicon.png" alt="" className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover shrink-0" />
+                <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    title={t('Go to SmartBiz Coach Home Page', 'Go to Home Page')}
+                    className="flex items-center gap-1.5 sm:gap-2 md:hidden min-w-0 shrink text-left cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                    <img src="/favicon.png" alt="SmartBiz Coach" className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg object-cover shrink-0" />
                     <span className="font-extrabold text-slate-900 text-xs sm:text-sm font-heading truncate max-w-[95px] xs:max-w-[120px] sm:max-w-[150px]">{businessName}</span>
-                </div>
+                </button>
                 <div className="hidden md:block flex-1 max-w-md">
                     <GlobalSearch onResultClick={() => onNavigate(AppView.PRODUCT_MANAGER)} />
                 </div>
@@ -472,7 +482,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 { label: 'Invoices & Receipts', icon: '🧾', view: AppView.INVOICE_GENERATOR },
                 { label: 'Online Storefront', icon: '🔗', view: AppView.STOREFRONT },
                 { label: 'Online Orders Inbox', icon: '📦', view: AppView.ORDER_INBOX },
-                { label: 'Order Slips Generator', icon: '📋', view: AppView.ORDER_GENERATOR },
+                { label: 'Order Slips Generator', icon: '📋', view: AppView.ORDER_GENERATOR, hide: !isFeatureEnabled('orderSlipsStub') },
                 { label: 'Customer Leads Inbox', icon: '📬', view: AppView.LEAD_MANAGER },
             ]
         },
@@ -481,10 +491,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             icon: '💰',
             items: [
                 { label: 'Debtors (Gbege Book)', icon: '📒', view: AppView.DEBTOR_BOOK },
-                { label: 'Find Grants & Low-Interest Loans', icon: '💰', view: AppView.GRANT_MATCHER },
-                { label: 'Bank Business Plan Generator', icon: '📈', view: AppView.BUSINESS_PLAN },
-                { label: 'Pricing & Margin Helper', icon: '🏷️', view: AppView.PRICING_ASSISTANT },
-                { label: 'Financial Insights & Analytics', icon: '📊', view: AppView.DATA_SCIENCE_HUB },
+                { label: 'Find Grants & Low-Interest Loans', icon: '💰', view: AppView.GRANT_MATCHER, hide: !isFeatureEnabled('grantsAndPlans') },
+                { label: 'Bank Business Plan Generator', icon: '📈', view: AppView.BUSINESS_PLAN, hide: !isFeatureEnabled('grantsAndPlans') },
+                { label: 'Pricing & Margin Helper', icon: '🏷️', view: AppView.PRICING_ASSISTANT, hide: !isFeatureEnabled('pricingHelper') },
+                { label: 'Financial Insights & Analytics', icon: '📊', view: AppView.DATA_SCIENCE_HUB, hide: !isFeatureEnabled('dataScienceLabs') },
             ]
         },
         {
@@ -492,7 +502,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             icon: '📦',
             items: [
                 { label: 'Shop Inventory Tracker', icon: '📦', view: AppView.PRODUCT_MANAGER },
-                { label: 'National Market Square', icon: '🏛️', view: AppView.MARKETPLACE },
+                { label: 'National Market Square', icon: '🏛️', view: AppView.MARKETPLACE, hide: !isFeatureEnabled('marketSquareDirectory') },
             ]
         },
         {
@@ -500,10 +510,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             icon: '🚀',
             hide: isCashierMode,
             items: [
-                { label: 'AI Creative Studio & Brand Suite', icon: '🤖', view: AppView.BRAND_BUILDER },
-                { label: 'Digital Growth Roadmap', icon: '🗺️', view: AppView.DIGITAL_ROADMAP },
-                { label: 'Learning Hub Masterclasses', icon: '🎓', view: AppView.LEARNING_HUB },
-                { label: 'CAC & Tax Compliance Guide', icon: '⚖️', view: AppView.COMPLIANCE },
+                { label: 'AI Creative Studio & Brand Suite', icon: '🤖', view: AppView.BRAND_BUILDER, hide: !isFeatureEnabled('aiStudio') },
+                { label: 'Digital Growth Roadmap', icon: '🗺️', view: AppView.DIGITAL_ROADMAP, hide: !isFeatureEnabled('learningAndRoadmap') },
+                { label: 'Learning Hub Masterclasses', icon: '🎓', view: AppView.LEARNING_HUB, hide: !isFeatureEnabled('learningAndRoadmap') },
+                { label: 'CAC & Tax Compliance Guide', icon: '⚖️', view: AppView.COMPLIANCE, hide: !isFeatureEnabled('grantsAndPlans') },
             ]
         },
         {
@@ -513,7 +523,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 { label: t('Settings & Security', 'Settings & Security'), icon: '⚙️', view: AppView.SETTINGS },
                 { label: t('Buy AI Credits & Billing', 'Buy AI Credits'), icon: '⚡', view: AppView.SETTINGS, params: 'tab=billing', hide: isCashierMode },
                 { label: t('WhatsApp Live Support', 'WhatsApp Live Support'), icon: '🎧', view: AppView.WHATSAPP_SUPPORT },
-                { label: t('Partner & Admin Terminal', 'Partner Portal'), icon: '🏛️', view: AppView.PARTNER_PORTAL, hide: isCashierMode || !isAdmin },
+                { label: t('Partner & Admin Terminal', 'Partner Portal'), icon: '🏛️', view: AppView.PARTNER_PORTAL, hide: isCashierMode || !isAdmin || !isFeatureEnabled('partnerPortal') },
             ]
         }
     ];

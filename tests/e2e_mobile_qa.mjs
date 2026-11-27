@@ -299,6 +299,39 @@ async function run() {
       assert.ok(decodeURIComponent(waHref).includes('12,000'), `WhatsApp message missing amount: ${waHref}`);
       logResult('Debt Ledger & WhatsApp Click-to-Chat Receipt/Reminder', true, `Synced credit debtor Musa Danjuma rendered & 1-Tap WhatsApp generated ${waHref.slice(0, 48)}...`);
 
+      // 5. Mobile "More" Drawer (Money / Stock / Grow) does NOT bounce to Home + Mobile Logo -> '/'
+      await page.getByRole('button', { name: /More/i }).click();
+      await page.getByRole('button', { name: /Find Grants & Low-Interest Loans/i }).click();
+      await page.waitForURL(/\/dashboard\/grants/, { timeout: 10000 });
+
+      await page.getByRole('button', { name: /More/i }).click();
+      await page.getByRole('button', { name: /AI Creative Studio/i }).click();
+      await page.waitForURL(/\/dashboard\/brand/, { timeout: 10000 });
+
+      await page.locator('header').getByTitle('Go to SmartBiz Coach Home Page').click();
+      await page.waitForURL((u) => new URL(u).pathname === '/', { timeout: 10000 });
+      await page.waitForSelector('text=Go to Dashboard', { timeout: 10000 });
+      logResult('Mobile Money/Stock/Grow Tools & Clickable Logo -> Home', true, 'Mobile tools open /dashboard/grants & /dashboard/brand without redirecting Home; mobile logo returns to /');
+
+      // 6. Desktop Viewport (1280x800): Verify Sidebar Money, Stock, Grow sub-options + Desktop Sidebar Logo -> '/'
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.goto(`${FRONTEND_URL}/dashboard`, { waitUntil: 'networkidle', timeout: 30000 });
+
+      await page.locator('aside').getByRole('button', { name: /Money/i }).click();
+      await page.locator('aside').getByRole('button', { name: /Find Funding/i }).waitFor({ state: 'visible', timeout: 10000 });
+      await page.locator('aside').getByRole('button', { name: /Pricing Helper/i }).waitFor({ state: 'visible', timeout: 10000 });
+
+      await page.locator('aside').getByRole('button', { name: /Stock/i }).click();
+      await page.locator('aside').getByRole('button', { name: /Market Square/i }).waitFor({ state: 'visible', timeout: 10000 });
+
+      await page.locator('aside').getByRole('button', { name: /Grow/i }).click();
+      await page.locator('aside').getByRole('button', { name: /AI Studio/i }).waitFor({ state: 'visible', timeout: 10000 });
+      await page.locator('aside').getByRole('button', { name: /Compliance/i }).waitFor({ state: 'visible', timeout: 10000 });
+
+      await page.locator('aside').getByTitle('Go to SmartBiz Coach Home Page').click();
+      await page.waitForURL((u) => new URL(u).pathname === '/', { timeout: 10000 });
+      logResult('Desktop Sidebar Money/Stock/Grow Sub-Menus & Logo -> Home', true, 'All Money, Stock, and Grow options visible on desktop sidebar; desktop logo navigates to /');
+
       assert.equal(errs.pageErrors.length, 0, `Uncaught pageErrors: ${errs.pageErrors.join(' | ')}`);
       await context.close();
     }

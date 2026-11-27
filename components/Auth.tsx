@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { User } from '../types';
@@ -13,6 +13,7 @@ interface AuthProps {
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const routerLocation = useLocation();
+  const navigate = useNavigate();
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot_password' | 'reset_password_code'>(
     routerLocation.pathname.includes('register') ? 'register' : 'login'
   );
@@ -191,7 +192,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.28) 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
 
           <div className="relative z-10 text-center max-w-md">
-            <img src="/logo-square.png" alt="SmartBiz Coach" className="w-20 h-20 rounded-2xl mx-auto object-cover shadow-2xl mb-8 border border-white/20" />
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              title="Go to SmartBiz Coach Home Page"
+              className="inline-block mb-8 cursor-pointer hover:scale-105 transition-transform focus:outline-none"
+            >
+              <img src="/logo-square.png" alt="SmartBiz Coach" className="w-20 h-20 rounded-2xl mx-auto object-cover shadow-2xl border border-white/20" />
+            </button>
             <h2 className="text-3xl font-heading font-extrabold mb-4 tracking-tight">SmartBiz Coach</h2>
             <p className="text-emerald-100 leading-relaxed text-base font-light">
               The professional AI-powered operating system for Nigerian entrepreneurs. Manage invoices, plan strategies, match grants, and close sales with confidence.

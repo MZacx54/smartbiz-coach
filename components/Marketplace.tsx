@@ -428,7 +428,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onAddToCart, initialType = 'P
       {/* Public Top Navigation Bar when accessed at /market or market.smartbizcoach.com.ng */}
       {isPublicMode && (
         <header className="sticky top-0 z-40 -mx-3 sm:-mx-6 px-4 sm:px-6 py-3 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/market')}>
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')} title="Go to SmartBiz Coach Home Page">
             <img src="/favicon.png" alt="SmartBiz Market Square" className="w-8 h-8 rounded-xl object-cover" />
             <div>
               <span className="font-black text-slate-900 text-sm sm:text-base font-heading block leading-none">

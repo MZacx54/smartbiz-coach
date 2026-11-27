@@ -27,15 +27,15 @@ export interface FeatureFlags {
 }
 
 export const FEATURE_FLAGS: FeatureFlags = {
-  aiStudio: flagEnabled(import.meta.env.VITE_FF_AI_STUDIO, false),
-  grantsAndPlans: flagEnabled(import.meta.env.VITE_FF_GRANTS_PLANS, false),
-  pricingHelper: flagEnabled(import.meta.env.VITE_FF_PRICING_HELPER, false),
-  dataScienceLabs: flagEnabled(import.meta.env.VITE_FF_DATA_SCIENCE, false),
-  learningAndRoadmap: flagEnabled(import.meta.env.VITE_FF_LEARNING_ROADMAP, false),
-  marketSquareDirectory: flagEnabled(import.meta.env.VITE_FF_MARKET_SQUARE, false),
-  orderSlipsStub: flagEnabled(import.meta.env.VITE_FF_ORDER_SLIPS, false),
-  partnerPortal: flagEnabled(import.meta.env.VITE_FF_PARTNER_PORTAL, false),
-  businessInsightsLegacy: flagEnabled(import.meta.env.VITE_FF_LEGACY_INSIGHTS, false),
+  aiStudio: flagEnabled(import.meta.env.VITE_FF_AI_STUDIO, true),
+  grantsAndPlans: flagEnabled(import.meta.env.VITE_FF_GRANTS_PLANS, true),
+  pricingHelper: flagEnabled(import.meta.env.VITE_FF_PRICING_HELPER, true),
+  dataScienceLabs: flagEnabled(import.meta.env.VITE_FF_DATA_SCIENCE, true),
+  learningAndRoadmap: flagEnabled(import.meta.env.VITE_FF_LEARNING_ROADMAP, true),
+  marketSquareDirectory: flagEnabled(import.meta.env.VITE_FF_MARKET_SQUARE, true),
+  orderSlipsStub: flagEnabled(import.meta.env.VITE_FF_ORDER_SLIPS, true),
+  partnerPortal: flagEnabled(import.meta.env.VITE_FF_PARTNER_PORTAL, true),
+  businessInsightsLegacy: flagEnabled(import.meta.env.VITE_FF_LEGACY_INSIGHTS, true),
 };
 
 export const isFeatureEnabled = (flag?: keyof FeatureFlags): boolean => {

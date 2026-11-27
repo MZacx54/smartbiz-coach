@@ -393,12 +393,20 @@ const LandingPage: React.FC = () => {
 
                         <div className="flex items-center space-x-2 sm:space-x-3">
                             <PWAInstallButton variant="nav" />
-                            <button onClick={() => navigate('/login')} className="hidden md:block text-slate-600 hover:text-slate-900 font-semibold transition-colors text-sm px-4 py-2 rounded-lg hover:bg-slate-100">
-                                Sign In
-                            </button>
-                            <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-0.5 text-sm">
-                                Start Free →
-                            </button>
+                            {typeof window !== 'undefined' && localStorage.getItem('sb_auth_token') ? (
+                                <button onClick={() => navigate('/dashboard')} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-0.5 text-sm cursor-pointer">
+                                    Go to Dashboard →
+                                </button>
+                            ) : (
+                                <>
+                                    <button onClick={() => navigate('/login')} className="hidden md:block text-slate-600 hover:text-slate-900 font-semibold transition-colors text-sm px-4 py-2 rounded-lg hover:bg-slate-100">
+                                        Sign In
+                                    </button>
+                                    <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-green-600/30 hover:shadow-green-600/50 hover:-translate-y-0.5 text-sm">
+                                        Start Free →
+                                    </button>
+                                </>
+                            )}
                             <button className="md:hidden p-2 rounded-lg hover:bg-slate-100" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
                                 <div className={`w-5 h-0.5 bg-slate-700 transition-all mb-1.5 ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
                                 <div className={`w-5 h-0.5 bg-slate-700 transition-all mb-1.5 ${mobileMenuOpen ? 'opacity-0' : ''}`}></div>
@@ -606,8 +614,8 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════ LIVE PUBLIC MARKET SQUARE SHOWCASE (FEATURE-GATED) ═══════════ */}
-            {FEATURE_FLAGS.marketSquareDirectory && (
+            {/* ═══════════ LIVE PUBLIC MARKET SQUARE SHOWCASE (ONLY WHEN POPULATED) ═══════════ */}
+            {FEATURE_FLAGS.marketSquareDirectory && (marketItems.length > 0 || marketCategory !== '') && (
             <section id="live-marketplace" className="py-16 bg-gradient-to-b from-white via-emerald-50/30 to-white border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
