@@ -10,6 +10,18 @@
     ],
     "routes": [
         {
+            "src": "^/(.*)$",
+            "headers": {
+                "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "SAMEORIGIN",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+                "Permissions-Policy": "camera=(self), microphone=(self), geolocation=()",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.paystack.co https://checkout.paystack.com https://checkout.squadco.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://paystack.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; worker-src 'self' blob:; connect-src 'self' https://api.smartbizcoach.com.ng https://smartbiz-coach.onrender.com https://api.paystack.co https://checkout.paystack.com https://api-d.squadco.com https://api.squadco.com https://api.cloudinary.com https://fonts.googleapis.com https://fonts.gstatic.com; frame-src 'self' https://checkout.paystack.com https://js.paystack.co https://paystack.com https://pay.squadco.com https://sandbox-pay.squadco.com; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.paystack.com; frame-ancestors 'self';"
+            },
+            "continue": true
+        },
+        {
             "src": "^/sw\\.js$",
             "headers": {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -48,6 +60,9 @@
         },
         {
             "src": "/(.*)",
+            "headers": {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            },
             "dest": "/index.html"
         }
     ]
