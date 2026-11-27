@@ -1226,27 +1226,32 @@ Otherwise return ONLY the message content text.
             email_data = gemini_utils.generate_json_content(
                 prompt, user=request.user, feature='marketing_ai_suggest_email'
             )
-            if isinstance(email_data, dict) and 'message' in email_data:
+            if isinstance(email_data, dict) and 'error' not in email_data and str(email_data.get('message', '')).strip():
                 return Response({
                     'suggestion': email_data.get('message', ''),
                     'subject': email_data.get('subject', f"Exciting update from {biz_name}"),
                     'preview_text': email_data.get('preview_text', f"Special offer on {topic}"),
                     'credits': remaining,
+                    'credits_deducted_server': True,
                 })
+            # Fall through directly to refund + honest email template fallback
+            raise gemini_utils.GeminiUnavailableError(
+                email_data.get('error', 'Email suggestion unavailable') if isinstance(email_data, dict) else 'Invalid response'
+            )
 
         suggestion = gemini_utils.generate_text_content(
             prompt, user=request.user, feature='marketing_ai_suggest'
         )
         
-        # If response was an error string, retry with fast fallback model
+        # If response was an error string, retry with fast fallback model in strict mode
         if isinstance(suggestion, str) and suggestion.startswith("Error:"):
             try:
                 suggestion = gemini_utils.make_gemini_request(
                     prompt, model=gemini_utils.DEFAULT_FALLBACK_MODEL,
-                    user=request.user, feature='marketing_ai_suggest'
+                    strict=True, user=request.user, feature='marketing_ai_suggest'
                 )
             except Exception:
-                pass
+                suggestion = ""
 
         # Clean up any potential markdown wraps
         suggestion = str(suggestion or "").strip()
@@ -1260,18 +1265,9 @@ Otherwise return ONLY the message content text.
 
         # Fallback if empty or error string
         if not suggestion or suggestion.startswith("Error:") or len(suggestion) < 10:
-            refund_ai_credits(request.user, reserved, 'Marketing AI Suggest Fallback')
-            remaining_after = getattr(request.user, 'credits', remaining)
+            remaining_after = refund_ai_credits(request.user, reserved, 'Marketing AI Suggest Fallback')
             if channel == 'SMS':
                 suggestion = f"Hi {{{{name}}}}, exciting news from {biz_name}! Check out our {topic} offers today. Reply to this SMS or visit us to order now!"
-            elif channel == 'EMAIL':
-                return Response({
-                    'suggestion': f"Hello {{{{name}}}},\n\nWe are excited to share an exclusive update from {biz_name} regarding {topic}.\n\nVisit our store or reply to this email to get started today!\n\nBest regards,\n{biz_name}",
-                    'subject': f"Special Update from {biz_name}: {topic}",
-                    'preview_text': f"Don't miss our latest update on {topic}",
-                    'credits': remaining_after,
-                    'fallback': True,
-                })
             else:
                 suggestion = f"Hi {{{{name}}}}! 👋\n\nExciting news from *{biz_name}*! 🚀\n\nWe have exclusive updates regarding *{topic}*. We'd love for you to be part of this special offer!\n\n👉 *Reply directly to this WhatsApp message* to place your order or learn more!\n\n– {biz_name} Team"
             return Response({
@@ -1279,6 +1275,8 @@ Otherwise return ONLY the message content text.
                 'subject': f"Exclusive: {topic} from {biz_name}",
                 'preview_text': f"Special update on {topic}",
                 'credits': remaining_after,
+                'credits_refunded': True,
+                'credits_deducted_server': False,
                 'fallback': True,
             })
 
@@ -1287,10 +1285,10 @@ Otherwise return ONLY the message content text.
             'subject': f"Exclusive: {topic} from {biz_name}",
             'preview_text': f"Special update on {topic}",
             'credits': remaining,
+            'credits_deducted_server': True,
         })
     except Exception as e:
-        refund_ai_credits(request.user, reserved, 'Marketing AI Suggest Exception')
-        remaining_after = getattr(request.user, 'credits', remaining)
+        remaining_after = refund_ai_credits(request.user, reserved, 'Marketing AI Suggest Exception')
         if channel == 'SMS':
             fallback = f"Hi {{{{name}}}}, special update from {biz_name}! Check out our {topic} offers today. Reply to order now!"
         elif channel == 'EMAIL':
@@ -1299,11 +1297,19 @@ Otherwise return ONLY the message content text.
                 'subject': f"Update from {biz_name}",
                 'preview_text': f"Check out {topic}",
                 'credits': remaining_after,
+                'credits_refunded': True,
+                'credits_deducted_server': False,
                 'fallback': True,
             })
         else:
             fallback = f"Hi {{{{name}}}}! 👋\n\nSpecial update from *{biz_name}*! 🌟\n\nRegarding *{topic}*, we are giving exclusive perks for you today.\n\n📲 *Reply to this chat* to get started right away!\n\n– {biz_name}"
-        return Response({'suggestion': fallback, 'credits': remaining_after, 'fallback': True})
+        return Response({
+            'suggestion': fallback,
+            'credits': remaining_after,
+            'credits_refunded': True,
+            'credits_deducted_server': False,
+            'fallback': True,
+        })
 
 
 

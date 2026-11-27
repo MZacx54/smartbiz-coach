@@ -24,7 +24,7 @@ class VendorVerificationSerializer(serializers.ModelSerializer):
             'whatsapp_number', 'bank_name', 'bank_code', 'account_number', 'account_name',
             'paystack_subaccount_code', 'badge_info', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['is_verified', 'reviewed_by', 'reviewed_at', 'verified_at', 'badge_info']
+        read_only_fields = ['is_verified', 'reviewed_by', 'reviewed_at', 'verified_at', 'badge_info', 'status', 'verification_tier', 'paystack_subaccount_code', 'rejection_reason']
 
 class MarketplaceListingSerializer(serializers.ModelSerializer):
     vendor = VendorVerificationSerializer(read_only=True)

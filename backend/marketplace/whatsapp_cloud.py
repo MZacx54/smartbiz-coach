@@ -1,12 +1,16 @@
 import os
 import re
 import json
+import hmac
+import hashlib
 import urllib.request
 import urllib.error
 import urllib.parse
 from datetime import timedelta
 from django.http import HttpResponse
 from django.utils import timezone
+from django.core.cache import cache as django_cache
+from django.db.models import Sum, Count
 from rest_framework import views, permissions, status
 from rest_framework.response import Response
 
@@ -200,7 +204,7 @@ class WhatsAppCommandEngine:
             elif any(k in desc_lower for k in ("waybill", "delivery", "dispatch", "rider", "transport")):
                 cat = "LOGISTICS"
             elif any(k in desc_lower for k in ("restock", "stock", "supplier", "market")):
-                cat = "INVENTORY"
+                cat = "OTHER"
             else:
                 cat = "OTHER"
 
@@ -247,7 +251,7 @@ class WhatsAppCommandEngine:
 
         # 4. Debtors / Gbege Command
         if lower in ("debtors", "gbege", "credit", "owed"):
-            unpaid = list(DailySale.objects.filter(user=user, is_voided=False, payment_method="CREDIT", is_debt=True)[:5])
+            unpaid = list(DailySale.objects.filter(user=user, is_voided=False, payment_method="CREDIT", is_debt=True))
             total_owed = sum(float(s.total_amount or 0) for s in unpaid)
             if not unpaid:
                 return {
@@ -364,6 +368,21 @@ class WhatsAppWebhookView(views.APIView):
 
         if not message_text:
             return Response({"status": "ignored", "reason": "No text message body"}, status=status.HTTP_200_OK)
+
+        # wamid idempotency: skip already-processed WhatsApp messages
+        wamid = None
+        if "entry" in data:
+            try:
+                messages = data["entry"][0]["changes"][0]["value"].get("messages") or []
+                if messages:
+                    wamid = messages[0].get("id")
+            except (KeyError, IndexError, TypeError):
+                pass
+        if wamid:
+            cache_key = f"wa_wamid:{wamid}"
+            if django_cache.get(cache_key):
+                return Response({"status": "duplicate", "wamid": wamid}, status=status.HTTP_200_OK)
+            django_cache.set(cache_key, True, timeout=60 * 60 * 24)  # 24-hour dedup window
 
         # Resolve target merchant strictly: authenticated user for simulator, or verified Cloud webhook phone
         target_user = request.user if is_authenticated_sim else None

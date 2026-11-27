@@ -12,19 +12,25 @@ class LeadListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
-            return Lead.objects.filter(brand__user=self.request.user).order_by('-created_at')
+            return Lead.objects.filter(brand__user=self.request.user).select_related('product', 'brand').order_by('-created_at')
         return Lead.objects.none()
 
     def perform_create(self, serializer):
+        from rest_framework.exceptions import ValidationError
         from brand.models import BrandIdentity
         product_id = self.request.data.get('product')
         if product_id:
             try:
-                product = Product.objects.get(id=product_id)
+                qs = Product.objects.select_related('brand')
+                if self.request.user.is_authenticated:
+                    product = qs.filter(Q(is_public=True, is_suspended=False) | Q(brand__user=self.request.user)).get(id=product_id)
+                else:
+                    product = qs.get(id=product_id, is_public=True, is_suspended=False)
                 serializer.save(brand=product.brand)
                 return
-            except Product.DoesNotExist:
-                pass
+            except (Product.DoesNotExist, ValueError, TypeError):
+                if not self.request.user.is_authenticated:
+                    raise ValidationError({'product': 'Product not found or unavailable.'})
 
         if self.request.user.is_authenticated:
             brand, _ = BrandIdentity.objects.get_or_create(
@@ -32,6 +38,8 @@ class LeadListCreateView(generics.ListCreateAPIView):
                 defaults={'business_name': getattr(self.request.user, 'business_name', '') or 'My Business'}
             )
             serializer.save(brand=brand)
+        else:
+            raise ValidationError({'product': 'A valid public product is required.'})
 
 class LeadDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = LeadSerializer
@@ -154,7 +162,7 @@ class MarketplaceListingListView(generics.ListCreateAPIView):
     search_fields = ['title', 'description', 'category', 'location', 'vendor__business_name']
 
     def get_queryset(self):
-        queryset = MarketplaceListing.objects.filter(is_active=True).order_by('-created_at')
+        queryset = MarketplaceListing.objects.filter(is_active=True).select_related('vendor', 'vendor__user').order_by('-created_at')
         
         # Optional category filtering
         category = self.request.query_params.get('category')
@@ -177,7 +185,11 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         # Allow filtering by type for unified commerce engine
-        queryset = Product.objects.filter(brand__user=self.request.user)
+        queryset = Product.objects.filter(brand__user=self.request.user).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
+        )
         product_type = self.request.query_params.get('product_type')
         if product_type:
             queryset = queryset.filter(product_type=product_type)
@@ -197,7 +209,11 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Product.objects.filter(brand__user=self.request.user)
+        return Product.objects.filter(brand__user=self.request.user).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
+        )
 
 class PublicBrandProductListView(generics.ListAPIView):
     serializer_class = PublicProductSerializer
@@ -205,7 +221,11 @@ class PublicBrandProductListView(generics.ListAPIView):
 
     def get_queryset(self):
         slug = self.kwargs.get('slug')
-        return Product.objects.filter(brand__slug=slug, is_public=True, is_suspended=False)
+        return Product.objects.filter(brand__slug=slug, is_public=True, is_suspended=False).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
+        )
 
 class PublicProductDetailView(views.APIView):
     permission_classes = [permissions.AllowAny]
@@ -216,7 +236,7 @@ class PublicProductDetailView(views.APIView):
                 'brand',
                 'brand__user',
                 'brand__user__vendor_profile'
-            ).get(id=pk, is_suspended=False)
+            ).get(id=pk, is_public=True, is_suspended=False)
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -225,11 +245,19 @@ class PublicProductDetailView(views.APIView):
             brand=product.brand,
             is_public=True,
             is_suspended=False
+        ).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
         ).exclude(id=product.id).order_by('-is_promoted', '-created_at')[:6]
 
         similar_qs = Product.objects.filter(
             is_public=True,
             is_suspended=False
+        ).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
         ).exclude(id=product.id).exclude(brand=product.brand)
         if product.category:
             cat_qs = similar_qs.filter(category__iexact=product.category)
@@ -333,7 +361,16 @@ class GlobalMarketplaceListView(generics.ListAPIView):
                 limit_val = max(1, min(100, int(limit_param)))
                 queryset = queryset[:limit_val]
             except (ValueError, TypeError):
-                pass
+                queryset = queryset[:100]
+        elif 'page' in request.query_params or 'page_size' in request.query_params:
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                response = self.get_paginated_response(serializer.data)
+                response['Cache-Control'] = 'public, max-age=60, s-maxage=120'
+                return response
+        else:
+            queryset = queryset[:100]
         serializer = self.get_serializer(queryset, many=True)
         response = Response(serializer.data)
         # Fast caching: 60 seconds client cache, 120 seconds edge CDN
@@ -348,7 +385,11 @@ class DashboardSearchView(generics.ListAPIView):
 
     def get_queryset(self):
         # Search across ALL the user's ecosystem items
-        return Product.objects.filter(brand__user=self.request.user).order_by('-created_at')
+        return Product.objects.filter(brand__user=self.request.user).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
+        ).order_by('-created_at')
 
 class ProductSnapAndListView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -458,7 +499,11 @@ class RelatedEcosystemProductsView(views.APIView):
         category = request.query_params.get('category', '').strip()
         exclude_brand_id = request.query_params.get('exclude_brand_id', '').strip()
 
-        qs = Product.objects.filter(is_public=True, is_suspended=False).order_by('-created_at')
+        qs = Product.objects.filter(is_public=True, is_suspended=False).select_related(
+            'brand',
+            'brand__user',
+            'brand__user__vendor_profile'
+        ).order_by('-created_at')
 
         if exclude_brand_id:
             qs = qs.exclude(brand_id=exclude_brand_id)

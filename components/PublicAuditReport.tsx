@@ -68,6 +68,26 @@ const PublicAuditReport: React.FC = () => {
     }
   })();
 
+  const hasLocalData = Boolean(savedUser || localStorage.getItem('sb_ml_overview_cache'));
+
+  // If no brand loaded from API and no localStorage data at all, show contact message
+  if (!isLoading && !brand && !hasLocalData) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-4">
+          <ShieldCheck className="w-12 h-12 text-slate-400 mx-auto" />
+          <h2 className="text-xl font-bold text-slate-800">Audit Report Unavailable</h2>
+          <p className="text-sm text-slate-600">
+            Contact the business owner for a verified audit report. Locally cached data is no longer available.
+          </p>
+          <Link to="/dashboard" className="inline-block text-sm font-bold text-indigo-600 mt-4">
+            ← Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const businessName = brand?.businessName || savedUser?.businessName || 'My Business';
   const location = brand?.location || savedUser?.location || 'Nigeria';
   const cacNumber = brand?.cacNumber || 'Not Provided';
@@ -125,6 +145,19 @@ const PublicAuditReport: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 md:p-12 font-sans selection:bg-indigo-100 relative">
       <div className="max-w-4xl mx-auto space-y-8 pb-20">
+
+        {/* Local Cache Warning Banner */}
+        {hasLocalData && !brand && (
+          <div className="bg-orange-50 border border-orange-300 text-orange-900 rounded-2xl p-4 text-xs flex items-center gap-2.5 no-print">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <p className="font-extrabold text-sm">Locally Cached Data</p>
+              <p className="text-orange-700 mt-0.5">
+                This report is based on data cached in your browser and may not reflect the current state of the business. For an up-to-date verified report, contact the business owner or refresh while connected to the server.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Transparency Banner */}
         {!hasRealData && !isTractionMode && (

@@ -23,6 +23,19 @@ import {
 import toast from 'react-hot-toast';
 import api from '../services/api';
 
+const getSafeExternalUrl = (url?: string | null): string => {
+  if (!url) return '#';
+  try {
+    const parsed = new URL(url.trim());
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    // Reject malformed or non-HTTP(S) URLs
+  }
+  return '#';
+};
+
 interface VerificationRequest {
   id: number;
   business_name: string;
@@ -467,7 +480,7 @@ export const AdminVerificationDesk: React.FC = () => {
                   </div>
                   {inspectedReq.id_document_url ? (
                     <a
-                      href={inspectedReq.id_document_url}
+                      href={getSafeExternalUrl(inspectedReq.id_document_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-indigo-100"
@@ -489,7 +502,7 @@ export const AdminVerificationDesk: React.FC = () => {
                   </div>
                   {inspectedReq.cac_document_url ? (
                     <a
-                      href={inspectedReq.cac_document_url}
+                      href={getSafeExternalUrl(inspectedReq.cac_document_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-indigo-100"
@@ -511,7 +524,7 @@ export const AdminVerificationDesk: React.FC = () => {
                   </div>
                   {inspectedReq.proof_of_address_url ? (
                     <a
-                      href={inspectedReq.proof_of_address_url}
+                      href={getSafeExternalUrl(inspectedReq.proof_of_address_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-indigo-100"
@@ -535,7 +548,7 @@ export const AdminVerificationDesk: React.FC = () => {
                   </div>
                   {inspectedReq.naccima_document_url ? (
                     <a
-                      href={inspectedReq.naccima_document_url}
+                      href={getSafeExternalUrl(inspectedReq.naccima_document_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-amber-200"

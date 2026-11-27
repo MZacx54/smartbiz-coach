@@ -10,18 +10,75 @@ const DB_VERSION = 2;
 const STORE_SALES = 'offline_sales';
 const STORE_EXPENSES = 'offline_expenses';
 const STORE_KV = 'kv_cache';
+const LS_SALES_KEY = 'sb_offline_sales';
+const LS_EXPENSES_KEY = 'sb_offline_expenses';
+
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage quota or private browsing errors
+  }
+}
+
+function readLocalArray(key: string): any[] {
+  try {
+    const raw = safeGetItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function getActiveScopeUserId(): string {
-  try {
-    return localStorage.getItem('sb_active_user_id') || 'anon';
-  } catch {
-    return 'anon';
-  }
+  return safeGetItem('sb_active_user_id') || 'anon';
+}
+
+function filterStrictlyByActiveUser(rows: any[], scopeId: string = getActiveScopeUserId()): any[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter((r: any) => Boolean(r?.__userId) && String(r.__userId) === String(scopeId));
 }
 
 function withTenantScope(record: any) {
   const userId = record?.__userId || getActiveScopeUserId();
-  return { ...record, __userId: String(userId) };
+  const id = record?.id || `offline-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const offlineId = record?.offline_id || String(id);
+  return { ...record, id, offline_id: offlineId, __userId: String(userId) };
+}
+
+function stripInternalSyncFields(record: any): Record<string, any> {
+  const {
+    id,
+    __userId,
+    __syncFailed,
+    __syncError,
+    __syncFailedAt,
+    ...rest
+  } = record || {};
+  return {
+    ...rest,
+    offline_id: rest.offline_id || String(id || ''),
+  };
+}
+
+function isPermanentClientError(status?: number): boolean {
+  return Boolean(
+    status &&
+    status >= 400 &&
+    status < 500 &&
+    status !== 401 &&
+    status !== 408 &&
+    status !== 429
+  );
 }
 
 function requestPersistentStorageBestEffort() {
@@ -256,6 +313,57 @@ export const offlineStorage = {
   /**
    * Load all offline expenses from IndexedDB (scoped to active userId, or fallback to localStorage)
    */
+  /**
+   * Sync offline queue items to the server.
+   * Retries only on 5xx or network errors; marks items as "failed" on 4xx (400, 403, 404, 422).
+   */
+  async syncOfflineQueue(
+    apiPost: (endpoint: string, data: any) => Promise<any>
+  ): Promise<{ synced: number; failed: number }> {
+    const sales = await this.getAllSales();
+    const expenses = await this.getAllExpenses();
+    let synced = 0;
+    let failed = 0;
+
+    for (const sale of sales) {
+      if (sale.__syncFailed) { failed++; continue; }
+      try {
+        await apiPost('marketplace/daily-sales/', sale);
+        await this.removeSale(sale.id);
+        synced++;
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status && status >= 400 && status < 500) {
+          // Client error — mark as permanently failed, do not retry
+          sale.__syncFailed = true;
+          sale.__syncError = `HTTP ${status}`;
+          await this.saveSale(sale);
+          failed++;
+        }
+        // 5xx or network error — leave in queue for next retry cycle
+      }
+    }
+
+    for (const expense of expenses) {
+      if (expense.__syncFailed) { failed++; continue; }
+      try {
+        await apiPost('marketplace/daily-expenses/', expense);
+        await this.removeExpense(expense.id);
+        synced++;
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status && status >= 400 && status < 500) {
+          expense.__syncFailed = true;
+          expense.__syncError = `HTTP ${status}`;
+          await this.saveExpense(expense);
+          failed++;
+        }
+      }
+    }
+
+    return { synced, failed };
+  },
+
   async getAllExpenses(): Promise<any[]> {
     const scopeId = getActiveScopeUserId();
     const filterScoped = (rows: any[]) =>

@@ -213,6 +213,11 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['is_public', 'is_suspended', '-created_at'], name='idx_product_public_dt'),
+        ]
+
     def __str__(self):
         return f"[{self.product_type}] {self.name} ({self.brand.business_name if self.brand else 'No Brand'})"
 
@@ -254,8 +259,9 @@ class Lead(models.Model):
 class DailySale(models.Model):
     PAYMENT_METHODS = [
         ('CASH', 'Cash in Till'),
-        ('TRANSFER', 'Bank Transfer / POS'),
+        ('TRANSFER', 'Bank Transfer'),
         ('CREDIT', 'Credit (Debtor / Owe Me)'),
+        ('POS', 'POS Terminal'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='daily_sales')
@@ -281,6 +287,10 @@ class DailySale(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_voided', 'created_at'], name='idx_dailysale_user_void_dt'),
+            models.Index(fields=['user', 'is_voided', 'payment_method'], name='idx_dailysale_user_void_pm'),
+        ]
 
     def save(self, *args, **kwargs):
         if self.is_debt and not self.settlement_token:
@@ -317,6 +327,9 @@ class DailyExpense(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_voided', 'created_at'], name='idx_expense_user_void_dt'),
+        ]
 
     def __str__(self):
         return f"[{self.category}] {self.title} - ₦{self.amount:,.2f}"
@@ -387,6 +400,9 @@ class Order(models.Model):
     class Meta:
         unique_together = ('reference', 'brand')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['brand', 'status', 'created_at'], name='idx_order_brand_status_dt'),
+        ]
 
     def __str__(self):
         return f"{self.tracking_code} · {self.buyer_name} · {self.status}"

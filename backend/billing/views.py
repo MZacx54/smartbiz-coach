@@ -152,6 +152,12 @@ class VerifyPaymentView(APIView):
 
             if response.status_code == 200 and response_data.get('status') and response_data.get('data', {}).get('status') == 'success':
                 data = response_data['data']
+                currency = str(data.get('currency') or '').upper()
+                if currency != 'NGN':
+                    return Response(
+                        {"error": "Unsupported payment currency. Only NGN payments are accepted."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
                 paystack_amount_kobo = data.get('amount')
                 if paystack_amount_kobo is None:
                     return Response({"error": "Invalid amount in payment verification response"}, status=status.HTTP_400_BAD_REQUEST)
@@ -272,6 +278,7 @@ class VerifyPaymentView(APIView):
 
 class DeductCreditsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    MAX_SINGLE_DEDUCTION = 50
 
     def post(self, request):
         try:
@@ -279,9 +286,18 @@ class DeductCreditsView(APIView):
         except (ValueError, TypeError):
             return Response({'error': 'Invalid credit amount specified.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if credit_cost < 0:
+            return Response({'error': 'Invalid credit amount specified.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if credit_cost > self.MAX_SINGLE_DEDUCTION:
+            return Response(
+                {'error': f'Credit deduction exceeds maximum single-action limit ({self.MAX_SINGLE_DEDUCTION}).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         activity = str(request.data.get('activity', 'AI Generation')).strip() or 'AI Generation'
 
-        if credit_cost <= 0:
+        if credit_cost == 0:
             return Response({
                 "message": "Zero credit cost",
                 "credits": request.user.credits,
@@ -316,30 +332,26 @@ class RewardShareView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        user = request.user
         product_title = request.data.get('product_title') or request.data.get('title') or 'Marketplace Product'
-        product_id = request.data.get('product_id') or request.data.get('id')
 
-        # Prevent runaway abuse: allow up to 10 share rewards per 24 hours
-        from django.utils import timezone
-        import datetime
-        since_time = timezone.now() - datetime.timedelta(hours=24)
-        recent_share_count = CreditLedger.objects.filter(
-            user=user,
-            activity__startswith="Product Link Share Bonus",
-            created_at__gte=since_time
-        ).count()
-
-        if recent_share_count >= 10:
-            return Response({
-                "message": "Daily product share reward limit reached (10 shares / 50 credits daily). Keep sharing to boost your store reach!",
-                "credits": user.credits,
-                "earned": 0
-            }, status=status.HTTP_200_OK)
-
+        # Prevent runaway abuse: allow up to 10 share rewards per 24 hours atomically
         reward_amount = 5
+        since_time = timezone.now() - timedelta(hours=24)
         with transaction.atomic():
-            user = User.objects.select_for_update().get(id=user.id)
+            user = User.objects.select_for_update().get(id=request.user.id)
+            recent_share_count = CreditLedger.objects.filter(
+                user=user,
+                activity__startswith="Product Link Share Bonus",
+                created_at__gte=since_time
+            ).count()
+
+            if recent_share_count >= 10:
+                return Response({
+                    "message": "Daily product share reward limit reached (10 shares / 50 credits daily). Keep sharing to boost your store reach!",
+                    "credits": user.credits,
+                    "earned": 0
+                }, status=status.HTTP_200_OK)
+
             user.credits += reward_amount
             user.save(update_fields=['credits'])
 
@@ -367,13 +379,7 @@ class AdminTransactionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        user_email = (getattr(request.user, 'email', '') or '').strip().lower()
-        trusted_admins = {
-            'meshachzax@gmail.com',
-            'support@smartbizcoach.com.ng',
-            'admin@smartbizcoach.com.ng'
-        }
-        if not (request.user.is_staff or request.user.is_superuser or user_email in trusted_admins):
+        if not (request.user.is_staff or request.user.is_superuser):
             return Response({"error": "Admin clearance required."}, status=status.HTTP_403_FORBIDDEN)
 
         from django.db.models import Sum
@@ -570,6 +576,9 @@ class PaystackWebhookView(APIView):
 
         if event == 'charge.success':
             reference = str(data.get('reference') or '').strip()
+            currency = data.get('currency')
+            if currency is not None and str(currency).strip() != '' and str(currency).upper() != 'NGN':
+                return Response({"status": "ignored_unsupported_currency"}, status=status.HTTP_200_OK)
             amount_kobo = data.get('amount') or 0
             amount_naira = Decimal(str(amount_kobo)) / Decimal('100')
             customer_email = (data.get('customer') or {}).get('email', '')

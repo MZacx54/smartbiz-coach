@@ -219,7 +219,7 @@ class GeminiBudgetExceededError(GeminiUnavailableError):
     """Raised when the monthly Gemini API spending limit has been reached."""
 
 
-def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7, strict=False, model_cascade=None, timeout=25, user=None, feature="general", max_output_tokens=4096):
+def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None, system_instruction=None, temperature=0.7, strict=False, model_cascade=None, timeout=25, user=None, feature="general", max_output_tokens=4096, max_retries=None, max_total_seconds=None):
     # 0. Monthly Spend Guardrail Check (Phase 0)
     spend_summary = get_monthly_ai_spend_summary(user=user)
     if spend_summary.get("is_budget_exceeded"):
@@ -269,16 +269,28 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     # Translate messages array from OpenAI format to Gemini REST format
     contents = []
     
-    # Extract system instruction if present in messages list (OpenAI style)
+    # Extract system instruction only if caller did not already provide one, and only from index 0
+    # (prevents user-supplied chat history containing role="system" from overwriting systemInstruction)
     if isinstance(messages, list):
-        for msg in messages:
+        for idx, msg in enumerate(messages):
+            if not isinstance(msg, dict):
+                contents.append({"role": "user", "parts": [{"text": str(msg)}]})
+                continue
             if "parts" in msg:
-                contents.append(msg)
+                raw_role = msg.get("role")
+                if raw_role == "system":
+                    # Never treat client-supplied parts with role="system" as privileged instructions
+                    continue
+                safe_role = "model" if raw_role in ("assistant", "model") else "user"
+                contents.append({"role": safe_role, "parts": msg["parts"]})
                 continue
             role = msg.get("role")
             content = msg.get("content")
             if role == "system":
-                system_instruction = content
+                if idx == 0 and not system_instruction and not contents:
+                    system_instruction = content
+                # Ignore any subsequent or injected role="system" messages
+                continue
             else:
                 gemini_role = "model" if role in ["assistant", "model"] else "user"
                 
@@ -346,8 +358,14 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         "Content-Type": "application/json"
     }
 
-    max_retries = max(6, len(keys) * 2)
+    if max_retries is not None:
+        effective_max_retries = max(1, int(max_retries))
+    else:
+        effective_max_retries = max(6, len(keys) * 2)
     backoff_delay = 1.5
+    budget_seconds = float(max_total_seconds) if max_total_seconds is not None else 85.0
+    deadline = time.monotonic() + max(5.0, budget_seconds)
+    last_error_msg = ""
 
     # Target model cascade: try active high-throughput models and avoid dead models
     dead_models = {
@@ -358,12 +376,18 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
     if model_cascade:
         model_cascade = [m for m in dict.fromkeys(model_cascade) if m and m not in dead_models] or ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
     elif not model_cascade:
-        preferred_models = [model, DEFAULT_TEXT_MODEL, DEFAULT_FALLBACK_MODEL, "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
+        preferred_models = [model, DEFAULT_TEXT_MODEL, DEFAULT_FALLBACK_MODEL, "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.1-flash-lite"]
         model_cascade = [m for m in dict.fromkeys(preferred_models) if m and m not in dead_models]
         if not model_cascade:
             model_cascade = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
 
-    for attempt in range(max_retries):
+    for attempt in range(effective_max_retries):
+        remaining_budget = deadline - time.monotonic()
+        if remaining_budget <= 1.5:
+            print(f"Gemini wall-clock budget ({budget_seconds}s) reached after {attempt} attempt(s). Stopping retries cleanly.")
+            break
+        attempt_timeout = min(float(timeout), max(1.0, remaining_budget))
+
         current_key = get_next_gemini_api_key(attempt_offset=attempt)
         active_model = model_cascade[attempt % len(model_cascade)]
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{active_model}:generateContent?key={current_key}"
@@ -376,7 +400,7 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as response:
+            with urllib.request.urlopen(req, timeout=attempt_timeout) as response:
                 result = json.loads(response.read().decode())
                 try:
                     candidate = result['candidates'][0]
@@ -416,55 +440,58 @@ def make_gemini_request(messages, model=DEFAULT_TEXT_MODEL, response_format=None
                 error_msg = e.read().decode()
             except Exception:
                 pass
+            last_error_msg = f"Gemini HTTP {e.code}: {error_msg[:200]}"
             print(f"Gemini API [{e.code}] on model '{active_model}': {error_msg[:120]}")
 
             # 429: Rate limit / quota exceeded
             if e.code == 429:
-                if len(keys) > 1 and attempt < max_retries - 1:
+                if len(keys) > 1 and attempt < effective_max_retries - 1:
                     print(f"Gemini API 429 on Key #{(KEY_INDEX + attempt) % len(keys) + 1}. Instant rotation to next key...")
                     continue
-                if attempt < max_retries - 1:
-                    time.sleep(min(backoff_delay, 3.0))
+                if attempt < effective_max_retries - 1:
+                    sleep_s = min(backoff_delay, 3.0)
+                    if deadline - time.monotonic() <= sleep_s + 2.0:
+                        break
+                    time.sleep(sleep_s)
                     backoff_delay *= 1.3
                     continue
 
             # 503, 500, 502, 504, 404: Model unavailable or internal error
             # Instantly switch to next candidate model in cascade
             if e.code in (503, 500, 502, 504, 404):
-                if attempt < max_retries - 1:
+                if attempt < effective_max_retries - 1:
                     print(f"Model '{active_model}' returned {e.code}. Cascading to next candidate model...")
+                    if deadline - time.monotonic() <= 2.3:
+                        break
                     time.sleep(0.3)
                     continue
 
             # Key authentication / permission errors
-            if (e.code == 400 or e.code == 403 or e.code == 401) and len(keys) > 1 and attempt < max_retries - 1:
+            if (e.code == 400 or e.code == 403 or e.code == 401) and len(keys) > 1 and attempt < effective_max_retries - 1:
                 print(f"Gemini API error {e.code} on current key. Rotating to next key...")
                 continue
             
-            # If all retries exhausted, return graceful fallback
-            if attempt >= max_retries - 1:
-                if strict:
-                    raise GeminiUnavailableError(f"Gemini HTTP {e.code}: {error_msg[:200]}")
-                print("All Gemini retries exhausted. Executing fallback engine.")
-                if response_format and response_format.get("type") == "json_object":
-                    return get_dynamic_json_fallback(messages)
-                return get_dynamic_string_fallback(messages)
+            # If all retries exhausted, break to strict error / fallback handler
+            if attempt >= effective_max_retries - 1:
+                break
         except GeminiUnavailableError:
             raise
         except Exception as exc:
-            if attempt < max_retries - 1:
-                print(f"Gemini request exception: {exc}. Retrying with next model/key... (Attempt {attempt+1}/{max_retries})")
+            last_error_msg = f"Gemini request failed: {exc}"
+            if attempt < effective_max_retries - 1:
+                print(f"Gemini request exception: {exc}. Retrying with next model/key... (Attempt {attempt+1}/{effective_max_retries})")
+                if deadline - time.monotonic() <= 2.3:
+                    break
                 time.sleep(0.3)
                 continue
-            
-            if strict:
-                raise GeminiUnavailableError(f"Gemini request failed: {exc}")
-            if response_format and response_format.get("type") == "json_object":
-                return get_dynamic_json_fallback(messages)
-            return get_dynamic_string_fallback(messages)
+            break
 
     if strict:
-        raise GeminiUnavailableError("Gemini did not return a response.")
+        raise GeminiUnavailableError(last_error_msg or "Gemini did not return a response.")
+    print("Gemini retries exhausted or deadline reached. Executing fallback engine.")
+    if response_format and response_format.get("type") == "json_object":
+        return get_dynamic_json_fallback(messages)
+    return get_dynamic_string_fallback(messages)
 
 def get_dynamic_string_fallback(messages):
     """
@@ -766,10 +793,9 @@ def clean_json_response(text):
         return "{}"
     import re
     cleaned = str(text).strip()
-    # Strip markdown code fences
-    cleaned = re.sub(r'^```json\s*', '', cleaned, flags=re.MULTILINE)
-    cleaned = re.sub(r'^```\s*', '', cleaned, flags=re.MULTILINE)
-    cleaned = re.sub(r'```$', '', cleaned)
+    # Strip markdown code fences (case-insensitive)
+    cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned, flags=re.MULTILINE | re.IGNORECASE)
+    cleaned = re.sub(r'```\s*$', '', cleaned, flags=re.MULTILINE)
     cleaned = cleaned.strip()
 
     # If the response contains extra narrative outside of the json payload, extract the JSON portion
@@ -787,7 +813,7 @@ def clean_json_response(text):
     cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
     return cleaned.strip()
 
-def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, audio_base64=None, mime_type=None, user=None, feature="general", strict=False, max_output_tokens=8192, timeout=45):
+def generate_json_content(prompt, system_instruction=None, response_schema=None, image_base64=None, audio_base64=None, mime_type=None, user=None, feature="general", strict=False, max_output_tokens=8192, timeout=45, max_retries=None, max_total_seconds=None):
     """
     Generates JSON content using Google Gemini.
     Supports optional image or audio base64 for multimodal vision and audio tasks.
@@ -834,9 +860,11 @@ def generate_json_content(prompt, system_instruction=None, response_schema=None,
             feature=feature,
             max_output_tokens=max_output_tokens,
             timeout=timeout,
+            max_retries=max_retries,
+            max_total_seconds=max_total_seconds,
         )
         cleaned_text = clean_json_response(response_text)
-        return json.loads(cleaned_text)
+        return json.loads(cleaned_text, strict=False)
     except Exception as e:
         print(f"Gemini JSON generation error ({feature}): {e}")
         return {"error": str(e)}

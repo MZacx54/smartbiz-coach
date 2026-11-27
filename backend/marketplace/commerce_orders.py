@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import requests
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F
 from rest_framework import permissions, status, views
 from rest_framework.response import Response
@@ -44,6 +44,8 @@ def verify_paystack(reference):
             return 'unknown', None
         data = (res.json() or {}).get('data') or {}
         if data.get('status') == 'success':
+            if str(data.get('currency') or '').strip().upper() != 'NGN':
+                return 'failed', None
             return 'success', Decimal(str(data.get('amount', 0))) / Decimal('100')
         return 'failed', None
     except Exception:
@@ -148,6 +150,12 @@ class OrderCreateView(views.APIView):
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
+        # Reject cross-flow replay even before checking existing Order rows
+        claimed_pre = PaymentReferenceLedger.objects.filter(reference=reference).first()
+        if claimed_pre and claimed_pre.purpose != 'STOREFRONT_ORDER':
+            return Response({'error': 'This payment reference was already used for another flow.'},
+                            status=status.HTTP_409_CONFLICT)
+
         # Idempotent re-post of same storefront order reference
         existing_orders = list(Order.objects.filter(reference=reference).select_related('brand'))
         if existing_orders:
@@ -159,10 +167,16 @@ class OrderCreateView(views.APIView):
             }, status=status.HTTP_200_OK)
 
         outcome, paid = verify_paystack(reference)
-        amount_ok = outcome == 'success' and paid is not None and paid + Decimal('1') >= expected_total
+        amount_ok = (
+            outcome == 'success'
+            and paid is not None
+            and paid > Decimal('0')
+            and expected_total > Decimal('0')
+            and paid + Decimal('1') >= expected_total
+        )
         if not amount_ok:
             return Response(
-                {'error': 'Payment could not be verified with Paystack or amount was underpaid. No order was created.'},
+                {'error': 'Payment could not be verified with Paystack, currency was not NGN, or amount was underpaid. No order was created.'},
                 status=status.HTTP_402_PAYMENT_REQUIRED,
             )
 
@@ -173,15 +187,24 @@ class OrderCreateView(views.APIView):
         try:
             with transaction.atomic():
                 claimed = PaymentReferenceLedger.objects.select_for_update().filter(reference=ref_value).first()
-                if claimed and claimed.purpose != 'STOREFRONT_ORDER':
-                    return Response({'error': 'This payment reference was already used for another flow.'},
-                                    status=status.HTTP_409_CONFLICT)
-                if not claimed:
+                if claimed:
+                    if claimed.purpose != 'STOREFRONT_ORDER':
+                        return Response({'error': 'This payment reference was already used for another flow.'},
+                                        status=status.HTTP_409_CONFLICT)
+                    existing_in_tx = list(Order.objects.filter(reference=ref_value).select_related('brand'))
+                    if existing_in_tx:
+                        return Response({
+                            'message': 'Order already processed.',
+                            'orders': [{'tracking_code': o.tracking_code, 'brand_name': o.brand.business_name,
+                                        'total_amount': float(o.total_amount), 'status': o.status} for o in existing_in_tx],
+                            'tracking_code': existing_in_tx[0].tracking_code,
+                        }, status=status.HTTP_200_OK)
+                else:
                     PaymentReferenceLedger.objects.create(
                         reference=ref_value,
                         purpose='STOREFRONT_ORDER',
                         user=user,
-                        amount_ngn=paid or expected_total,
+                        amount_ngn=paid,
                     )
 
                 for brand, lines, subtotal, fee in plan:
@@ -233,6 +256,20 @@ class OrderCreateView(views.APIView):
                                 )
                     orders_out.append({'tracking_code': order.tracking_code, 'brand_name': brand.business_name,
                                        'total_amount': float(order.total_amount), 'status': order.status})
+        except IntegrityError:
+            claimed_after = PaymentReferenceLedger.objects.filter(reference=ref_value).first()
+            if claimed_after and claimed_after.purpose != 'STOREFRONT_ORDER':
+                return Response({'error': 'This payment reference was already used for another flow.'},
+                                status=status.HTTP_409_CONFLICT)
+            existing_after = list(Order.objects.filter(reference=ref_value).select_related('brand'))
+            if existing_after:
+                return Response({
+                    'message': 'Order already processed.',
+                    'orders': [{'tracking_code': o.tracking_code, 'brand_name': o.brand.business_name,
+                                'total_amount': float(o.total_amount), 'status': o.status} for o in existing_after],
+                    'tracking_code': existing_after[0].tracking_code,
+                }, status=status.HTTP_200_OK)
+            return Response({'error': 'Duplicate payment reference conflict.'}, status=status.HTTP_409_CONFLICT)
         except ValueError as stock_err:
             if str(stock_err).startswith("INSUFFICIENT_STOCK:"):
                 item_label = str(stock_err).split(":", 1)[1]

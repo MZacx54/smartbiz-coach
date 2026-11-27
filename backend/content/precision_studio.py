@@ -122,11 +122,12 @@ def refine_mask_against_background(orig_img: Image.Image, raw_mask: Image.Image)
     return eroded.filter(ImageFilter.GaussianBlur(radius=1.2))
 
 
-def extract_product_polygon_and_meta(image_base64: str, mime_type: str = "image/jpeg"):
+def extract_product_polygon_and_meta(image_base64: str, mime_type: str = "image/jpeg", user=None):
     """
     Extracts high-density polygon(s) tracing ONLY the commercial product foreground,
     including interior holes/cutout regions where background shows through,
     along with product name, suggested price, and category.
+    Raises ValueError if AI segmentation fails so reserved credits are refunded.
     """
     prompt = """
     You are an expert computer vision segmentation AI for retail product photography.
@@ -154,24 +155,33 @@ def extract_product_polygon_and_meta(image_base64: str, mime_type: str = "image/
     }
     """
     try:
-        data = gemini_utils.generate_json_content(prompt, image_base64=image_base64, mime_type=mime_type)
-        if isinstance(data, dict):
+        data = gemini_utils.generate_json_content(
+            prompt,
+            image_base64=image_base64,
+            mime_type=mime_type,
+            user=user,
+            feature='precision_studio',
+            max_retries=2,
+            max_total_seconds=80,
+        )
+        if isinstance(data, dict) and 'error' not in data:
             # Normalize single "polygon" vs multiple "polygons"
             if not data.get("polygons") and data.get("polygon"):
                 data["polygons"] = [data["polygon"]]
-            if data.get("polygons") and len(data["polygons"]) > 0:
+            valid_polys = [
+                p for p in (data.get("polygons") or [])
+                if isinstance(p, list) and len(p) >= 3
+            ]
+            if valid_polys:
+                data["polygons"] = valid_polys
                 return data
+        logger.warning(f"Polygon segmentation returned incomplete data: {str(data)[:200]}")
     except Exception as e:
-        logger.warning(f"Polygon segmentation attempt 1 failed: {e}")
+        logger.warning(f"Polygon segmentation attempt failed: {e}")
 
-    # Fallback safe polygon if Gemini returned incomplete coordinates
-    return {
-        "product_title": "Commercial Product",
-        "suggested_price": 5000,
-        "category": "General Merchandise",
-        "polygons": [[[160, 160], [160, 840], [840, 840], [840, 160]]],
-        "holes": []
-    }
+    raise gemini_utils.GeminiUnavailableError(
+        "AI could not isolate the product subject right now. Please try again with a clearer photo."
+    )
 
 
 def render_studio_composite(cutout_img: Image.Image, mask: Image.Image, theme: str = "pure_white", canvas_size: int = 1080):
@@ -293,7 +303,7 @@ class PrecisionPhotoStudioView(views.APIView):
             vision_b64 = base64.b64encode(vision_buf.getvalue()).decode("utf-8")
 
             # 1. AI Polygon Segmentation & Metadata Extraction
-            meta = extract_product_polygon_and_meta(vision_b64, mime_type="image/jpeg")
+            meta = extract_product_polygon_and_meta(vision_b64, mime_type="image/jpeg", user=request.user)
             polygons = meta.get("polygons") or ([meta["polygon"]] if meta.get("polygon") else [])
             holes = meta.get("holes") or meta.get("negative_polygons") or []
 
@@ -355,8 +365,22 @@ class PrecisionPhotoStudioView(views.APIView):
                 "credits_deducted_server": True
             }, status=status.HTTP_200_OK)
 
+        except gemini_utils.GeminiUnavailableError as e:
+            refunded = refund_ai_credits(request.user, reserved, 'Precision Photo Studio AI Unavailable')
+            logger.warning(f"PrecisionPhotoStudioView AI unavailable: {e}")
+            return Response({
+                "error": "AI could not isolate the product subject right now. Your BizCredits have been refunded—please retry with a clear photo.",
+                "credits": refunded,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'Precision Photo Studio Failure')
+            refunded = refund_ai_credits(request.user, reserved, 'Precision Photo Studio Failure')
             logger.error(f"PrecisionPhotoStudioView failed: {e}")
-            return Response({"error": f"Failed to process studio image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "error": f"Failed to process studio image: {str(e)}",
+                "credits": refunded,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

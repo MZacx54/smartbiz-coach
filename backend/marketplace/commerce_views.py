@@ -3,6 +3,7 @@ import base64
 import html
 import re
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.db import transaction
@@ -284,7 +285,9 @@ class ReviewListCreateView(views.APIView):
         pid = request.query_params.get('product_id', '')
         if not pid.isdigit():
             return Response({'error': 'product_id required'}, status=400)
-        qs = ProductReview.objects.filter(product_id=pid, is_hidden=False).select_related('product')
+        qs = ProductReview.objects.filter(
+            product_id=pid, product__is_public=True, product__is_suspended=False, is_hidden=False
+        ).select_related('product')
         agg = qs.aggregate(a=Avg('rating'), c=Count('id'))
         dist = {str(i): 0 for i in range(1, 6)}
         for row in qs.values('rating').annotate(c=Count('id')):
@@ -433,6 +436,16 @@ def _og_page(title, description, image, target):
     )
 
 
+ALLOWED_IMAGE_MIMES = {'image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'}
+
+
+def _is_http_url(url):
+    if not url or '\r' in url or '\n' in url:
+        return False
+    parsed = urlsplit(url)
+    return parsed.scheme.lower() in ('http', 'https') and bool(parsed.netloc)
+
+
 class ShareProductPageView(views.APIView):
     """Crawler-friendly page (WhatsApp/Facebook/X previews) that forwards humans to the SPA product page."""
     permission_classes = [permissions.AllowAny]
@@ -440,7 +453,7 @@ class ShareProductPageView(views.APIView):
 
     def get(self, request, pk):
         try:
-            product = Product.objects.select_related('brand').get(pk=pk, is_suspended=False)
+            product = Product.objects.select_related('brand').get(pk=pk, is_public=True, is_suspended=False)
         except Product.DoesNotExist:
             return HttpResponseRedirect(f"{frontend_base()}/market")
         price = f"₦{float(product.price):,.0f}"
@@ -460,21 +473,25 @@ class ShareProductImageView(views.APIView):
 
     def get(self, request, pk):
         try:
-            product = Product.objects.get(pk=pk, is_suspended=False)
+            product = Product.objects.get(pk=pk, is_public=True, is_suspended=False)
         except Product.DoesNotExist:
             raise Http404
         src = (product.image_url or '').strip()
-        if src.startswith('http'):
+        if _is_http_url(src):
             return HttpResponseRedirect(src)
-        m = re.match(r'data:(image/[\w.+-]+);base64,(.+)', src, re.S)
+        m = re.match(r'^data:(image/[\w.+-]+);base64,(.+)$', src, re.S | re.I)
         if not m:
+            raise Http404
+        mime = m.group(1).lower()
+        if mime not in ALLOWED_IMAGE_MIMES:
             raise Http404
         try:
             body = base64.b64decode(m.group(2))
         except Exception:
             raise Http404
-        resp = HttpResponse(body, content_type=m.group(1))
+        resp = HttpResponse(body, content_type=mime)
         resp['Cache-Control'] = 'public, max-age=86400'
+        resp['X-Content-Type-Options'] = 'nosniff'
         return resp
 
 
@@ -489,7 +506,7 @@ class ShareStorePageView(views.APIView):
             return HttpResponseRedirect(f"{frontend_base()}/market")
         count = Product.objects.filter(brand=brand, is_public=True, is_suspended=False).count()
         logo = (brand.logo_url or '').strip()
-        image = logo if logo.startswith('http') else f"{frontend_base()}/logo-square.png"
+        image = logo if _is_http_url(logo) else f"{frontend_base()}/logo-square.png"
         desc = f"Shop {count} product(s) from {brand.business_name} on SmartBiz Coach — {brand.address or 'Nigeria'}."
         resp = HttpResponse(_og_page(f"{brand.business_name} — Online Store", desc, image, f"{frontend_base()}/u/{slug}"))
         resp['Cache-Control'] = 'public, max-age=300'

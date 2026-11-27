@@ -384,7 +384,9 @@ REST_FRAMEWORK = {
         'analytics_ml': '30/minute',
         'visual_search': '20/minute',
         'cart_recovery': '20/minute',
-    }
+    },
+    'DEFAULT_PAGINATION_CLASS': 'smartbiz_backend.pagination.OptionalPageNumberPagination',
+    'PAGE_SIZE': 25,
 }
 
 # Static file caching header (1 year for hashed production bundles)

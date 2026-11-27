@@ -170,8 +170,7 @@ class GenerateSocialContentView(views.APIView):
                 return Response(content)
             raise Exception("Invalid response structure from AI model")
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'AI Social Content Fallback')
-            remaining_after = getattr(request.user, 'credits', remaining)
+            remaining_after = refund_ai_credits(request.user, reserved, 'AI Social Content Fallback')
             # Rich, comprehensive contextual fallback
             biz_name = getattr(request.user, 'business_name', 'Our Store')
             fallback_caption = f"""🚨 STOP SCROLLING! Your search for the best {topic} in Nigeria ends right here! ✨\n\nAre you tired of compromising on quality or dealing with disappointing deliveries? At {biz_name}, we bring you premium-grade {topic} crafted for unmatched value, durability, and style.\n\nHere is why our customers love this:\n💎 100% Premium Quality Guaranteed — No shortcuts, no fake materials.\n⚡ Fast Lagos & Nationwide Door-Step Waybill Delivery.\n📦 Safe, tamper-proof packaging to ensure your order arrives in perfect condition.\n🤝 Transparent pricing & responsive customer support.\n\n🔥 LIMITED STOCK AVAILABLE: Due to high demand, current batch is selling out fast!\n\n📲 HOW TO ORDER:\n👉 Tap the link in our bio or send us a WhatsApp DM right now to claim yours today!\n\n#{biz_name.replace(' ', '')} #NaijaBrand #NigerianBusiness #QualityFirst #LagosSME #ShopNigeria #ReliableMerchant"""
@@ -198,7 +197,8 @@ class GenerateSocialContentView(views.APIView):
                 "dmReply": f"Hello! 👋 Thank you for reaching out to {biz_name} regarding our {topic}. We currently have limited units in stock ready for immediate nationwide waybill dispatch! Would you like me to share our current promo pricing and delivery options for your location?",
                 "slides": fallback_slides,
                 "credits": remaining_after,
-                "credits_deducted_server": True,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
                 "fallback": True,
             })
 
@@ -308,8 +308,7 @@ class GenerateVideoScriptView(views.APIView):
                 return Response(script)
             raise Exception("Invalid script response structure")
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'AI Video Script Fallback')
-            remaining_after = getattr(request.user, 'credits', remaining)
+            remaining_after = refund_ai_credits(request.user, reserved, 'AI Video Script Fallback')
             biz_name = getattr(request.user, 'business_name', 'Our Brand')
             fallback_teleprompter = f"If you're in Nigeria and you've been searching for the absolute best {topic}, stop scrolling right now! Most options on the market either disappoint on quality or don't last. That's why we at {biz_name} engineered this premium solution for you. Look at this build quality and finish. It delivers 100% reliability, looks incredible, and is backed by fast nationwide delivery. Stock for this batch is strictly limited, so click the link in our bio or send us a WhatsApp DM right now to secure yours before it sells out!"
             
@@ -355,7 +354,8 @@ class GenerateVideoScriptView(views.APIView):
                 "caption_for_post": f"Don't compromise on quality! ✨ Check out our {topic} at {biz_name}. Fast nationwide dispatch. WhatsApp link in bio! #NaijaTech #ShopNigeria #ViralReels #SMEGrowth",
                 "script_breakdown": fallback_breakdown,
                 "credits": remaining_after,
-                "credits_deducted_server": True,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
                 "fallback": True,
             })
 
@@ -1045,7 +1045,9 @@ class ChatWithSmartBizView(views.APIView):
                 "content": system_prompt
             })
             if history and isinstance(history, list):
-                messages.extend(history[-10:])
+                for item in history[-10:]:
+                    if isinstance(item, dict) and item.get("role") in ("user", "assistant", "model"):
+                        messages.append(item)
             messages.append({"role": "user", "content": str(message)[:4000]})
             text = gemini_utils.make_gemini_request(messages, user=request.user, feature='ai_chat')
             return Response({'text': text})
@@ -1205,7 +1207,7 @@ class GenerateWeeklyPlanView(views.APIView):
                 return Response(plan)
             raise Exception("Incomplete weekly plan structure")
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'AI Weekly Plan Fallback')
+            remaining_after = refund_ai_credits(request.user, reserved, 'AI Weekly Plan Fallback')
             biz_name = getattr(request.user, 'business_name', 'Our Brand')
             
             all_fallback_days = [
@@ -1282,7 +1284,11 @@ class GenerateWeeklyPlanView(views.APIView):
                 "weekStartDate": "This Week",
                 "campaignGoal": goal,
                 "postingFrequency": freq_desc,
-                "days": selected_fallback_days
+                "days": selected_fallback_days,
+                "credits": remaining_after,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
+                "fallback": True,
             })
 
 class GenerateMarketingVideoView(views.APIView):
@@ -1458,8 +1464,7 @@ JSON STRUCTURE:
         except Exception as e:
             pass
 
-        refund_ai_credits(request.user, reserved, 'AI Debt Reminder Fallback')
-        remaining_after = getattr(request.user, 'credits', remaining)
+        remaining_after = refund_ai_credits(request.user, reserved, 'AI Debt Reminder Fallback')
 
         # High quality tone-specific fallbacks
         if tone == 'STRICT':
@@ -1482,7 +1487,9 @@ JSON STRUCTURE:
             'english': fallback_english,
             'pidgin': fallback_pidgin,
             'credits': remaining_after,
-            'credits_deducted_server': True
+            'credits_refunded': True,
+            'credits_deducted_server': False,
+            'fallback': True,
         })
 
 
@@ -1624,8 +1631,7 @@ DEAL CONTEXT:
             except Exception as e:
                 pass
 
-            refund_ai_credits(request.user, reserved, 'AI Sales Roleplay Fallback')
-            remaining_after = getattr(request.user, 'credits', remaining)
+            remaining_after = refund_ai_credits(request.user, reserved, 'AI Sales Roleplay Fallback')
 
             msg_lower = customer_message.lower()
             if 'price' in msg_lower or 'discount' in msg_lower or 'how much' in msg_lower:
@@ -1654,7 +1660,8 @@ DEAL CONTEXT:
                 "feedback": fb,
                 "suggested_counter": counter,
                 "credits": remaining_after,
-                "credits_deducted_server": True,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
                 "fallback": True,
             })
 
@@ -1707,8 +1714,7 @@ DEAL CONTEXT:
         except Exception as e:
             pass
 
-        refund_ai_credits(request.user, reserved, 'AI Sales Script Fallback')
-        remaining_after = getattr(request.user, 'credits', remaining)
+        remaining_after = refund_ai_credits(request.user, reserved, 'AI Sales Script Fallback')
 
         # High-Fidelity Professional Fallback Engine
         biz_name = "our business"
@@ -1740,7 +1746,8 @@ DEAL CONTEXT:
                 "You can buy from other sellers if you find it cheaper"
             ],
             "credits": remaining_after,
-            "credits_deducted_server": True,
+            "credits_refunded": True,
+            "credits_deducted_server": False,
             "fallback": True,
         }
         return Response(fallback)
@@ -1811,13 +1818,19 @@ Return JSON with these keys:
                 prompt, system_instruction=system_instruction, image_base64=image_base64, mime_type=mime_type,
                 user=request.user, feature='product_analysis'
             )
-            if isinstance(result, dict):
-                result['credits'] = remaining
-                result['credits_deducted_server'] = True
+            if not isinstance(result, dict) or 'error' in result:
+                raise ValueError((result or {}).get('error', 'Image analysis failed') if isinstance(result, dict) else 'Invalid response')
+            result['credits'] = remaining
+            result['credits_deducted_server'] = True
             return Response(result)
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'AI Product Photo Analysis Failure')
-            return Response({'error': 'Image analysis failed. Credits were refunded.'}, status=503)
+            remaining_after = refund_ai_credits(request.user, reserved, 'AI Product Photo Analysis Failure')
+            return Response({
+                'error': 'Image analysis failed. Credits were refunded.',
+                'credits': remaining_after,
+                'credits_refunded': True,
+                'credits_deducted_server': False,
+            }, status=503)
 
 
 class GenerateBlogPostView(views.APIView):
@@ -1886,8 +1899,7 @@ class GenerateBlogPostView(views.APIView):
                 return Response(result)
             raise Exception("Incomplete blog post structure")
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'AI Blog Post Fallback')
-            remaining_after = getattr(request.user, 'credits', remaining)
+            remaining_after = refund_ai_credits(request.user, reserved, 'AI Blog Post Fallback')
             biz_name = getattr(request.user, 'business_name', 'Our Business')
             fallback_markdown = f"""# The Ultimate Guide to {topic} in Nigeria: Proven Strategies for Growth & Success
 
@@ -1949,7 +1961,8 @@ Mastering **{topic}** is your gateway to consistent growth and unmatched reliabi
                     f"{biz_name} provides verified, high-performance solutions with fast nationwide delivery."
                 ],
                 "credits": remaining_after,
-                "credits_deducted_server": True,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
                 "fallback": True,
             })
 
@@ -2010,8 +2023,7 @@ class GeneratePartnershipPitchView(views.APIView):
                 return Response(result)
             raise Exception("Incomplete partnership proposal structure")
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'AI Partnership Pitch Fallback')
-            remaining_after = getattr(request.user, 'credits', remaining)
+            remaining_after = refund_ai_credits(request.user, reserved, 'AI Partnership Pitch Fallback')
             biz_name = getattr(request.user, 'business_name', 'Our Enterprise')
             biz_email = getattr(request.user, 'email', 'contact@ourbusiness.com')
             fallback_body = f"""Dear Executive Leadership Team at {partner_name},
@@ -2052,7 +2064,8 @@ Website: www.smartbizcoach.com.ng"""
                 ],
                 "followUpStrategy": "Send a polite follow-up via email after 3 business days, and connect with their partnership coordinator on LinkedIn.",
                 "credits": remaining_after,
-                "credits_deducted_server": True,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
                 "fallback": True,
             })
 

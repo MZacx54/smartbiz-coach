@@ -15,36 +15,35 @@ interface BusinessPlanGeneratorProps {
 
 const STORAGE_KEY = 'smartbiz_saved_business_plan';
 
-const getUnderwritingSummaryFallback = (bizName: string, capital: string, bizLocation: string) => `8.1 PROPOSED CREDIT FACILITY STRUCTURE & DEBT TERMS
+const getUnderwritingSummaryFallback = (bizName: string, capital: string, bizLocation: string) => `> **[TEMPLATE NOTICE — Replace Bracketed Figures With Verified Financials Before Bank or Grant Submission]**
+
+8.1 PROPOSED CREDIT FACILITY STRUCTURE & DEBT TERMS (ILLUSTRATIVE TEMPLATE)
 
 | Facility Parameter | Recommended Specification | Institutional Underwriter Justification |
 | :--- | :--- | :--- |
 | **Credit Facility Type** | Term Loan / Equipment Asset Financing & Working Capital Line | Matched to high-velocity stock procurement and power continuity infrastructure |
-| **Target Principal Amount** | ${capital} | Structured to scale enterprise capacity and secure volume manufacturer discounts |
-| **Tenor / Amortization** | 24 - 36 Months | Optimizes cash retention while ensuring predictable monthly principal clearance |
-| **Interest Benchmark** | Concessionary 9.0% - 12.0% p.a. (BOI / DBN Intervention Rate) | Complies with Central Bank of Nigeria (CBN) MSME development funding terms |
-| **Principal Moratorium** | 3 - 6 Months Grace Period | Allows enterprise to complete procurement and achieve operational breakeven |
+| **Target Principal Amount** | ${capital} | Structured to scale enterprise capacity and secure volume supplier terms |
+| **Tenor / Amortization** | [Specify e.g. 24 - 36 Months] | Align repayment tenor with verified monthly net cashflow |
+| **Interest Benchmark** | [Verify current BOI / DBN / Commercial Bank rate] | Must reflect formal offer letter from participating lender |
+| **Principal Moratorium** | [e.g. 3 - 6 Months Grace Period] | Allows equipment installation and operational ramp-up |
 | **Repayment Source** | Daily Digital Operating Cashflow via Corporate Bank Account | Monitored through verified digital sales ledger and POS reconciliation |
 
-8.2 DEBT SERVICE COVERAGE RATIO (DSCR) STRESS TEST
+8.2 DEBT SERVICE COVERAGE RATIO (DSCR) STRESS TEST (TEMPLATE — INSERT VERIFIED FIGURES)
 
 | Underwriting Scenario | Annual EBITDA (NGN) | Annual Debt Service (NGN) | DSCR Coverage | Risk Classification |
 | :--- | :--- | :--- | :--- | :--- |
-| **Base Case Projection** | NGN 5,180,000 | NGN 1,920,000 | **2.70x** | **Tier-1 Prime (Extremely Safe)** |
-| **Moderate Downside (-15% Rev)** | NGN 4,050,000 | NGN 1,920,000 | **2.11x** | **Comfortably Above 1.30x Threshold** |
-| **Severe Downside (-30% Rev)** | NGN 2,820,000 | NGN 1,920,000 | **1.47x** | **Fully Solvent (Zero Default Risk)** |
+| **Base Case Projection** | [Insert Projected Year-1 EBITDA] | [Insert Annual Principal + Interest] | **[EBITDA / Debt Service]** | [Target ≥ 1.50x for BOI/Commercial Banks] |
+| **Moderate Downside (-15% Rev)** | [Recalculate at -15% Revenue] | [Same Annual Debt Service] | **[Recalculated DSCR]** | [Verify ≥ 1.25x Cushion] |
+| **Severe Downside (-30% Rev)** | [Recalculate at -30% Revenue] | [Same Annual Debt Service] | **[Recalculated DSCR]** | [Confirm Cash Reserve Buffer] |
 
 8.3 COLLATERAL, SECURITY & DEBENTURE STRUCTURE
-- Primary Debenture: Fixed charge over funded operational equipment (solar inverter infrastructure, dispatch assets) and floating charge over unencumbered inventory.
-- Stock Hypothecation: Formal pledge of trade inventory maintained at a minimum 150% coverage ratio relative to outstanding principal balance.
-- Promoter Personal Guarantee: Irrevocable joint and several personal guarantee executed by the Managing Director / Principal Promoter.
-- Key-Man Insurance: Credit life insurance policy assigned to the financing institution for the duration of the debt facility.
+- Primary Debenture: Fixed charge over funded operational equipment and floating charge over unencumbered inventory (subject to lender valuation).
+- Stock Hypothecation: Formal pledge of trade inventory relative to outstanding principal balance per lender covenant.
+- Promoter Personal Guarantee / Key-Man Cover: Per lender credit committee conditions.
 
 8.4 SOCIO-ECONOMIC MULTIPLIER & EMPLOYMENT GENERATION
-- Direct Sustainable Jobs Created: 4 full-time operational and customer fulfillment roles within 12 months.
-- Indirect Jobs Supported: An estimated 12 auxiliary roles across third-party dispatch logistics, artisanal packaging, and wholesale transport.
-- Youth & Gender Inclusion: Priority hiring framework targeting youth operators and female commerce specialists in ${bizLocation}.
-- Tax Contribution: Enhancing domestic value addition and formalizing retail transaction records into the national tax net.`;
+- Direct & Indirect Jobs Supported: [Specify verified headcount and planned hires in ${bizLocation}].
+- Tax & Formalization Impact: Enhancing domestic value addition and formalizing retail transaction records.`;
 
 const getPromoterDeclarationFallback = (bizName: string) => `9.1 STATUTORY DECLARATION OF SOLVENCY & VERACITY
 I/We, the undersigned Principal Promoter(s) and Authorized Executive(s) of ${bizName}, do hereby solemnly declare, under oath and in pursuant to the provisions of the Companies and Allied Matters Act (CAMA 2020) and the Oaths Act of the Federal Republic of Nigeria, that:
@@ -187,7 +186,14 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       if (typeof e?.response?.data?.credits === 'number') {
         onUpdateCredits(e.response.data.credits);
       }
-      setError(e?.response?.data?.error || e?.message || 'Failed to generate business plan. Please try again.');
+      const serverMsg = e?.response?.data?.error;
+      if (serverMsg) {
+        setError(serverMsg);
+      } else if (e?.response?.status === 503 || e?.code === 'ECONNABORTED') {
+        setError('The AI Business Plan generator is temporarily busy or timed out. Please retry in a moment and check your BizCredits balance.');
+      } else {
+        setError(e?.message || 'Failed to generate business plan. Please try again.');
+      }
       setStep('INPUT');
     }
   };

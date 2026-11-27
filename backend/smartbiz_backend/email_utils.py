@@ -1,3 +1,4 @@
+import html
 import os
 import re
 import time
@@ -152,6 +153,11 @@ def send_otp_sms(phone, code, purpose="Verification"):
         return False, str(ex)
 
 
+def _sanitize_header(value, default=''):
+    cleaned = str(value if value is not None else default).replace('\r', ' ').replace('\n', ' ').strip()
+    return cleaned or default
+
+
 def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz Coach", from_email=None):
     """
     Unified, ultra-resilient email delivery engine:
@@ -160,6 +166,8 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
     3. Resend REST API (via RESEND_API_KEY).
     4. Django Standard Email Backend (production SMTP or configured backend fallback).
     """
+    subject = _sanitize_header(subject)
+    sender_name = _sanitize_header(sender_name, "SmartBiz Coach")
     brevo_api_key = get_brevo_api_key()
     sender_email_addr = from_email or get_sender_email()
     if '<' in sender_email_addr and '>' in sender_email_addr:
@@ -215,9 +223,9 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
                 attempt_logs.append(f"Brevo REST API ({resp.status_code}): {err_text}")
                 print(f"[NOTE] Brevo API error ({resp.status_code}): {err_text}")
 
-                # If sender domain issue, retry with root account email
+                # If sender domain issue, retry with configured Brevo sender email
                 if 'unverified' in err_text.lower() or 'sender' in err_text.lower() or 'not found' in err_text.lower():
-                    alt_sender = os.getenv('BREVO_SENDER_EMAIL', '').strip() or 'meshachzax@gmail.com'
+                    alt_sender = os.getenv('BREVO_SENDER_EMAIL', '').strip()
                     if alt_sender and alt_sender != effective_sender:
                         payload['sender']['email'] = alt_sender
                         retry_resp = requests.post(url, json=payload, headers=headers, timeout=12)
@@ -242,7 +250,6 @@ def _deliver_email(recipient_email, subject, html_content, sender_name="SmartBiz
             u for u in [
                 os.getenv('EMAIL_HOST_USER', '').strip(),
                 os.getenv('BREVO_SENDER_EMAIL', '').strip(),
-                'meshachzax@gmail.com',
                 pure_email
             ] if u and '@' in u
         ]
@@ -334,8 +341,13 @@ def send_welcome_email(user):
     if not recipient_email or '@' not in recipient_email:
         return False
 
-    name = user.get_full_name() or user.business_name or user.username or "Entrepreneur"
-    subject = f"Welcome to SmartBiz Coach, {name}! 🚀 (Verify Your Email for 50 Free BizCredits)"
+    raw_name = _sanitize_header(
+        user.get_full_name() or user.business_name or user.username or "Entrepreneur",
+        "Entrepreneur",
+    )
+    name = html.escape(raw_name)
+    subject = f"Welcome to SmartBiz Coach, {raw_name}! 🚀 (Verify Your Email for 50 Free BizCredits)"
+    safe_title = html.escape(subject)
     dashboard_url = "https://www.smartbizcoach.com.ng/dashboard"
     
     html_content = f"""
@@ -344,7 +356,7 @@ def send_welcome_email(user):
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>{subject}</title>
+      <title>{safe_title}</title>
     </head>
     <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #1E293B; margin: 0; padding: 30px 15px;">
       <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
@@ -456,8 +468,13 @@ def send_email_verification_code(user, code):
     if not recipient_email or '@' not in recipient_email:
         return False
 
-    name = user.get_full_name() or getattr(user, 'business_name', '') or getattr(user, 'username', '') or "Entrepreneur"
-    subject = f"SmartBiz Coach Verification Code: {code}"
+    raw_name = _sanitize_header(
+        user.get_full_name() or getattr(user, 'business_name', '') or getattr(user, 'username', '') or "Entrepreneur",
+        "Entrepreneur",
+    )
+    name = html.escape(raw_name)
+    safe_code = html.escape(str(code))
+    subject = f"SmartBiz Coach Verification Code: {_sanitize_header(code)}"
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -473,7 +490,7 @@ def send_email_verification_code(user, code):
             <p>Hello <strong>{name}</strong>,</p>
             <p>Enter this 6-digit verification code on your SmartBiz Coach dashboard to confirm your email and unlock your <strong>50 Free Welcome BizCredits</strong>:</p>
             <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 18px; text-align: center; margin: 22px 0;">
-              <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #065F46;">{code}</span>
+              <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #065F46;">{safe_code}</span>
             </div>
             <p style="font-size: 12px; color: #64748B;">This code expires in 24 hours. Core POS and bookkeeping tools remain 100% free forever.</p>
             <p style="font-size: 11px; color: #94A3B8; margin-top: 15px;">If this email arrived in your Spam or Promotions folder, please click 'Report Not Spam' or move it to your Primary Inbox to ensure you receive future sales and payment notifications.</p>
@@ -504,8 +521,14 @@ def send_password_reset_email(user, code):
     if not recipient_email or '@' not in recipient_email:
         return False
 
-    name = user.get_full_name() or getattr(user, 'business_name', '') or getattr(user, 'username', '') or "Entrepreneur"
-    subject = f"SmartBiz Coach Password Reset Code: {code}"
+    raw_name = _sanitize_header(
+        user.get_full_name() or getattr(user, 'business_name', '') or getattr(user, 'username', '') or "Entrepreneur",
+        "Entrepreneur",
+    )
+    name = html.escape(raw_name)
+    safe_code = html.escape(str(code))
+    subject = f"SmartBiz Coach Password Reset Code: {_sanitize_header(code)}"
+    safe_title = html.escape(subject)
 
     html_content = f"""
     <!DOCTYPE html>
@@ -513,7 +536,7 @@ def send_password_reset_email(user, code):
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>{subject}</title>
+      <title>{safe_title}</title>
     </head>
     <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #1E293B; margin: 0; padding: 30px 15px;">
       <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
@@ -539,7 +562,7 @@ def send_password_reset_email(user, code):
 
             <!-- Verification Code Box -->
             <div style="background-color: #F8FAFC; border: 2px dashed #CBD5E1; border-radius: 16px; padding: 22px 20px; margin: 25px 0; text-align: center;">
-              <span style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #16A34A; font-family: monospace;">{code}</span>
+              <span style="font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #16A34A; font-family: monospace;">{safe_code}</span>
               <p style="color: #64748B; font-size: 12px; margin: 8px 0 0 0; font-weight: 600;">⏱️ This code will expire in 15 minutes</p>
             </div>
 

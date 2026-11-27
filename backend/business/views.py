@@ -134,12 +134,17 @@ CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NE
                 prompt,
                 user=request.user,
                 feature='business_plan',
-                max_output_tokens=16384,
-                timeout=75,
+                max_output_tokens=12288,
+                timeout=45,
+                max_retries=2,
+                max_total_seconds=85,
+                strict=True,
             )
             if isinstance(plan, list) and plan and isinstance(plan[0], dict):
                 plan = plan[0]
-            if isinstance(plan, dict) and 'error' not in plan:
+            if isinstance(plan, dict) and 'error' in plan:
+                print(f"Business plan AI returned error: {plan.get('error')}")
+            elif isinstance(plan, dict):
                 normalized_plan = {
                     'executiveSummary': plan.get('executiveSummary') or plan.get('executive_summary') or plan.get('ExecutiveSummary') or "",
                     'marketAnalysis': plan.get('marketAnalysis') or plan.get('market_analysis') or plan.get('MarketAnalysis') or "",
@@ -166,7 +171,8 @@ CRITICAL: The output MUST be a valid JSON dictionary. Inside the text values, NE
         remaining = refund_ai_credits(request.user, reserved, 'Business Plan AI Unavailable')
         return Response({
             "error": "Business Plan AI generator is temporarily unavailable. Your BizCredits have been refunded—please retry in a moment.",
-            "credits": remaining
+            "credits": remaining,
+            "credits_refunded": True,
         }, status=503)
 
 class FindGrantsView(views.APIView):
@@ -326,7 +332,7 @@ class FindGrantsView(views.APIView):
                 "is_currently_open": True
             })
 
-        deduct_credits(request.user, 'grant_search')
+        # Fallback list already returned — credits were already refunded above
         return Response(fallback_list)
 
 class AnalyzeBusinessNameView(views.APIView):
@@ -387,7 +393,11 @@ class AnalyzeBusinessNameView(views.APIView):
                 f"{clean_base} Enterprise",
                 f"{clean_base} Commercial Ventures",
                 f"{clean_base} Global Hub"
-            ]
+            ],
+            "credits": remaining_credits,
+            "credits_refunded": True,
+            "credits_deducted_server": False,
+            "fallback": True,
         })
 
 class AnalyzeNeighborhoodView(views.APIView):
@@ -506,7 +516,7 @@ class BusinessHealthScoreView(views.APIView):
             health['credits_deducted_server'] = True
             return Response(health)
         except Exception as e:
-            refund_ai_credits(request.user, reserved, 'Business Health Local Engine')
+            remaining = refund_ai_credits(request.user, reserved, 'Business Health Local Engine')
             # High-fidelity Local Analytical Engine Fallback
             score = 70
             strengths = []
@@ -614,7 +624,11 @@ class BusinessHealthScoreView(views.APIView):
                 },
                 "strengths": strengths[:4],
                 "weaknesses": weaknesses[:4],
-                "recommendations": recommendations[:3]
+                "recommendations": recommendations[:3],
+                "credits": remaining,
+                "credits_refunded": True,
+                "credits_deducted_server": False,
+                "fallback": True,
             }
             
             return Response(fallback_response)
@@ -726,5 +740,8 @@ class PricingAssistantView(views.APIView):
             ],
             "whatsappTemplate": f"✨ *{product_name or 'Special Item'}*\n💰 Price: ₦{psych_price:,.0f}\n⚡ Available for instant dispatch\n📲 Reply 'ORDER' to buy now!",
             "credits": remaining,
+            "credits_refunded": True,
+            "credits_deducted_server": False,
+            "fallback": True,
         }
         return Response(fallback_pricing)

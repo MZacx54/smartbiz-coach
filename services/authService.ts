@@ -2,6 +2,30 @@ import api from './api';
 import { User } from '../types';
 import { offlineStorage } from '../utils/offlineStorage';
 
+const safeGetItem = (key: string): string | null => {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const safeSetItem = (key: string, value: string): void => {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        // Ignore QuotaExceeded / private browsing storage restrictions
+    }
+};
+
+const safeRemoveItem = (key: string): void => {
+    try {
+        localStorage.removeItem(key);
+    } catch {
+        // Ignore storage restrictions
+    }
+};
+
 const WEAK_PASSCODES = new Set([
     '0000', '1234', '1111', '2222', '5555', '9999',
     '123456', '12345678', '000000', '111111', '654321',
@@ -159,6 +183,12 @@ export const securityLockService = {
             }
         } catch (err: any) {
             const status = err?.response?.status;
+            if (status === 429) {
+                return {
+                    verified: false,
+                    error: 'Too many attempts. Please try again later.'
+                };
+            }
             if (status === 403 || status === 400) {
                 const fail = securityLockService.recordFailedAttempt();
                 return {
@@ -315,13 +345,13 @@ export const authService = {
     login: async (credentials: any) => {
         const response = await api.post('users/login/', credentials);
         // Clear any prior tenant's cached ledgers, debtors, invoices, and API caches before setting new session
-        clearAllTenantLocalState();
+        await clearAllTenantLocalState();
         if (response.data.token) {
-            localStorage.setItem('sb_auth_token', response.data.token);
+            safeSetItem('sb_auth_token', response.data.token);
         }
         if (response.data.user) {
             if (response.data.user.id) {
-                localStorage.setItem('sb_active_user_id', String(response.data.user.id));
+                safeSetItem('sb_active_user_id', String(response.data.user.id));
             }
             securityLockService.syncFromUserOrBrand(response.data.user);
         }
@@ -331,13 +361,13 @@ export const authService = {
     register: async (userData: any) => {
         const response = await api.post('users/register/', userData);
         // Clear any prior tenant's cached ledgers, debtors, invoices, and API caches before setting new session
-        clearAllTenantLocalState();
+        await clearAllTenantLocalState();
         if (response.data.token) {
-            localStorage.setItem('sb_auth_token', response.data.token);
+            safeSetItem('sb_auth_token', response.data.token);
         }
         if (response.data.user) {
             if (response.data.user.id) {
-                localStorage.setItem('sb_active_user_id', String(response.data.user.id));
+                safeSetItem('sb_active_user_id', String(response.data.user.id));
             }
             securityLockService.syncFromUserOrBrand(response.data.user);
         }

@@ -31,6 +31,7 @@ class BillingTests(TestCase):
                 "id": 12345,
                 "domain": "test",
                 "status": "success",
+                "currency": "NGN",
                 "reference": "test-ref-123",
                 "amount": 500000, # 5000 Naira in kobo
                 "gateway_response": "Successful",
@@ -62,6 +63,7 @@ class BillingTests(TestCase):
             "status": True,
             "data": {
                 "status": "success",
+                "currency": "NGN",
                 "reference": "pro-sub-monthly-001",
                 "amount": 350000, # 3500 Naira in kobo
             }
@@ -90,6 +92,7 @@ class BillingTests(TestCase):
             "status": True,
             "data": {
                 "status": "success",
+                "currency": "NGN",
                 "reference": "pro-sub-annual-001",
                 "amount": 3500000, # 35,000 Naira in kobo
             }
@@ -118,6 +121,7 @@ class BillingTests(TestCase):
             "status": True,
             "data": {
                 "status": "success",
+                "currency": "NGN",
                 "reference": "payg-pack-500",
                 "amount": 50000, # 500 Naira in kobo
             }
@@ -163,7 +167,7 @@ class BillingTests(TestCase):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             "status": True,
-            "data": {"status": "success", "amount": 100000, "reference": "dup-ref"}
+            "data": {"status": "success", "currency": "NGN", "amount": 100000, "reference": "dup-ref"}
         }
         
         self.client.post('/api/billing/verify-payment/', {"reference": "dup-ref", "amount": 1000})
@@ -183,7 +187,7 @@ class BillingTests(TestCase):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             "status": True,
-            "data": {"status": "success", "amount": 10000, "reference": "tamper-pro-100"}
+            "data": {"status": "success", "currency": "NGN", "amount": 10000, "reference": "tamper-pro-100"}
         }
         res = self.client.post('/api/billing/verify-payment/', {
             "reference": "tamper-pro-100",
@@ -202,7 +206,7 @@ class BillingTests(TestCase):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             "status": True,
-            "data": {"status": "success", "amount": 350000, "reference": "pro-no-kyc-001"}
+            "data": {"status": "success", "currency": "NGN", "amount": 350000, "reference": "pro-no-kyc-001"}
         }
         res = self.client.post('/api/billing/verify-payment/', {
             "reference": "pro-no-kyc-001",
@@ -245,3 +249,31 @@ class BillingTests(TestCase):
         self.assertEqual(ok2.data['status'], 'already_processed')
         self.user.refresh_from_db()
         self.assertEqual(self.user.credits, 100)
+
+    @patch('requests.get')
+    def test_verify_payment_rejects_non_ngn_currency(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "status": True,
+            "data": {"status": "success", "currency": "USD", "amount": 500000, "reference": "usd-ref-001"}
+        }
+        res = self.client.post('/api/billing/verify-payment/', {"reference": "usd-ref-001", "amount": 5000})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.credits, 50)
+
+    def test_admin_transactions_requires_staff_and_deduct_cap_enforced(self):
+        admin_res = self.client.get('/api/billing/admin/transactions/')
+        self.assertEqual(admin_res.status_code, status.HTTP_403_FORBIDDEN)
+
+        over_cap = self.client.post('/api/billing/deduct-credits/', {"amount": 100, "activity": "Abuse"})
+        self.assertEqual(over_cap.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Share reward cap (10 per 24h)
+        for i in range(10):
+            r = self.client.post('/api/billing/reward-share/', {"product_title": f"Item {i}"})
+            self.assertEqual(r.status_code, status.HTTP_200_OK)
+            self.assertEqual(r.data['earned'], 5)
+        r11 = self.client.post('/api/billing/reward-share/', {"product_title": "Item 11"})
+        self.assertEqual(r11.status_code, status.HTTP_200_OK)
+        self.assertEqual(r11.data['earned'], 0)

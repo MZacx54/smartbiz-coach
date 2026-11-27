@@ -13,7 +13,7 @@ echo "DATABASE_URL set: $(if [ -n "$DATABASE_URL" ]; then echo 'YES'; else echo 
 # Step 1: Run database migrations
 echo ""
 echo "--- Step 1: Running Database Migrations ---"
-python manage.py migrate --noinput 2>&1 || echo "WARNING: Migrations failed, continuing..."
+python manage.py migrate --noinput 2>&1 || { echo "FATAL: Database migrations failed. Aborting startup."; exit 1; }
 echo "--- Migrations step complete ---"
 
 # Step 2: Collect static files (in case they weren't collected during build)
