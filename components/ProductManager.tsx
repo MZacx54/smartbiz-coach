@@ -685,8 +685,12 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
   };
 
   useEffect(() => {
+    if (isStaffMode) {
+      setProducts(prev => prev.map(p => ({ ...p, cost_price: undefined })));
+      setTransactionLogs(prev => prev.map(l => ({ ...l, costPriceAtTime: '0.00' })));
+    }
     fetchProducts();
-  }, [isTractionMode]);
+  }, [isTractionMode, isStaffMode]);
 
   const handleSave = async () => {
     if (isStaffMode) {

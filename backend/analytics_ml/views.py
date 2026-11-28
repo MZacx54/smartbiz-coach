@@ -15,6 +15,16 @@ from .services import (
 )
 
 
+def _check_apprentice_locked(request):
+    from users.views import is_user_apprentice_locked
+    if getattr(request, 'user', None) and request.user.is_authenticated and is_user_apprentice_locked(request.user):
+        return Response(
+            {"error": "Staff/Apprentice Mode is active. Owner financial analytics are locked."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return None
+
+
 class CreditScoreAnalyticsView(views.APIView):
     """
     Returns algorithmic credit score (300-850), risk tier, breakdown, and loan eligibility.
@@ -23,6 +33,9 @@ class CreditScoreAnalyticsView(views.APIView):
     throttle_scope = 'analytics_ml'
 
     def get(self, request):
+        blocked = _check_apprentice_locked(request)
+        if blocked:
+            return blocked
         try:
             result = CreditScoringService.calculate_credit_score(request.user)
             return Response(result, status=status.HTTP_200_OK)
@@ -53,6 +66,9 @@ class TillAnomalyAnalyticsView(views.APIView):
     throttle_scope = 'analytics_ml'
 
     def get(self, request):
+        blocked = _check_apprentice_locked(request)
+        if blocked:
+            return blocked
         try:
             result = TillAnomalyService.detect_anomalies(request.user)
             return Response(result, status=status.HTTP_200_OK)
@@ -83,6 +99,9 @@ class PriceElasticityAnalyticsView(views.APIView):
     throttle_scope = 'analytics_ml'
 
     def get(self, request):
+        blocked = _check_apprentice_locked(request)
+        if blocked:
+            return blocked
         try:
             result = PriceElasticityService.calculate_price_elasticity(request.user)
             return Response(result, status=status.HTTP_200_OK)
@@ -100,6 +119,9 @@ class ComprehensiveMLOverviewView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        blocked = _check_apprentice_locked(request)
+        if blocked:
+            return blocked
         try:
             credit = CreditScoringService.calculate_credit_score(request.user)
             forecasts = DemandForecastService.forecast_inventory(request.user)
@@ -143,6 +165,9 @@ class UnderwritingReportDataView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        blocked = _check_apprentice_locked(request)
+        if blocked:
+            return blocked
         import hashlib
         from datetime import datetime
         from users.models import UserCompliance
@@ -325,6 +350,9 @@ class POSReconciliationView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        blocked = _check_apprentice_locked(request)
+        if blocked:
+            return blocked
         try:
             raw_text = str(request.data.get('raw_alert_text', ''))
             res = POSReconciliationService.reconcile_alerts(request.user, raw_text)

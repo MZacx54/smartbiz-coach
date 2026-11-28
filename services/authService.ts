@@ -58,10 +58,54 @@ export const securityLockService = {
         return active;
     },
 
+    scrubOwnerCachesForStaffMode: (): void => {
+        const exactKeys = [
+            'sb_ml_overview_cache',
+            'sb_home_trends',
+            'sb_cached_trends',
+            'sb_idice_transaction_logs',
+            'sb_cached_products',
+        ];
+        exactKeys.forEach(safeRemoveItem);
+        try {
+            const toRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (!k) continue;
+                if (
+                    k.startsWith('sb_cached_summary_') ||
+                    k.startsWith('sb_home_summary_') ||
+                    k.startsWith('sb_cached_expenses_') ||
+                    k.startsWith('sb_api_cache_v2:')
+                ) {
+                    toRemove.push(k);
+                } else if (k.startsWith('sb_cached_sales_')) {
+                    try {
+                        const raw = localStorage.getItem(k);
+                        if (raw) {
+                            const arr = JSON.parse(raw);
+                            if (Array.isArray(arr)) {
+                                localStorage.setItem(k, JSON.stringify(arr.map((s: any) => ({ ...s, cost_price: undefined }))));
+                            }
+                        }
+                    } catch {
+                        toRemove.push(k);
+                    }
+                }
+            }
+            toRemove.forEach(safeRemoveItem);
+        } catch {
+            // Ignore storage iteration limits
+        }
+    },
+
     setLocalApprenticeMode: (active: boolean) => {
         const val = active ? 'true' : 'false';
         localStorage.setItem('sb_shift_mode', val);
         localStorage.setItem('sb_cashier_mode', val);
+        if (active) {
+            securityLockService.scrubOwnerCachesForStaffMode();
+        }
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('sb-apprentice-mode-changed', {
                 detail: { isApprenticeMode: active }

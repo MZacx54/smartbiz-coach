@@ -1170,7 +1170,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-900">
                     <div className="flex items-center gap-2"><span>✓</span> <strong>Phone Camera Barcode & QR Scanner</strong> (Audio beep POS)</div>
                     <div className="flex items-center gap-2"><span>✓</span> <strong>5-Second Rapid POS Day-Book</strong> (Cash, Card, Transfer, Debt)</div>
-                    <div className="flex items-center gap-2"><span>✓</span> <strong>Apprentice Shift Lock</strong> (4-Digit PIN theft defense)</div>
+                    <div className="flex items-center gap-2"><span>✓</span> <strong>Apprentice Shift Lock</strong> (Owner password theft defense)</div>
                     <div className="flex items-center gap-2"><span>✓</span> <strong>Open Market Offline PWA Mode</strong> (0% data resilience)</div>
                     <div className="flex items-center gap-2"><span>✓</span> <strong>Generator Fuel & Petty Cash Logger</strong> (Daily net profit)</div>
                     <div className="flex items-center gap-2"><span>✓</span> <strong>Fake Transfer Fraud Shield</strong> (Verification checklists)</div>

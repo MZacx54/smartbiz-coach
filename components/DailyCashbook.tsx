@@ -170,8 +170,15 @@ export const DailyCashbook: React.FC = () => {
 
   useEffect(() => {
     const handleModeChanged = (e: any) => {
-      const nextMode = e?.detail?.isApprenticeMode ?? securityLockService.isApprenticeModeActive();
-      setIsShiftMode(Boolean(nextMode));
+      const nextMode = Boolean(e?.detail?.isApprenticeMode ?? securityLockService.isApprenticeModeActive());
+      setIsShiftMode(nextMode);
+      if (nextMode) {
+        setExpenses([]);
+        setAiInsights(null);
+        setMlOverview(null);
+        setShowAIAskModal(false);
+        setSales(prev => prev.map(s => ({ ...s, cost_price: undefined })));
+      }
     };
     window.addEventListener('sb-apprentice-mode-changed', handleModeChanged);
 
@@ -582,6 +589,10 @@ export const DailyCashbook: React.FC = () => {
     } catch {
       /* trends are optional / served from cache */
     }
+    if (isShiftMode || securityLockService.isApprenticeModeActive()) {
+      setMlOverview(null);
+      return;
+    }
     try {
       const mlRes = await api.get('/api/analytics/overview/');
       if (mlRes.data) {
@@ -591,6 +602,35 @@ export const DailyCashbook: React.FC = () => {
     } catch {
       /* served from cache */
     }
+  };
+
+  const adjustLocalTrends = (deltaRevenue: number, deltaProfit: number) => {
+    try {
+      localStorage.removeItem(`sb_home_summary_${selectedDate}`);
+      localStorage.removeItem('sb_home_trends');
+    } catch { /* ignore */ }
+    setTrends((prev: any) => {
+      if (!prev) return prev;
+      const updatedSeries = Array.isArray(prev.series)
+        ? prev.series.map((d: any) =>
+            d.date === selectedDate
+              ? {
+                  ...d,
+                  revenue: Math.max(0, (parseFloat(d.revenue) || 0) + deltaRevenue),
+                  profit: d.profit === null ? null : (parseFloat(d.profit) || 0) + deltaProfit,
+                }
+              : d
+          )
+        : prev.series;
+      const next = {
+        ...prev,
+        series: updatedSeries,
+        total_revenue: Math.max(0, (parseFloat(prev.total_revenue) || 0) + deltaRevenue),
+        total_profit: prev.total_profit === null ? null : (parseFloat(prev.total_profit) || 0) + deltaProfit,
+      };
+      try { localStorage.setItem('sb_cached_trends', JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
   };
 
   // Merge helper: combines unsynced offline items for a date with cloud/cached items with zero duplication
@@ -1220,13 +1260,7 @@ export const DailyCashbook: React.FC = () => {
       // Trigger non-blocking background sync
       syncOfflineQueue(true);
     }
-    if (trends) {
-      setTrends((prev: any) => prev ? {
-        ...prev,
-        total_revenue: (parseFloat(prev.total_revenue) || 0) + totalAmount,
-        total_profit: (parseFloat(prev.total_profit) || 0) + (totalAmount - ((parseFloat(saleCostPrice) || 0) * qtyNum)),
-      } : prev);
-    }
+    adjustLocalTrends(totalAmount, totalAmount - ((parseFloat(saleCostPrice) || 0) * qtyNum));
   };
 
   // Submit Expense — Instant 0ms Local Persistence + Non-Blocking Cloud Sync
@@ -1275,12 +1309,7 @@ export const DailyCashbook: React.FC = () => {
       toast.success('✅ Petty cash expense recorded!', { duration: 2500 });
       syncOfflineQueue(true);
     }
-    if (trends) {
-      setTrends((prev: any) => prev ? {
-        ...prev,
-        total_profit: (parseFloat(prev.total_profit) || 0) - amountNum,
-      } : prev);
-    }
+    adjustLocalTrends(0, -amountNum);
   };
 
   // Calculated aggregates
@@ -1504,6 +1533,11 @@ export const DailyCashbook: React.FC = () => {
           return next;
         });
       }
+      try {
+        localStorage.removeItem(`sb_home_summary_${selectedDate}`);
+        localStorage.removeItem('sb_home_trends');
+      } catch { /* ignore */ }
+      fetchTrends();
       toast.success('Sale record updated! ✓');
     } catch {
       toast.success('Updated locally! ✓');
@@ -1528,9 +1562,13 @@ export const DailyCashbook: React.FC = () => {
     setEditingSale(null);
     toast.success('Sale deleted.');
 
+    const amt = parseFloat(String(sale.total_amount)) || 0;
+    const cost = (parseFloat(String(sale.cost_price)) || 0) * (sale.quantity || 1);
+    adjustLocalTrends(-amt, -(amt - cost));
     if (!String(targetId).startsWith('offline-')) {
       try {
         await api.delete(`marketplace/daily-sales/${targetId}/`, { timeout: 7000 });
+        fetchTrends();
       } catch {
         /* already removed from local cache */
       }
@@ -1604,6 +1642,11 @@ export const DailyCashbook: React.FC = () => {
           return next;
         });
       }
+      try {
+        localStorage.removeItem(`sb_home_summary_${selectedDate}`);
+        localStorage.removeItem('sb_home_trends');
+      } catch { /* ignore */ }
+      fetchTrends();
       toast.success('Expense record updated! ✓');
     } catch {
       toast.success('Updated locally! ✓');
@@ -1627,9 +1670,12 @@ export const DailyCashbook: React.FC = () => {
     setEditingExpense(null);
     toast.success('Expense deleted.');
 
+    const expAmt = parseFloat(String(expense.amount)) || 0;
+    adjustLocalTrends(0, expAmt);
     if (!String(targetId).startsWith('offline-')) {
       try {
         await api.delete(`marketplace/daily-expenses/${targetId}/`, { timeout: 7000 });
+        fetchTrends();
       } catch {
         /* already removed from local cache */
       }
@@ -1863,10 +1909,15 @@ export const DailyCashbook: React.FC = () => {
               <button
                 onClick={async () => {
                   setIsShiftMode(true);
+                  setExpenses([]);
+                  setAiInsights(null);
+                  setMlOverview(null);
+                  setShowAIAskModal(false);
                   if (activeTab === 'EXPENSES' || activeTab === 'AI_INSIGHTS') {
                     setActiveTab('SALES');
                   }
                   await securityLockService.lockApprenticeMode();
+                  fetchDailyData(true);
                   toast.success('Apprentice Shift Mode locked across all devices! Petty Cash & Profits are now password-protected 🔒');
                 }}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
@@ -2117,14 +2168,16 @@ export const DailyCashbook: React.FC = () => {
             <span className="bg-purple-100 text-purple-700 text-[9px] font-black px-1.5 py-0.5 rounded-full">New</span>
           </button>
 
-          <button
-            onClick={() => setShowAIAskModal(true)}
-            className="px-4 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md hover:from-purple-700 hover:to-indigo-700 active:scale-95"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-            <span>Ask AI About Sales</span>
-            <span className="bg-white/20 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">New</span>
-          </button>
+          {!isShiftMode && (
+            <button
+              onClick={() => setShowAIAskModal(true)}
+              className="px-4 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md hover:from-purple-700 hover:to-indigo-700 active:scale-95"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span>Ask AI About Sales</span>
+              <span className="bg-white/20 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">1 Credit</span>
+            </button>
+          )}
         </div>
 
         {activeTab === 'REPORT' && (
@@ -4289,7 +4342,7 @@ export const DailyCashbook: React.FC = () => {
         </div>
       )}
       {/* MODAL: ASK SMARTBIZ AI ABOUT SALES */}
-      {showAIAskModal && (
+      {showAIAskModal && !isShiftMode && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-[32px] max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 border border-purple-100">
             <div className="flex justify-between items-start mb-5">

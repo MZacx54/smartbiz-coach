@@ -1092,10 +1092,26 @@ class DailyExpenseListCreateView(generics.ListCreateAPIView):
 
         return qs.order_by('-created_at')
 
+    def list(self, request, *args, **kwargs):
+        from users.views import is_user_apprentice_locked
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Staff/Apprentice Mode is active. Expense details are restricted to the Owner.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().list(request, *args, **kwargs)
+
     def create(self, request, *args, **kwargs):
         from .models import DailyExpense
         from django.utils import timezone
         import datetime
+        from users.views import is_user_apprentice_locked
+
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Staff/Apprentice Mode is active. Only the business owner can log petty cash expenses.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         # IDEMPOTENCY GUARD 1: Exact offline ID match in notes
         offline_id = request.data.get('offline_id')
@@ -1189,6 +1205,9 @@ class DailySummaryView(views.APIView):
             stock_count__lte=F('low_stock_threshold')
         ).values('id', 'name', 'stock_count', 'low_stock_threshold')[:10])
 
+        from users.views import is_user_apprentice_locked
+        is_locked = is_user_apprentice_locked(request.user)
+
         return Response({
             'date': target_date.isoformat(),
             'total_sales_revenue': total_sales_revenue,
@@ -1196,15 +1215,16 @@ class DailySummaryView(views.APIView):
             'transfer_sales': transfer_sales,
             'credit_sales': credit_sales,
             'sales_count': sales.count(),
-            'cogs': round(cogs, 2),
-            'gross_profit': round(gross_profit, 2),
-            'total_expenses': total_expenses,
-            'cash_expenses': cash_expenses,
-            'transfer_expenses': transfer_expenses,
-            'expenses_count': expenses.count(),
-            'net_cash_in_till': round(net_cash_in_till, 2),
-            'net_profit': round(gross_profit - total_expenses, 2),
+            'cogs': None if is_locked else round(cogs, 2),
+            'gross_profit': None if is_locked else round(gross_profit, 2),
+            'total_expenses': None if is_locked else total_expenses,
+            'cash_expenses': None if is_locked else cash_expenses,
+            'transfer_expenses': None if is_locked else transfer_expenses,
+            'expenses_count': None if is_locked else expenses.count(),
+            'net_cash_in_till': None if is_locked else round(net_cash_in_till, 2),
+            'net_profit': None if is_locked else round(gross_profit - total_expenses, 2),
             'low_stock_products': low_stock_products,
+            'is_apprentice_mode': is_locked,
         })
 
 
@@ -1249,18 +1269,26 @@ class DailyTrendsView(views.APIView):
             if key in per_day:
                 per_day[key]['expenses'] += float(e.amount)
 
+        from users.views import is_user_apprentice_locked
+        is_locked = is_user_apprentice_locked(request.user)
+
         series = []
         for day, v in per_day.items():
             profit = (v['revenue'] - v['cogs']) - v['expenses']
-            series.append({'date': day, 'revenue': round(v['revenue'], 2), 'expenses': round(v['expenses'], 2),
-                           'profit': round(profit, 2)})
+            series.append({
+                'date': day,
+                'revenue': round(v['revenue'], 2),
+                'expenses': None if is_locked else round(v['expenses'], 2),
+                'profit': None if is_locked else round(profit, 2),
+            })
 
         top_items = sorted(
             ({'name': k, **v, 'revenue': round(v['revenue'], 2)} for k, v in items.items()),
             key=lambda x: (-x['count'], -x['revenue']))[:8]
 
         total_rev = sum(d['revenue'] for d in series)
-        total_exp = sum(d['expenses'] for d in series)
+        total_exp = sum(v['expenses'] for v in per_day.values())
+        total_prof = sum((v['revenue'] - v['cogs']) - v['expenses'] for v in per_day.values())
         active = [d for d in series if d['revenue'] > 0]
         best = max(active, key=lambda d: d['revenue']) if active else None
         outstanding = DailySale.objects.filter(user=request.user, is_voided=False, is_debt=True, payment_method='CREDIT') \
@@ -1270,13 +1298,14 @@ class DailyTrendsView(views.APIView):
             'days': days,
             'series': series,
             'total_revenue': round(total_rev, 2),
-            'total_expenses': round(total_exp, 2),
-            'total_profit': round(sum(d['profit'] for d in series), 2),
+            'total_expenses': None if is_locked else round(total_exp, 2),
+            'total_profit': None if is_locked else round(total_prof, 2),
             'avg_daily_revenue': round(total_rev / max(1, len(active)), 2),
             'best_day': best,
             'top_items': top_items,
             'credit_outstanding': float(outstanding['total'] or 0),
             'credit_entries': outstanding['n'] or 0,
+            'is_apprentice_mode': is_locked,
         })
 
 
@@ -1486,6 +1515,13 @@ class DailyAIInsightsView(views.APIView):
         from smartbiz_backend import gemini_utils
         from billing.utils import reserve_ai_credits, refund_ai_credits
         from .models import DailySale, DailyExpense
+        from users.views import is_user_apprentice_locked
+
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Staff/Apprentice Mode is active. Operations brief and profit intelligence require Owner verification.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         allowed, remaining, reserved = reserve_ai_credits(request.user, 1, 'Daily AI Insights Brief')
         if not allowed:
@@ -1689,6 +1725,13 @@ class DailyAIAskView(views.APIView):
         from smartbiz_backend import gemini_utils
         from billing.utils import reserve_ai_credits, refund_ai_credits
         from .models import DailySale, DailyExpense, Product
+        from users.views import is_user_apprentice_locked
+
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Staff/Apprentice Mode is active. Financial AI assistant requires Owner verification.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         question = str(request.data.get('question') or '').strip()
         if not question:

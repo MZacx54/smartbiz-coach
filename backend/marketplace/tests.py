@@ -207,6 +207,31 @@ class Phase3And4SecurityTests(APITestCase):
         rows_prod = prod_list.data if isinstance(prod_list.data, list) else prod_list.data['results']
         self.assertIsNone(rows_prod[0]['cost_price'])
 
+        # Staff/Apprentice Lock must ALSO mask profit/COGS/expenses on Daily Summary, Trends, Sales, Expenses, and AI endpoints
+        sales_list = self.owner_client.get('/api/marketplace/daily-sales/')
+        sales_rows = sales_list.data if isinstance(sales_list.data, list) else sales_list.data['results']
+        self.assertIsNone(sales_rows[0]['cost_price'])
+
+        exp_list = self.owner_client.get('/api/marketplace/daily-expenses/')
+        self.assertEqual(exp_list.status_code, 403)
+        exp_create = self.owner_client.post('/api/marketplace/daily-expenses/', {'title': 'Fake', 'amount': '500.00'}, format='json')
+        self.assertEqual(exp_create.status_code, 403)
+
+        summary_res = self.owner_client.get('/api/marketplace/daily-summary/')
+        self.assertEqual(summary_res.status_code, 200)
+        self.assertIsNone(summary_res.data['cogs'])
+        self.assertIsNone(summary_res.data['net_profit'])
+        self.assertIsNone(summary_res.data['total_expenses'])
+
+        trends_res = self.owner_client.get('/api/marketplace/daily-trends/?days=7')
+        self.assertEqual(trends_res.status_code, 200)
+        self.assertIsNone(trends_res.data['total_profit'])
+        self.assertIsNone(trends_res.data['total_expenses'])
+
+        self.assertEqual(self.owner_client.post('/api/marketplace/daily-ai-insights/', {}, format='json').status_code, 403)
+        self.assertEqual(self.owner_client.post('/api/marketplace/daily-ai-ask/', {'question': 'profit?'}, format='json').status_code, 403)
+        self.assertEqual(self.owner_client.get('/api/analytics-ml/overview/').status_code, 403)
+
         unlock = self.owner_client.post('/api/users/security-lock/', {'action': 'UNLOCK', 'passcode': '749201'}, format='json')
         self.assertEqual(unlock.status_code, 200)
 

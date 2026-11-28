@@ -6,7 +6,7 @@ import api from '../services/api';
 import { authService } from '../services/authService';
 import { storeShareUrl } from '../services/commerceService';
 import { FEATURE_FLAGS } from '../config/featureFlags';
-import { getBusinessDateStr } from '../utils/dateTime';
+import { getBusinessDateStr, formatBusinessDateYMD } from '../utils/dateTime';
 import { useOwnerLock } from '../hooks/useOwnerLock';
 import { Card, Button, StatTile, Skeleton, PageHeader, useLanguage } from './ui';
 
@@ -119,7 +119,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUserVerified }) => {
   const greetingPcm = hour < 12 ? 'How market this morning' : hour < 17 ? 'How market today' : 'Well done today';
   const firstName = (user.name || user.businessName || 'there').split(' ')[0];
   const businessName = user.businessName || user.business_name || 'your business';
-  const dateLabel = new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateLabel = formatBusinessDateYMD(today, { weekday: 'long', day: 'numeric', month: 'long' });
 
   /* ---- "Do this next": simple rules on your own data (no guesswork) ---- */
   const suggestions: Suggestion[] = [];
@@ -210,7 +210,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, onUserVerified }) => {
 
   const series = trends?.series || [];
   const maxRev = Math.max(1, ...series.map((d) => d.revenue));
-  const dayLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('en-NG', { weekday: 'short' }).slice(0, 2);
+  const dayLabel = (iso: string) => formatBusinessDateYMD(iso, { weekday: 'short' }).slice(0, 2);
 
   const toneClasses = {
     rose: 'bg-rose-50 text-rose-700', amber: 'bg-amber-50 text-amber-700',

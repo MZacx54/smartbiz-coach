@@ -1108,7 +1108,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="font-extrabold text-slate-900">Bankable AI Business Plan (3-Year Model)</p>
-                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">200 Credits</span>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">15 Credits</span>
                       </div>
                       <p className="text-[11px] text-slate-500">Comprehensive 3-year financial model, market feasibility, and grant/loan-ready document.</p>
                     </div>
@@ -1118,7 +1118,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="font-extrabold text-slate-900">AI Brand Identity Kit</p>
-                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">5 Credits</span>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">15 Credits</span>
                       </div>
                       <p className="text-[11px] text-slate-500">Brand strategy, logo concepts, typography pairings, and official color palette.</p>
                     </div>
@@ -1128,7 +1128,7 @@ const Settings: React.FC<SettingsProps> = ({ user, userStats, onLogout, onUpdate
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <p className="font-extrabold text-slate-900">AI Social & Marketing Copywriter</p>
-                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">15 Credits</span>
+                        <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">From 2 Credits</span>
                       </div>
                       <p className="text-[11px] text-slate-500">Sales hooks, Instagram captions, WhatsApp promo broadcasts, and product pitches.</p>
                     </div>
