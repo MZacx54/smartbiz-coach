@@ -196,6 +196,17 @@ class Phase3And4SecurityTests(APITestCase):
         self.assertEqual(blocked_edit.status_code, 403)
         self.assertEqual(blocked_del.status_code, 403)
 
+        # Staff/Apprentice Lock must ALSO protect Inventory prices, creation, deletions, and cost_price visibility
+        prod_create = self.owner_client.post('/api/marketplace/products/', {'name': 'Sneaky Item', 'price': '500.00'}, format='json')
+        self.assertEqual(prod_create.status_code, 403)
+        prod_patch = self.owner_client.patch(f'/api/marketplace/products/{self.product.id}/', {'price': '999.00'}, format='json')
+        self.assertEqual(prod_patch.status_code, 403)
+        prod_del = self.owner_client.delete(f'/api/marketplace/products/{self.product.id}/')
+        self.assertEqual(prod_del.status_code, 403)
+        prod_list = self.owner_client.get('/api/marketplace/products/')
+        rows_prod = prod_list.data if isinstance(prod_list.data, list) else prod_list.data['results']
+        self.assertIsNone(rows_prod[0]['cost_price'])
+
         unlock = self.owner_client.post('/api/users/security-lock/', {'action': 'UNLOCK', 'passcode': '749201'}, format='json')
         self.assertEqual(unlock.status_code, 200)
 

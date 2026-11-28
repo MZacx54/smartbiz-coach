@@ -211,7 +211,7 @@ const BusinessPlanGenerator: React.FC<BusinessPlanGeneratorProps> = ({ brand, bu
       return;
     }
 
-    // Business plan costs 200 credits
+    // Business plan costs 15 credits (synchronized with backend catalog)
     setDeductOnConfirm(() => async () => {
       await executeGenerate();
     });

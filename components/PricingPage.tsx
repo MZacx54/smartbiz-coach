@@ -246,7 +246,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onTopUpSuccess, onUpda
                   'Gbege Book (Debtor Reminders & partial payments)',
                   'Unlimited Invoices & Receipts (WhatsApp share)',
                   'Public Storefront Link (/shop/your-name)',
-                  '50 Welcome BizCredits on sign up',
+                  '50 Welcome BizCredits after email verification',
                   'Apprentice Cashier Lock Mode (Owner PIN)',
                   '100% Offline-capable Local Storage'
                 ].map((feat, i) => (

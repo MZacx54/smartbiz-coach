@@ -116,3 +116,11 @@ class PhaseZeroRestructureTests(TestCase):
         self.assertEqual(sum_res.status_code, 200)
         self.assertEqual(sum_res.data["intent"], "DAILY_SUMMARY")
         self.assertIn("credit_score", sum_res.data)
+
+    def test_cash_cliff_requires_minimum_history_before_runway_verdict(self):
+        from analytics_ml.services import CashCliffForecastService
+        runway = CashCliffForecastService.predict_cash_runway(self.user)
+        # Only 1 trading day logged in setUp; must NOT return 90 Days Safe
+        self.assertFalse(runway["has_sufficient_data"])
+        self.assertEqual(runway["runway_status"], "LIMITED_HISTORY")
+        self.assertEqual(runway["runway_days"], 0)

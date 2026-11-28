@@ -9,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import CreditPromptModal from './CreditPromptModal';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import ShelfScannerModal from './ShelfScannerModal';
+import { useOwnerLock } from '../hooks/useOwnerLock';
 
 interface Product {
   id: number;
@@ -117,6 +118,7 @@ interface ProductManagerProps {
 
 const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCredits }) => {
   const isTractionMode = false;
+  const { isStaffMode } = useOwnerLock();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -442,7 +444,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
           category: draft.category || 'General',
           product_type: draft.product_type || 'PHYSICAL',
           image_url: compressedImage,
-          is_public: true,
+          is_public: false,
           is_promoted: false,
           low_stock_threshold: 5
         };
@@ -544,9 +546,12 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
       toast.error('No ledger entries to export');
       return;
     }
-    const headers = 'Timestamp,Item Name,SKU,Change Type,Quantity Changed,Ending Balance,Cost Price at Time,Retail Price at Time,Memo\n';
-    const rows = transactionLogs.map(log => 
-      `"${log.timestamp}","${log.productName.replace(/"/g, '""')}","${log.sku}","${log.changeType}",${log.quantityChanged},${log.resultingQuantity},${log.costPriceAtTime},${log.retailPriceAtTime},"${log.notes.replace(/"/g, '""')}"`
+    const headers = isStaffMode
+      ? 'Timestamp,Item Name,SKU,Change Type,Quantity Changed,Ending Balance,Retail Price at Time,Memo\n'
+      : 'Timestamp,Item Name,SKU,Change Type,Quantity Changed,Ending Balance,Cost Price at Time,Retail Price at Time,Memo\n';
+    const rows = transactionLogs.map(log => isStaffMode
+      ? `"${log.timestamp}","${log.productName.replace(/"/g, '""')}","${log.sku}","${log.changeType}",${log.quantityChanged},${log.resultingQuantity},${log.retailPriceAtTime},"${log.notes.replace(/"/g, '""')}"`
+      : `"${log.timestamp}","${log.productName.replace(/"/g, '""')}","${log.sku}","${log.changeType}",${log.quantityChanged},${log.resultingQuantity},${log.costPriceAtTime},${log.retailPriceAtTime},"${log.notes.replace(/"/g, '""')}"`
     ).join('\n');
     
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
@@ -571,7 +576,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     product_type: 'PHYSICAL',
     location: '',
     metadata: {},
-    is_public: true,
+    is_public: false,
     is_promoted: false,
     stock_count: 1,
     cost_price: '',
@@ -649,7 +654,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
           product_type: 'PHYSICAL',
           location: '',
           metadata: { brand: data.brand || '', barcode_source: data.source || 'Barcode Auto-Fill' },
-          is_public: true,
+          is_public: false,
           is_promoted: false,
           stock_count: 1,
           cost_price: data.suggested_cost_price ? String(data.suggested_cost_price) : '',
@@ -662,7 +667,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
         setCurrentProduct({
           name: '', description: '', price: '', price_max: '', image_url: '', category: 'General Merchandise',
           product_type: 'PHYSICAL', location: '', metadata: {},
-          is_public: true, is_promoted: false, stock_count: 1,
+          is_public: false, is_promoted: false, stock_count: 1,
           cost_price: '', sku: scannedCode, low_stock_threshold: 5
         });
         setIsEditing(true);
@@ -672,7 +677,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
       setCurrentProduct({
         name: '', description: '', price: '', price_max: '', image_url: '', category: '',
         product_type: 'PHYSICAL', location: '', metadata: {},
-        is_public: true, is_promoted: false, stock_count: 1,
+        is_public: false, is_promoted: false, stock_count: 1,
         cost_price: '', sku: scannedCode, low_stock_threshold: 5
       });
       setIsEditing(true);
@@ -684,6 +689,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
   }, [isTractionMode]);
 
   const handleSave = async () => {
+    if (isStaffMode) {
+      toast.error('🔒 Staff Mode active. Only the business owner can create or edit listings.');
+      return;
+    }
     if (!currentProduct.name || !currentProduct.price) {
       toast.error('Name and Price are required');
       return;
@@ -756,13 +765,19 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
           if (res.data) {
             setProducts(prev => prev.map(p => p.id === currentProduct.id ? res.data : p));
           }
-          toast.success('Listing updated & synced to Marketplace!', { id: toastId });
+          toast.success(
+            payload.is_public ? 'Listing updated & synced to Marketplace!' : 'Listing updated in your private shop catalog.',
+            { id: toastId }
+          );
         } else {
           const res = await api.post('/api/marketplace/products/', payload);
           if (res.data) {
             setProducts(prev => [res.data, ...prev]);
           }
-          toast.success('Listing saved & synced to Storefront and Marketplace!', { id: toastId });
+          toast.success(
+            payload.is_public ? 'Listing saved & synced to Storefront and Marketplace!' : 'Listing saved privately to your shop catalog!',
+            { id: toastId }
+          );
         }
         fetchProducts();
         window.dispatchEvent(new Event('smartbiz_products_updated'));
@@ -796,6 +811,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
   };
 
   const handleDelete = async (id: number) => {
+    if (isStaffMode) {
+      toast.error('🔒 Staff Mode active. Only the business owner can delete listings.');
+      return;
+    }
     if (!confirm('Are you sure you want to remove this listing?')) return;
     try {
       if (isTractionMode) {
@@ -901,18 +920,27 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "SKU,Product Name,Type,Selling Price,Cost Price (COGS),Stock Qty,Total Value (Cost),Total Value (Retail),Status\n";
-
-    products.forEach(p => {
-      const price = parseFloat(p.price) || 0;
-      const cost = parseFloat(p.cost_price || '0') || 0;
-      const stock = p.stock_count || 0;
-      const valCost = cost * stock;
-      const valRetail = price * stock;
-      const isLow = stock <= (p.low_stock_threshold || 5) ? 'LOW STOCK' : 'IN STOCK';
-      
-      csvContent += `"${p.sku || ''}","${p.name}","${p.product_type}",${price},${cost},${stock},${valCost},${valRetail},"${isLow}"\n`;
-    });
+    if (isStaffMode) {
+      csvContent += "SKU,Product Name,Type,Selling Price,Stock Qty,Total Value (Retail),Status\n";
+      products.forEach(p => {
+        const price = parseFloat(p.price) || 0;
+        const stock = p.stock_count || 0;
+        const valRetail = price * stock;
+        const isLow = stock <= (p.low_stock_threshold || 5) ? 'LOW STOCK' : 'IN STOCK';
+        csvContent += `"${p.sku || ''}","${p.name}","${p.product_type}",${price},${stock},${valRetail},"${isLow}"\n`;
+      });
+    } else {
+      csvContent += "SKU,Product Name,Type,Selling Price,Cost Price (COGS),Stock Qty,Total Value (Cost),Total Value (Retail),Status\n";
+      products.forEach(p => {
+        const price = parseFloat(p.price) || 0;
+        const cost = parseFloat(p.cost_price || '0') || 0;
+        const stock = p.stock_count || 0;
+        const valCost = cost * stock;
+        const valRetail = price * stock;
+        const isLow = stock <= (p.low_stock_threshold || 5) ? 'LOW STOCK' : 'IN STOCK';
+        csvContent += `"${p.sku || ''}","${p.name}","${p.product_type}",${price},${cost},${stock},${valCost},${valRetail},"${isLow}"\n`;
+      });
+    }
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -927,10 +955,10 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
   // Metrics calculation
   const totalSkuCount = products.length;
   const totalStockCount = products.reduce((acc, curr) => acc + (curr.stock_count || 0), 0);
-  const totalValuationCost = products.reduce((acc, curr) => acc + (parseFloat(curr.cost_price || '0') * (curr.stock_count || 0)), 0);
+  const totalValuationCost = isStaffMode ? 0 : products.reduce((acc, curr) => acc + (parseFloat(curr.cost_price || '0') * (curr.stock_count || 0)), 0);
   const totalValuationRetail = products.reduce((acc, curr) => acc + (parseFloat(curr.price) * (curr.stock_count || 0)), 0);
-  const projectedProfit = totalValuationRetail - totalValuationCost;
-  const marginPercentage = totalValuationRetail > 0 ? (projectedProfit / totalValuationRetail) * 100 : 0;
+  const projectedProfit = isStaffMode ? 0 : totalValuationRetail - totalValuationCost;
+  const marginPercentage = isStaffMode ? 0 : (totalValuationRetail > 0 ? (projectedProfit / totalValuationRetail) * 100 : 0);
   const lowStockCount = products.filter(p => (p.stock_count || 0) <= (p.low_stock_threshold || 5)).length;
 
 
@@ -956,27 +984,30 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
             >
               <Download className="w-4 h-4" /> Export CSV
             </button>
-            
-            <label className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-3xl font-bold transition-all shadow-xl shadow-emerald-100 active:scale-95 whitespace-nowrap cursor-pointer">
-              <Camera className="w-4 h-4" /> Snap & List
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*" 
-                className="hidden" 
-                onChange={handleBulkSelect} 
-              />
-            </label>
+            {!isStaffMode && (
+              <>
+                <label className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-3xl font-bold transition-all shadow-xl shadow-emerald-100 active:scale-95 whitespace-nowrap cursor-pointer">
+                  <Camera className="w-4 h-4" /> Snap & List
+                  <input 
+                    type="file" 
+                    multiple 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleBulkSelect} 
+                  />
+                </label>
 
-            <button 
-              type="button"
-              onClick={() => setShowShelfScanner(true)}
-              className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-5 py-4 rounded-3xl font-bold transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer text-xs"
-              title="Snap a photo of your shop shelf or display carton to count & list items in bulk"
-            >
-              <Camera className="w-4 h-4 text-purple-200" />
-              <span>📸 Snap Shelf (Bulk)</span>
-            </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowShelfScanner(true)}
+                  className="flex-1 md:flex-initial flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-5 py-4 rounded-3xl font-bold transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer text-xs"
+                  title="Snap a photo of your shop shelf or display carton to count & list items in bulk"
+                >
+                  <Camera className="w-4 h-4 text-purple-200" />
+                  <span>📸 Snap Shelf (Bulk)</span>
+                </button>
+              </>
+            )}
 
             <button 
               type="button"
@@ -991,23 +1022,32 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
               <span>📷 Scan Barcode</span>
             </button>
 
-            <button 
-              onClick={() => {
-                setCurrentProduct({ 
-                  name: '', description: '', price: '', price_max: '', image_url: '', category: '', 
-                  product_type: 'PHYSICAL', location: '', metadata: {},
-                  is_public: true, is_promoted: false, stock_count: 1,
-                  cost_price: '', sku: '', low_stock_threshold: 5
-                });
-                setIsEditing(true);
-              }}
-              className="flex-[2] md:flex-initial flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-3xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95 whitespace-nowrap"
-            >
-              <Plus className="w-5 h-5" /> Create Listing
-            </button>
+            {!isStaffMode && (
+              <button 
+                onClick={() => {
+                  setCurrentProduct({ 
+                    name: '', description: '', price: '', price_max: '', image_url: '', category: '', 
+                    product_type: 'PHYSICAL', location: '', metadata: {},
+                    is_public: false, is_promoted: false, stock_count: 1,
+                    cost_price: '', sku: '', low_stock_threshold: 5
+                  });
+                  setIsEditing(true);
+                }}
+                className="flex-[2] md:flex-initial flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-3xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 active:scale-95 whitespace-nowrap"
+              >
+                <Plus className="w-5 h-5" /> Create Listing
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {isStaffMode && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3 text-xs text-amber-900 font-bold">
+          <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
+          <span>Staff / Attendant Mode active: Cost basis, stock valuation, profit margins, price editing, and deletions are locked to the Owner.</span>
+        </div>
+      )}
 
       {/* View Tabs */}
       {!isEditing && !isBulkOnboarding && (
@@ -1057,7 +1097,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
             <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-lg">💰</div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Valuation (Cost)</p>
-              <h4 className="text-xl font-black text-slate-800 font-heading">₦{totalValuationCost.toLocaleString()}</h4>
+              <h4 className="text-xl font-black text-slate-800 font-heading">{isStaffMode ? '🔒 Owner Only' : `₦${totalValuationCost.toLocaleString()}`}</h4>
             </div>
           </div>
 
@@ -1065,7 +1105,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
             <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-lg">📈</div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Projected Margin %</p>
-              <h4 className="text-xl font-black text-slate-800 font-heading">{marginPercentage.toFixed(1)}% ({projectedProfit < 0 ? '-' : ''}₦{Math.abs(projectedProfit).toLocaleString()})</h4>
+              <h4 className="text-xl font-black text-slate-800 font-heading">{isStaffMode ? '🔒 Owner Only' : `${marginPercentage.toFixed(1)}% (${projectedProfit < 0 ? '-' : ''}₦${Math.abs(projectedProfit).toLocaleString()})`}</h4>
             </div>
           </div>
 
@@ -1403,23 +1443,25 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                   {currentProduct.product_type === 'PHYSICAL' && (
                      <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
-                          {/* Cost Price */}
-                          <div className="space-y-1.5">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Cost Price (COGS) (₦)</label>
-                            <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xs text-slate-400 select-none">₦</span>
-                              <input 
-                                type="number" 
-                                name="cost_price"
-                                min="0"
-                                step="any"
-                                value={currentProduct.cost_price || ''}
-                                onChange={(e) => setCurrentProduct({ ...currentProduct, cost_price: e.target.value })}
-                                placeholder="0.00"
-                                className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-emerald-600"
-                              />
+                          {/* Cost Price (Owner Only) */}
+                          {!isStaffMode && (
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Cost Price (COGS) (₦)</label>
+                              <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xs text-slate-400 select-none">₦</span>
+                                <input 
+                                  type="number" 
+                                  name="cost_price"
+                                  min="0"
+                                  step="any"
+                                  value={currentProduct.cost_price || ''}
+                                  onChange={(e) => setCurrentProduct({ ...currentProduct, cost_price: e.target.value })}
+                                  placeholder="0.00"
+                                  className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-5 py-4 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-emerald-600"
+                                />
+                              </div>
                             </div>
-                          </div>
+                          )}
                           {/* Stock SKU */}
                           <div className="space-y-1.5">
                             <div className="flex justify-between items-center">
@@ -1918,7 +1960,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                         </div>
                         <input 
                           type="checkbox" 
-                          checked={currentProduct.is_public !== false}
+                          checked={Boolean(currentProduct.is_public)}
                           onChange={(e) => setCurrentProduct({ ...currentProduct, is_public: e.target.checked })}
                           className="w-5 h-5 text-indigo-600 rounded-lg cursor-pointer"
                         />
@@ -2065,7 +2107,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                     </div>
 
                    <div className="flex items-center gap-3 pt-4 flex-wrap">
-                      {currentProduct.id ? (
+                      {currentProduct.id && !isStaffMode ? (
                         <button 
                           type="button"
                           onClick={async () => {
@@ -2233,7 +2275,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                                 <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Selling Price</span>
                                 <strong className="text-lg font-black text-slate-850">₦{parseFloat(product.price).toLocaleString()}</strong>
                               </div>
-                              {product.cost_price && parseFloat(product.cost_price) > 0 && (
+                              {product.cost_price && parseFloat(product.cost_price) > 0 && !isStaffMode && (
                                 <div className="text-right">
                                   <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Cost Basis</span>
                                   <strong className="text-xs font-bold text-emerald-600">₦{parseFloat(product.cost_price).toLocaleString()}</strong>
@@ -2249,18 +2291,28 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
 
                             {/* Market Square Showcase & Direct Product Link Strip */}
                             <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center text-[10px] gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleShowcase(product)}
-                                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer text-[10px] ${
+                              {!isStaffMode ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleShowcase(product)}
+                                  className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer text-[10px] ${
+                                    product.is_public !== false 
+                                      ? 'bg-emerald-100 text-emerald-800 font-extrabold hover:bg-emerald-200' 
+                                      : 'bg-slate-200 text-slate-600 font-bold hover:bg-slate-300'
+                                  }`}
+                                  title={product.is_public !== false ? "Click to set private" : "Click to showcase across Nigeria"}
+                                >
+                                  {product.is_public !== false ? '🌐 Live on Market Square' : '🔒 Private Store'}
+                                </button>
+                              ) : (
+                                <span className={`px-2.5 py-1 rounded-lg flex items-center gap-1 text-[10px] ${
                                   product.is_public !== false 
-                                    ? 'bg-emerald-100 text-emerald-800 font-extrabold hover:bg-emerald-200' 
-                                    : 'bg-slate-200 text-slate-600 font-bold hover:bg-slate-300'
-                                }`}
-                                title={product.is_public !== false ? "Click to set private" : "Click to showcase across Nigeria"}
-                              >
-                                {product.is_public !== false ? '🌐 Live on Market Square' : '🔒 Private Store'}
-                              </button>
+                                    ? 'bg-emerald-100 text-emerald-800 font-extrabold' 
+                                    : 'bg-slate-200 text-slate-600 font-bold'
+                                }`}>
+                                  {product.is_public !== false ? '🌐 Live on Market Square' : '🔒 Private Store'}
+                                </span>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2274,50 +2326,56 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                               </button>
                             </div>
                             
-                            <div className="flex gap-2 pt-2">
-                               <button 
-                                 type="button"
-                                 onClick={() => handleOpenPromoModal(product)}
-                                 className="px-2.5 py-3 rounded-2xl text-[11px] font-extrabold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-all flex items-center justify-center gap-1 border-0 cursor-pointer"
-                                 title="Generate AI WhatsApp Status & Broadcast Copy (2 BizCredits)"
-                               >
-                                 <span>📣</span>
-                                 <span>Promo</span>
-                               </button>
-                               <button 
-                                 type="button"
-                                 onClick={() => {
-                                   setBoostingProduct(product);
-                                   setShowBoostModal(true);
-                                 }}
-                                 className={`px-3 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-0 cursor-pointer ${
-                                   product.is_promoted 
-                                     ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' 
-                                     : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white'
-                                 }`}
-                               >
-                                 {product.is_promoted ? <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> : <Rocket className="w-3.5 h-3.5" />}
-                                 <span>{product.is_promoted ? 'Boosted' : 'Boost'}</span>
-                               </button>
-                               <button 
-                                 onClick={() => {
-                                   setCurrentProduct({
-                                     ...product,
-                                     metadata: product.metadata || {}
-                                   });
-                                   setIsEditing(true);
-                                 }}
-                                 className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-600 px-4 py-3 rounded-2xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all border-0 cursor-pointer"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" /> Manage
-                                </button>
-                                <button 
-                                 onClick={() => handleDelete(product.id)}
-                                 className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all border-0 cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
+                            {!isStaffMode ? (
+                                <div className="flex gap-2 pt-2">
+                                 <button 
+                                   type="button"
+                                   onClick={() => handleOpenPromoModal(product)}
+                                   className="px-2.5 py-3 rounded-2xl text-[11px] font-extrabold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-all flex items-center justify-center gap-1 border-0 cursor-pointer"
+                                   title="Generate AI WhatsApp Status & Broadcast Copy (2 BizCredits)"
+                                 >
+                                   <span>📣</span>
+                                   <span>Promo</span>
+                                 </button>
+                                 <button 
+                                   type="button"
+                                   onClick={() => {
+                                     setBoostingProduct(product);
+                                     setShowBoostModal(true);
+                                   }}
+                                   className={`px-3 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border-0 cursor-pointer ${
+                                     product.is_promoted 
+                                       ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' 
+                                       : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white'
+                                   }`}
+                                 >
+                                   {product.is_promoted ? <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> : <Rocket className="w-3.5 h-3.5" />}
+                                   <span>{product.is_promoted ? 'Boosted' : 'Boost'}</span>
+                                 </button>
+                                 <button 
+                                   onClick={() => {
+                                     setCurrentProduct({
+                                       ...product,
+                                       metadata: product.metadata || {}
+                                     });
+                                     setIsEditing(true);
+                                   }}
+                                   className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-600 px-4 py-3 rounded-2xl text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition-all border-0 cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" /> Manage
+                                  </button>
+                                  <button 
+                                   onClick={() => handleDelete(product.id)}
+                                   className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all border-0 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                              </div>
+                            ) : (
+                              <div className="pt-2 text-center text-[11px] font-bold text-slate-400 bg-slate-50 rounded-xl py-2 border border-slate-100">
+                                🔒 Price Editing & Delete locked in Staff Mode
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       );
@@ -2329,14 +2387,16 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                       <ShoppingBag className="w-16 h-16 text-slate-200 mx-auto" />
                       <div className="space-y-2">
                         <h3 className="text-xl font-bold text-slate-800">Your Catalog is Empty</h3>
-                        <p className="text-sm text-slate-400 max-w-xs mx-auto">Start listing Products, Services or Properties to populate your ecosystem.</p>
+                        <p className="text-sm text-slate-400 max-w-xs mx-auto">{isStaffMode ? 'Ask the business owner to add items to your shop catalog.' : 'Start listing Products, Services or Properties to populate your ecosystem.'}</p>
                       </div>
-                      <button 
-                        onClick={() => setIsEditing(true)}
-                        className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-100 border-0 cursor-pointer"
-                      >
-                        List My First Item
-                      </button>
+                      {!isStaffMode && (
+                        <button 
+                          onClick={() => setIsEditing(true)}
+                          className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-indigo-100 border-0 cursor-pointer"
+                        >
+                          List My First Item
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2403,7 +2463,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ credits = 0, onUpdateCr
                             {log.resultingQuantity} units
                           </td>
                           <td className="p-4 text-right">
-                            <div className="font-bold text-slate-800">₦{parseFloat(log.costPriceAtTime).toLocaleString()}</div>
+                            <div className="font-bold text-slate-800">{isStaffMode ? '🔒 Owner Only' : `₦${parseFloat(log.costPriceAtTime).toLocaleString()}`}</div>
                             <div className="text-[10px] text-slate-400 mt-0.5">Retail: ₦{parseFloat(log.retailPriceAtTime).toLocaleString()}</div>
                           </td>
                           <td className="p-4 text-slate-500 italic max-w-xs truncate">

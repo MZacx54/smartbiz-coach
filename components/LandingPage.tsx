@@ -494,15 +494,15 @@ const LandingPage: React.FC = () => {
                                 <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
                                     <span className="text-blue-400 text-sm mt-0.5">🛡️</span>
                                     <div>
-                                        <div className="text-xs font-bold text-white">Staff PIN & Till Defense</div>
-                                        <div className="text-[11px] text-slate-400">Prevent till theft and price tampering with a 4-digit supervisor shift lock.</div>
+                                        <div className="text-xs font-bold text-white">Staff Lock &amp; Till Defense</div>
+                                        <div className="text-[11px] text-slate-400">Prevent till theft and price tampering with an owner security password (6+ chars).</div>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
                                     <span className="text-emerald-400 text-sm mt-0.5">💬</span>
                                     <div>
                                         <div className="text-xs font-bold text-white">WhatsApp Debt Reminders</div>
-                                        <div className="text-[11px] text-slate-400">Automated polite payment notices with 1-tap Paystack & bank transfer links.</div>
+                                        <div className="text-[11px] text-slate-400">1-tap click-to-chat payment notices (or Cloud Bot alerts) with Paystack links.</div>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-2.5 bg-white/5 border border-white/10 rounded-xl p-3">
@@ -1222,9 +1222,9 @@ const LandingPage: React.FC = () => {
                         <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
                             className="space-y-4">
                             {[
-                                { icon: '⏱️', label: 'Hours Saved Monthly', value: `${timeSaved} hrs`, sub: 'From 5-Sec POS, automated day-book & WhatsApp close', color: 'from-violet-600 to-purple-700' },
-                                { icon: '💸', label: 'Avg. Debt Recovered/Month', value: `₦${debtRecovered.toLocaleString('en-NG')}`, sub: 'Via automated WhatsApp reminders and Paystack links', color: 'from-red-600 to-rose-700' },
-                                { icon: '💰', label: 'Grant Programs Eligible', value: grantEligibility, sub: 'Based on your revenue tier — matched automatically', color: 'from-emerald-600 to-teal-700' },
+                                { icon: '⏱️', label: 'Hours Saved Monthly', value: `${timeSaved} hrs`, sub: 'From 5-Sec POS, digital day-book & WhatsApp close', color: 'from-violet-600 to-purple-700' },
+                                { icon: '💸', label: 'Avg. Debt Recovered/Month', value: `₦${debtRecovered.toLocaleString('en-NG')}`, sub: 'Via 1-tap WhatsApp reminders and Paystack links', color: 'from-red-600 to-rose-700' },
+                                { icon: '💰', label: 'Potential Grant Matches (Est.)', value: grantEligibility, sub: 'Illustrative tier match only — official eligibility depends on each program', color: 'from-emerald-600 to-teal-700' },
                                 { icon: '🚀', label: 'Potential Revenue Uplift', value: `+₦${Math.round(roiRevenue * 0.15).toLocaleString('en-NG')}`, sub: 'From digital storefront, marketplace reach & social content', color: 'from-amber-600 to-orange-700' },
                             ].map(({ icon, label, value, sub, color }, i) => (
                                 <motion.div key={i} className={`bg-gradient-to-r ${color} rounded-2xl p-5 shadow-lg text-white`}

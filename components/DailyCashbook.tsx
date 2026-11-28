@@ -16,7 +16,7 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import BarcodeScannerModal from './BarcodeScannerModal';
 import VoiceNoteModal from './VoiceNoteModal';
-import { getBusinessDateStr, formatBusinessDate } from '../utils/dateTime';
+import { getBusinessDateStr, formatBusinessDate, formatBusinessDateYMD } from '../utils/dateTime';
 import { offlineStorage } from '../utils/offlineStorage';
 
 // Authoritative West Africa Time (WAT) calendar date as YYYY-MM-DD
@@ -98,7 +98,7 @@ export const DailyCashbook: React.FC = () => {
   const [editSaleQuantity, setEditSaleQuantity] = useState(1);
   const [editSaleUnitPrice, setEditSaleUnitPrice] = useState('');
   const [editSaleCostPrice, setEditSaleCostPrice] = useState('');
-  const [editSalePaymentMethod, setEditSalePaymentMethod] = useState<'CASH' | 'TRANSFER' | 'CREDIT'>('CASH');
+  const [editSalePaymentMethod, setEditSalePaymentMethod] = useState<'CASH' | 'TRANSFER' | 'CREDIT' | 'POS'>('CASH');
   const [editSaleCustomerName, setEditSaleCustomerName] = useState('');
   const [editSaleCustomerPhone, setEditSaleCustomerPhone] = useState('');
   const [editSaleDueDate, setEditSaleDueDate] = useState('');
@@ -119,7 +119,7 @@ export const DailyCashbook: React.FC = () => {
   const [saleQuantity, setSaleQuantity] = useState(1);
   const [saleUnitPrice, setSaleUnitPrice] = useState('');
   const [saleCostPrice, setSaleCostPrice] = useState('');
-  const [salePaymentMethod, setSalePaymentMethod] = useState<'CASH' | 'TRANSFER' | 'CREDIT'>('CASH');
+  const [salePaymentMethod, setSalePaymentMethod] = useState<'CASH' | 'TRANSFER' | 'CREDIT' | 'POS'>('CASH');
   const [saleCustomerName, setSaleCustomerName] = useState('');
   const [saleCustomerPhone, setSaleCustomerPhone] = useState('');
   const [saleDueDate, setSaleDueDate] = useState('');
@@ -899,7 +899,7 @@ export const DailyCashbook: React.FC = () => {
     // 0ms Zero-fail Local Client Intelligence if offline or timeout
     const totalRev = sales.reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
     const cashSales = sales.filter(s => s.payment_method === 'CASH').reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
-    const transferSales = sales.filter(s => s.payment_method === 'TRANSFER').reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
+    const transferSales = sales.filter(s => s.payment_method === 'TRANSFER' || s.payment_method === 'POS').reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
     const creditSales = sales.filter(s => s.payment_method === 'CREDIT').reduce((sum, s) => sum + parseFloat(String(s.total_amount || 0)), 0);
     const totalExp = expenses.reduce((sum, e) => sum + parseFloat(String(e.amount || 0)), 0);
     const cashExp = expenses.filter(e => e.payment_method === 'CASH').reduce((sum, e) => sum + parseFloat(String(e.amount || 0)), 0);
@@ -1220,6 +1220,13 @@ export const DailyCashbook: React.FC = () => {
       // Trigger non-blocking background sync
       syncOfflineQueue(true);
     }
+    if (trends) {
+      setTrends((prev: any) => prev ? {
+        ...prev,
+        total_revenue: (parseFloat(prev.total_revenue) || 0) + totalAmount,
+        total_profit: (parseFloat(prev.total_profit) || 0) + (totalAmount - ((parseFloat(saleCostPrice) || 0) * qtyNum)),
+      } : prev);
+    }
   };
 
   // Submit Expense — Instant 0ms Local Persistence + Non-Blocking Cloud Sync
@@ -1268,12 +1275,18 @@ export const DailyCashbook: React.FC = () => {
       toast.success('✅ Petty cash expense recorded!', { duration: 2500 });
       syncOfflineQueue(true);
     }
+    if (trends) {
+      setTrends((prev: any) => prev ? {
+        ...prev,
+        total_profit: (parseFloat(prev.total_profit) || 0) - amountNum,
+      } : prev);
+    }
   };
 
   // Calculated aggregates
   const totalRevenue = sales.reduce((acc, s) => acc + (parseFloat(String(s.total_amount)) || 0), 0);
   const cashSales = sales.filter(s => s.payment_method === 'CASH').reduce((acc, s) => acc + (parseFloat(String(s.total_amount)) || 0), 0);
-  const transferSales = sales.filter(s => s.payment_method === 'TRANSFER').reduce((acc, s) => acc + (parseFloat(String(s.total_amount)) || 0), 0);
+  const transferSales = sales.filter(s => s.payment_method === 'TRANSFER' || s.payment_method === 'POS').reduce((acc, s) => acc + (parseFloat(String(s.total_amount)) || 0), 0);
   const creditSales = sales.filter(s => s.payment_method === 'CREDIT').reduce((acc, s) => acc + (parseFloat(String(s.total_amount)) || 0), 0);
 
   const totalExpenses = expenses.reduce((acc, e) => acc + (parseFloat(String(e.amount)) || 0), 0);
@@ -1309,7 +1322,7 @@ export const DailyCashbook: React.FC = () => {
   };
 
   const handleShareSummaryWhatsApp = () => {
-    const dateFormatted = new Date(selectedDate).toLocaleDateString('en-NG', {
+    const dateFormatted = formatBusinessDateYMD(selectedDate, {
       weekday: 'long',
       year: 'numeric',
       month: 'short',
@@ -1353,7 +1366,7 @@ export const DailyCashbook: React.FC = () => {
       `Quantity: *${sale.quantity}*\n` +
       `Unit Price: *${formatNgn(parseFloat(String(sale.unit_price)))}*\n` +
       `Total Paid: *${formatNgn(parseFloat(String(sale.total_amount)))}*\n` +
-      `Payment Method: *${sale.payment_method === 'CASH' ? 'Cash' : sale.payment_method === 'TRANSFER' ? 'Bank Transfer' : 'Credit / On-Account'}*\n` +
+      `Payment Method: *${sale.payment_method === 'CASH' ? 'Cash' : sale.payment_method === 'TRANSFER' ? 'Bank Transfer' : sale.payment_method === 'POS' ? 'POS Terminal' : 'Credit / On-Account'}*\n` +
       (sale.customer_name ? `Customer: ${sale.customer_name}\n` : '') +
       `Date: ${new Date(sale.created_at || Date.now()).toLocaleDateString()}\n\n` +
       `_Thank you for your patronage! 🙏_`;
@@ -1698,7 +1711,7 @@ export const DailyCashbook: React.FC = () => {
                 }}
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all cursor-pointer"
               >
-                <Bot className="w-4 h-4 text-purple-200" /> AI Daily Brief
+                <Bot className="w-4 h-4 text-purple-200" /> AI Daily Brief <span className="text-[9px] opacity-80">(1 Credit)</span>
               </button>
             )}
 
@@ -1766,7 +1779,7 @@ export const DailyCashbook: React.FC = () => {
             <div>
               <p className="font-extrabold text-white text-xs sm:text-sm flex items-center gap-2">
                 <span>{!isOnline ? '📶 Offline Resilience Active (Slow or No Network)' : `☁️ ${pendingSyncCount} Local Record${pendingSyncCount === 1 ? '' : 's'} Ready for Cloud Sync`}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800/80 font-bold border border-slate-700">Zero Data Loss</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800/80 font-bold border border-slate-700">Offline Protected</span>
               </p>
               <p className="text-[11px] opacity-85 mt-0.5 max-w-2xl">
                 {!isOnline 
@@ -1890,7 +1903,11 @@ export const DailyCashbook: React.FC = () => {
                 <span className="text-xs font-black text-white">
                   14-Day Cash Runway:{' '}
                   <span className="text-emerald-400">
-                    {mlOverview?.cash_cliff?.runway_days ? `${mlOverview.cash_cliff.runway_days} Days Safe` : 'Awaiting 1st Entry'}
+                    {mlOverview?.cash_cliff?.has_sufficient_data && mlOverview?.cash_cliff?.runway_days > 0
+                      ? `${mlOverview.cash_cliff.runway_days} Days Safe`
+                      : mlOverview?.cash_cliff?.runway_status === 'LIMITED_HISTORY'
+                        ? 'Collecting Baseline (7d Min)'
+                        : 'Awaiting 1st Entry'}
                   </span>
                 </span>
                 {mlOverview?.cash_cliff?.fuel_gen_burn_pct !== undefined && mlOverview?.cash_cliff?.fuel_gen_burn_pct > 0 && (
@@ -2458,11 +2475,11 @@ export const DailyCashbook: React.FC = () => {
                       <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black ${
                         sale.payment_method === 'CASH' 
                           ? 'bg-emerald-100 text-emerald-700' 
-                          : sale.payment_method === 'TRANSFER'
+                          : (sale.payment_method === 'TRANSFER' || sale.payment_method === 'POS')
                           ? 'bg-blue-100 text-blue-700'
                           : 'bg-rose-100 text-rose-700'
                       }`}>
-                        {sale.payment_method === 'CASH' ? '💵' : sale.payment_method === 'TRANSFER' ? '🏦' : '📒'}
+                        {sale.payment_method === 'CASH' ? '💵' : sale.payment_method === 'TRANSFER' ? '🏦' : sale.payment_method === 'POS' ? '💳' : '📒'}
                       </div>
                       <div>
                         <p className="text-sm font-extrabold text-slate-900">{sale.item_name}</p>
@@ -2479,11 +2496,11 @@ export const DailyCashbook: React.FC = () => {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             sale.payment_method === 'CASH'
                               ? 'bg-emerald-50 text-emerald-700'
-                              : sale.payment_method === 'TRANSFER'
+                              : (sale.payment_method === 'TRANSFER' || sale.payment_method === 'POS')
                               ? 'bg-blue-50 text-blue-700'
                               : 'bg-rose-50 text-rose-700'
                           }`}>
-                            {sale.payment_method === 'CASH' ? 'Cash in Till' : sale.payment_method === 'TRANSFER' ? 'Bank Transfer' : 'Credit / Debt'}
+                            {sale.payment_method === 'CASH' ? 'Cash in Till' : sale.payment_method === 'TRANSFER' ? 'Bank Transfer' : sale.payment_method === 'POS' ? 'POS Terminal' : 'Credit / Debt'}
                           </span>
                           {sale.is_edited && (
                             <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200">
@@ -2649,12 +2666,12 @@ export const DailyCashbook: React.FC = () => {
                 </h2>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Official closing audit for {new Date(selectedDate).toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                Official closing audit for {formatBusinessDateYMD(selectedDate, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
 
             <div className="bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-2xl">
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">Verified Till Status</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">{actualCountedCash ? 'Verified Till Status' : 'Estimated Till (Unverified)'}</p>
               <p className="text-base font-black text-emerald-700">{formatNgn(netCashInTill)} in Hand</p>
             </div>
           </div>
@@ -2802,7 +2819,7 @@ export const DailyCashbook: React.FC = () => {
                 </span>
                 <p className="text-xl font-black text-emerald-400 mt-1">{formatNgn(expectedClosingTill)}</p>
                 <p className="text-[10px] text-slate-400">
-                  Opening ({formatNgn(openingTillNum)}) + Cash In ({formatNgn(cashSales)}) - Cash Out ({formatNgn(cashExpenses)})
+                  Opening ({formatNgn(openingTillNum)}) + Cash In ({formatNgn(cashSales)}) - Cash Out ({isShiftMode ? '🔒' : formatNgn(cashExpenses)})
                 </p>
               </div>
 
@@ -2916,7 +2933,7 @@ export const DailyCashbook: React.FC = () => {
                   AI Operations & Financial Executive Brief
                 </h2>
                 <p className="text-purple-200 text-xs sm:text-sm mt-1 max-w-xl">
-                  Automated intelligence assessing sales momentum, gross margins, petty cash leakages, and actionable growth steps for {new Date(selectedDate).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })}.
+                  Automated intelligence assessing sales momentum, gross margins, petty cash leakages, and actionable growth steps for {formatBusinessDateYMD(selectedDate, { month: 'short', day: 'numeric', year: 'numeric' })}.
                 </p>
               </div>
 
@@ -2985,7 +3002,7 @@ export const DailyCashbook: React.FC = () => {
                 onClick={fetchAIInsights}
                 className="mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs px-6 py-3 rounded-2xl shadow-lg shadow-purple-500/20 transition-all cursor-pointer inline-flex items-center gap-2"
               >
-                <Bot className="w-4 h-4" /> Generate AI Daily Brief
+                <Bot className="w-4 h-4" /> Generate AI Daily Brief <span className="text-[9px] opacity-70 ml-1">(1 Credit)</span>
               </button>
             </div>
           ) : (

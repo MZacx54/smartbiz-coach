@@ -6,6 +6,7 @@ import api from '../services/api';
 import { authService } from '../services/authService';
 import { storeShareUrl } from '../services/commerceService';
 import { FEATURE_FLAGS } from '../config/featureFlags';
+import { getBusinessDateStr } from '../utils/dateTime';
 import { useOwnerLock } from '../hooks/useOwnerLock';
 import { Card, Button, StatTile, Skeleton, PageHeader, useLanguage } from './ui';
 
@@ -36,8 +37,8 @@ interface Suggestion {
   go: () => void;
 }
 
-const localDate = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Use the shared WAT business date to stay consistent with DailyCashbook
+const localDate = (d?: Date): string => getBusinessDateStr(d);
 const ngn = (n: number) => '₦' + Math.round(n || 0).toLocaleString('en-NG');
 const readCache = <T,>(key: string): T | null => {
   try {

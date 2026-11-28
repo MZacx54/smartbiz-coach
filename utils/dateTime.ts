@@ -73,3 +73,25 @@ export const formatBusinessDate = (dateOrIso: Date | string | number): string =>
     return String(dateOrIso);
   }
 };
+
+/**
+ * Safely formats a YYYY-MM-DD business calendar date in WAT without
+ * UTC-midnight day-shift (which pushes ISO dates back 1 day in western timezones).
+ */
+export const formatBusinessDateYMD = (
+  dateStr: string,
+  options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }
+): string => {
+  try {
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      return formatBusinessDate(dateStr);
+    }
+    const anchor = new Date(`${dateStr.slice(0, 10)}T12:00:00Z`);
+    return new Intl.DateTimeFormat('en-NG', {
+      timeZone: BUSINESS_TIMEZONE,
+      ...options
+    }).format(anchor);
+  } catch {
+    return String(dateStr);
+  }
+};

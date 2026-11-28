@@ -323,13 +323,13 @@ const LESSONS: Lesson[] = [
     targetView: AppView.SETTINGS,
     actionText: 'Check Credit Wallet',
     takeaways: [
-      'Every newly registered merchant automatically receives 50 Free Welcome BizCredits.',
+      'Every newly registered merchant receives 50 Free Welcome BizCredits upon email verification.',
       'Earn +5 SmartBiz Credits every time you share a product link to WhatsApp Status or social platforms.',
       'Core daily operating tools (POS scanner, Day-Book, Gbege Book) remain 100% free forever; BizCredits are only used for heavy generative compute.'
     ],
     content: [
       'SmartBiz Coach operates on a fair-use hybrid model. All core operational retail tools — such as the 5-Second POS Cashbook, barcode scanner, apprentice shift lock, petty cash logger, debtor book, and Section 23 tax exemption memo — are completely free with zero credits required.',
-      'When you register an account, your wallet is automatically credited with 50 Free Welcome BizCredits. These can be used immediately for generating AI Logos, BOI Business Plans, and tailored marketing copy.',
+      'When you register an account and verify your email address, your wallet is automatically credited with 50 Free Welcome BizCredits. These can be used immediately for generating AI Logos, 3-Year Business Plans, and tailored marketing copy.',
       'You can also earn +5 BizCredits whenever you share a product link from your Storefront or the Market Square to WhatsApp, Facebook, Twitter, or LinkedIn. Additional packs can be topped up via Paystack starting at just ₦500.'
     ]
   },
@@ -373,7 +373,7 @@ const LESSONS: Lesson[] = [
     title: 'Anti-Theft Apprentice Shift Mode & Fuel Logging',
     subtitle: 'Protect your counter cash, profit margins, and daily generator expenses',
     category: 'OPS',
-    description: 'Lock sensitive profit margins behind a 4-digit supervisor PIN, allow counter attendants to record sales in Blind Mode, track daily generator petrol/diesel burn, and audit shift cash in till.',
+    description: 'Lock sensitive profit margins behind an owner security password (6+ chars), allow counter attendants to record sales safely, track daily generator petrol/diesel burn, and audit shift cash in till.',
     duration: '5 mins read',
     difficulty: 'Beginner',
     icon: '🛡️',
@@ -381,21 +381,21 @@ const LESSONS: Lesson[] = [
     targetView: AppView.DAILY_CASHBOOK,
     actionText: 'Configure Day-Book & Till',
     takeaways: [
-      '4-Digit Supervisor PIN locks wholesale cost prices, profit margins, and deletion rights while letting attendants log sales.',
+      'Owner Security Password (6+ chars) locks wholesale cost prices, profit margins, price changes, and deletion rights while letting attendants log sales.',
       'Petty Cash & Fuel Logger separates generator fuel (petrol/diesel) and logistics from owner personal drawings to reflect true daily take-home profit.',
       'At the end of every shift, compare physical drawer cash with the Day-Book reconciliation summary to catch unrecorded cash leaks immediately.'
     ],
     content: [
       'Attendant embezzlement and unrecorded cash draws are among the leading causes of retail store insolvency in Nigerian markets. SmartBiz Coach provides a built-in defense: Anti-Theft Apprentice Shift Mode.',
-      'From the Daily Day-Book (/dashboard/cashbook), activate Apprentice Mode by setting a 4-digit Supervisor PIN. In this mode, counter attendants can record customer checkouts and generate receipts, but they cannot backdate transactions, alter historical prices, view your wholesale supplier costs, or see net business margins.',
+      'From the Daily Day-Book (/dashboard/cashbook), activate Apprentice Mode by setting an Owner Security Password (6+ characters). In this mode, counter attendants can record customer checkouts and generate receipts, but they cannot backdate transactions, alter catalog prices, view your wholesale supplier costs, or see net business margins.',
       'Use the Petty Cash & Fuel Logger to record daily generator fueling (petrol/diesel) and transport waybills. By separating business overhead from "Oga personal drawings", you protect your working capital from silent depletion.',
-      'At closing time, enter your supervisor PIN to view the Shift Reconciliation Report. If physical cash in the till does not match recorded receipts, you can immediately identify the discrepancy before staff leave for the day.'
+      'At closing time, enter your owner security password to view the Shift Reconciliation Report. If physical cash in the till does not match recorded receipts, you can immediately identify the discrepancy before staff leave for the day.'
     ],
     quickQuiz: {
       question: 'What happens when Apprentice Shift Lock is enabled on the Daily Day-Book?',
       options: [
         'The app prevents anyone from recording customer sales',
-        'Attendants can log customer sales, but wholesale costs, margins, and deletion tools are locked behind the owner PIN',
+        'Attendants can log customer sales, but wholesale costs, margins, and editing/deletion tools are locked behind the owner password',
         'The app automatically charges an extra 10% fee on all sales',
         'Customers cannot pay with cash'
       ],

@@ -543,7 +543,7 @@ export interface DailySale {
   unit_price: number | string;
   cost_price?: number | string;
   total_amount: number | string;
-  payment_method: 'CASH' | 'TRANSFER' | 'CREDIT';
+  payment_method: 'CASH' | 'TRANSFER' | 'CREDIT' | 'POS';
   customer_name?: string;
   customer_phone?: string;
   is_debt?: boolean;

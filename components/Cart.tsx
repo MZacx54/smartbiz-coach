@@ -284,7 +284,7 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
         <div className="flex justify-between items-center text-sm text-slate-600">
            <span>Delivery ({checkoutForm.state})</span>
            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-             {deliveryFee > 0 ? `₦${deliveryFee.toLocaleString()}` : 'Standard Waybill / Pickup'}
+             {deliveryFee > 0 ? `₦${deliveryFee.toLocaleString()}` : 'Quoted separately by seller / Pickup'}
            </span>
         </div>
         
@@ -299,7 +299,12 @@ const Cart: React.FC<CartProps> = ({ items, userEmail, onRemove, onClear, onChec
         </div>
 
         <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-           <span className="font-bold text-lg text-slate-900">Total</span>
+           <div>
+             <span className="font-bold text-lg text-slate-900 block">{deliveryFee > 0 ? 'Total' : 'Items Subtotal'}</span>
+             {deliveryFee <= 0 && (
+               <span className="text-[11px] text-slate-500">Waybill / dispatch fee arranged separately with vendor if applicable</span>
+             )}
+           </div>
            <span className="font-extrabold text-2xl text-slate-900">₦{total.toLocaleString()}</span>
         </div>
 

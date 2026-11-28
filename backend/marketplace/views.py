@@ -195,6 +195,15 @@ class ProductListCreateView(generics.ListCreateAPIView):
             queryset = queryset.filter(product_type=product_type)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        from users.views import is_user_apprentice_locked
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Staff/Apprentice Mode is active. Only the business owner can add new products or set prices.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         from brand.models import BrandIdentity
         biz_name = getattr(self.request.user, 'business_name', '') or (self.request.user.email.split('@')[0] if self.request.user.email else 'My Business')
@@ -214,6 +223,33 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
             'brand__user',
             'brand__user__vendor_profile'
         )
+
+    def _check_owner_unlock(self, request):
+        from users.views import is_user_apprentice_locked
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Staff/Apprentice Mode is active. Only the business owner can edit, delete, or change product prices.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+
+    def update(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        blocked = self._check_owner_unlock(request)
+        if blocked:
+            return blocked
+        return super().destroy(request, *args, **kwargs)
 
 class PublicBrandProductListView(generics.ListAPIView):
     serializer_class = PublicProductSerializer
@@ -399,6 +435,13 @@ class ProductSnapAndListView(views.APIView):
         import re
         from billing.utils import reserve_ai_credits, refund_ai_credits
         from billing.catalog import AI_CREDIT_COSTS
+        from users.views import is_user_apprentice_locked
+
+        if is_user_apprentice_locked(request.user):
+            return Response(
+                {'error': 'Staff/Apprentice Mode is active. Owner verification is required to snap or add products.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         image_base64 = request.data.get('image_base64') or request.data.get('video_snapshot_base64') or request.data.get('image')
         mime_type = request.data.get('mime_type', 'image/jpeg')
@@ -1121,7 +1164,7 @@ class DailySummaryView(views.APIView):
 
         total_sales_revenue = float(sales.aggregate(total=Sum('total_amount'))['total'] or 0.00)
         cash_sales = float(sales.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.00)
-        transfer_sales = float(sales.filter(payment_method='TRANSFER').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        transfer_sales = float(sales.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('total_amount'))['total'] or 0.00)
         credit_sales = float(sales.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0.00)
 
         # Cost of goods sold (COGS)
@@ -1133,7 +1176,7 @@ class DailySummaryView(views.APIView):
         # Expenses
         total_expenses = float(expenses.aggregate(total=Sum('amount'))['total'] or 0.00)
         cash_expenses = float(expenses.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0.00)
-        transfer_expenses = float(expenses.filter(payment_method='TRANSFER').aggregate(total=Sum('amount'))['total'] or 0.00)
+        transfer_expenses = float(expenses.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('amount'))['total'] or 0.00)
 
         # Net Cash in Till
         net_cash_in_till = cash_sales - cash_expenses
@@ -1462,7 +1505,7 @@ class DailyAIInsightsView(views.APIView):
 
         total_sales_revenue = float(sales.aggregate(total=Sum('total_amount'))['total'] or 0.00)
         cash_sales = float(sales.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.00)
-        transfer_sales = float(sales.filter(payment_method='TRANSFER').aggregate(total=Sum('total_amount'))['total'] or 0.00)
+        transfer_sales = float(sales.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('total_amount'))['total'] or 0.00)
         credit_sales = float(sales.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0.00)
 
         # COGS & Margins
@@ -1473,7 +1516,7 @@ class DailyAIInsightsView(views.APIView):
         # Expenses breakdown
         total_expenses = float(expenses.aggregate(total=Sum('amount'))['total'] or 0.00)
         cash_expenses = float(expenses.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0.00)
-        transfer_expenses = float(expenses.filter(payment_method='TRANSFER').aggregate(total=Sum('amount'))['total'] or 0.00)
+        transfer_expenses = float(expenses.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('amount'))['total'] or 0.00)
         net_cash_in_till = cash_sales - cash_expenses
         net_profit = gross_profit - total_expenses
 
@@ -1484,13 +1527,22 @@ class DailyAIInsightsView(views.APIView):
 
         biz_name = getattr(request.user, 'business_name', '') or request.user.username
 
+        sparsity_rule = (
+            "NOTE ON SPARSE DATA: Very few transactions are logged today. Label insights clearly as preliminary based on limited entries; do NOT make sweeping multi-week business health claims."
+            if sales.count() < 5 else ""
+        )
+
         prompt = f"""You are an elite Chief Financial Officer & Senior Retail Operations Director for Nigerian MSMEs.
 Analyze this Nigerian merchant's daily trading ledger for {target_date.strftime('%A, %d %B %Y')} and provide an executive operational intelligence brief.
+
+IMPORTANT ACCOUNTING RULES:
+1. A physical drawer cash count was NOT submitted in this AI request. NEVER state or imply "zero cash discrepancy", "till verified", or "physical drawer reconciled". Always refer to ₦{net_cash_in_till:,.2f} as the "expected system cash balance (pending physical count)" and remind the owner to count the physical drawer.
+2. {sparsity_rule}
 
 Business Name: {biz_name}
 Daily Trading Figures (Nigerian Naira ₦):
 - Total Sales Revenue: ₦{total_sales_revenue:,.2f} ({sales.count()} transactions)
-  • Cash in Till: ₦{cash_sales:,.2f}
+  • Cash in Till (System Expected): ₦{cash_sales:,.2f}
   • Bank Transfer / POS: ₦{transfer_sales:,.2f}
   • Debt / Credit Given: ₦{credit_sales:,.2f} ({len(debt_sales_list)} debtor sales)
 - Cost of Goods Sold (COGS): ₦{cogs:,.2f}
@@ -1498,7 +1550,7 @@ Daily Trading Figures (Nigerian Naira ₦):
 - Operational Petty Cash / Expenses: ₦{total_expenses:,.2f} ({expenses.count()} expense entries)
   • Cash paid from Till: ₦{cash_expenses:,.2f}
   • Transfer paid: ₦{transfer_expenses:,.2f}
-- Net Cash in Till: ₦{net_cash_in_till:,.2f}
+- Expected System Cash in Till (Uncounted): ₦{net_cash_in_till:,.2f}
 - Net Estimated Profit: ₦{net_profit:,.2f}
 
 Sales logged: {', '.join(sales_summary_list) if sales_summary_list else 'No sales logged today'}
@@ -1710,13 +1762,13 @@ class DailyAIAskView(views.APIView):
         # 2. Extract Comprehensive Ledger Facts
         total_revenue = float(sales_qs.aggregate(total=Sum('total_amount'))['total'] or 0.0)
         cash_sales = float(sales_qs.filter(payment_method='CASH').aggregate(total=Sum('total_amount'))['total'] or 0.0)
-        transfer_sales = float(sales_qs.filter(payment_method='TRANSFER').aggregate(total=Sum('total_amount'))['total'] or 0.0)
+        transfer_sales = float(sales_qs.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('total_amount'))['total'] or 0.0)
         credit_sales = float(sales_qs.filter(payment_method='CREDIT').aggregate(total=Sum('total_amount'))['total'] or 0.0)
         sales_count = sales_qs.count()
 
         total_expenses = float(expenses_qs.aggregate(total=Sum('amount'))['total'] or 0.0)
         cash_expenses = float(expenses_qs.filter(payment_method='CASH').aggregate(total=Sum('amount'))['total'] or 0.0)
-        transfer_expenses = float(expenses_qs.filter(payment_method='TRANSFER').aggregate(total=Sum('amount'))['total'] or 0.0)
+        transfer_expenses = float(expenses_qs.filter(payment_method__in=['TRANSFER', 'POS']).aggregate(total=Sum('amount'))['total'] or 0.0)
         net_cash_in_till = cash_sales - cash_expenses
 
         # Itemized Stock Sales Summary

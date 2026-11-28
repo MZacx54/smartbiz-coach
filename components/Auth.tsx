@@ -53,7 +53,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [name, setName] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [phone, setPhone] = useState('');
-  const [location, setLocation] = useState('Lagos');
+  const [location, setLocation] = useState('');
   const [currency, setCurrency] = useState('NGN');
 
   // Password Recovery State

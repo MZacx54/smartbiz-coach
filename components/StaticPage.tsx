@@ -384,7 +384,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                       <strong className="text-slate-900">A. Merchant Identity &amp; Corporate Profile:</strong> Full name of business owner or legal representative, registered business trading name, Corporate Affairs Commission (CAC) Registration Number (RC/BN), Tax Identification Number (TIN), physical trading address, state, local government area (LGA), market cluster classification, email address, and WhatsApp/phone numbers.
                     </div>
                     <div className="border-l-2 border-emerald-500 pl-3 py-1">
-                      <strong className="text-slate-900">B. Retail Counter &amp; POS Day-Book Telemetry:</strong> Line-item sales timestamps, item barcodes, stock SKU updates, cash register opening/closing balances, petty cash disbursements, generator fuel logistics expenses, cashier shift events, and 4-digit apprentice shift locks.
+                      <strong className="text-slate-900">B. Retail Counter &amp; POS Day-Book Telemetry:</strong> Line-item sales timestamps, item barcodes, stock SKU updates, cash register opening/closing balances, petty cash disbursements, generator fuel logistics expenses, cashier shift events, and owner-password apprentice shift locks.
                     </div>
                     <div className="border-l-2 border-amber-500 pl-3 py-1">
                       <strong className="text-slate-900">C. Customer Debt Recovery (&ldquo;Gbege Book&rdquo;) Records:</strong> Customer customer-facing names, debtor telephone numbers, transaction dates, debt repayment schedules, outstanding receivables, agreed payment milestones, and automated WhatsApp reminder dispatch status.
@@ -1041,7 +1041,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                 <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <h2 className="text-base font-bold text-slate-900 mb-2">1. BizCredits Digital Utility Top-Ups</h2>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Purchased BizCredits never expire while your account remains active. Because BizCredits are digital utility credits provisioned instantly upon verified Paystack confirmation, completed top-ups are generally non-refundable once credits are consumed.
+                    Purchased BizCredits never expire while your account remains active. Because BizCredits are digital utility credits provisioned instantly upon verified Paystack confirmation, completed top-ups are strictly non-refundable for fiat cash once credited.
                   </p>
                   <ul className="list-disc list-inside mt-3 space-y-1.5 text-xs text-slate-700">
                     <li><strong>Duplicate Charges:</strong> Verified duplicate debits caused by bank or gateway retries are refunded in full within 5–7 business days via Paystack reversal.</li>
@@ -1094,20 +1094,20 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-1 rounded-full uppercase">Pay-As-You-Go</span>
                   </div>
                   <p className="text-xs text-slate-600 mb-4">
-                    Credits are only consumed when you use heavy AI compute or premium marketplace promotion. Every new business receives <strong>50 Free Welcome Credits 🎁</strong> upon sign-up.
+                    Credits are only consumed when you use heavy AI compute or premium marketplace promotion. Every new business receives <strong>50 Free Welcome Credits 🎁</strong> upon email verification.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700">
                     <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-start gap-2.5">
                       <span className="text-base">📄</span>
                       <div>
-                        <strong>BOI 5-Year Business Plan:</strong> 200 credits
+                        <strong>3-Year Bankable Business Plan:</strong> 15 credits
                         <p className="text-[11px] text-slate-500 mt-0.5">Bank-grade financial modeling & institutional PDF export.</p>
                       </div>
                     </div>
                     <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-start gap-2.5">
                       <span className="text-base">✨</span>
                       <div>
-                        <strong>AI Brand Builder:</strong> 100 credits
+                        <strong>AI Brand Builder:</strong> 15 credits
                         <p className="text-[11px] text-slate-500 mt-0.5">Complete brand identity, logos, palettes & typography.</p>
                       </div>
                     </div>
@@ -1121,7 +1121,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                     <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-start gap-2.5">
                       <span className="text-base">💰</span>
                       <div>
-                        <strong>Grant & Loan Matcher Scan:</strong> 50 credits
+                        <strong>Grant & Loan Matcher Scan:</strong> 3 credits
                         <p className="text-[11px] text-slate-500 mt-0.5">Auto-matches against BOI, SMEDAN & TEF funding programs.</p>
                       </div>
                     </div>
@@ -1265,7 +1265,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
 
               <div className="space-y-6 text-sm text-slate-600 leading-relaxed">
                 <p>
-                  Over ₦500 Billion in federal grants, intervention funds, and concessionary bank loans are disbursed to Nigerian businesses annually. Yet, more than 85% of applicants are disqualified before review due to basic structural deficiencies — such as lack of formal incorporation, absence of 5-year financial models, or unverified bookkeeping.
+                  Across Nigeria’s development-finance ecosystem (SMEDAN, Bank of Industry, DBN, and state enterprise funds), public MSME reports highlight that hundreds of billions of Naira in intervention facilities exist annually, yet many applicants are screened out early due to basic documentation gaps — such as lack of formal CAC incorporation, incomplete 3-to-5-year financial models, or unverified daily bookkeeping. <span className="text-slate-400">(Educational overview; SmartBiz Coach does not guarantee third-party loan or grant approvals.)</span>
                 </p>
 
                 <h3 className="font-bold text-slate-950 text-base mt-6 mb-2">🔑 The 5 Structural Requirements to Secure Grants & Loans:</h3>
@@ -1361,7 +1361,7 @@ const StaticPage: React.FC<StaticPageProps> = ({ pageType }) => {
                   </div>
                   <h4 className="text-xl sm:text-2xl font-extrabold mb-3">Get Funding-Ready in 10 Minutes with SmartBiz Coach</h4>
                   <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed mb-6">
-                    Our AI platform generates your institutional 5-year business plan, matches your sector to active grant programs, and provides the statutory CAC registration checklist to guarantee approval.
+                    Our AI platform generates your institutional 5-year business plan, matches your sector to active grant programs, and provides the statutory CAC registration checklist to strengthen your application.
                   </p>
                   <div className="flex flex-wrap gap-3">
                     <button onClick={() => navigate('/register')} className="bg-white text-emerald-900 hover:bg-emerald-50 font-extrabold px-6 py-3 rounded-xl text-xs transition-all shadow-lg hover:-translate-y-0.5">

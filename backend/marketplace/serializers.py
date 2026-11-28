@@ -173,6 +173,18 @@ class ProductSerializer(serializers.ModelSerializer):
                 attrs['is_promoted'] = False
         return attrs
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and getattr(request, 'user', None) and request.user.is_authenticated:
+            try:
+                from users.views import is_user_apprentice_locked
+                if is_user_apprentice_locked(request.user):
+                    ret['cost_price'] = None
+            except Exception:
+                pass
+        return ret
+
 
 class PublicProductSerializer(ProductSerializer):
     """Public-facing product serializer omitting internal COGS cost_price, low_stock_threshold, and SKU."""

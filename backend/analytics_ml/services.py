@@ -921,15 +921,19 @@ class CashCliffForecastService:
         fuel_gen_outflow_30d = sum(float(e.amount or 0) for e in expenses_30d if e.category == 'FUEL_GEN')
 
         # Active days denominator (Nigeria WAT localtime)
-        active_days = max(7, len(set(
+        distinct_days = len(set(
             [timezone.localtime(s.created_at).date() for s in sales_30d if s.created_at] +
             [timezone.localtime(e.created_at).date() for e in expenses_30d if e.created_at]
-        )))
+        ))
+        tx_count = len(sales_30d) + len(expenses_30d)
+        has_sufficient_data = (distinct_days >= 7 and tx_count >= 5)
+        active_days = max(7, distinct_days)
 
         has_trading_data = (total_inflow_30d > 0 or total_outflow_30d > 0 or credit_locked_30d > 0)
         if not has_trading_data:
             return {
                 "has_sufficient_data": False,
+                "active_days_logged": 0,
                 "runway_status": "NO_DATA",
                 "runway_days": 0,
                 "estimated_liquid_cash": 0.0,
@@ -977,7 +981,14 @@ class CashCliffForecastService:
                 "projected_balance": max(0.0, running_balance),
             })
 
-        if cliff_day:
+        if not has_sufficient_data:
+            runway_status = "LIMITED_HISTORY"
+            runway_days = 0
+            advisory = (
+                f"Baseline in progress ({distinct_days}/7 active trading days logged across {tx_count} entries). "
+                "Log at least 7 trading days and 5+ transactions before relying on a 14-day runway forecast."
+            )
+        elif cliff_day:
             runway_status = "CASH_CLIFF_WARNING"
             runway_days = next((t["day"] for t in trajectory if t["projected_balance"] <= 0), 14)
             advisory = f"⚠️ Cash Cliff Alert: At current expense burn (₦{avg_daily_outflow:,.0f}/day), liquid cash will deplete around {cliff_day}. Recover ₦{credit_locked_30d:,.0f} in unpaid credit sales immediately."
@@ -991,6 +1002,8 @@ class CashCliffForecastService:
             advisory = f"Healthy positive cash velocity (+₦{daily_net_velocity:,.0f}/day net surplus). Projected 14-day working capital grows to ₦{trajectory[-1]['projected_balance']:,.0f}."
 
         return {
+            "has_sufficient_data": has_sufficient_data,
+            "active_days_logged": distinct_days,
             "runway_status": runway_status,
             "runway_days": runway_days,
             "estimated_liquid_cash": estimated_liquid_cash,
@@ -1509,7 +1522,8 @@ class AICFOBriefingService:
         score = credit_data.get("credit_score", 300)
         is_insufficient = (
             credit_data.get("risk_level") == "INSUFFICIENT_DATA"
-            or cash_cliff.get("runway_status") == "NO_DATA"
+            or cash_cliff.get("runway_status") in ("NO_DATA", "LIMITED_HISTORY")
+            or not cash_cliff.get("has_sufficient_data", False)
             or score <= 300
         )
         if is_insufficient:

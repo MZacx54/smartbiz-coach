@@ -73,7 +73,8 @@ export interface CashCliffTrajectoryDay {
 }
 
 export interface CashCliffData {
-  runway_status: 'CASH_CLIFF_WARNING' | 'BURN_CAUTION' | 'HEALTHY_SURPLUS' | 'NO_DATA';
+  has_sufficient_data?: boolean;
+  runway_status: 'CASH_CLIFF_WARNING' | 'BURN_CAUTION' | 'HEALTHY_SURPLUS' | 'NO_DATA' | 'LIMITED_HISTORY';
   runway_days: number;
   estimated_liquid_cash: number;
   avg_daily_inflow: number;
@@ -233,6 +234,8 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
   const hasCashCliffData = Boolean(
     cashCliff &&
     cashCliff.runway_status !== 'NO_DATA' &&
+    cashCliff.runway_status !== 'LIMITED_HISTORY' &&
+    cashCliff.has_sufficient_data !== false &&
     cashCliff.runway_days > 0
   );
 
@@ -956,9 +959,9 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                         💡 Daily Net Cash Velocity
                       </span>
                       <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full ${
-                        cashCliff?.runway_status === 'NO_DATA' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800'
+                        cashCliff?.runway_status === 'NO_DATA' || cashCliff?.runway_status === 'LIMITED_HISTORY' || cashCliff?.has_sufficient_data === false ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800'
                       }`}>
-                        {cashCliff?.runway_status === 'NO_DATA' ? 'Awaiting Records' : `${cashCliff?.runway_days ?? 0}+ Days Safe`}
+                        {cashCliff?.runway_status === 'NO_DATA' ? 'Awaiting Records' : (cashCliff?.runway_status === 'LIMITED_HISTORY' || cashCliff?.has_sufficient_data === false ? 'Collecting Baseline' : `${cashCliff?.runway_days ?? 0}+ Days Safe`)}
                       </span>
                     </div>
                     <div className="mt-2 text-2xl sm:text-3xl font-black text-emerald-600 font-mono">
@@ -966,7 +969,7 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                       <span className="text-xs font-bold text-slate-400">/day</span>
                     </div>
                     <div className="text-xs font-bold text-slate-800 mt-1">
-                      {cashCliff?.runway_status === 'NO_DATA' ? 'Runway: Awaiting Daily Day-Book' : 'Working Capital Runway: Active'}
+                      {cashCliff?.runway_status === 'NO_DATA' ? 'Runway: Awaiting Daily Day-Book' : (cashCliff?.runway_status === 'LIMITED_HISTORY' || cashCliff?.has_sufficient_data === false ? 'Runway: Building 7-Day Baseline' : 'Working Capital Runway: Active')}
                     </div>
                     <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
                       {cashCliff?.runway_status === 'NO_DATA' ? (
@@ -1139,7 +1142,11 @@ const DataScienceHub: React.FC<DataScienceHubProps> = ({ onNavigate }) => {
                       <span className="text-[11px] font-bold text-slate-500">/ day</span>
                     </div>
                     <p className="text-xs font-bold text-slate-800 mt-1.5">
-                      {cashCliff?.runway_status === 'NO_DATA' ? 'Runway: Awaiting Sales Records' : `Runway: ${cashCliff?.runway_days ?? 0}+ Days Safe`}
+                      {cashCliff?.runway_status === 'NO_DATA'
+                        ? 'Runway: Awaiting Sales Records'
+                        : (cashCliff?.runway_status === 'LIMITED_HISTORY' || cashCliff?.has_sufficient_data === false
+                          ? 'Runway: Building 7-Day Baseline'
+                          : `Runway: ${cashCliff?.runway_days ?? 0}+ Days Safe`)}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                       Gen Fuel Burn: <strong>{cashCliff?.fuel_gen_burn_pct ?? 0}%</strong> of petty cash expenses.
